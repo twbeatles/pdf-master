@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSettings, QSize, QTimer
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QImage, QIcon, QAction, QPainter, QPen, QColor, QFont, QShortcut, QKeySequence
 
-VERSION = "2.2"
+VERSION = "2.4"
 APP_NAME = "PDF Master"
 
 # -------------------------------------------------------------------------
@@ -78,15 +78,23 @@ QListWidget::item:selected { background: #e94560; color: white; }
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus { border: 2px solid #e94560; }
 QProgressBar { border: none; border-radius: 6px; text-align: center; background-color: #e8e8e8; color: #333; font-weight: bold; }
 QProgressBar::chunk { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #e94560, stop:1 #ff7b9a); border-radius: 6px; }
-QGroupBox { border: 2px solid #ddd; border-radius: 10px; margin-top: 12px; padding-top: 18px; font-weight: bold; color: #e94560; }
-QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 8px; left: 15px; }
+QGroupBox { border: 2px solid #ddd; border-radius: 10px; margin-top: 12px; padding-top: 18px; font-weight: bold; color: #e94560; background-color: #fff; }
+QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 8px; left: 15px; background-color: #fff; }
+QLabel { color: #333; background: transparent; }
 QLabel#header { font-size: 28px; font-weight: 800; color: #e94560; }
-QLabel#desc { color: #888; }
+QLabel#desc { color: #666; }
 QLabel#stepLabel { color: #00a080; font-size: 13px; font-weight: bold; }
+QFrame { background-color: #fff; border: 2px dashed #ccc; border-radius: 8px; }
+QScrollArea { background: #fff; border: none; }
+QScrollArea > QWidget > QWidget { background: #fff; }
 QToolTip { background-color: #fff; color: #333; border: 1px solid #e94560; padding: 8px; border-radius: 4px; }
 QComboBox QAbstractItemView { background-color: #fff; border: 1px solid #ddd; selection-background-color: #e94560; color: #333; }
+QSplitter::handle { background: #ddd; }
 QMenu { background-color: #fff; border: 1px solid #ddd; }
+QMenu::item { padding: 8px 25px; color: #333; }
 QMenu::item:selected { background-color: #e94560; color: white; }
+QToolButton { background: #fff; border: 2px solid #ddd; border-radius: 6px; padding: 6px; color: #333; font-size: 16px; }
+QToolButton:hover { background: #f0f0f0; border-color: #e94560; }
 """
 
 SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".pdf_master_settings.json")
@@ -685,6 +693,182 @@ class WorkerThread(QThread):
         
         self.finished_signal.emit(f"✅ 일괄 처리 완료!\n{success_count}/{len(files)}개 파일 처리됨")
 
+    def split_by_pages(self):
+        """PDF 분할 - 각 페이지를 개별 파일로"""
+        file_path = self.kwargs.get('file_path')
+        output_dir = self.kwargs.get('output_dir')
+        split_mode = self.kwargs.get('split_mode', 'each')
+        ranges = self.kwargs.get('ranges', '')
+        
+        doc = fitz.open(file_path)
+        base_name = os.path.splitext(os.path.basename(file_path))[0]
+        
+        if split_mode == 'each':
+            for i in range(len(doc)):
+                new_doc = fitz.open()
+                new_doc.insert_pdf(doc, from_page=i, to_page=i)
+                out_path = os.path.join(output_dir, f"{base_name}_page_{i+1}.pdf")
+                new_doc.save(out_path)
+                new_doc.close()
+                self.progress_signal.emit(int((i + 1) / len(doc) * 100))
+            self.finished_signal.emit(f"✅ PDF 분할 완료!\n{len(doc)}개 파일 생성됨")
+        else:
+            count = 0
+            for part_idx, rng in enumerate(ranges.split(',')):
+                rng = rng.strip()
+                if '-' in rng:
+                    start, end = map(int, rng.split('-'))
+                else:
+                    start = end = int(rng)
+                new_doc = fitz.open()
+                new_doc.insert_pdf(doc, from_page=start-1, to_page=end-1)
+                out_path = os.path.join(output_dir, f"{base_name}_part_{part_idx+1}.pdf")
+                new_doc.save(out_path)
+                new_doc.close()
+                count += 1
+            self.finished_signal.emit(f"✅ PDF 분할 완료!\n{count}개 파일 생성됨")
+        doc.close()
+
+    def add_page_numbers(self):
+        """페이지 번호 삽입"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        position = self.kwargs.get('position', 'bottom')
+        format_str = self.kwargs.get('format', '{n} / {total}')
+        
+        doc = fitz.open(file_path)
+        total = len(doc)
+        
+        for i, page in enumerate(doc):
+            text = format_str.replace('{n}', str(i+1)).replace('{total}', str(total))
+            rect = page.rect
+            if position == 'bottom':
+                point = fitz.Point(rect.width/2, rect.height - 20)
+            else:
+                point = fitz.Point(rect.width/2, 30)
+            page.insert_text(point, text, fontsize=10, fontname="helv", color=(0, 0, 0), align=1)
+            self.progress_signal.emit(int((i + 1) / total * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ 페이지 번호 삽입 완료!\n{total}페이지")
+
+    def insert_blank_page(self):
+        """빈 페이지 삽입"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        position = self.kwargs.get('position', 0)
+        
+        doc = fitz.open(file_path)
+        doc.insert_page(position, width=595, height=842)  # A4 size
+        doc.save(output_path)
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 빈 페이지 삽입 완료!\n위치: {position + 1}페이지")
+
+    def replace_page(self):
+        """특정 페이지 교체"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        replace_path = self.kwargs.get('replace_path')
+        target_page = self.kwargs.get('target_page', 1) - 1
+        source_page = self.kwargs.get('source_page', 1) - 1
+        
+        doc = fitz.open(file_path)
+        replace_doc = fitz.open(replace_path)
+        
+        doc.delete_page(target_page)
+        doc.insert_pdf(replace_doc, from_page=source_page, to_page=source_page, start_at=target_page)
+        
+        doc.save(output_path)
+        replace_doc.close()
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 페이지 교체 완료!")
+
+    def image_watermark(self):
+        """이미지 워터마크"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        image_path = self.kwargs.get('image_path')
+        position = self.kwargs.get('position', 'center')
+        
+        doc = fitz.open(file_path)
+        
+        for i, page in enumerate(doc):
+            rect = page.rect
+            if position == 'center':
+                x, y = (rect.width - 150) / 2, (rect.height - 150) / 2
+            elif position == 'top-left':
+                x, y = 20, 20
+            elif position == 'top-right':
+                x, y = rect.width - 170, 20
+            elif position == 'bottom-left':
+                x, y = 20, rect.height - 170
+            else:
+                x, y = rect.width - 170, rect.height - 170
+            
+            img_rect = fitz.Rect(x, y, x + 150, y + 150)
+            page.insert_image(img_rect, filename=image_path, overlay=True)
+            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ 이미지 워터마크 완료!")
+
+    def crop_pdf(self):
+        """PDF 자르기"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        margins = self.kwargs.get('margins', {'left': 0, 'top': 0, 'right': 0, 'bottom': 0})
+        
+        doc = fitz.open(file_path)
+        
+        for i, page in enumerate(doc):
+            rect = page.rect
+            new_rect = fitz.Rect(
+                rect.x0 + margins['left'], rect.y0 + margins['top'],
+                rect.x1 - margins['right'], rect.y1 - margins['bottom']
+            )
+            page.set_cropbox(new_rect)
+            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ PDF 자르기 완료!")
+
+    def add_stamp(self):
+        """PDF 스탬프 추가"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        stamp_text = self.kwargs.get('stamp_text', '기밀')
+        position = self.kwargs.get('position', 'top-right')
+        color = self.kwargs.get('color', (1, 0, 0))  # 빨강
+        
+        doc = fitz.open(file_path)
+        
+        for i, page in enumerate(doc):
+            rect = page.rect
+            if position == 'top-right':
+                point = fitz.Point(rect.width - 100, 40)
+            elif position == 'top-left':
+                point = fitz.Point(30, 40)
+            elif position == 'bottom-right':
+                point = fitz.Point(rect.width - 100, rect.height - 30)
+            else:
+                point = fitz.Point(30, rect.height - 30)
+            
+            # 스탬프 테두리
+            stamp_rect = fitz.Rect(point.x - 10, point.y - 20, point.x + 80, point.y + 5)
+            page.draw_rect(stamp_rect, color=color, width=2)
+            page.insert_text(point, stamp_text, fontsize=14, fontname="helv", color=color)
+            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ 스탬프 추가 완료!")
+
+
 # -------------------------------------------------------------------------
 # 메인 애플리케이션
 # -------------------------------------------------------------------------
@@ -744,6 +928,7 @@ class PDFMasterApp(QMainWindow):
         self.setup_reorder_tab()  # NEW: 페이지 순서 변경
         self.setup_edit_sec_tab()
         self.setup_batch_tab()    # NEW: 일괄 처리
+        self.setup_advanced_tab()  # NEW: 고급 기능
         
         # 컴팩트한 상태 바
         status_frame = QFrame()
@@ -825,19 +1010,20 @@ class PDFMasterApp(QMainWindow):
         
         header.addStretch()
         
-        # Theme toggle
-        self.btn_theme = QPushButton("🌙" if self.settings.get("theme") == "dark" else "☀️")
+        # Theme toggle - 텍스트 기반 (이모지 대신)
+        self.btn_theme = QPushButton("Dark" if self.settings.get("theme") == "dark" else "Light")
         self.btn_theme.setObjectName("secondaryBtn")
-        self.btn_theme.setFixedSize(36, 36)
-        self.btn_theme.setToolTip("테마 전환")
+        self.btn_theme.setFixedSize(50, 32)
+        self.btn_theme.setToolTip("테마 전환 (다크/라이트)")
         self.btn_theme.clicked.connect(self._toggle_theme)
         header.addWidget(self.btn_theme)
         
-        # Help button
-        btn_help = QPushButton("❓")
+        # Help button - 물음표 텍스트
+        btn_help = QPushButton("?")
         btn_help.setObjectName("secondaryBtn")
-        btn_help.setFixedSize(36, 36)
+        btn_help.setFixedSize(32, 32)
         btn_help.setToolTip("도움말 (F1)")
+        btn_help.setStyleSheet("font-weight: bold; font-size: 16px;")
         btn_help.clicked.connect(self._show_help)
         header.addWidget(btn_help)
         
@@ -862,9 +1048,63 @@ class PDFMasterApp(QMainWindow):
         self.preview_image.setStyleSheet("background: #0f0f23; border-radius: 8px; border: 1px solid #333;")
         self.preview_image.setSizePolicy(self.preview_image.sizePolicy().horizontalPolicy(), 
                                           self.preview_image.sizePolicy().verticalPolicy())
-        layout.addWidget(self.preview_image, 1)  # stretch factor
+        layout.addWidget(self.preview_image, 1)
+        
+        # 페이지 네비게이션 버튼
+        nav_layout = QHBoxLayout()
+        self.btn_prev_page = QPushButton("◀ 이전")
+        self.btn_prev_page.setObjectName("secondaryBtn")
+        self.btn_prev_page.setFixedHeight(28)
+        self.btn_prev_page.clicked.connect(self._prev_preview_page)
+        self.btn_prev_page.setToolTip("이전 페이지 미리보기")
+        nav_layout.addWidget(self.btn_prev_page)
+        
+        self.page_counter = QLabel("1 / 1")
+        self.page_counter.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.page_counter.setStyleSheet("font-weight: bold; min-width: 60px;")
+        nav_layout.addWidget(self.page_counter)
+        
+        self.btn_next_page = QPushButton("다음 ▶")
+        self.btn_next_page.setObjectName("secondaryBtn")
+        self.btn_next_page.setFixedHeight(28)
+        self.btn_next_page.clicked.connect(self._next_preview_page)
+        self.btn_next_page.setToolTip("다음 페이지 미리보기")
+        nav_layout.addWidget(self.btn_next_page)
+        layout.addLayout(nav_layout)
         
         return panel
+    
+    def _prev_preview_page(self):
+        if self._current_preview_page > 0:
+            self._current_preview_page -= 1
+            self._render_preview_page()
+    
+    def _next_preview_page(self):
+        if hasattr(self, '_preview_total_pages') and self._current_preview_page < self._preview_total_pages - 1:
+            self._current_preview_page += 1
+            self._render_preview_page()
+    
+    def _render_preview_page(self):
+        if not hasattr(self, '_current_preview_path') or not self._current_preview_path:
+            return
+        try:
+            doc = fitz.open(self._current_preview_path)
+            if self._current_preview_page < len(doc):
+                page = doc[self._current_preview_page]
+                pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+                img_data = bytes(pix.samples)
+                img = QImage(img_data, pix.width, pix.height, pix.stride, QImage.Format.Format_RGB888)
+                pixmap = QPixmap.fromImage(img.copy())
+                preview_size = self.preview_image.size()
+                target_w = max(280, preview_size.width() - 20)
+                target_h = max(400, preview_size.height() - 20)
+                scaled = pixmap.scaled(target_w, target_h, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                self.preview_image.setPixmap(scaled)
+                self.page_counter.setText(f"{self._current_preview_page + 1} / {self._preview_total_pages}")
+            doc.close()
+        except Exception as e:
+            print(f"Preview render error: {e}")
+    
     
     def _update_preview(self, path):
         if not path or not os.path.exists(path):
@@ -907,6 +1147,12 @@ class PDFMasterApp(QMainWindow):
 👤 작성자: {meta.get('author', '-') or '-'}"""
             self.preview_label.setText(info)
             
+            # 페이지 네비게이션 변수 초기화
+            self._current_preview_path = path
+            self._preview_total_pages = len(doc)
+            self._current_preview_page = 0
+            self.page_counter.setText(f"1 / {len(doc)}")
+            
             # Thumbnail
             if len(doc) > 0:
                 page = doc[0]
@@ -938,11 +1184,25 @@ class PDFMasterApp(QMainWindow):
         self.settings["theme"] = new_theme
         save_settings(self.settings)
         self._apply_theme()
-        self.btn_theme.setText("🌙" if new_theme == "dark" else "☀️")
+        self.btn_theme.setText("Dark" if new_theme == "dark" else "Light")
     
     def _apply_theme(self):
         theme = self.settings.get("theme", "dark")
-        QApplication.instance().setStyleSheet(DARK_STYLESHEET if theme == "dark" else LIGHT_STYLESHEET)
+        is_dark = theme == "dark"
+        QApplication.instance().setStyleSheet(DARK_STYLESHEET if is_dark else LIGHT_STYLESHEET)
+        
+        # 모든 DropZone 위젯 테마 동기화
+        for widget in self.findChildren(DropZoneWidget):
+            widget.set_theme(is_dark)
+        
+        # 미리보기 패널 테마 동기화
+        if hasattr(self, 'preview_image'):
+            if is_dark:
+                self.preview_image.setStyleSheet("background: #0f0f23; border-radius: 8px; border: 1px solid #333;")
+                self.preview_label.setStyleSheet("color: #888; padding: 10px; font-size: 12px;")
+            else:
+                self.preview_image.setStyleSheet("background: #f0f0f0; border-radius: 8px; border: 1px solid #ddd;")
+                self.preview_label.setStyleSheet("color: #666; padding: 10px; font-size: 12px; background: transparent;")
     
     def _show_help(self):
         QMessageBox.information(self, "도움말", f"""📑 {APP_NAME} v{VERSION}
@@ -1555,6 +1815,176 @@ class PDFMasterApp(QMainWindow):
         op = self.cmb_batch_op.currentText()
         opt = self.inp_batch_opt.text()
         self.run_worker("batch", files=files, output_dir=out_dir, operation=op, option=opt)
+
+    # ===================== Tab 7: 고급 기능 =====================
+    def setup_advanced_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        
+        guide = QLabel("🔧 고급 PDF 편집 기능")
+        guide.setObjectName("desc")
+        content_layout.addWidget(guide)
+        
+        # 1. PDF 분할
+        grp_split = QGroupBox("✂️ PDF 분할")
+        l_split = QVBoxLayout(grp_split)
+        self.sel_split = FileSelectorWidget()
+        l_split.addWidget(self.sel_split)
+        opt_split = QHBoxLayout()
+        opt_split.addWidget(QLabel("분할 모드:"))
+        self.cmb_split_mode = QComboBox()
+        self.cmb_split_mode.addItems(["각 페이지별", "범위 지정"])
+        opt_split.addWidget(self.cmb_split_mode)
+        self.inp_split_range = QLineEdit()
+        self.inp_split_range.setPlaceholderText("예: 1-3, 5-7, 10-12")
+        opt_split.addWidget(self.inp_split_range)
+        l_split.addLayout(opt_split)
+        b_split = QPushButton("✂️ PDF 분할 실행")
+        b_split.clicked.connect(self.action_split)
+        l_split.addWidget(b_split)
+        content_layout.addWidget(grp_split)
+        
+        # 2. 페이지 번호
+        grp_pn = QGroupBox("🔢 페이지 번호 삽입")
+        l_pn = QVBoxLayout(grp_pn)
+        self.sel_pn = FileSelectorWidget()
+        l_pn.addWidget(self.sel_pn)
+        opt_pn = QHBoxLayout()
+        opt_pn.addWidget(QLabel("위치:"))
+        self.cmb_pn_pos = QComboBox()
+        self.cmb_pn_pos.addItems(["하단 중앙", "상단 중앙"])
+        opt_pn.addWidget(self.cmb_pn_pos)
+        opt_pn.addWidget(QLabel("형식:"))
+        self.inp_pn_format = QLineEdit("{n} / {total}")
+        opt_pn.addWidget(self.inp_pn_format)
+        l_pn.addLayout(opt_pn)
+        b_pn = QPushButton("🔢 페이지 번호 삽입")
+        b_pn.clicked.connect(self.action_page_numbers)
+        l_pn.addWidget(b_pn)
+        content_layout.addWidget(grp_pn)
+        
+        # 3. 스탬프
+        grp_stamp = QGroupBox("📌 스탬프 추가")
+        l_stamp = QVBoxLayout(grp_stamp)
+        self.sel_stamp = FileSelectorWidget()
+        l_stamp.addWidget(self.sel_stamp)
+        opt_stamp = QHBoxLayout()
+        opt_stamp.addWidget(QLabel("스탬프:"))
+        self.cmb_stamp = QComboBox()
+        self.cmb_stamp.addItems(["기밀", "승인됨", "초안", "최종본", "복사본 금지"])
+        self.cmb_stamp.setEditable(True)
+        opt_stamp.addWidget(self.cmb_stamp)
+        opt_stamp.addWidget(QLabel("위치:"))
+        self.cmb_stamp_pos = QComboBox()
+        self.cmb_stamp_pos.addItems(["우상단", "좌상단", "우하단", "좌하단"])
+        opt_stamp.addWidget(self.cmb_stamp_pos)
+        l_stamp.addLayout(opt_stamp)
+        b_stamp = QPushButton("📌 스탬프 추가")
+        b_stamp.clicked.connect(self.action_stamp)
+        l_stamp.addWidget(b_stamp)
+        content_layout.addWidget(grp_stamp)
+        
+        # 4. 여백 자르기
+        grp_crop = QGroupBox("📐 여백 자르기 (Crop)")
+        l_crop = QVBoxLayout(grp_crop)
+        self.sel_crop = FileSelectorWidget()
+        l_crop.addWidget(self.sel_crop)
+        opt_crop = QHBoxLayout()
+        for side in ["좌", "상", "우", "하"]:
+            opt_crop.addWidget(QLabel(f"{side}:"))
+            spn = QSpinBox()
+            spn.setRange(0, 200)
+            spn.setValue(20)
+            setattr(self, f"spn_crop_{side}", spn)
+            opt_crop.addWidget(spn)
+        l_crop.addLayout(opt_crop)
+        b_crop = QPushButton("📐 여백 자르기")
+        b_crop.clicked.connect(self.action_crop)
+        l_crop.addWidget(b_crop)
+        content_layout.addWidget(grp_crop)
+        
+        # 5. 빈 페이지 삽입
+        grp_blank = QGroupBox("📄 빈 페이지 삽입")
+        l_blank = QVBoxLayout(grp_blank)
+        self.sel_blank = FileSelectorWidget()
+        l_blank.addWidget(self.sel_blank)
+        opt_blank = QHBoxLayout()
+        opt_blank.addWidget(QLabel("삽입 위치 (페이지 번호):"))
+        self.spn_blank_pos = QSpinBox()
+        self.spn_blank_pos.setRange(1, 999)
+        self.spn_blank_pos.setValue(1)
+        opt_blank.addWidget(self.spn_blank_pos)
+        opt_blank.addStretch()
+        l_blank.addLayout(opt_blank)
+        b_blank = QPushButton("📄 빈 페이지 삽입")
+        b_blank.clicked.connect(self.action_blank_page)
+        l_blank.addWidget(b_blank)
+        content_layout.addWidget(grp_blank)
+        
+        content_layout.addStretch()
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
+        self.tabs.addTab(tab, "🔧 고급")
+    
+    def action_split(self):
+        path = self.sel_split.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        out_dir = QFileDialog.getExistingDirectory(self, "저장 폴더 선택")
+        if out_dir:
+            mode = 'each' if self.cmb_split_mode.currentIndex() == 0 else 'range'
+            self.run_worker("split_by_pages", file_path=path, output_dir=out_dir, 
+                          split_mode=mode, ranges=self.inp_split_range.text())
+    
+    def action_page_numbers(self):
+        path = self.sel_pn.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "numbered.pdf", "PDF (*.pdf)")
+        if s:
+            pos = 'bottom' if self.cmb_pn_pos.currentIndex() == 0 else 'top'
+            self.run_worker("add_page_numbers", file_path=path, output_path=s,
+                          position=pos, format=self.inp_pn_format.text())
+    
+    def action_stamp(self):
+        path = self.sel_stamp.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "stamped.pdf", "PDF (*.pdf)")
+        if s:
+            pos_map = {"우상단": "top-right", "좌상단": "top-left", 
+                      "우하단": "bottom-right", "좌하단": "bottom-left"}
+            pos = pos_map.get(self.cmb_stamp_pos.currentText(), "top-right")
+            self.run_worker("add_stamp", file_path=path, output_path=s,
+                          stamp_text=self.cmb_stamp.currentText(), position=pos)
+    
+    def action_crop(self):
+        path = self.sel_crop.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "cropped.pdf", "PDF (*.pdf)")
+        if s:
+            margins = {
+                'left': self.spn_crop_좌.value(),
+                'top': self.spn_crop_상.value(),
+                'right': self.spn_crop_우.value(),
+                'bottom': self.spn_crop_하.value()
+            }
+            self.run_worker("crop_pdf", file_path=path, output_path=s, margins=margins)
+    
+    def action_blank_page(self):
+        path = self.sel_blank.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_blank.pdf", "PDF (*.pdf)")
+        if s:
+            pos = self.spn_blank_pos.value() - 1  # 0-indexed
+            self.run_worker("insert_blank_page", file_path=path, output_path=s, position=pos)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
