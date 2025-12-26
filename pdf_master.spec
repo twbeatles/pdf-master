@@ -12,12 +12,12 @@ fitz_datas = collect_data_files('fitz')
 fitz_hiddenimports = collect_submodules('fitz')
 
 a = Analysis(
-    ['pdf-master-v2.py'],
-    pathex=[],
+    ['main.py'],
+    pathex=[os.path.abspath(os.getcwd())],
     binaries=[],
-    datas=fitz_datas,
+    datas=[('src', 'src')] + fitz_datas,  # Force bundling src as data
     hiddenimports=[
-        # PyQt6 최소 필수 모듈만
+        # PyQt6
         'PyQt6.QtCore',
         'PyQt6.QtGui', 
         'PyQt6.QtWidgets',
@@ -25,6 +25,15 @@ a = Analysis(
         # PyMuPDF
         'fitz',
         *fitz_hiddenimports,
+        # Local modules
+        'src',
+        'src.core',
+        'src.core.settings',
+        'src.core.worker',
+        'src.ui',
+        'src.ui.styles',
+        'src.ui.widgets',
+        'src.ui.main_window',
     ],
     hookspath=[],
     hooksconfig={},
