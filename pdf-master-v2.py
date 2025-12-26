@@ -29,8 +29,8 @@ QPushButton { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e94560
 QPushButton:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ff5a7a, stop:1 #e94560); }
 QPushButton:pressed { background: #c73e54; }
 QPushButton:disabled { background: #555; color: #888; }
-QPushButton#secondaryBtn { background: #0f3460; border: 1px solid #1a4a7a; }
-QPushButton#secondaryBtn:hover { background: #1a4a7a; }
+QPushButton#secondaryBtn { background: #0f3460; border: 1px solid #1a4a7a; color: white; }
+QPushButton#secondaryBtn:hover { background: #1a4a7a; color: white; }
 QPushButton#actionBtn { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #00d9a0, stop:1 #00b886); font-size: 15px; padding: 14px; }
 QPushButton#actionBtn:hover { background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #00f0b0, stop:1 #00d9a0); }
 QListWidget, QLineEdit, QSpinBox, QComboBox { background-color: #0f0f23; border: 2px solid #16213e; border-radius: 6px; padding: 8px; color: #eaeaea; }
@@ -112,6 +112,17 @@ def save_settings(settings):
         with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=2)
     except: pass
+
+# -------------------------------------------------------------------------
+# 휠 이벤트 필터 - 스크롤 휠로 값 변경 방지
+# -------------------------------------------------------------------------
+class WheelEventFilter(QObject):
+    """QSpinBox, QComboBox 등에서 스크롤 휠로 값이 변경되는 것을 방지"""
+    def eventFilter(self, obj, event):
+        from PyQt6.QtCore import QEvent
+        if event.type() == QEvent.Type.Wheel:
+            return True  # 휠 이벤트 차단
+        return super().eventFilter(obj, event)
 
 # -------------------------------------------------------------------------
 # 드래그 앤 드롭 영역 위젯
@@ -459,37 +470,63 @@ class WorkerThread(QThread):
         self.finished_signal.emit(f"✅ 병합 완료!\n{len(files)}개 파일 → 1개 PDF")
 
     def convert_to_img(self):
-        file_path = self.kwargs.get('file_path')
+        # 다중 파일 지원
+        file_paths = self.kwargs.get('file_paths') or [self.kwargs.get('file_path')]
         output_dir = self.kwargs.get('output_dir')
         fmt = self.kwargs.get('fmt', 'png')
         dpi = self.kwargs.get('dpi', 200)
-        doc = fitz.open(file_path)
-        total = len(doc)
-        base = os.path.splitext(os.path.basename(file_path))[0]
         zoom = dpi / 72
         mat = fitz.Matrix(zoom, zoom)
-        for i, page in enumerate(doc):
-            pix = page.get_pixmap(matrix=mat)
-            save_path = os.path.join(output_dir, f"{base}_p{i+1:03d}.{fmt}")
-            pix.save(save_path)
-            self.progress_signal.emit(int((i + 1) / total * 100))
-        doc.close()
-        self.finished_signal.emit(f"✅ 변환 완료!\n{total}페이지 → {fmt.upper()} 이미지")
+        
+        total_files = len(file_paths)
+        total_pages_done = 0
+        
+        for file_idx, file_path in enumerate(file_paths):
+            if not file_path or not os.path.exists(file_path):
+                continue
+            doc = fitz.open(file_path)
+            base = os.path.splitext(os.path.basename(file_path))[0]
+            for i, page in enumerate(doc):
+                pix = page.get_pixmap(matrix=mat)
+                save_path = os.path.join(output_dir, f"{base}_p{i+1:03d}.{fmt}")
+                pix.save(save_path)
+                total_pages_done += 1
+            doc.close()
+            self.progress_signal.emit(int((file_idx + 1) / total_files * 100))
+        
+        self.finished_signal.emit(f"✅ 변환 완료!\n{total_files}개 파일 → {fmt.upper()} 이미지")
 
     def extract_text(self):
-        file_path = self.kwargs.get('file_path')
+        # 다중 파일 지원
+        file_paths = self.kwargs.get('file_paths') or [self.kwargs.get('file_path')]
         output_path = self.kwargs.get('output_path')
-        doc = fitz.open(file_path)
-        total = len(doc)
-        full_text = ""
-        for i, page in enumerate(doc):
-            full_text += f"\n--- Page {i+1} ---\n"
-            full_text += page.get_text()
-            self.progress_signal.emit(int((i + 1) / total * 100))
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(full_text)
-        doc.close()
-        self.finished_signal.emit(f"✅ 텍스트 추출 완료!\n{output_path}")
+        output_dir = self.kwargs.get('output_dir')
+        
+        total_files = len(file_paths)
+        
+        for file_idx, file_path in enumerate(file_paths):
+            if not file_path or not os.path.exists(file_path):
+                continue
+            doc = fitz.open(file_path)
+            full_text = ""
+            for i, page in enumerate(doc):
+                full_text += f"\n--- Page {i+1} ---\n"
+                full_text += page.get_text()
+            doc.close()
+            
+            # 출력 경로 결정
+            if output_dir:
+                base = os.path.splitext(os.path.basename(file_path))[0]
+                out_path = os.path.join(output_dir, f"{base}.txt")
+            else:
+                out_path = output_path
+            
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(full_text)
+            
+            self.progress_signal.emit(int((file_idx + 1) / total_files * 100))
+        
+        self.finished_signal.emit(f"✅ 텍스트 추출 완료!\n{total_files}개 파일")
 
     def split(self):
         file_path = self.kwargs.get('file_path')
@@ -881,6 +918,9 @@ class PDFMasterApp(QMainWindow):
         self._current_preview_page = 0
         self._current_preview_doc = None
         
+        # 휠 이벤트 필터 설치 (스크롤로 값 변경 방지)
+        self._wheel_filter = WheelEventFilter(self)
+        
         self.setWindowTitle(f"{APP_NAME} v{VERSION}")
         self.resize(1200, 850)  # 더 큰 기본 크기
         self.setMinimumSize(950, 700)
@@ -962,6 +1002,16 @@ class PDFMasterApp(QMainWindow):
         
         self._apply_theme()
         self._setup_shortcuts()
+        
+        # 모든 QSpinBox, QComboBox에 휠 필터 설치
+        self._install_wheel_filters()
+    
+    def _install_wheel_filters(self):
+        """모든 입력 위젯에 휠 이벤트 필터 설치"""
+        for widget in self.findChildren(QSpinBox):
+            widget.installEventFilter(self._wheel_filter)
+        for widget in self.findChildren(QComboBox):
+            widget.installEventFilter(self._wheel_filter)
     
     def _setup_shortcuts(self):
         """Keyboard shortcuts"""
@@ -1010,20 +1060,18 @@ class PDFMasterApp(QMainWindow):
         
         header.addStretch()
         
-        # Theme toggle - 텍스트 기반 (이모지 대신)
-        self.btn_theme = QPushButton("Dark" if self.settings.get("theme") == "dark" else "Light")
-        self.btn_theme.setObjectName("secondaryBtn")
-        self.btn_theme.setFixedSize(50, 32)
-        self.btn_theme.setToolTip("테마 전환 (다크/라이트)")
+        # Theme toggle
+        theme_text = "DARK" if self.settings.get("theme") == "dark" else "LIGHT"
+        self.btn_theme = QPushButton(theme_text)
+        self.btn_theme.setMinimumSize(70, 32)
+        self.btn_theme.setStyleSheet("QPushButton { background-color: #e94560; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; padding: 5px 10px; } QPushButton:hover { background-color: #ff5a7a; }")
         self.btn_theme.clicked.connect(self._toggle_theme)
         header.addWidget(self.btn_theme)
         
-        # Help button - 물음표 텍스트
-        btn_help = QPushButton("?")
-        btn_help.setObjectName("secondaryBtn")
-        btn_help.setFixedSize(32, 32)
-        btn_help.setToolTip("도움말 (F1)")
-        btn_help.setStyleSheet("font-weight: bold; font-size: 16px;")
+        # Help button
+        btn_help = QPushButton("HELP")
+        btn_help.setMinimumSize(60, 32)
+        btn_help.setStyleSheet("QPushButton { background-color: #e94560; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; padding: 5px 10px; } QPushButton:hover { background-color: #ff5a7a; }")
         btn_help.clicked.connect(self._show_help)
         header.addWidget(btn_help)
         
@@ -1052,23 +1100,21 @@ class PDFMasterApp(QMainWindow):
         
         # 페이지 네비게이션 버튼
         nav_layout = QHBoxLayout()
-        self.btn_prev_page = QPushButton("◀ 이전")
-        self.btn_prev_page.setObjectName("secondaryBtn")
-        self.btn_prev_page.setFixedHeight(28)
+        self.btn_prev_page = QPushButton("PREV")
+        self.btn_prev_page.setMinimumSize(70, 30)
+        self.btn_prev_page.setStyleSheet("QPushButton { background-color: #e94560; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; } QPushButton:hover { background-color: #ff5a7a; }")
         self.btn_prev_page.clicked.connect(self._prev_preview_page)
-        self.btn_prev_page.setToolTip("이전 페이지 미리보기")
         nav_layout.addWidget(self.btn_prev_page)
         
         self.page_counter = QLabel("1 / 1")
         self.page_counter.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.page_counter.setStyleSheet("font-weight: bold; min-width: 60px;")
+        self.page_counter.setStyleSheet("font-weight: bold; min-width: 60px; color: #eaeaea;")
         nav_layout.addWidget(self.page_counter)
         
-        self.btn_next_page = QPushButton("다음 ▶")
-        self.btn_next_page.setObjectName("secondaryBtn")
-        self.btn_next_page.setFixedHeight(28)
+        self.btn_next_page = QPushButton("NEXT")
+        self.btn_next_page.setMinimumSize(70, 30)
+        self.btn_next_page.setStyleSheet("QPushButton { background-color: #e94560; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; } QPushButton:hover { background-color: #ff5a7a; }")
         self.btn_next_page.clicked.connect(self._next_preview_page)
-        self.btn_next_page.setToolTip("다음 페이지 미리보기")
         nav_layout.addWidget(self.btn_next_page)
         layout.addLayout(nav_layout)
         
@@ -1184,7 +1230,7 @@ class PDFMasterApp(QMainWindow):
         self.settings["theme"] = new_theme
         save_settings(self.settings)
         self._apply_theme()
-        self.btn_theme.setText("Dark" if new_theme == "dark" else "Light")
+        self.btn_theme.setText("DARK" if new_theme == "dark" else "LIGHT")
     
     def _apply_theme(self):
         theme = self.settings.get("theme", "dark")
@@ -1330,14 +1376,17 @@ class PDFMasterApp(QMainWindow):
         content_layout = QVBoxLayout(content)
         
         # PDF → 이미지
-        grp_img = QGroupBox("🖼️ PDF → 이미지 변환")
+        grp_img = QGroupBox("🖼️ PDF → 이미지 변환 (다중 파일)")
         l_img = QVBoxLayout(grp_img)
-        step = QLabel("1️⃣ PDF 파일 선택")
+        step = QLabel("1️⃣ PDF 파일들을 드래그하거나 추가하세요")
         step.setObjectName("stepLabel")
         l_img.addWidget(step)
-        self.sel_img = FileSelectorWidget()
-        self.sel_img.pathChanged.connect(self._update_preview)
-        l_img.addWidget(self.sel_img)
+        self.img_conv_list = FileListWidget()
+        self.img_conv_list.setMaximumHeight(100)
+        l_img.addWidget(self.img_conv_list)
+        btn_add_pdf = QPushButton("➕ PDF 추가")
+        btn_add_pdf.clicked.connect(self._add_pdf_for_img)
+        l_img.addWidget(btn_add_pdf)
         
         opt = QHBoxLayout()
         opt.addWidget(QLabel("포맷:"))
@@ -1384,10 +1433,17 @@ class PDFMasterApp(QMainWindow):
         content_layout.addWidget(grp_img2pdf)
         
         # 텍스트 추출
-        grp_txt = QGroupBox("📝 텍스트 추출")
+        grp_txt = QGroupBox("📝 텍스트 추출 (다중 파일)")
         l_txt = QVBoxLayout(grp_txt)
-        self.sel_txt = FileSelectorWidget()
-        l_txt.addWidget(self.sel_txt)
+        step_txt = QLabel("PDF 파일들을 드래그하거나 추가하세요")
+        step_txt.setObjectName("stepLabel")
+        l_txt.addWidget(step_txt)
+        self.txt_conv_list = FileListWidget()
+        self.txt_conv_list.setMaximumHeight(100)
+        l_txt.addWidget(self.txt_conv_list)
+        btn_add_txt = QPushButton("➕ PDF 추가")
+        btn_add_txt.clicked.connect(self._add_pdf_for_txt)
+        l_txt.addWidget(btn_add_txt)
         b_txt = QPushButton("📝 텍스트(.txt) 저장")
         b_txt.clicked.connect(self.action_txt)
         l_txt.addWidget(b_txt)
@@ -1406,13 +1462,26 @@ class PDFMasterApp(QMainWindow):
             item.setToolTip(f)
             self.img_list.addItem(item)
     
+    def _add_pdf_for_img(self):
+        """이미지 변환용 PDF 추가"""
+        files, _ = QFileDialog.getOpenFileNames(self, "PDF 선택", "", "PDF (*.pdf)")
+        for f in files:
+            self.img_conv_list.add_file(f)
+    
+    def _add_pdf_for_txt(self):
+        """텍스트 추출용 PDF 추가"""
+        files, _ = QFileDialog.getOpenFileNames(self, "PDF 선택", "", "PDF (*.pdf)")
+        for f in files:
+            self.txt_conv_list.add_file(f)
+    
     def action_img(self):
-        path = self.sel_img.get_path()
-        if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        paths = self.img_conv_list.get_all_paths()
+        if not paths:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 추가하세요.")
         d = QFileDialog.getExistingDirectory(self, "저장 폴더 선택")
         if d:
-            self.run_worker("convert_to_img", file_path=path, output_dir=d, fmt=self.cmb_fmt.currentText(), dpi=self.spn_dpi.value())
+            self.run_worker("convert_to_img", file_paths=paths, output_dir=d, 
+                          fmt=self.cmb_fmt.currentText(), dpi=self.spn_dpi.value())
     
     def action_img_to_pdf(self):
         files = self.img_list.get_all_paths()
@@ -1423,12 +1492,12 @@ class PDFMasterApp(QMainWindow):
             self.run_worker("images_to_pdf", files=files, output_path=save)
     
     def action_txt(self):
-        path = self.sel_txt.get_path()
-        if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "extracted.txt", "Text (*.txt)")
-        if s:
-            self.run_worker("extract_text", file_path=path, output_path=s)
+        paths = self.txt_conv_list.get_all_paths()
+        if not paths:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 추가하세요.")
+        d = QFileDialog.getExistingDirectory(self, "저장 폴더 선택")
+        if d:
+            self.run_worker("extract_text", file_paths=paths, output_dir=d)
 
     # ===================== Tab 3: 페이지 =====================
     def setup_page_tab(self):
@@ -1853,14 +1922,28 @@ class PDFMasterApp(QMainWindow):
         l_pn = QVBoxLayout(grp_pn)
         self.sel_pn = FileSelectorWidget()
         l_pn.addWidget(self.sel_pn)
+        
+        # 형식 안내 라벨
+        guide_pn = QLabel("📌 형식: {n}=현재페이지, {total}=전체페이지")
+        guide_pn.setStyleSheet("color: #888; font-size: 11px;")
+        l_pn.addWidget(guide_pn)
+        
         opt_pn = QHBoxLayout()
         opt_pn.addWidget(QLabel("위치:"))
         self.cmb_pn_pos = QComboBox()
         self.cmb_pn_pos.addItems(["하단 중앙", "상단 중앙"])
         opt_pn.addWidget(self.cmb_pn_pos)
         opt_pn.addWidget(QLabel("형식:"))
-        self.inp_pn_format = QLineEdit("{n} / {total}")
-        opt_pn.addWidget(self.inp_pn_format)
+        self.cmb_pn_format = QComboBox()
+        self.cmb_pn_format.addItems([
+            "{n} / {total}",
+            "Page {n} of {total}",
+            "- {n} -",
+            "{n}",
+            "페이지 {n}"
+        ])
+        self.cmb_pn_format.setEditable(True)
+        opt_pn.addWidget(self.cmb_pn_format)
         l_pn.addLayout(opt_pn)
         b_pn = QPushButton("🔢 페이지 번호 삽입")
         b_pn.clicked.connect(self.action_page_numbers)
@@ -1948,7 +2031,7 @@ class PDFMasterApp(QMainWindow):
         if s:
             pos = 'bottom' if self.cmb_pn_pos.currentIndex() == 0 else 'top'
             self.run_worker("add_page_numbers", file_path=path, output_path=s,
-                          position=pos, format=self.inp_pn_format.text())
+                          position=pos, format=self.cmb_pn_format.currentText())
     
     def action_stamp(self):
         path = self.sel_stamp.get_path()

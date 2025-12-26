@@ -41,7 +41,7 @@ a = Analysis(
         'setuptools', 'pkg_resources',
         'xml.etree', 'xmlrpc',
         'unittest', 'test', 'tests',
-        'email', 'html', 'http.server',
+        'email', 'http.server',
         'multiprocessing.popen_spawn_win32',
         # PyQt6 불필요 모듈
         'PyQt6.QtNetwork', 'PyQt6.QtSql', 'PyQt6.QtSvg',
@@ -97,7 +97,3 @@ exe = EXE(
 #
 # 결과물: dist/PDF_Master_v2.4.exe
 # 예상 크기: 약 25-35MB (최적화 후)
-#
-# 추가 용량 절감 옵션:
-# - UPX 설치: https://upx.github.io/
-# - pyinstaller --upx-dir=C:\upx pdf_master.spec
