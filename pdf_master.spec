@@ -3,19 +3,27 @@
 
 import sys
 import os
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
-# PyMuPDF 모듈 수집
-fitz_datas = collect_data_files('fitz')
-fitz_hiddenimports = collect_submodules('fitz')
+# PyMuPDF 모듈 수집 (fitz와 pymupdf 둘 다 필요)
+try:
+    from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+    fitz_datas = collect_data_files('fitz', include_py_files=True)
+    fitz_hiddenimports = collect_submodules('fitz')
+    pymupdf_datas = collect_data_files('pymupdf', include_py_files=True)
+    pymupdf_hiddenimports = collect_submodules('pymupdf')
+except Exception:
+    fitz_datas = []
+    fitz_hiddenimports = []
+    pymupdf_datas = []
+    pymupdf_hiddenimports = []
 
 a = Analysis(
     ['main.py'],
     pathex=[os.path.abspath(os.getcwd())],
     binaries=[],
-    datas=[('src', 'src')] + fitz_datas,
+    datas=[('src', 'src')] + fitz_datas + pymupdf_datas,
     hiddenimports=[
         # PyQt6
         'PyQt6.QtCore',
@@ -23,9 +31,14 @@ a = Analysis(
         'PyQt6.QtWidgets',
         'PyQt6.QtPrintSupport',
         'PyQt6.sip',
-        # PyMuPDF
+        # PyMuPDF - 여러 이름으로 import 가능
         'fitz',
+        'fitz.fitz',
+        'fitz.utils',
+        'pymupdf',
+        'pymupdf.mupdf',
         *fitz_hiddenimports,
+        *pymupdf_hiddenimports,
         # Local modules
         'src',
         'src.core',
@@ -116,3 +129,5 @@ exe = EXE(
 #
 # 결과물: dist/PDF_Master_v2.6.exe
 # 예상 크기: 약 25-35MB
+#
+# fitz 오류 시: pip install --upgrade pymupdf
