@@ -8,18 +8,18 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QFileDialog, QMessageBox, QComboBox, 
     QSpinBox, QSplitter, QGroupBox, QScrollArea, QApplication, 
     QInputDialog, QLineEdit, QProgressBar, QListWidget, QListWidgetItem,
-    QAbstractItemView, QFrame, QFormLayout
+    QAbstractItemView, QFrame, QFormLayout, QMenuBar, QMenu
 )
 from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QIcon, QAction, QPixmap, QImage, QKeySequence, QShortcut
 
 from ..core.settings import load_settings, save_settings
 from ..core.worker import WorkerThread
-from .widgets import FileSelectorWidget, FileListWidget, ImageListWidget, DropZoneWidget, WheelEventFilter
+from .widgets import FileSelectorWidget, FileListWidget, ImageListWidget, DropZoneWidget, WheelEventFilter, ToastWidget
 from .styles import DARK_STYLESHEET, LIGHT_STYLESHEET, ThemeColors
 
 APP_NAME = "PDF Master"
-VERSION = "2.4"
+VERSION = "2.6"
 
 class PDFMasterApp(QMainWindow):
     def __init__(self):
@@ -46,6 +46,9 @@ class PDFMasterApp(QMainWindow):
         # Header - 컴팩트하게
         header = self._create_header()
         main_layout.addLayout(header)
+        
+        # Menu bar
+        self._create_menu_bar()
         
         # Content area with splitter - 더 큰 비율
         self.content_splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -155,6 +158,81 @@ class PDFMasterApp(QMainWindow):
         """Save splitter position"""
         self.settings["splitter_sizes"] = self.content_splitter.sizes()
         save_settings(self.settings)
+    
+    def _create_menu_bar(self):
+        """메뉴 바 생성"""
+        menubar = self.menuBar()
+        
+        # 파일 메뉴
+        file_menu = menubar.addMenu("📁 파일")
+        
+        open_action = QAction("📂 열기 (Ctrl+O)", self)
+        open_action.setShortcut("Ctrl+O")
+        open_action.triggered.connect(self._shortcut_open_file)
+        file_menu.addAction(open_action)
+        
+        # 최근 파일 서브메뉴
+        self.recent_menu_bar = file_menu.addMenu("📋 최근 파일")
+        self._update_recent_menu_bar()
+        
+        file_menu.addSeparator()
+        
+        exit_action = QAction("🚪 종료 (Ctrl+Q)", self)
+        exit_action.setShortcut("Ctrl+Q")
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
+        
+        # 도움말 메뉴
+        help_menu = menubar.addMenu("❓ 도움말")
+        
+        shortcuts_action = QAction("⌨️ 단축키 안내", self)
+        shortcuts_action.triggered.connect(self._show_shortcuts)
+        help_menu.addAction(shortcuts_action)
+        
+        help_menu.addSeparator()
+        
+        about_action = QAction("ℹ️ 정보", self)
+        about_action.triggered.connect(self._show_about)
+        help_menu.addAction(about_action)
+    
+    def _update_recent_menu_bar(self):
+        """최근 파일 메뉴 업데이트"""
+        self.recent_menu_bar.clear()
+        recent = self.settings.get("recent_files", [])
+        if not recent:
+            action = self.recent_menu_bar.addAction("(최근 파일 없음)")
+            action.setEnabled(False)
+        else:
+            for path in recent[:10]:
+                if os.path.exists(path):
+                    action = self.recent_menu_bar.addAction(f"📄 {os.path.basename(path)}")
+                    action.triggered.connect(lambda checked, p=path: self._update_preview(p))
+    
+    def _show_shortcuts(self):
+        """단축키 안내 대화상자"""
+        shortcuts_text = f"""📑 {APP_NAME} v{VERSION} - 키보드 단축키
+
+🔹 Ctrl + O  :  파일 열기
+🔹 Ctrl + Q  :  프로그램 종료
+🔹 Ctrl + 1~4  :  탭 전환 (1:병합, 2:변환, 3:페이지, 4:순서)
+🔹 F1  :  도움말 표시"""
+        QMessageBox.information(self, "키보드 단축키", shortcuts_text)
+    
+    def _show_about(self):
+        """정보 대화상자"""
+        about_text = f"""📑 {APP_NAME} v{VERSION}
+
+모든 PDF 작업을 한 곳에서 처리하는 올인원 PDF 도구입니다.
+강력한 기능과 직관적인 UI를 제공합니다.
+
+🛠️ 기술 스택:
+  • Python 3.9+
+  • PyQt6 (UI Framework)
+  • PyMuPDF (PDF Processing)
+
+📧 Made with ❤️
+© 2024-2025"""
+        QMessageBox.about(self, f"{APP_NAME} 정보", about_text)
         
     def _create_header(self):
         header = QHBoxLayout()
@@ -365,9 +443,11 @@ class PDFMasterApp(QMainWindow):
             if is_dark:
                 self.preview_image.setStyleSheet("background: #0f0f23; border-radius: 8px; border: 1px solid #333;")
                 self.preview_label.setStyleSheet("color: #888; padding: 10px; font-size: 12px;")
+                self.page_counter.setStyleSheet("font-weight: bold; min-width: 60px; color: #eaeaea;")
             else:
                 self.preview_image.setStyleSheet("background: #f0f0f0; border-radius: 8px; border: 1px solid #ddd;")
                 self.preview_label.setStyleSheet("color: #666; padding: 10px; font-size: 12px; background: transparent;")
+                self.page_counter.setStyleSheet("font-weight: bold; min-width: 60px; color: #333;")
     
     def _show_help(self):
         QMessageBox.information(self, "도움말", f"""📑 {APP_NAME} v{VERSION}
@@ -408,6 +488,11 @@ class PDFMasterApp(QMainWindow):
         self.status_label.setText("✅ 작업 완료!")
         self.progress_bar.setValue(100)
         self.btn_open_folder.setVisible(True)  # 폴더 열기 버튼 표시
+        
+        # Toast 알림 표시
+        toast = ToastWidget("작업이 완료되었습니다!", toast_type='success', duration=4000)
+        toast.show_toast(self)
+        
         QMessageBox.information(self, "완료", msg)
         QTimer.singleShot(3000, lambda: self.progress_bar.setValue(0))
     
@@ -416,6 +501,11 @@ class PDFMasterApp(QMainWindow):
         self.status_label.setText("❌ 오류 발생")
         self.progress_bar.setValue(0)
         self.btn_open_folder.setVisible(False)
+        
+        # Toast 알림 표시
+        toast = ToastWidget("작업 중 오류가 발생했습니다", toast_type='error', duration=5000)
+        toast.show_toast(self)
+        
         QMessageBox.critical(self, "오류", f"작업 중 문제가 발생했습니다.\n{msg}")
     
     def set_ui_busy(self, busy):
@@ -534,6 +624,20 @@ class PDFMasterApp(QMainWindow):
         self.spn_dpi.setRange(72, 600)
         self.spn_dpi.setValue(150)
         opt.addWidget(self.spn_dpi)
+        
+        # 프리셋 버튼
+        btn_save_preset = QPushButton("💾")
+        btn_save_preset.setToolTip("현재 설정을 프리셋으로 저장")
+        btn_save_preset.setFixedWidth(36)
+        btn_save_preset.clicked.connect(self._save_convert_preset)
+        opt.addWidget(btn_save_preset)
+        
+        btn_load_preset = QPushButton("📂")
+        btn_load_preset.setToolTip("저장된 프리셋 불러오기")
+        btn_load_preset.setFixedWidth(36)
+        btn_load_preset.clicked.connect(self._load_convert_preset)
+        opt.addWidget(btn_load_preset)
+        
         opt.addStretch()
         l_img.addLayout(opt)
         
@@ -626,6 +730,62 @@ class PDFMasterApp(QMainWindow):
         for f in files:
             self.txt_conv_list.add_file(f)
     
+    def _save_convert_preset(self):
+        """변환 설정 프리셋 저장"""
+        name, ok = QInputDialog.getText(self, "프리셋 저장", "프리셋 이름:")
+        if ok and name:
+            presets = self.settings.get("convert_presets", {})
+            presets[name] = {
+                "format": self.cmb_fmt.currentText(),
+                "dpi": self.spn_dpi.value()
+            }
+            self.settings["convert_presets"] = presets
+            save_settings(self.settings)
+            toast = ToastWidget(f"프리셋 '{name}' 저장됨", toast_type='success', duration=2000)
+            toast.show_toast(self)
+    
+    def _load_convert_preset(self):
+        """변환 설정 프리셋 불러오기"""
+        presets = self.settings.get("convert_presets", {})
+        if not presets:
+            QMessageBox.information(self, "프리셋", "저장된 프리셋이 없습니다.")
+            return
+        
+        # 프리셋 선택 다이얼로그
+        name, ok = QInputDialog.getItem(self, "프리셋 불러오기", "프리셋 선택:", 
+                                        list(presets.keys()), 0, False)
+        if ok and name:
+            preset = presets[name]
+            idx = self.cmb_fmt.findText(preset.get("format", "png"))
+            if idx >= 0:
+                self.cmb_fmt.setCurrentIndex(idx)
+            self.spn_dpi.setValue(preset.get("dpi", 150))
+            toast = ToastWidget(f"프리셋 '{name}' 적용됨", toast_type='info', duration=2000)
+            toast.show_toast(self)
+    
+    def _print_pdf(self, path):
+        """PDF 직접 인쇄"""
+        from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+        
+        if not path or not os.path.exists(path):
+            QMessageBox.warning(self, "인쇄", "인쇄할 파일이 없습니다.")
+            return
+        
+        try:
+            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+            dialog = QPrintDialog(printer, self)
+            
+            if dialog.exec() == QPrintDialog.DialogCode.Accepted:
+                # 시스템 기본 PDF 뷰어로 인쇄 명령 전송
+                if sys.platform == 'win32':
+                    os.startfile(path, 'print')
+                else:
+                    subprocess.run(['lpr', path])
+                toast = ToastWidget("인쇄 명령이 전송되었습니다", toast_type='success', duration=2000)
+                toast.show_toast(self)
+        except Exception as e:
+            QMessageBox.warning(self, "인쇄 오류", f"인쇄 중 오류: {e}")
+    
     def action_img(self):
         paths = self.img_conv_list.get_all_paths()
         if not paths:
@@ -681,6 +841,7 @@ class PDFMasterApp(QMainWindow):
         grp_del = QGroupBox("🗑️ 페이지 삭제")
         l_d = QVBoxLayout(grp_del)
         self.sel_del = FileSelectorWidget()
+        self.sel_del.pathChanged.connect(self._update_preview)
         l_d.addWidget(self.sel_del)
         h2 = QHBoxLayout()
         h2.addWidget(QLabel("삭제할 페이지 (예: 1, 3-5):"))
@@ -826,7 +987,8 @@ class PDFMasterApp(QMainWindow):
             self.inp_author.setText(m.get('author', '') or '')
             self.inp_subj.setText(m.get('subject', '') or '')
             doc.close()
-        except: pass
+        except Exception:
+            pass
     
     def action_metadata(self):
         path = self.sel_meta.get_path()
@@ -1170,6 +1332,52 @@ class PDFMasterApp(QMainWindow):
         l_blank.addWidget(b_blank)
         content_layout.addWidget(grp_blank)
         
+        # 6. 링크 추출
+        grp_links = QGroupBox("🔗 PDF 링크 추출")
+        l_links = QVBoxLayout(grp_links)
+        self.sel_links = FileSelectorWidget()
+        self.sel_links.pathChanged.connect(self._update_preview)
+        l_links.addWidget(self.sel_links)
+        b_links = QPushButton("🔗 링크 추출")
+        b_links.clicked.connect(self.action_extract_links)
+        l_links.addWidget(b_links)
+        content_layout.addWidget(grp_links)
+        
+        # 7. 양식 작성기
+        grp_form = QGroupBox("📝 PDF 양식 작성")
+        l_form = QVBoxLayout(grp_form)
+        self.sel_form = FileSelectorWidget()
+        self.sel_form.pathChanged.connect(self._update_preview)
+        l_form.addWidget(self.sel_form)
+        self.form_fields_list = QListWidget()
+        self.form_fields_list.setMaximumHeight(80)
+        self.form_fields_list.setToolTip("양식 필드 목록 (수정하려면 더블클릭)")
+        self.form_fields_list.itemDoubleClicked.connect(self._edit_form_field)
+        l_form.addWidget(self.form_fields_list)
+        btn_form_layout = QHBoxLayout()
+        b_detect = QPushButton("🔍 필드 감지")
+        b_detect.clicked.connect(self.action_detect_fields)
+        btn_form_layout.addWidget(b_detect)
+        b_fill = QPushButton("💾 양식 저장")
+        b_fill.clicked.connect(self.action_fill_form)
+        btn_form_layout.addWidget(b_fill)
+        l_form.addLayout(btn_form_layout)
+        content_layout.addWidget(grp_form)
+        
+        # 8. PDF 비교
+        grp_compare = QGroupBox("🔍 PDF 비교")
+        l_compare = QVBoxLayout(grp_compare)
+        l_compare.addWidget(QLabel("📄 파일 1:"))
+        self.sel_compare1 = FileSelectorWidget()
+        l_compare.addWidget(self.sel_compare1)
+        l_compare.addWidget(QLabel("📄 파일 2:"))
+        self.sel_compare2 = FileSelectorWidget()
+        l_compare.addWidget(self.sel_compare2)
+        b_compare = QPushButton("🔍 PDF 비교")
+        b_compare.clicked.connect(self.action_compare_pdfs)
+        l_compare.addWidget(b_compare)
+        content_layout.addWidget(grp_compare)
+        
         content_layout.addStretch()
         scroll.setWidget(content)
         layout.addWidget(scroll)
@@ -1230,3 +1438,84 @@ class PDFMasterApp(QMainWindow):
             pos = self.spn_blank_pos.value() - 1  # 0-indexed
             self.run_worker("insert_blank_page", file_path=path, output_path=s, position=pos)
 
+    # ===================== 신규 기능 액션 =====================
+    
+    def action_extract_links(self):
+        """PDF 링크 추출"""
+        path = self.sel_links.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "links.txt", "텍스트 (*.txt)")
+        if s:
+            self.run_worker("extract_links", file_path=path, output_path=s)
+    
+    def action_detect_fields(self):
+        """PDF 양식 필드 감지"""
+        path = self.sel_form.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        
+        try:
+            import fitz
+            doc = fitz.open(path)
+            self.form_fields_list.clear()
+            self._form_field_data = {}  # 필드 데이터 저장
+            
+            for page_num, page in enumerate(doc):
+                widgets = page.widgets()
+                if widgets:
+                    for widget in widgets:
+                        name = widget.field_name or f"field_{self.form_fields_list.count()}"
+                        value = widget.field_value or ""
+                        item = QListWidgetItem(f"📋 {name}: {value}")
+                        item.setData(Qt.ItemDataRole.UserRole, name)
+                        item.setToolTip(f"타입: {widget.field_type_string}, 페이지: {page_num + 1}")
+                        self.form_fields_list.addItem(item)
+                        self._form_field_data[name] = value
+            
+            doc.close()
+            
+            count = self.form_fields_list.count()
+            if count == 0:
+                QMessageBox.information(self, "양식", "양식 필드가 없습니다.")
+            else:
+                toast = ToastWidget(f"{count}개 필드 감지됨", toast_type='success', duration=2000)
+                toast.show_toast(self)
+        except Exception as e:
+            QMessageBox.warning(self, "오류", f"필드 감지 실패: {e}")
+    
+    def _edit_form_field(self, item):
+        """양식 필드 값 수정"""
+        name = item.data(Qt.ItemDataRole.UserRole)
+        current_value = self._form_field_data.get(name, "")
+        
+        new_value, ok = QInputDialog.getText(self, "필드 수정", f"'{name}' 값:", 
+                                             QLineEdit.EchoMode.Normal, current_value)
+        if ok:
+            self._form_field_data[name] = new_value
+            item.setText(f"📋 {name}: {new_value}")
+    
+    def action_fill_form(self):
+        """양식 작성 저장"""
+        path = self.sel_form.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        if not hasattr(self, '_form_field_data') or not self._form_field_data:
+            return QMessageBox.warning(self, "알림", "먼저 필드를 감지하세요.")
+        
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "filled_form.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker("fill_form", file_path=path, output_path=s, 
+                          field_values=self._form_field_data)
+    
+    def action_compare_pdfs(self):
+        """PDF 비교"""
+        path1 = self.sel_compare1.get_path()
+        path2 = self.sel_compare2.get_path()
+        
+        if not path1 or not path2:
+            return QMessageBox.warning(self, "알림", "두 개의 PDF 파일을 모두 선택하세요.")
+        
+        s, _ = QFileDialog.getSaveFileName(self, "비교 결과 저장", "comparison.txt", "텍스트 (*.txt)")
+        if s:
+            self.run_worker("compare_pdfs", file_path1=path1, file_path2=path2, output_path=s)

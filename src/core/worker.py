@@ -477,3 +477,136 @@ class WorkerThread(QThread):
         doc.save(output_path)
         doc.close()
         self.finished_signal.emit(f"✅ 스탬프 추가 완료!")
+
+    def extract_links(self):
+        """PDF에서 모든 링크 추출"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        
+        doc = fitz.open(file_path)
+        all_links = []
+        
+        for i, page in enumerate(doc):
+            links = page.get_links()
+            for link in links:
+                if 'uri' in link:
+                    all_links.append({
+                        'page': i + 1,
+                        'url': link['uri']
+                    })
+            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
+        
+        doc.close()
+        
+        # 결과 파일로 저장
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(f"# {os.path.basename(file_path)} - 링크 목록\n\n")
+            for link in all_links:
+                f.write(f"Page {link['page']}: {link['url']}\n")
+        
+        self.finished_signal.emit(f"✅ 링크 추출 완료!\n{len(all_links)}개 링크 발견")
+    
+    def get_form_fields(self):
+        """PDF 양식 필드 목록 반환"""
+        file_path = self.kwargs.get('file_path')
+        
+        doc = fitz.open(file_path)
+        fields = []
+        
+        for page_num, page in enumerate(doc):
+            widgets = page.widgets()
+            if widgets:
+                for widget in widgets:
+                    fields.append({
+                        'page': page_num + 1,
+                        'name': widget.field_name or f"field_{len(fields)}",
+                        'type': widget.field_type_string,
+                        'value': widget.field_value or "",
+                        'rect': list(widget.rect)
+                    })
+        
+        doc.close()
+        
+        # 결과를 kwargs에 저장 (메인 스레드에서 접근)
+        self.kwargs['result_fields'] = fields
+        self.finished_signal.emit(f"✅ 양식 필드 감지 완료!\n{len(fields)}개 필드 발견")
+    
+    def fill_form(self):
+        """PDF 양식 필드에 값 채우기"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        field_values = self.kwargs.get('field_values', {})
+        
+        doc = fitz.open(file_path)
+        filled_count = 0
+        
+        for page in doc:
+            widgets = page.widgets()
+            if widgets:
+                for widget in widgets:
+                    field_name = widget.field_name
+                    if field_name and field_name in field_values:
+                        widget.field_value = field_values[field_name]
+                        widget.update()
+                        filled_count += 1
+        
+        doc.save(output_path)
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 양식 작성 완료!\n{filled_count}개 필드 채움")
+    
+    def compare_pdfs(self):
+        """두 PDF 비교"""
+        file_path1 = self.kwargs.get('file_path1')
+        file_path2 = self.kwargs.get('file_path2')
+        output_path = self.kwargs.get('output_path')
+        
+        doc1 = fitz.open(file_path1)
+        doc2 = fitz.open(file_path2)
+        
+        results = []
+        max_pages = max(len(doc1), len(doc2))
+        
+        for i in range(max_pages):
+            self.progress_signal.emit(int((i + 1) / max_pages * 100))
+            
+            if i >= len(doc1):
+                results.append(f"페이지 {i+1}: 파일1에 없음")
+                continue
+            if i >= len(doc2):
+                results.append(f"페이지 {i+1}: 파일2에 없음")
+                continue
+            
+            text1 = doc1[i].get_text()
+            text2 = doc2[i].get_text()
+            
+            if text1 != text2:
+                # 간단한 차이 분석
+                lines1 = set(text1.split('\n'))
+                lines2 = set(text2.split('\n'))
+                only_in_1 = lines1 - lines2
+                only_in_2 = lines2 - lines1
+                
+                if only_in_1 or only_in_2:
+                    results.append(f"페이지 {i+1}: 차이 발견")
+                    if only_in_1:
+                        results.append(f"  - 파일1에만: {len(only_in_1)}줄")
+                    if only_in_2:
+                        results.append(f"  - 파일2에만: {len(only_in_2)}줄")
+        
+        doc1.close()
+        doc2.close()
+        
+        # 결과 저장
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write("# PDF 비교 결과\n\n")
+            f.write(f"파일1: {os.path.basename(file_path1)}\n")
+            f.write(f"파일2: {os.path.basename(file_path2)}\n\n")
+            if results:
+                for r in results:
+                    f.write(r + "\n")
+            else:
+                f.write("두 파일의 텍스트 내용이 동일합니다.\n")
+        
+        diff_count = len([r for r in results if "차이 발견" in r])
+        self.finished_signal.emit(f"✅ PDF 비교 완료!\n{diff_count}개 페이지에서 차이 발견")

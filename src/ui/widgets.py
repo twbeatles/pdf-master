@@ -261,22 +261,39 @@ class FileListWidget(QListWidget):
             event.setDropAction(Qt.DropAction.CopyAction)
             event.accept()
             last_path = None
+            added_count = 0
             for url in event.mimeData().urls():
                 path = str(url.toLocalFile())
-                if path.lower().endswith('.pdf'):
-                    # 중복 체크
-                    exists = any(self.item(i).data(Qt.ItemDataRole.UserRole) == path for i in range(self.count()))
-                    if not exists:
-                        item = QListWidgetItem(f"📄 {os.path.basename(path)}")
-                        item.setData(Qt.ItemDataRole.UserRole, path)
-                        item.setToolTip(path)
-                        self.addItem(item)
+                
+                # 폴더인 경우 내부 PDF 모두 추가
+                if os.path.isdir(path):
+                    for filename in os.listdir(path):
+                        if filename.lower().endswith('.pdf'):
+                            file_path = os.path.join(path, filename)
+                            if self._add_pdf_item(file_path):
+                                last_path = file_path
+                                added_count += 1
+                # PDF 파일인 경우
+                elif path.lower().endswith('.pdf'):
+                    if self._add_pdf_item(path):
                         last_path = path
+                        added_count += 1
             
             if last_path:
                 self.fileAdded.emit(last_path)
         else:
             super().dropEvent(event)
+    
+    def _add_pdf_item(self, path):
+        """PDF 항목 추가 (중복 체크 포함), 성공 시 True 반환"""
+        exists = any(self.item(i).data(Qt.ItemDataRole.UserRole) == path for i in range(self.count()))
+        if not exists:
+            item = QListWidgetItem(f"📄 {os.path.basename(path)}")
+            item.setData(Qt.ItemDataRole.UserRole, path)
+            item.setToolTip(path)
+            self.addItem(item)
+            return True
+        return False
 
     def get_all_paths(self):
         return [self.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.count())]
@@ -286,12 +303,7 @@ class FileListWidget(QListWidget):
         path = str(path)
         if not path.lower().endswith('.pdf'):
             return
-        exists = any(self.item(i).data(Qt.ItemDataRole.UserRole) == path for i in range(self.count()))
-        if not exists:
-            item = QListWidgetItem(f"📄 {os.path.basename(path)}")
-            item.setData(Qt.ItemDataRole.UserRole, path)
-            item.setToolTip(path)
-            self.addItem(item)
+        if self._add_pdf_item(path):
             self.fileAdded.emit(path)
 
 class ImageListWidget(QListWidget):
@@ -343,3 +355,130 @@ class ImageListWidget(QListWidget):
 
     def get_all_paths(self):
         return [self.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.count())]
+
+
+class ToastWidget(QFrame):
+    """비차단형 토스트 알림 위젯 (페이드 애니메이션 + 스택)"""
+    closed = pyqtSignal()
+    _active_toasts = []  # 활성 토스트 스택 관리
+    
+    def __init__(self, message, toast_type='info', duration=3000, parent=None):
+        super().__init__(parent)
+        self.duration = duration
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        
+        # 색상 맵
+        colors = {
+            'success': ('#00d9a0', '#0a3a2a'),
+            'error': ('#ff6b6b', '#3a1a1a'),
+            'warning': ('#ffb347', '#3a2a1a'),
+            'info': ('#5dade2', '#1a2a3a')
+        }
+        fg, bg = colors.get(toast_type, colors['info'])
+        
+        # 아이콘 맵
+        icons = {'success': '✅', 'error': '❌', 'warning': '⚠️', 'info': 'ℹ️'}
+        icon = icons.get(toast_type, 'ℹ️')
+        
+        self.setStyleSheet(f"""
+            ToastWidget {{
+                background-color: {bg};
+                border: 2px solid {fg};
+                border-radius: 10px;
+            }}
+        """)
+        
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(15, 10, 15, 10)
+        
+        icon_label = QLabel(icon)
+        icon_label.setStyleSheet(f"font-size: 20px; background: transparent;")
+        layout.addWidget(icon_label)
+        
+        msg_label = QLabel(message)
+        msg_label.setStyleSheet(f"color: {fg}; font-size: 13px; font-weight: 500; background: transparent;")
+        msg_label.setWordWrap(True)
+        layout.addWidget(msg_label, 1)
+        
+        close_btn = QPushButton("×")
+        close_btn.setFixedSize(24, 24)
+        close_btn.setStyleSheet(f"""
+            QPushButton {{ 
+                background: transparent; 
+                color: {fg}; 
+                border: none; 
+                font-size: 18px; 
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: rgba(255,255,255,0.1); border-radius: 12px; }}
+        """)
+        close_btn.clicked.connect(self.close_toast)
+        layout.addWidget(close_btn)
+        
+        self.setFixedWidth(350)
+        self.adjustSize()
+        
+        # Import here to avoid circular import
+        from PyQt6.QtCore import QTimer, QPropertyAnimation, QEasingCurve
+        from PyQt6.QtWidgets import QGraphicsOpacityEffect
+        
+        # Opacity effect for fade animation
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.opacity_effect)
+        self.opacity_effect.setOpacity(0.0)
+        
+        # Fade in animation
+        self.fade_in = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_in.setDuration(200)
+        self.fade_in.setStartValue(0.0)
+        self.fade_in.setEndValue(1.0)
+        self.fade_in.setEasingCurve(QEasingCurve.Type.OutCubic)
+        
+        # Fade out animation
+        self.fade_out = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_out.setDuration(300)
+        self.fade_out.setStartValue(1.0)
+        self.fade_out.setEndValue(0.0)
+        self.fade_out.setEasingCurve(QEasingCurve.Type.InCubic)
+        self.fade_out.finished.connect(self._on_fade_out_done)
+        
+        # Auto close timer
+        self.close_timer = QTimer(self)
+        self.close_timer.setSingleShot(True)
+        self.close_timer.timeout.connect(self.close_toast)
+    
+    def show_toast(self, parent_widget=None):
+        """토스트 표시 (스택 위치 자동 계산)"""
+        ToastWidget._active_toasts.append(self)
+        
+        if parent_widget:
+            parent_geo = parent_widget.geometry()
+            x = parent_geo.right() - self.width() - 20
+            y = parent_geo.bottom() - 60
+            
+            # 스택 오프셋 계산
+            for toast in ToastWidget._active_toasts[:-1]:
+                if toast.isVisible():
+                    y -= toast.height() + 10
+            
+            self.move(x, y)
+        
+        self.show()
+        self.fade_in.start()
+        self.close_timer.start(self.duration)
+    
+    def close_toast(self):
+        """토스트 닫기 (페이드 아웃)"""
+        self.close_timer.stop()
+        self.fade_out.start()
+    
+    def _on_fade_out_done(self):
+        """페이드 아웃 완료 후 정리"""
+        if self in ToastWidget._active_toasts:
+            ToastWidget._active_toasts.remove(self)
+        self.closed.emit()
+        self.hide()
+        self.deleteLater()
+
