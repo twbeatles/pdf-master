@@ -610,3 +610,275 @@ class WorkerThread(QThread):
         
         diff_count = len([r for r in results if "차이 발견" in r])
         self.finished_signal.emit(f"✅ PDF 비교 완료!\n{diff_count}개 페이지에서 차이 발견")
+
+    # ===================== v2.8 신규 기능 =====================
+    
+    def get_pdf_info(self):
+        """PDF 정보 및 통계 추출"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        
+        doc = fitz.open(file_path)
+        
+        # 기본 정보
+        total_chars = 0
+        total_images = 0
+        fonts_used = set()
+        
+        for i, page in enumerate(doc):
+            # 텍스트 통계
+            text = page.get_text()
+            total_chars += len(text)
+            
+            # 이미지 수
+            images = page.get_images()
+            total_images += len(images)
+            
+            # 폰트 목록
+            for font in page.get_fonts():
+                fonts_used.add(font[3] if len(font) > 3 else font[0])
+            
+            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
+        
+        # 결과 저장
+        meta = doc.metadata
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(f"# PDF 정보: {os.path.basename(file_path)}\n\n")
+            f.write(f"## 기본 정보\n")
+            f.write(f"- 페이지 수: {len(doc)}\n")
+            f.write(f"- 파일 크기: {os.path.getsize(file_path) / 1024:.1f} KB\n")
+            f.write(f"- 제목: {meta.get('title', '-')}\n")
+            f.write(f"- 작성자: {meta.get('author', '-')}\n")
+            f.write(f"- 생성일: {meta.get('creationDate', '-')}\n\n")
+            f.write(f"## 통계\n")
+            f.write(f"- 총 글자 수: {total_chars:,}\n")
+            f.write(f"- 총 이미지 수: {total_images}\n")
+            f.write(f"- 사용 폰트: {', '.join(fonts_used) if fonts_used else '없음'}\n")
+        
+        doc.close()
+        self.finished_signal.emit(f"✅ PDF 정보 추출 완료!\n{len(doc)}페이지, {total_chars:,}자, {total_images}개 이미지")
+    
+    def duplicate_page(self):
+        """페이지 복제"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        page_num = self.kwargs.get('page_num', 0)  # 0-indexed
+        count = self.kwargs.get('count', 1)
+        
+        doc = fitz.open(file_path)
+        
+        for i in range(count):
+            doc.fullcopy_page(page_num, page_num + 1 + i)
+            self.progress_signal.emit(int((i + 1) / count * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ 페이지 복제 완료!\n{page_num + 1}페이지를 {count}번 복제")
+    
+    def reverse_pages(self):
+        """페이지 역순 정렬"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        
+        doc = fitz.open(file_path)
+        page_count = len(doc)
+        
+        # 역순으로 페이지 이동
+        for i in range(page_count - 1):
+            doc.move_page(page_count - 1, i)
+            self.progress_signal.emit(int((i + 1) / (page_count - 1) * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ 역순 정렬 완료!\n{page_count}페이지")
+    
+    def resize_pages(self):
+        """페이지 크기 변경"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        target_size = self.kwargs.get('target_size', 'A4')
+        
+        # 표준 크기 (포인트)
+        sizes = {
+            'A4': (595, 842),
+            'A3': (842, 1191),
+            'Letter': (612, 792),
+            'Legal': (612, 1008),
+        }
+        
+        target_w, target_h = sizes.get(target_size, (595, 842))
+        
+        doc = fitz.open(file_path)
+        
+        for i, page in enumerate(doc):
+            # 새 크기로 페이지 설정
+            page.set_mediabox(fitz.Rect(0, 0, target_w, target_h))
+            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ 페이지 크기 변경 완료!\n{len(doc)}페이지 → {target_size}")
+    
+    def extract_images(self):
+        """PDF에서 모든 이미지 추출"""
+        file_path = self.kwargs.get('file_path')
+        output_dir = self.kwargs.get('output_dir')
+        
+        doc = fitz.open(file_path)
+        image_count = 0
+        
+        for page_num, page in enumerate(doc):
+            images = page.get_images()
+            for img_idx, img in enumerate(images):
+                xref = img[0]
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                image_ext = base_image["ext"]
+                
+                image_path = os.path.join(output_dir, f"page{page_num + 1}_img{img_idx + 1}.{image_ext}")
+                with open(image_path, "wb") as f:
+                    f.write(image_bytes)
+                image_count += 1
+            
+            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        
+        doc.close()
+        self.finished_signal.emit(f"✅ 이미지 추출 완료!\n{image_count}개 이미지 저장됨")
+    
+    def insert_signature(self):
+        """전자 서명 이미지 삽입"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        signature_path = self.kwargs.get('signature_path')
+        page_num = self.kwargs.get('page_num', -1)  # -1 = 마지막 페이지
+        position = self.kwargs.get('position', 'bottom_right')
+        
+        doc = fitz.open(file_path)
+        
+        if page_num == -1:
+            page_num = len(doc) - 1
+        
+        page = doc[page_num]
+        page_rect = page.rect
+        
+        # 서명 이미지 크기 (가로 150pt)
+        sig_width = 150
+        sig_height = 50
+        
+        # 위치 계산
+        positions = {
+            'bottom_right': fitz.Rect(page_rect.width - sig_width - 50, page_rect.height - sig_height - 50,
+                                      page_rect.width - 50, page_rect.height - 50),
+            'bottom_left': fitz.Rect(50, page_rect.height - sig_height - 50,
+                                     50 + sig_width, page_rect.height - 50),
+            'top_right': fitz.Rect(page_rect.width - sig_width - 50, 50,
+                                   page_rect.width - 50, 50 + sig_height),
+            'top_left': fitz.Rect(50, 50, 50 + sig_width, 50 + sig_height),
+        }
+        
+        rect = positions.get(position, positions['bottom_right'])
+        
+        # 서명 이미지 삽입
+        page.insert_image(rect, filename=signature_path)
+        self.progress_signal.emit(100)
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ 전자 서명 삽입 완료!\n{page_num + 1}페이지 {position}")
+
+    # ===================== v2.9 신규 기능 =====================
+    
+    def get_bookmarks(self):
+        """PDF 북마크(목차) 추출"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        
+        doc = fitz.open(file_path)
+        toc = doc.get_toc()  # [[level, title, page], ...]
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(f"# 북마크: {os.path.basename(file_path)}\n\n")
+            if toc:
+                for item in toc:
+                    level, title, page = item[0], item[1], item[2]
+                    indent = "  " * (level - 1)
+                    f.write(f"{indent}- [{title}] → 페이지 {page}\n")
+            else:
+                f.write("북마크가 없습니다.\n")
+        
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 북마크 추출 완료!\n{len(toc)}개 항목")
+    
+    def set_bookmarks(self):
+        """PDF 북마크(목차) 설정"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        bookmarks = self.kwargs.get('bookmarks', [])  # [[level, title, page], ...]
+        
+        doc = fitz.open(file_path)
+        doc.set_toc(bookmarks)
+        doc.save(output_path)
+        doc.close()
+        
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 북마크 설정 완료!\n{len(bookmarks)}개 항목")
+    
+    def search_text(self):
+        """PDF 내 텍스트 검색"""
+        file_path = self.kwargs.get('file_path')
+        search_term = self.kwargs.get('search_term', '')
+        output_path = self.kwargs.get('output_path')
+        
+        doc = fitz.open(file_path)
+        results = []
+        
+        for page_num, page in enumerate(doc):
+            text_instances = page.search_for(search_term)
+            if text_instances:
+                results.append({
+                    'page': page_num + 1,
+                    'count': len(text_instances),
+                    'positions': [(r.x0, r.y0) for r in text_instances[:5]]  # 최대 5개 위치
+                })
+            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        
+        # 결과 저장
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(f"# 검색 결과: '{search_term}'\n")
+            f.write(f"파일: {os.path.basename(file_path)}\n\n")
+            if results:
+                total = sum(r['count'] for r in results)
+                f.write(f"총 {total}개 발견 ({len(results)}페이지)\n\n")
+                for r in results:
+                    f.write(f"## 페이지 {r['page']}: {r['count']}개\n")
+            else:
+                f.write("검색 결과가 없습니다.\n")
+        
+        doc.close()
+        total_found = sum(r['count'] for r in results) if results else 0
+        self.finished_signal.emit(f"✅ 검색 완료!\n'{search_term}': {total_found}개 발견")
+    
+    def highlight_text(self):
+        """PDF 내 텍스트 하이라이트"""
+        file_path = self.kwargs.get('file_path')
+        search_term = self.kwargs.get('search_term', '')
+        output_path = self.kwargs.get('output_path')
+        color = self.kwargs.get('color', (1, 1, 0))  # 기본 노란색
+        
+        doc = fitz.open(file_path)
+        highlight_count = 0
+        
+        for page_num, page in enumerate(doc):
+            text_instances = page.search_for(search_term)
+            for inst in text_instances:
+                highlight = page.add_highlight_annot(inst)
+                highlight.set_colors(stroke=color)
+                highlight.update()
+                highlight_count += 1
+            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ 하이라이트 완료!\n'{search_term}': {highlight_count}개 표시")
+

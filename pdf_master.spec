@@ -1,12 +1,12 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PDF Master v2.6 - PyInstaller Spec File (Optimized Onefile)
+# PDF Master v2.9 - PyInstaller Spec File (Optimized Onefile)
 
 import sys
 import os
 
 block_cipher = None
 
-# PyMuPDF 모듈 수집 (fitz와 pymupdf 둘 다 필요)
+# PyMuPDF 모듈 수집
 try:
     from PyInstaller.utils.hooks import collect_data_files, collect_submodules
     fitz_datas = collect_data_files('fitz', include_py_files=True)
@@ -31,7 +31,7 @@ a = Analysis(
         'PyQt6.QtWidgets',
         'PyQt6.QtPrintSupport',
         'PyQt6.sip',
-        # PyMuPDF - 여러 이름으로 import 가능
+        # PyMuPDF
         'fitz',
         'fitz.fitz',
         'fitz.utils',
@@ -53,7 +53,7 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # 불필요한 대형 패키지 제외
+        # 불필요한 대형 패키지 제외 (경량화)
         'matplotlib', 'numpy', 'pandas', 'scipy',
         'cv2', 'opencv', 'PIL', 'Pillow', 'pytesseract',
         'tkinter', '_tkinter', 'turtle',
@@ -66,12 +66,20 @@ a = Analysis(
         'unittest', 'test', 'tests',
         'email', 'http.server',
         'multiprocessing.popen_spawn_win32',
+        'asyncio', 'concurrent',
+        'ctypes.test', 'distutils',
+        'ensurepip', 'idlelib', 'lib2to3',
+        'pydoc', 'pydoc_data', 'turtledemo',
+        'venv', 'zipapp',
         # PyQt6 불필요 모듈
         'PyQt6.QtNetwork', 'PyQt6.QtSql', 'PyQt6.QtSvg',
         'PyQt6.QtMultimedia', 'PyQt6.QtWebEngine',
         'PyQt6.QtBluetooth', 'PyQt6.QtPositioning',
         'PyQt6.Qt3D', 'PyQt6.QtCharts', 'PyQt6.QtDataVisualization',
-        'PyQt6.QtQuick', 'PyQt6.QtQml',
+        'PyQt6.QtQuick', 'PyQt6.QtQml', 'PyQt6.QtRemoteObjects',
+        'PyQt6.QtSensors', 'PyQt6.QtSerialPort', 'PyQt6.QtTest',
+        'PyQt6.QtTextToSpeech', 'PyQt6.QtWebChannel', 'PyQt6.QtWebSockets',
+        'PyQt6.QtXml',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -79,7 +87,7 @@ a = Analysis(
     noarchive=False,
 )
 
-# 불필요한 바이너리 필터링
+# 불필요한 바이너리 필터링 (경량화)
 a.binaries = [x for x in a.binaries if not any(
     excl in x[0].lower() for excl in [
         'qt6webengine', 'qt6quick', 'qt6qml', 'qt6multimedia',
@@ -88,6 +96,9 @@ a.binaries = [x for x in a.binaries if not any(
         'qt6serialport', 'qt6sensors', 'qt6test',
         'opengl32sw', 'd3dcompiler',
         'qt6designer', 'qt6help', 'qt6uitools',
+        'qt6virtualkeyboard', 'qt6webchannel', 'qt6websockets',
+        'libcrypto', 'libssl',
+        'api-ms-win',
     ]
 )]
 
@@ -95,6 +106,7 @@ a.binaries = [x for x in a.binaries if not any(
 a.datas = [x for x in a.datas if not any(
     excl in x[0].lower() for excl in [
         'translations', 'qml', 'icons',
+        'qtwebengine', 'qtquick',
     ]
 )]
 
@@ -107,7 +119,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='PDF_Master_v2.6',
+    name='PDF_Master_v2.9',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -127,7 +139,5 @@ exe = EXE(
 # ============== 빌드 명령어 ==============
 # pyinstaller pdf_master.spec
 #
-# 결과물: dist/PDF_Master_v2.6.exe
-# 예상 크기: 약 25-35MB
-#
-# fitz 오류 시: pip install --upgrade pymupdf
+# 결과물: dist/PDF_Master_v2.9.exe
+# 예상 크기: 약 20-30MB

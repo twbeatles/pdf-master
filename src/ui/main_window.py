@@ -19,7 +19,7 @@ from .widgets import FileSelectorWidget, FileListWidget, ImageListWidget, DropZo
 from .styles import DARK_STYLESHEET, LIGHT_STYLESHEET, ThemeColors
 
 APP_NAME = "PDF Master"
-VERSION = "2.6"
+VERSION = "2.9"
 
 class PDFMasterApp(QMainWindow):
     def __init__(self):
@@ -120,6 +120,9 @@ class PDFMasterApp(QMainWindow):
         
         # 모든 QSpinBox, QComboBox에 휠 필터 설치
         self._install_wheel_filters()
+        
+        # v2.7: 윈도우 위치 복원
+        self._restore_window_geometry()
     
     def _install_wheel_filters(self):
         """모든 입력 위젯에 휠 이벤트 필터 설치"""
@@ -132,6 +135,7 @@ class PDFMasterApp(QMainWindow):
         """Keyboard shortcuts"""
         QShortcut(QKeySequence("Ctrl+O"), self, self._shortcut_open_file)
         QShortcut(QKeySequence("Ctrl+Q"), self, self.close)
+        QShortcut(QKeySequence("Ctrl+T"), self, self._toggle_theme)  # v2.7: 테마 토글
         QShortcut(QKeySequence("F1"), self, self._show_help)
         QShortcut(QKeySequence("Ctrl+1"), self, lambda: self.tabs.setCurrentIndex(0))
         QShortcut(QKeySequence("Ctrl+2"), self, lambda: self.tabs.setCurrentIndex(1))
@@ -158,6 +162,22 @@ class PDFMasterApp(QMainWindow):
         """Save splitter position"""
         self.settings["splitter_sizes"] = self.content_splitter.sizes()
         save_settings(self.settings)
+    
+    def _restore_window_geometry(self):
+        """윈도우 위치/크기 복원"""
+        geo = self.settings.get("window_geometry")
+        if geo:
+            self.setGeometry(geo.get("x", 100), geo.get("y", 100), 
+                           geo.get("width", 1200), geo.get("height", 850))
+    
+    def closeEvent(self, event):
+        """앱 종료 시 윈도우 위치 저장"""
+        self.settings["window_geometry"] = {
+            "x": self.x(), "y": self.y(),
+            "width": self.width(), "height": self.height()
+        }
+        save_settings(self.settings)
+        event.accept()
     
     def _create_menu_bar(self):
         """메뉴 바 생성"""
@@ -530,6 +550,18 @@ class PDFMasterApp(QMainWindow):
         self.merge_list.itemClicked.connect(self._on_list_item_clicked)
         layout.addWidget(self.merge_list)
         
+        # v2.7: 파일 개수 표시
+        merge_info_layout = QHBoxLayout()
+        self.merge_count_label = QLabel("📁 0개 파일")
+        self.merge_count_label.setStyleSheet("color: #888; font-size: 12px;")
+        merge_info_layout.addWidget(self.merge_count_label)
+        merge_info_layout.addStretch()
+        layout.addLayout(merge_info_layout)
+        
+        # 파일 추가/삭제 시 카운트 업데이트
+        self.merge_list.model().rowsInserted.connect(self._update_merge_count)
+        self.merge_list.model().rowsRemoved.connect(self._update_merge_count)
+        
         btn_box = QHBoxLayout()
         b_add = QPushButton("➕ 파일 추가")
         b_add.setObjectName("secondaryBtn")
@@ -541,7 +573,7 @@ class PDFMasterApp(QMainWindow):
         
         b_clr = QPushButton("🧹 전체 삭제")
         b_clr.setObjectName("secondaryBtn")
-        b_clr.clicked.connect(self.merge_list.clear)
+        b_clr.clicked.connect(self._confirm_clear_merge)  # v2.7: 확인 다이얼로그
         
         btn_box.addWidget(b_add)
         btn_box.addWidget(b_del)
@@ -567,6 +599,21 @@ class PDFMasterApp(QMainWindow):
             item.setData(Qt.ItemDataRole.UserRole, f)
             item.setToolTip(f)
             self.merge_list.addItem(item)
+    
+    def _update_merge_count(self):
+        """병합 탭 파일 개수 업데이트"""
+        count = self.merge_list.count()
+        self.merge_count_label.setText(f"📁 {count}개 파일")
+    
+    def _confirm_clear_merge(self):
+        """전체 삭제 확인 다이얼로그"""
+        if self.merge_list.count() == 0:
+            return
+        reply = QMessageBox.question(self, "확인", 
+                                    f"{self.merge_list.count()}개 파일을 모두 삭제하시겠습니까?",
+                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.merge_list.clear()
     
     def action_merge(self):
         files = self.merge_list.get_all_paths()
@@ -1378,6 +1425,146 @@ class PDFMasterApp(QMainWindow):
         l_compare.addWidget(b_compare)
         content_layout.addWidget(grp_compare)
         
+        # ===================== v2.8 신규 기능 =====================
+        
+        # 9. PDF 정보/통계
+        grp_info = QGroupBox("📊 PDF 정보/통계")
+        l_info = QVBoxLayout(grp_info)
+        self.sel_info = FileSelectorWidget()
+        self.sel_info.pathChanged.connect(self._update_preview)
+        l_info.addWidget(self.sel_info)
+        b_info = QPushButton("📊 정보 추출")
+        b_info.clicked.connect(self.action_pdf_info)
+        l_info.addWidget(b_info)
+        content_layout.addWidget(grp_info)
+        
+        # 10. 페이지 복제
+        grp_dup = QGroupBox("📋 페이지 복제")
+        l_dup = QVBoxLayout(grp_dup)
+        self.sel_dup = FileSelectorWidget()
+        self.sel_dup.pathChanged.connect(self._update_preview)
+        l_dup.addWidget(self.sel_dup)
+        dup_opts = QHBoxLayout()
+        dup_opts.addWidget(QLabel("페이지:"))
+        self.spn_dup_page = QSpinBox()
+        self.spn_dup_page.setRange(1, 9999)
+        dup_opts.addWidget(self.spn_dup_page)
+        dup_opts.addWidget(QLabel("복제 횟수:"))
+        self.spn_dup_count = QSpinBox()
+        self.spn_dup_count.setRange(1, 100)
+        self.spn_dup_count.setValue(1)
+        dup_opts.addWidget(self.spn_dup_count)
+        dup_opts.addStretch()
+        l_dup.addLayout(dup_opts)
+        b_dup = QPushButton("📋 페이지 복제")
+        b_dup.clicked.connect(self.action_duplicate_page)
+        l_dup.addWidget(b_dup)
+        content_layout.addWidget(grp_dup)
+        
+        # 11. 역순 정렬
+        grp_rev = QGroupBox("🔄 페이지 역순 정렬")
+        l_rev = QVBoxLayout(grp_rev)
+        self.sel_rev = FileSelectorWidget()
+        self.sel_rev.pathChanged.connect(self._update_preview)
+        l_rev.addWidget(self.sel_rev)
+        b_rev = QPushButton("🔄 역순 정렬")
+        b_rev.clicked.connect(self.action_reverse_pages)
+        l_rev.addWidget(b_rev)
+        content_layout.addWidget(grp_rev)
+        
+        # 12. 페이지 크기 변경
+        grp_resize = QGroupBox("📐 페이지 크기 변경")
+        l_resize = QVBoxLayout(grp_resize)
+        self.sel_resize = FileSelectorWidget()
+        self.sel_resize.pathChanged.connect(self._update_preview)
+        l_resize.addWidget(self.sel_resize)
+        resize_opts = QHBoxLayout()
+        resize_opts.addWidget(QLabel("크기:"))
+        self.cmb_resize = QComboBox()
+        self.cmb_resize.addItems(["A4", "A3", "Letter", "Legal"])
+        resize_opts.addWidget(self.cmb_resize)
+        resize_opts.addStretch()
+        l_resize.addLayout(resize_opts)
+        b_resize = QPushButton("📐 크기 변경")
+        b_resize.clicked.connect(self.action_resize_pages)
+        l_resize.addWidget(b_resize)
+        content_layout.addWidget(grp_resize)
+        
+        # 13. 이미지 추출
+        grp_extract = QGroupBox("🖼️ 이미지 추출")
+        l_extract = QVBoxLayout(grp_extract)
+        self.sel_extract = FileSelectorWidget()
+        self.sel_extract.pathChanged.connect(self._update_preview)
+        l_extract.addWidget(self.sel_extract)
+        b_extract = QPushButton("🖼️ 이미지 추출")
+        b_extract.clicked.connect(self.action_extract_images)
+        l_extract.addWidget(b_extract)
+        content_layout.addWidget(grp_extract)
+        
+        # 14. 전자 서명
+        grp_sig = QGroupBox("✍️ 전자 서명 삽입")
+        l_sig = QVBoxLayout(grp_sig)
+        l_sig.addWidget(QLabel("PDF 파일:"))
+        self.sel_sig_pdf = FileSelectorWidget()
+        self.sel_sig_pdf.pathChanged.connect(self._update_preview)
+        l_sig.addWidget(self.sel_sig_pdf)
+        l_sig.addWidget(QLabel("서명 이미지 (PNG/JPG):"))
+        self.sel_sig_img = FileSelectorWidget()
+        self.sel_sig_img.drop_zone.accept_extensions = ['.png', '.jpg', '.jpeg']
+        l_sig.addWidget(self.sel_sig_img)
+        sig_opts = QHBoxLayout()
+        sig_opts.addWidget(QLabel("위치:"))
+        self.cmb_sig_pos = QComboBox()
+        self.cmb_sig_pos.addItems(["우하단", "좌하단", "우상단", "좌상단"])
+        sig_opts.addWidget(self.cmb_sig_pos)
+        sig_opts.addWidget(QLabel("페이지:"))
+        self.spn_sig_page = QSpinBox()
+        self.spn_sig_page.setRange(-1, 9999)
+        self.spn_sig_page.setValue(-1)
+        self.spn_sig_page.setToolTip("-1 = 마지막 페이지")
+        sig_opts.addWidget(self.spn_sig_page)
+        sig_opts.addStretch()
+        l_sig.addLayout(sig_opts)
+        b_sig = QPushButton("✍️ 서명 삽입")
+        b_sig.clicked.connect(self.action_insert_signature)
+        l_sig.addWidget(b_sig)
+        content_layout.addWidget(grp_sig)
+        
+        # ===================== v2.9 신규 기능 =====================
+        
+        # 15. 북마크 추출
+        grp_bm = QGroupBox("📑 북마크/목차 추출")
+        l_bm = QVBoxLayout(grp_bm)
+        self.sel_bm = FileSelectorWidget()
+        self.sel_bm.pathChanged.connect(self._update_preview)
+        l_bm.addWidget(self.sel_bm)
+        b_bm = QPushButton("📑 북마크 추출")
+        b_bm.clicked.connect(self.action_get_bookmarks)
+        l_bm.addWidget(b_bm)
+        content_layout.addWidget(grp_bm)
+        
+        # 16. 텍스트 검색 & 하이라이트
+        grp_search = QGroupBox("🔍 텍스트 검색 & 하이라이트")
+        l_search = QVBoxLayout(grp_search)
+        self.sel_search = FileSelectorWidget()
+        self.sel_search.pathChanged.connect(self._update_preview)
+        l_search.addWidget(self.sel_search)
+        search_opts = QHBoxLayout()
+        search_opts.addWidget(QLabel("검색어:"))
+        self.inp_search = QLineEdit()
+        self.inp_search.setPlaceholderText("검색할 텍스트 입력...")
+        search_opts.addWidget(self.inp_search)
+        l_search.addLayout(search_opts)
+        search_btns = QHBoxLayout()
+        b_search = QPushButton("🔍 검색")
+        b_search.clicked.connect(self.action_search_text)
+        search_btns.addWidget(b_search)
+        b_highlight = QPushButton("🖍️ 하이라이트")
+        b_highlight.clicked.connect(self.action_highlight_text)
+        search_btns.addWidget(b_highlight)
+        l_search.addLayout(search_btns)
+        content_layout.addWidget(grp_search)
+        
         content_layout.addStretch()
         scroll.setWidget(content)
         layout.addWidget(scroll)
@@ -1519,3 +1706,111 @@ class PDFMasterApp(QMainWindow):
         s, _ = QFileDialog.getSaveFileName(self, "비교 결과 저장", "comparison.txt", "텍스트 (*.txt)")
         if s:
             self.run_worker("compare_pdfs", file_path1=path1, file_path2=path2, output_path=s)
+
+    # ===================== v2.8 신규 기능 액션 =====================
+    
+    def action_pdf_info(self):
+        """PDF 정보 추출"""
+        path = self.sel_info.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "pdf_info.txt", "텍스트 (*.txt)")
+        if s:
+            self.run_worker("get_pdf_info", file_path=path, output_path=s)
+    
+    def action_duplicate_page(self):
+        """페이지 복제"""
+        path = self.sel_dup.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "duplicated.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker("duplicate_page", file_path=path, output_path=s,
+                          page_num=self.spn_dup_page.value() - 1,  # 0-indexed
+                          count=self.spn_dup_count.value())
+    
+    def action_reverse_pages(self):
+        """페이지 역순 정렬"""
+        path = self.sel_rev.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "reversed.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker("reverse_pages", file_path=path, output_path=s)
+    
+    def action_resize_pages(self):
+        """페이지 크기 변경"""
+        path = self.sel_resize.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "resized.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker("resize_pages", file_path=path, output_path=s,
+                          target_size=self.cmb_resize.currentText())
+    
+    def action_extract_images(self):
+        """이미지 추출"""
+        path = self.sel_extract.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        out_dir = QFileDialog.getExistingDirectory(self, "저장 폴더 선택")
+        if out_dir:
+            self.run_worker("extract_images", file_path=path, output_dir=out_dir)
+    
+    def action_insert_signature(self):
+        """전자 서명 삽입"""
+        pdf_path = self.sel_sig_pdf.get_path()
+        sig_path = self.sel_sig_img.get_path()
+        
+        if not pdf_path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        if not sig_path:
+            return QMessageBox.warning(self, "알림", "서명 이미지를 선택하세요.")
+        
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "signed.pdf", "PDF (*.pdf)")
+        if s:
+            pos_map = {"우하단": "bottom_right", "좌하단": "bottom_left", 
+                       "우상단": "top_right", "좌상단": "top_left"}
+            self.run_worker("insert_signature", file_path=pdf_path, output_path=s,
+                          signature_path=sig_path,
+                          page_num=self.spn_sig_page.value(),
+                          position=pos_map.get(self.cmb_sig_pos.currentText(), "bottom_right"))
+
+    # ===================== v2.9 신규 기능 액션 =====================
+    
+    def action_get_bookmarks(self):
+        """북마크 추출"""
+        path = self.sel_bm.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "bookmarks.txt", "텍스트 (*.txt)")
+        if s:
+            self.run_worker("get_bookmarks", file_path=path, output_path=s)
+    
+    def action_search_text(self):
+        """텍스트 검색"""
+        path = self.sel_search.get_path()
+        term = self.inp_search.text().strip()
+        
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        if not term:
+            return QMessageBox.warning(self, "알림", "검색어를 입력하세요.")
+        
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "search_results.txt", "텍스트 (*.txt)")
+        if s:
+            self.run_worker("search_text", file_path=path, output_path=s, search_term=term)
+    
+    def action_highlight_text(self):
+        """텍스트 하이라이트"""
+        path = self.sel_search.get_path()
+        term = self.inp_search.text().strip()
+        
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        if not term:
+            return QMessageBox.warning(self, "알림", "검색어를 입력하세요.")
+        
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "highlighted.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker("highlight_text", file_path=path, output_path=s, search_term=term)
