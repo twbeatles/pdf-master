@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PDF Master v2.9 - PyInstaller Spec File (Optimized Onefile)
+# PDF Master v3.1 - PyInstaller Spec File (Optimized Onefile)
+# 버튼 UI 색상 변경: #4f8cff (밝은 파란색)
 
 import sys
 import os
@@ -119,7 +120,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='PDF_Master_v2.9',
+    name='PDF_Master_v3.1',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -139,5 +140,10 @@ exe = EXE(
 # ============== 빌드 명령어 ==============
 # pyinstaller pdf_master.spec
 #
-# 결과물: dist/PDF_Master_v2.9.exe
+# 결과물: dist/PDF_Master_v3.1.exe
 # 예상 크기: 약 20-30MB
+#
+# ============== v3.1 변경 사항 ==============
+# - 버튼 UI 색상 변경: #e94560 → #4f8cff (밝은 파란색)
+# - Dark/Light 테마 모두 파란색 버튼 적용
+# - 가독성 및 시인성 향상

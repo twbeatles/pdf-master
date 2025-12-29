@@ -175,13 +175,28 @@ class WorkerThread(QThread):
         text = self.kwargs.get('text')
         opacity = self.kwargs.get('opacity', 0.3)
         color = self.kwargs.get('color', (0.5, 0.5, 0.5))
+        fontsize = self.kwargs.get('fontsize', 40)
+        rotation = self.kwargs.get('rotation', 45)
+        fontname = self.kwargs.get('fontname', 'helv')  # helv, tiro, cobo, symb
+        position = self.kwargs.get('position', 'center')  # center, tile
+        
         doc = fitz.open(file_path)
         for i, page in enumerate(doc):
-            page.insert_text(
-                fitz.Point(page.rect.width/2, page.rect.height/2),
-                text, fontsize=40, fontname="helv",
-                rotate=45, color=color, fill_opacity=opacity, align=1
-            )
+            if position == 'tile':
+                # 타일 패턴으로 반복
+                for y in range(0, int(page.rect.height), 200):
+                    for x in range(0, int(page.rect.width), 300):
+                        page.insert_text(
+                            fitz.Point(x, y), text, fontsize=fontsize,
+                            fontname=fontname, rotate=rotation,
+                            color=color, fill_opacity=opacity
+                        )
+            else:
+                page.insert_text(
+                    fitz.Point(page.rect.width/2, page.rect.height/2),
+                    text, fontsize=fontsize, fontname=fontname,
+                    rotate=rotation, color=color, fill_opacity=opacity, align=1
+                )
             self.progress_signal.emit(int((i+1)/len(doc) * 100))
         doc.save(output_path)
         doc.close()
@@ -215,14 +230,24 @@ class WorkerThread(QThread):
     def compress(self):
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
+        quality = self.kwargs.get('quality', 'high')  # low, medium, high
+        
+        # 품질별 설정
+        settings = {
+            'low': {'garbage': 4, 'deflate': True, 'deflate_images': True, 'deflate_fonts': True, 'clean': True},
+            'medium': {'garbage': 3, 'deflate': True, 'deflate_images': True},
+            'high': {'garbage': 2, 'deflate': True},
+        }
+        
         doc = fitz.open(file_path)
         original_size = os.path.getsize(file_path)
-        doc.save(output_path, garbage=4, deflate=True)
+        doc.save(output_path, **settings.get(quality, settings['high']))
         doc.close()
         new_size = os.path.getsize(output_path)
         ratio = (1 - new_size / original_size) * 100 if original_size > 0 else 0
         self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 압축 완료!\n{original_size//1024}KB → {new_size//1024}KB ({ratio:.1f}% 감소)")
+        quality_name = {'low': '최대 압축', 'medium': '중간', 'high': '고품질'}.get(quality, '고품질')
+        self.finished_signal.emit(f"✅ 압축 완료! ({quality_name})\n{original_size//1024}KB → {new_size//1024}KB ({ratio:.1f}% 감소)")
 
     def images_to_pdf(self):
         files = self.kwargs.get('files')
@@ -341,22 +366,50 @@ class WorkerThread(QThread):
         """페이지 번호 삽입"""
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
-        position = self.kwargs.get('position', 'bottom')
+        position = self.kwargs.get('position', 'bottom')  # bottom, top, bottom-left, bottom-right, top-left, top-right
         format_str = self.kwargs.get('format', '{n} / {total}')
+        fontsize = self.kwargs.get('fontsize', 10)
+        fontname = self.kwargs.get('fontname', 'helv')
+        color = self.kwargs.get('color', (0, 0, 0))
+        margin = self.kwargs.get('margin', 30)
+        start_number = self.kwargs.get('start_number', 1)  # 시작 번호
+        skip_first = self.kwargs.get('skip_first', False)  # 첫 페이지 건너뛰기
         
         doc = fitz.open(file_path)
         total = len(doc)
         
         for i, page in enumerate(doc):
-            text = format_str.replace('{n}', str(i+1)).replace('{total}', str(total))
+            if skip_first and i == 0:
+                continue
+                
+            page_num = start_number + i if not skip_first else start_number + i - 1
+            text = format_str.replace('{n}', str(page_num)).replace('{total}', str(total))
             rect = page.rect
-            if position == 'bottom':
-                r = fitz.Rect(0, rect.height - 40, rect.width, rect.height - 10)
-            else:
-                r = fitz.Rect(0, 10, rect.width, 40)
             
-            # align=1 (fitz.TEXT_ALIGN_CENTER)
-            page.insert_textbox(r, text, fontsize=10, fontname="helv", color=(0, 0, 0), align=1)
+            # 위치별 텍스트박스 영역 설정
+            if position == 'bottom' or position == 'bottom-center':
+                r = fitz.Rect(0, rect.height - margin - 20, rect.width, rect.height - margin)
+                align = 1  # center
+            elif position == 'top' or position == 'top-center':
+                r = fitz.Rect(0, margin, rect.width, margin + 20)
+                align = 1
+            elif position == 'bottom-left':
+                r = fitz.Rect(margin, rect.height - margin - 20, 150, rect.height - margin)
+                align = 0  # left
+            elif position == 'bottom-right':
+                r = fitz.Rect(rect.width - 150, rect.height - margin - 20, rect.width - margin, rect.height - margin)
+                align = 2  # right
+            elif position == 'top-left':
+                r = fitz.Rect(margin, margin, 150, margin + 20)
+                align = 0
+            elif position == 'top-right':
+                r = fitz.Rect(rect.width - 150, margin, rect.width - margin, margin + 20)
+                align = 2
+            else:
+                r = fitz.Rect(0, rect.height - margin - 20, rect.width, rect.height - margin)
+                align = 1
+            
+            page.insert_textbox(r, text, fontsize=fontsize, fontname=fontname, color=color, align=align)
             self.progress_signal.emit(int((i + 1) / total * 100))
         
         doc.save(output_path)
@@ -882,3 +935,409 @@ class WorkerThread(QThread):
         doc.close()
         self.finished_signal.emit(f"✅ 하이라이트 완료!\n'{search_term}': {highlight_count}개 표시")
 
+    # ===================== v3.0 신규 기능 =====================
+    
+    def extract_tables(self):
+        """PDF에서 테이블 데이터 추출"""
+        import csv
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        
+        doc = fitz.open(file_path)
+        all_tables = []
+        
+        for page_num, page in enumerate(doc):
+            try:
+                tables = page.find_tables()
+                for idx, table in enumerate(tables):
+                    table_data = table.extract()
+                    all_tables.append({
+                        'page': page_num + 1,
+                        'table_idx': idx + 1,
+                        'data': table_data
+                    })
+            except Exception as e:
+                print(f"Page {page_num + 1} table extraction error: {e}")
+            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        
+        # CSV로 저장
+        with open(output_path, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.writer(f)
+            for table in all_tables:
+                writer.writerow([f"--- Page {table['page']}, Table {table['table_idx']} ---"])
+                for row in table['data']:
+                    cleaned_row = [str(cell) if cell else '' for cell in row]
+                    writer.writerow(cleaned_row)
+                writer.writerow([])
+        
+        doc.close()
+        self.finished_signal.emit(f"✅ 테이블 추출 완료!\n{len(all_tables)}개 테이블 발견")
+    
+    def decrypt_pdf(self):
+        """암호화된 PDF 복호화"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        password = self.kwargs.get('password', '')
+        
+        doc = fitz.open(file_path)
+        if doc.is_encrypted:
+            if not doc.authenticate(password):
+                doc.close()
+                raise ValueError("비밀번호가 올바르지 않습니다.")
+        
+        # 암호 없이 저장
+        doc.save(output_path)
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit("✅ PDF 복호화 완료!")
+    
+    def list_annotations(self):
+        """PDF 주석 목록 추출"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        
+        doc = fitz.open(file_path)
+        all_annots = []
+        
+        for page_num, page in enumerate(doc):
+            annots = page.annots()
+            if annots:
+                for annot in annots:
+                    annot_info = annot.info
+                    all_annots.append({
+                        'page': page_num + 1,
+                        'type': annot.type[1] if annot.type else 'Unknown',
+                        'content': annot_info.get('content', '') if annot_info else '',
+                        'title': annot_info.get('title', '') if annot_info else '',
+                        'rect': list(annot.rect)
+                    })
+            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        
+        # 결과 저장
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(f"# 주석 목록: {os.path.basename(file_path)}\n\n")
+            f.write(f"총 {len(all_annots)}개 주석\n\n")
+            for annot in all_annots:
+                f.write(f"## 페이지 {annot['page']} - {annot['type']}\n")
+                if annot['title']:
+                    f.write(f"작성자: {annot['title']}\n")
+                if annot['content']:
+                    f.write(f"내용: {annot['content']}\n")
+                f.write("\n")
+        
+        doc.close()
+        self.kwargs['result_annotations'] = all_annots
+        self.finished_signal.emit(f"✅ 주석 추출 완료!\n{len(all_annots)}개 주석 발견")
+    
+    def add_annotation(self):
+        """PDF에 주석 추가"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        page_num = self.kwargs.get('page_num', 0)
+        annot_type = self.kwargs.get('annot_type', 'text')  # text, sticky, freetext
+        text = self.kwargs.get('text', '')
+        point = self.kwargs.get('point', [100, 100])  # [x, y]
+        rect = self.kwargs.get('rect', [100, 100, 300, 150])  # [x0, y0, x1, y1]
+        
+        doc = fitz.open(file_path)
+        page = doc[page_num]
+        
+        if annot_type == 'text' or annot_type == 'sticky':
+            annot = page.add_text_annot(fitz.Point(point[0], point[1]), text)
+        elif annot_type == 'freetext':
+            annot = page.add_freetext_annot(fitz.Rect(rect), text, fontsize=12)
+        
+        if annot:
+            annot.update()
+        
+        doc.save(output_path)
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 주석 추가 완료!\n페이지 {page_num + 1}")
+    
+    def remove_annotations(self):
+        """PDF에서 모든 주석 제거"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        
+        doc = fitz.open(file_path)
+        count = 0
+        
+        for page in doc:
+            annot = page.first_annot
+            while annot:
+                next_annot = annot.next
+                page.delete_annot(annot)
+                count += 1
+                annot = next_annot
+        
+        doc.save(output_path)
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ {count}개 주석 삭제 완료!")
+    
+    def draw_shapes(self):
+        """PDF에 도형 그리기"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        page_num = self.kwargs.get('page_num', 0)
+        shapes = self.kwargs.get('shapes', [])  # [{type, params, color, width}]
+        
+        doc = fitz.open(file_path)
+        page = doc[page_num]
+        
+        for shape_info in shapes:
+            shape_type = shape_info.get('type', 'line')
+            color = tuple(shape_info.get('color', [1, 0, 0]))
+            width = shape_info.get('width', 1)
+            fill = shape_info.get('fill')
+            
+            if shape_type == 'line':
+                p1 = fitz.Point(shape_info['p1'][0], shape_info['p1'][1])
+                p2 = fitz.Point(shape_info['p2'][0], shape_info['p2'][1])
+                page.draw_line(p1, p2, color=color, width=width)
+            elif shape_type == 'rect':
+                rect = fitz.Rect(shape_info['rect'])
+                page.draw_rect(rect, color=color, width=width, fill=fill)
+            elif shape_type == 'circle':
+                center = fitz.Point(shape_info['center'][0], shape_info['center'][1])
+                radius = shape_info.get('radius', 50)
+                page.draw_circle(center, radius, color=color, width=width, fill=fill)
+            elif shape_type == 'oval':
+                rect = fitz.Rect(shape_info['rect'])
+                page.draw_oval(rect, color=color, width=width, fill=fill)
+        
+        doc.save(output_path)
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ {len(shapes)}개 도형 추가 완료!")
+    
+    def add_link(self):
+        """PDF에 하이퍼링크 추가"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        page_num = self.kwargs.get('page_num', 0)
+        link_type = self.kwargs.get('link_type', 'uri')  # uri, goto
+        rect = self.kwargs.get('rect', [100, 100, 200, 120])  # [x0, y0, x1, y1]
+        target = self.kwargs.get('target')  # URL 또는 페이지 번호
+        
+        doc = fitz.open(file_path)
+        page = doc[page_num]
+        
+        link = {
+            'kind': fitz.LINK_URI if link_type == 'uri' else fitz.LINK_GOTO,
+            'from': fitz.Rect(rect),
+        }
+        
+        if link_type == 'uri':
+            link['uri'] = target
+        else:
+            link['page'] = int(target) - 1  # 0-indexed
+            link['to'] = fitz.Point(0, 0)
+        
+        page.insert_link(link)
+        doc.save(output_path)
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 링크 추가 완료!\n페이지 {page_num + 1}")
+    
+    def list_attachments(self):
+        """PDF 첨부 파일 목록"""
+        file_path = self.kwargs.get('file_path')
+        
+        doc = fitz.open(file_path)
+        attachments = []
+        
+        count = doc.embfile_count()
+        for i in range(count):
+            info = doc.embfile_info(i)
+            attachments.append({
+                'index': i,
+                'name': info.get('name', 'Unknown'),
+                'size': info.get('size', 0),
+                'created': info.get('creationDate', ''),
+            })
+        
+        doc.close()
+        self.kwargs['result_attachments'] = attachments
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 첨부 파일 목록!\n{len(attachments)}개 발견")
+    
+    def add_attachment(self):
+        """PDF에 파일 첨부"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        attach_path = self.kwargs.get('attach_path')
+        
+        doc = fitz.open(file_path)
+        
+        with open(attach_path, 'rb') as f:
+            data = f.read()
+        
+        doc.embfile_add(os.path.basename(attach_path), data)
+        doc.save(output_path)
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 파일 첨부 완료!\n{os.path.basename(attach_path)}")
+    
+    def extract_attachments(self):
+        """PDF 첨부 파일 추출"""
+        file_path = self.kwargs.get('file_path')
+        output_dir = self.kwargs.get('output_dir')
+        
+        doc = fitz.open(file_path)
+        count = 0
+        
+        for i in range(doc.embfile_count()):
+            info = doc.embfile_info(i)
+            data = doc.embfile_get(i)
+            
+            out_path = os.path.join(output_dir, info.get('name', f'attachment_{i}'))
+            with open(out_path, 'wb') as f:
+                f.write(data)
+            count += 1
+            self.progress_signal.emit(int((i + 1) / doc.embfile_count() * 100) if doc.embfile_count() > 0 else 100)
+        
+        doc.close()
+        self.finished_signal.emit(f"✅ {count}개 첨부 파일 추출 완료!")
+    
+    def redact_text(self):
+        """PDF에서 텍스트 영구 삭제 (교정)"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        search_term = self.kwargs.get('search_term', '')
+        fill_color = self.kwargs.get('fill_color', (0, 0, 0))  # 검정색 기본
+        
+        doc = fitz.open(file_path)
+        redact_count = 0
+        
+        for page_num, page in enumerate(doc):
+            text_instances = page.search_for(search_term)
+            for inst in text_instances:
+                page.add_redact_annot(inst, fill=fill_color)
+                redact_count += 1
+            page.apply_redactions()
+            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ {redact_count}개 영역 교정 완료!")
+    
+    def extract_markdown(self):
+        """PDF를 Markdown으로 추출"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        
+        doc = fitz.open(file_path)
+        markdown_text = f"# {os.path.basename(file_path)}\n\n"
+        
+        for page_num, page in enumerate(doc):
+            text = page.get_text("text")
+            markdown_text += f"\n---\n\n## Page {page_num + 1}\n\n"
+            # 기본 텍스트 변환 (단순 줄바꿈 정리)
+            lines = text.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line:
+                    markdown_text += line + "\n\n"
+            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(markdown_text)
+        
+        doc.close()
+        self.finished_signal.emit(f"✅ Markdown 추출 완료!\n{len(doc)}페이지")
+    
+    def copy_page_between_docs(self):
+        """다른 PDF에서 페이지 복사"""
+        source_path = self.kwargs.get('source_path')
+        target_path = self.kwargs.get('target_path')
+        output_path = self.kwargs.get('output_path')
+        source_pages = self.kwargs.get('source_pages', [0])  # 복사할 페이지 번호들 (0-indexed)
+        insert_at = self.kwargs.get('insert_at', -1)  # 삽입 위치 (-1 = 끝)
+        
+        source_doc = fitz.open(source_path)
+        target_doc = fitz.open(target_path)
+        
+        insert_pos = insert_at if insert_at >= 0 else len(target_doc)
+        
+        for i, page_num in enumerate(source_pages):
+            if 0 <= page_num < len(source_doc):
+                target_doc.insert_pdf(source_doc, from_page=page_num, to_page=page_num, start_at=insert_pos + i)
+            self.progress_signal.emit(int((i + 1) / len(source_pages) * 100))
+        
+        target_doc.save(output_path)
+        source_doc.close()
+        target_doc.close()
+        self.finished_signal.emit(f"✅ {len(source_pages)}페이지 복사 완료!")
+    
+    def add_background(self):
+        """PDF 페이지에 배경색 추가"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        color = tuple(self.kwargs.get('color', [1, 1, 0.9]))  # 연한 노란색 기본
+        
+        doc = fitz.open(file_path)
+        
+        for page_num, page in enumerate(doc):
+            rect = page.rect
+            shape = page.new_shape()
+            shape.draw_rect(rect)
+            shape.finish(color=color, fill=color)
+            shape.commit(overlay=False)  # 배경으로 삽입
+            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        self.finished_signal.emit(f"✅ 배경색 추가 완료!\n{len(doc)}페이지")
+    
+    def add_text_markup(self):
+        """검색어에 밑줄 또는 취소선 추가"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        search_term = self.kwargs.get('search_term', '')
+        markup_type = self.kwargs.get('markup_type', 'underline')  # underline, strikeout, squiggly
+        
+        doc = fitz.open(file_path)
+        count = 0
+        
+        for page_num, page in enumerate(doc):
+            instances = page.search_for(search_term)
+            for inst in instances:
+                if markup_type == 'underline':
+                    annot = page.add_underline_annot(inst)
+                elif markup_type == 'strikeout':
+                    annot = page.add_strikeout_annot(inst)
+                elif markup_type == 'squiggly':
+                    annot = page.add_squiggly_annot(inst)
+                if annot:
+                    annot.update()
+                count += 1
+            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        
+        doc.save(output_path)
+        doc.close()
+        markup_name = {'underline': '밑줄', 'strikeout': '취소선', 'squiggly': '물결선'}.get(markup_type, markup_type)
+        self.finished_signal.emit(f"✅ {markup_name} 추가 완료!\n'{search_term}': {count}개")
+    
+    def insert_textbox(self):
+        """PDF에 텍스트 상자 삽입"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        page_num = self.kwargs.get('page_num', 0)
+        rect = self.kwargs.get('rect', [100, 100, 300, 150])  # [x0, y0, x1, y1]
+        text = self.kwargs.get('text', '')
+        fontsize = self.kwargs.get('fontsize', 12)
+        color = tuple(self.kwargs.get('color', [0, 0, 0]))
+        align = self.kwargs.get('align', 0)  # 0=left, 1=center, 2=right
+        
+        doc = fitz.open(file_path)
+        page = doc[page_num]
+        
+        page.insert_textbox(fitz.Rect(rect), text, fontsize=fontsize, 
+                           fontname="helv", color=color, align=align)
+        
+        doc.save(output_path)
+        doc.close()
+        self.progress_signal.emit(100)
+        self.finished_signal.emit(f"✅ 텍스트 상자 삽입 완료!\n페이지 {page_num + 1}")
