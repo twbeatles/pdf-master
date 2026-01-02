@@ -3,33 +3,40 @@
 # UI Colors & Fonts Constants
 # -------------------------------------------------------------------------
 class ThemeColors:
-    """향상된 색상 팔레트 (GitHub 스타일)"""
+    """향상된 색상 팔레트 (v3.3 통일 테마)"""
+    # Primary Accent (통일된 파란색)
+    PRIMARY = "#4f8cff"
+    PRIMARY_LIGHT = "#6ba0ff"
+    PRIMARY_DARK = "#3a7ae8"
+    
+    # Semantic Colors
+    SUCCESS = "#00d9a0"
+    SUCCESS_DARK = "#00b886"
+    WARNING = "#f0a020"
+    DANGER = "#ff6b6b"
+    DANGER_DARK = "#dc2626"
+    
     # Dark Theme
     DARK_BG = "#0d1117"
     DARK_CARD = "#161b22"
     DARK_BORDER = "#30363d"
-    DARK_ACCENT = "#e94560"
     DARK_TEXT = "#e6edf3"
     DARK_TEXT_SECONDARY = "#8b949e"
-    DARK_SUCCESS = "#00d9a0"
-    DARK_WARNING = "#f0a020"
-    DARK_DANGER = "#ff6b6b"
+    DARK_GLASS = "rgba(22, 27, 34, 0.85)"
     
     # Light Theme
     LIGHT_BG = "#f6f8fa"
     LIGHT_CARD = "#ffffff"
     LIGHT_BORDER = "#d0d7de"
-    LIGHT_ACCENT = "#e94560"
     LIGHT_TEXT = "#1f2328"
     LIGHT_TEXT_SECONDARY = "#656d76"
-    LIGHT_SUCCESS = "#00a080"
-    LIGHT_WARNING = "#d97706"
-    LIGHT_DANGER = "#dc2626"
+    LIGHT_GLASS = "rgba(255, 255, 255, 0.85)"
     
-    # Shared
+    # Button Gradients (v3.3)
     BTN_GRADIENT_START = "#4f8cff"
     BTN_GRADIENT_END = "#3a7ae8"
     BTN_HOVER_START = "#6ba0ff"
+
 
 # -------------------------------------------------------------------------
 # Dark Theme Stylesheet
@@ -65,7 +72,7 @@ QTabBar::tab:selected {
     color: #fff; 
     font-weight: bold; 
     border: 1px solid #30363d;
-    border-bottom: 3px solid #e94560; 
+    border-bottom: 3px solid #4f8cff; 
 }
 QTabBar::tab:hover:!selected { 
     background: #30363d; 
@@ -129,7 +136,7 @@ QListWidget, QLineEdit, QSpinBox, QComboBox {
     border-radius: 6px; 
     padding: 8px; 
     color: #e6edf3;
-    selection-background-color: #e94560;
+    selection-background-color: #4f8cff;
 }
 QListWidget::item { 
     padding: 10px; 
@@ -137,14 +144,14 @@ QListWidget::item {
     border-radius: 4px;
 }
 QListWidget::item:selected { 
-    background: #e94560; 
+    background: #4f8cff; 
     border-radius: 4px; 
 }
 QListWidget::item:hover:!selected { 
     background: #21262d; 
 }
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus { 
-    border: 1px solid #e94560;
+    border: 1px solid #4f8cff;
     background-color: #161b22;
 }
 
@@ -159,33 +166,34 @@ QProgressBar {
     height: 20px; 
 }
 QProgressBar::chunk { 
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #e94560, stop:1 #ff7b9a); 
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f8cff, stop:1 #6ba0ff); 
     border-radius: 6px; 
 }
 
-/* ===== 그룹 박스 ===== */
+/* ===== 그룹 박스 (글래스모피즘) ===== */
 QGroupBox { 
     border: 1px solid #30363d; 
-    border-radius: 10px; 
+    border-radius: 12px; 
     margin-top: 12px; 
-    padding: 18px 12px 12px 12px;
+    padding: 20px 14px 14px 14px;
     font-weight: bold; 
-    color: #e94560;
-    background-color: #161b22;
+    color: #4f8cff;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(22, 27, 34, 0.95), stop:1 rgba(13, 17, 23, 0.9));
 }
 QGroupBox::title { 
     subcontrol-origin: margin; 
     subcontrol-position: top left; 
-    padding: 0 10px; 
+    padding: 2px 12px; 
     left: 15px;
-    background-color: #161b22;
+    background: #161b22;
+    border-radius: 4px;
 }
 
 /* ===== 라벨 ===== */
 QLabel#header { 
     font-size: 28px; 
     font-weight: 800; 
-    color: #e94560; 
+    color: #4f8cff; 
 }
 QLabel#desc { 
     color: #8b949e; 
@@ -237,7 +245,7 @@ QScrollBar::handle:horizontal:hover {
 QToolTip { 
     background-color: #161b22; 
     color: #e6edf3; 
-    border: 1px solid #e94560; 
+    border: 1px solid #4f8cff; 
     padding: 8px; 
     border-radius: 6px;
     font-size: 12px;
@@ -252,12 +260,12 @@ QComboBox::down-arrow {
     image: none; 
     border-left: 5px solid transparent; 
     border-right: 5px solid transparent; 
-    border-top: 6px solid #e94560; 
+    border-top: 6px solid #4f8cff; 
 }
 QComboBox QAbstractItemView { 
     background-color: #161b22; 
     border: 1px solid #30363d; 
-    selection-background-color: #e94560;
+    selection-background-color: #4f8cff;
     border-radius: 6px;
 }
 
@@ -273,12 +281,12 @@ QSpinBox::up-button:hover, QSpinBox::down-button:hover {
 QSpinBox::up-arrow { 
     border-left: 4px solid transparent; 
     border-right: 4px solid transparent; 
-    border-bottom: 5px solid #e94560; 
+    border-bottom: 5px solid #4f8cff; 
 }
 QSpinBox::down-arrow { 
     border-left: 4px solid transparent; 
     border-right: 4px solid transparent; 
-    border-top: 5px solid #e94560; 
+    border-top: 5px solid #4f8cff; 
 }
 
 /* ===== 스플리터 ===== */
@@ -287,7 +295,7 @@ QSplitter::handle {
     width: 2px;
 }
 QSplitter::handle:hover {
-    background: #e94560;
+    background: #4f8cff;
 }
 
 /* ===== 메뉴 ===== */
@@ -315,7 +323,7 @@ QMenu::item {
     margin: 2px 4px;
 }
 QMenu::item:selected { 
-    background-color: #e94560; 
+    background-color: #4f8cff; 
 }
 QMenu::separator {
     height: 1px;
@@ -363,7 +371,7 @@ QTabBar::tab:selected {
     background: #fff; 
     color: #1f2328; 
     font-weight: bold; 
-    border-bottom: 3px solid #e94560; 
+    border-bottom: 3px solid #4f8cff; 
 }
 QTabBar::tab:hover:!selected { 
     background: #eaeef2; 
@@ -394,7 +402,7 @@ QPushButton#secondaryBtn {
 }
 QPushButton#secondaryBtn:hover { 
     background: #f6f8fa; 
-    border-color: #e94560; 
+    border-color: #4f8cff; 
 }
 
 /* Action Button (Green) */
@@ -418,14 +426,14 @@ QListWidget, QLineEdit, QSpinBox, QComboBox {
     color: #1f2328; 
 }
 QListWidget::item:selected { 
-    background: #e94560; 
+    background: #4f8cff; 
     color: white; 
 }
 QListWidget::item:hover:!selected {
     background: #f6f8fa;
 }
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus { 
-    border: 1px solid #e94560; 
+    border: 1px solid #4f8cff; 
 }
 
 /* ===== 진행 바 ===== */
@@ -438,26 +446,27 @@ QProgressBar {
     font-weight: bold; 
 }
 QProgressBar::chunk { 
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #e94560, stop:1 #ff7b9a); 
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f8cff, stop:1 #6ba0ff); 
     border-radius: 6px; 
 }
 
-/* ===== 그룹 박스 ===== */
+/* ===== 그룹 박스 (글래스모피즘) ===== */
 QGroupBox { 
     border: 1px solid #d0d7de; 
-    border-radius: 10px; 
+    border-radius: 12px; 
     margin-top: 12px; 
-    padding: 18px 12px 12px 12px;
+    padding: 20px 14px 14px 14px;
     font-weight: bold; 
-    color: #e94560; 
-    background-color: #fff; 
+    color: #4f8cff; 
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 255, 255, 0.95), stop:1 rgba(246, 248, 250, 0.9));
 }
 QGroupBox::title { 
     subcontrol-origin: margin; 
     subcontrol-position: top left; 
-    padding: 0 10px; 
+    padding: 2px 12px; 
     left: 15px; 
-    background-color: #fff; 
+    background: #fff;
+    border-radius: 4px;
 }
 
 /* ===== 라벨 ===== */
@@ -468,7 +477,7 @@ QLabel {
 QLabel#header { 
     font-size: 28px; 
     font-weight: 800; 
-    color: #e94560; 
+    color: #4f8cff; 
 }
 QLabel#desc { 
     color: #656d76; 
@@ -509,7 +518,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 QToolTip { 
     background-color: #fff; 
     color: #1f2328; 
-    border: 1px solid #e94560; 
+    border: 1px solid #4f8cff; 
     padding: 8px; 
     border-radius: 6px; 
 }
@@ -518,7 +527,7 @@ QToolTip {
 QComboBox QAbstractItemView { 
     background-color: #fff; 
     border: 1px solid #d0d7de; 
-    selection-background-color: #e94560; 
+    selection-background-color: #4f8cff; 
     color: #1f2328; 
 }
 
@@ -527,7 +536,7 @@ QSplitter::handle {
     background: #d0d7de; 
 }
 QSplitter::handle:hover {
-    background: #e94560;
+    background: #4f8cff;
 }
 
 /* ===== 메뉴 ===== */
@@ -555,7 +564,7 @@ QMenu::item {
     margin: 2px 4px;
 }
 QMenu::item:selected { 
-    background-color: #e94560; 
+    background-color: #4f8cff; 
     color: white; 
 }
 QMenu::separator {
@@ -575,7 +584,7 @@ QToolButton {
 }
 QToolButton:hover { 
     background: #f6f8fa; 
-    border-color: #e94560; 
+    border-color: #4f8cff; 
 }
 
 /* ===== 프레임 ===== */

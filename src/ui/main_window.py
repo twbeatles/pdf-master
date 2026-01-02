@@ -251,7 +251,7 @@ class PDFMasterApp(QMainWindow):
   • PyMuPDF (PDF Processing)
 
 📧 Made with ❤️
-© 2024-2025"""
+© 2025-2026"""
         QMessageBox.about(self, f"{APP_NAME} 정보", about_text)
         
     def _create_header(self):
@@ -1650,6 +1650,80 @@ class PDFMasterApp(QMainWindow):
         l_redact.addWidget(b_redact)
         layout.addWidget(grp_redact)
         
+        # v3.2: 스티키 노트 주석
+        grp_sticky = QGroupBox("📌 스티키 노트 (메모 주석)")
+        l_sticky = QVBoxLayout(grp_sticky)
+        self.sel_sticky = FileSelectorWidget()
+        self.sel_sticky.pathChanged.connect(self._update_preview)
+        l_sticky.addWidget(self.sel_sticky)
+        sticky_opts1 = QHBoxLayout()
+        sticky_opts1.addWidget(QLabel("위치 X:"))
+        self.spn_sticky_x = QSpinBox()
+        self.spn_sticky_x.setRange(0, 999)
+        self.spn_sticky_x.setValue(100)
+        sticky_opts1.addWidget(self.spn_sticky_x)
+        sticky_opts1.addWidget(QLabel("Y:"))
+        self.spn_sticky_y = QSpinBox()
+        self.spn_sticky_y.setRange(0, 999)
+        self.spn_sticky_y.setValue(100)
+        sticky_opts1.addWidget(self.spn_sticky_y)
+        sticky_opts1.addWidget(QLabel("페이지:"))
+        self.spn_sticky_page = QSpinBox()
+        self.spn_sticky_page.setRange(1, 9999)
+        self.spn_sticky_page.setValue(1)
+        sticky_opts1.addWidget(self.spn_sticky_page)
+        sticky_opts1.addStretch()
+        l_sticky.addLayout(sticky_opts1)
+        sticky_opts2 = QHBoxLayout()
+        sticky_opts2.addWidget(QLabel("아이콘:"))
+        self.cmb_sticky_icon = QComboBox()
+        self.cmb_sticky_icon.addItems(["Note", "Comment", "Key", "Help", "Insert", "Paragraph"])
+        sticky_opts2.addWidget(self.cmb_sticky_icon)
+        sticky_opts2.addStretch()
+        l_sticky.addLayout(sticky_opts2)
+        l_sticky.addWidget(QLabel("메모 내용:"))
+        self.txt_sticky_content = QLineEdit()
+        self.txt_sticky_content.setPlaceholderText("스티키 노트에 표시할 메모 내용...")
+        l_sticky.addWidget(self.txt_sticky_content)
+        b_sticky = QPushButton("📌 스티키 노트 추가")
+        b_sticky.clicked.connect(self.action_add_sticky_note)
+        l_sticky.addWidget(b_sticky)
+        layout.addWidget(grp_sticky)
+        
+        # v3.2: 프리핸드 드로잉
+        grp_ink = QGroupBox("✏️ 프리핸드 드로잉")
+        l_ink = QVBoxLayout(grp_ink)
+        self.sel_ink = FileSelectorWidget()
+        self.sel_ink.pathChanged.connect(self._update_preview)
+        l_ink.addWidget(self.sel_ink)
+        ink_opts1 = QHBoxLayout()
+        ink_opts1.addWidget(QLabel("페이지:"))
+        self.spn_ink_page = QSpinBox()
+        self.spn_ink_page.setRange(1, 9999)
+        self.spn_ink_page.setValue(1)
+        ink_opts1.addWidget(self.spn_ink_page)
+        ink_opts1.addWidget(QLabel("선 두께:"))
+        self.spn_ink_width = QSpinBox()
+        self.spn_ink_width.setRange(1, 10)
+        self.spn_ink_width.setValue(2)
+        ink_opts1.addWidget(self.spn_ink_width)
+        ink_opts1.addWidget(QLabel("색상:"))
+        self.cmb_ink_color = QComboBox()
+        self.cmb_ink_color.addItems(["파랑", "빨강", "검정", "녹색"])
+        ink_opts1.addWidget(self.cmb_ink_color)
+        ink_opts1.addStretch()
+        l_ink.addLayout(ink_opts1)
+        ink_guide = QLabel("📝 좌표 형식: x1,y1;x2,y2;x3,y3 (예: 100,100;150,120;200,100)")
+        ink_guide.setObjectName("desc")
+        l_ink.addWidget(ink_guide)
+        self.txt_ink_points = QLineEdit()
+        self.txt_ink_points.setPlaceholderText("좌표 입력: 100,100;150,120;200,100")
+        l_ink.addWidget(self.txt_ink_points)
+        b_ink = QPushButton("✏️ 프리핸드 드로잉 추가")
+        b_ink.clicked.connect(self.action_add_ink_annotation)
+        l_ink.addWidget(b_ink)
+        layout.addWidget(grp_ink)
+        
         layout.addStretch()
         scroll.setWidget(content)
         main_layout = QVBoxLayout(widget)
@@ -2186,3 +2260,59 @@ class PDFMasterApp(QMainWindow):
         s, _ = QFileDialog.getSaveFileName(self, "저장", "with_background.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("add_background", file_path=path, output_path=s, color=color)
+
+    # ===================== v3.2 신규 기능 액션 =====================
+    
+    def action_add_sticky_note(self):
+        """스티키 노트 추가"""
+        path = self.sel_sticky.get_path()
+        content = self.txt_sticky_content.text().strip()
+        
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        if not content:
+            return QMessageBox.warning(self, "알림", "메모 내용을 입력하세요.")
+        
+        x = self.spn_sticky_x.value()
+        y = self.spn_sticky_y.value()
+        page_num = self.spn_sticky_page.value() - 1
+        icon = self.cmb_sticky_icon.currentText()
+        
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_note.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker("add_sticky_note", file_path=path, output_path=s,
+                          page_num=page_num, x=x, y=y, content=content, icon=icon)
+    
+    def action_add_ink_annotation(self):
+        """프리핸드 드로잉 추가"""
+        path = self.sel_ink.get_path()
+        points_text = self.txt_ink_points.text().strip()
+        
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        if not points_text:
+            return QMessageBox.warning(self, "알림", "좌표를 입력하세요. 형식: x1,y1;x2,y2;x3,y3")
+        
+        # 좌표 파싱
+        try:
+            points = []
+            for pt in points_text.split(";"):
+                coords = pt.strip().split(",")
+                if len(coords) >= 2:
+                    points.append([float(coords[0]), float(coords[1])])
+            
+            if len(points) < 2:
+                return QMessageBox.warning(self, "알림", "최소 2개 이상의 좌표가 필요합니다.")
+        except Exception as e:
+            return QMessageBox.warning(self, "오류", f"좌표 형식 오류: {e}")
+        
+        page_num = self.spn_ink_page.value() - 1
+        width = self.spn_ink_width.value()
+        
+        color_map = {"파랑": (0, 0, 1), "빨강": (1, 0, 0), "검정": (0, 0, 0), "녹색": (0, 0.5, 0)}
+        color = color_map.get(self.cmb_ink_color.currentText(), (0, 0, 1))
+        
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_drawing.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker("add_ink_annotation", file_path=path, output_path=s,
+                          page_num=page_num, points=points, color=color, width=width)

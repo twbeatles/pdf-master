@@ -61,27 +61,33 @@ class DropZoneWidget(QFrame):
         if self._is_dark_theme:
             self.setStyleSheet("""
                 DropZoneWidget {
-                    border: 2px dashed #555;
-                    border-radius: 10px;
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1a1a2e, stop:1 #0f0f23);
+                    border: 2px dashed #4f8cff;
+                    border-radius: 12px;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(22, 27, 34, 0.9), stop:1 rgba(13, 17, 23, 0.95));
                 }
-                DropZoneWidget:hover { border-color: #e94560; }
+                DropZoneWidget:hover { 
+                    border-color: #6ba0ff; 
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(30, 40, 55, 0.95), stop:1 rgba(22, 27, 34, 0.95));
+                }
             """)
-            self.text_label.setStyleSheet("color: #888; font-size: 13px; background: transparent; border: none;")
-            self.hint_label.setStyleSheet("color: #555; font-size: 11px; background: transparent; border: none;")
-            self.path_label.setStyleSheet("color: #00d9a0; font-size: 12px; background: transparent; border: none;")
+            self.text_label.setStyleSheet("color: #8b949e; font-size: 13px; background: transparent; border: none;")
+            self.hint_label.setStyleSheet("color: #6e7681; font-size: 11px; background: transparent; border: none;")
+            self.path_label.setStyleSheet("color: #00d9a0; font-size: 12px; font-weight: bold; background: transparent; border: none;")
         else:
             self.setStyleSheet("""
                 DropZoneWidget {
-                    border: 2px dashed #ccc;
-                    border-radius: 10px;
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #fff, stop:1 #f5f5f5);
+                    border: 2px dashed #4f8cff;
+                    border-radius: 12px;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 255, 255, 0.95), stop:1 rgba(246, 248, 250, 0.9));
                 }
-                DropZoneWidget:hover { border-color: #e94560; }
+                DropZoneWidget:hover { 
+                    border-color: #6ba0ff;
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 255, 255, 1), stop:1 rgba(240, 245, 250, 0.95));
+                }
             """)
-            self.text_label.setStyleSheet("color: #666; font-size: 13px; background: transparent; border: none;")
-            self.hint_label.setStyleSheet("color: #999; font-size: 11px; background: transparent; border: none;")
-            self.path_label.setStyleSheet("color: #00a080; font-size: 12px; background: transparent; border: none;")
+            self.text_label.setStyleSheet("color: #656d76; font-size: 13px; background: transparent; border: none;")
+            self.hint_label.setStyleSheet("color: #8c959f; font-size: 11px; background: transparent; border: none;")
+            self.path_label.setStyleSheet("color: #00a080; font-size: 12px; font-weight: bold; background: transparent; border: none;")
         
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -91,13 +97,13 @@ class DropZoneWidget(QFrame):
                     self._is_dragging = True
                     self.setStyleSheet("""
                         DropZoneWidget {
-                            border: 2px solid #e94560;
-                            border-radius: 10px;
-                            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2a1a3e, stop:1 #1f0f33);
+                            border: 3px solid #4f8cff;
+                            border-radius: 12px;
+                            background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(79, 140, 255, 0.15), stop:1 rgba(58, 122, 232, 0.1));
                         }
                     """)
-                    self.text_label.setText("✓ 여기에 놓으세요!")
-                    self.text_label.setStyleSheet("color: #e94560; font-size: 14px; font-weight: bold; background: transparent; border: none;")
+                    self.text_label.setText("✅ 여기에 놓으세요!")
+                    self.text_label.setStyleSheet("color: #4f8cff; font-size: 15px; font-weight: bold; background: transparent; border: none;")
                     event.acceptProposedAction()
                     return
         event.ignore()
@@ -240,7 +246,7 @@ class FileListWidget(QListWidget):
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
-            self.setStyleSheet("QListWidget { border: 2px solid #e94560; }")
+            self.setStyleSheet("QListWidget { border: 2px solid #4f8cff; background: rgba(79, 140, 255, 0.05); }")
         else:
             super().dragEnterEvent(event)
     
