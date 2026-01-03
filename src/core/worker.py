@@ -100,14 +100,18 @@ class WorkerThread(QThread):
         for file_idx, file_path in enumerate(file_paths):
             if not file_path or not os.path.exists(file_path):
                 continue
-            doc = fitz.open(file_path)
-            base = os.path.splitext(os.path.basename(file_path))[0]
-            for i, page in enumerate(doc):
-                pix = page.get_pixmap(matrix=mat)
-                save_path = os.path.join(output_dir, f"{base}_p{i+1:03d}.{fmt}")
-                pix.save(save_path)
-                total_pages_done += 1
-            doc.close()
+            doc = None
+            try:
+                doc = fitz.open(file_path)
+                base = os.path.splitext(os.path.basename(file_path))[0]
+                for i, page in enumerate(doc):
+                    pix = page.get_pixmap(matrix=mat)
+                    save_path = os.path.join(output_dir, f"{base}_p{i+1:03d}.{fmt}")
+                    pix.save(save_path)
+                    total_pages_done += 1
+            finally:
+                if doc:
+                    doc.close()
             self.progress_signal.emit(int((file_idx + 1) / total_files * 100))
         
         self.finished_signal.emit(f"✅ 변환 완료!\n{total_files}개 파일 → {fmt.upper()} 이미지")
@@ -289,7 +293,7 @@ class WorkerThread(QThread):
                     page.insert_text(
                         fitz.Point(page.rect.width/2, page.rect.height/2),
                         text, fontsize=actual_fontsize, fontname=fontname,
-                        rotate=rotation, color=color, fill_opacity=opacity, align=1
+                        rotate=rotation, color=color, fill_opacity=opacity
                     )
             self.progress_signal.emit(int((i+1)/len(doc) * 100))
         doc.save(output_path)
@@ -897,8 +901,9 @@ class WorkerThread(QThread):
             f.write(f"- 총 이미지 수: {total_images}\n")
             f.write(f"- 사용 폰트: {', '.join(fonts_used) if fonts_used else '없음'}\n")
         
+        page_count = len(doc)  # 닫기 전에 저장
         doc.close()
-        self.finished_signal.emit(f"✅ PDF 정보 추출 완료!\n{len(doc)}페이지, {total_chars:,}자, {total_images}개 이미지")
+        self.finished_signal.emit(f"✅ PDF 정보 추출 완료!\n{page_count}페이지, {total_chars:,}자, {total_images}개 이미지")
     
     def duplicate_page(self):
         """페이지 복제"""
@@ -924,6 +929,14 @@ class WorkerThread(QThread):
         
         doc = fitz.open(file_path)
         page_count = len(doc)
+        
+        # 단일 페이지 PDF 처리
+        if page_count <= 1:
+            doc.save(output_path)
+            doc.close()
+            self.progress_signal.emit(100)
+            self.finished_signal.emit("✅ 역순 정렬 완료!\n1페이지 (변경 없음)")
+            return
         
         # 역순으로 페이지 이동
         for i in range(page_count - 1):
@@ -1448,9 +1461,16 @@ class WorkerThread(QThread):
         output_dir = self.kwargs.get('output_dir')
         
         doc = fitz.open(file_path)
+        total = doc.embfile_count()
         count = 0
         
-        for i in range(doc.embfile_count()):
+        if total == 0:
+            doc.close()
+            self.progress_signal.emit(100)
+            self.finished_signal.emit("✅ 첨부 파일이 없습니다.")
+            return
+        
+        for i in range(total):
             info = doc.embfile_info(i)
             data = doc.embfile_get(i)
             
@@ -1458,7 +1478,7 @@ class WorkerThread(QThread):
             with open(out_path, 'wb') as f:
                 f.write(data)
             count += 1
-            self.progress_signal.emit(int((i + 1) / doc.embfile_count() * 100) if doc.embfile_count() > 0 else 100)
+            self.progress_signal.emit(int((i + 1) / total * 100))
         
         doc.close()
         self.finished_signal.emit(f"✅ {count}개 첨부 파일 추출 완료!")

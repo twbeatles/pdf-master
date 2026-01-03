@@ -336,6 +336,34 @@ QFrame#statusFrame {
     background-color: #161b22;
     border-top: 1px solid #30363d;
 }
+
+/* ===== 네비게이션 버튼 (미리보기) ===== */
+QPushButton#navBtn {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4f8cff, stop:1 #3a7ae8);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 6px 12px;
+}
+QPushButton#navBtn:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6ba0ff, stop:1 #4f8cff);
+}
+
+/* ===== 액센트 버튼 (헤더) ===== */
+QPushButton#accentBtn {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4f8cff, stop:1 #3a7ae8);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 8px 14px;
+}
+QPushButton#accentBtn:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6ba0ff, stop:1 #4f8cff);
+}
 """
 
 # -------------------------------------------------------------------------
@@ -595,5 +623,33 @@ QFrame {
 QFrame#statusFrame {
     background-color: #fff;
     border-top: 1px solid #d0d7de;
+}
+
+/* ===== 네비게이션 버튼 (미리보기) ===== */
+QPushButton#navBtn {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4f8cff, stop:1 #3a7ae8);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 6px 12px;
+}
+QPushButton#navBtn:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6ba0ff, stop:1 #4f8cff);
+}
+
+/* ===== 액센트 버튼 (헤더) ===== */
+QPushButton#accentBtn {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4f8cff, stop:1 #3a7ae8);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 8px 14px;
+}
+QPushButton#accentBtn:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #6ba0ff, stop:1 #4f8cff);
 }
 """

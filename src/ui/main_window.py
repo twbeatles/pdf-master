@@ -19,7 +19,7 @@ from .widgets import FileSelectorWidget, FileListWidget, ImageListWidget, DropZo
 from .styles import DARK_STYLESHEET, LIGHT_STYLESHEET, ThemeColors
 
 APP_NAME = "PDF Master"
-VERSION = "3.0"
+VERSION = "3.1"
 
 class PDFMasterApp(QMainWindow):
     def __init__(self):
@@ -141,6 +141,9 @@ class PDFMasterApp(QMainWindow):
         QShortcut(QKeySequence("Ctrl+2"), self, lambda: self.tabs.setCurrentIndex(1))
         QShortcut(QKeySequence("Ctrl+3"), self, lambda: self.tabs.setCurrentIndex(2))
         QShortcut(QKeySequence("Ctrl+4"), self, lambda: self.tabs.setCurrentIndex(3))
+        QShortcut(QKeySequence("Ctrl+5"), self, lambda: self.tabs.setCurrentIndex(4))
+        QShortcut(QKeySequence("Ctrl+6"), self, lambda: self.tabs.setCurrentIndex(5))
+        QShortcut(QKeySequence("Ctrl+7"), self, lambda: self.tabs.setCurrentIndex(6))
     
     def _shortcut_open_file(self):
         """Open file via shortcut"""
@@ -167,8 +170,13 @@ class PDFMasterApp(QMainWindow):
         """윈도우 위치/크기 복원"""
         geo = self.settings.get("window_geometry")
         if geo:
-            self.setGeometry(geo.get("x", 100), geo.get("y", 100), 
-                           geo.get("width", 1200), geo.get("height", 850))
+            self.setGeometry(
+                int(geo.get("x", 100)), 
+                int(geo.get("y", 100)), 
+                int(geo.get("width", 1200)), 
+                int(geo.get("height", 850))
+            )
+
     
     def closeEvent(self, event):
         """앱 종료 시 윈도우 위치 저장"""
@@ -234,7 +242,8 @@ class PDFMasterApp(QMainWindow):
 
 🔹 Ctrl + O  :  파일 열기
 🔹 Ctrl + Q  :  프로그램 종료
-🔹 Ctrl + 1~4  :  탭 전환 (1:병합, 2:변환, 3:페이지, 4:순서)
+🔹 Ctrl + T  :  테마 전환
+🔹 Ctrl + 1~7 :  탭 전환
 🔹 F1  :  도움말 표시"""
         QMessageBox.information(self, "키보드 단축키", shortcuts_text)
     
@@ -258,10 +267,9 @@ class PDFMasterApp(QMainWindow):
         header = QHBoxLayout()
         header.setSpacing(15)
         
-        # 컴팩트한 타이틀
+        # 컴팩트한 타이틀 - 테마 통일 (파란색)
         title = QLabel(f"📑 {APP_NAME}")
         title.setObjectName("header")
-        title.setStyleSheet("font-size: 22px; font-weight: bold; color: #e94560;")
         header.addWidget(title)
         
         ver_label = QLabel(f"v{VERSION}")
@@ -270,18 +278,18 @@ class PDFMasterApp(QMainWindow):
         
         header.addStretch()
         
-        # Theme toggle
+        # Theme toggle - objectName으로 스타일 적용
         theme_text = "DARK" if self.settings.get("theme") == "dark" else "LIGHT"
         self.btn_theme = QPushButton(theme_text)
+        self.btn_theme.setObjectName("accentBtn")
         self.btn_theme.setMinimumSize(70, 32)
-        self.btn_theme.setStyleSheet("QPushButton { background-color: #e94560; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; padding: 5px 10px; } QPushButton:hover { background-color: #ff5a7a; }")
         self.btn_theme.clicked.connect(self._toggle_theme)
         header.addWidget(self.btn_theme)
         
-        # Help button
+        # Help button - objectName으로 스타일 적용
         btn_help = QPushButton("HELP")
+        btn_help.setObjectName("accentBtn")
         btn_help.setMinimumSize(60, 32)
-        btn_help.setStyleSheet("QPushButton { background-color: #e94560; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; padding: 5px 10px; } QPushButton:hover { background-color: #ff5a7a; }")
         btn_help.clicked.connect(self._show_help)
         header.addWidget(btn_help)
         
@@ -308,11 +316,11 @@ class PDFMasterApp(QMainWindow):
                                           self.preview_image.sizePolicy().verticalPolicy())
         layout.addWidget(self.preview_image, 1)
         
-        # 페이지 네비게이션 버튼
+        # 페이지 네비게이션 버튼 - objectName 사용
         nav_layout = QHBoxLayout()
-        self.btn_prev_page = QPushButton("PREV")
-        self.btn_prev_page.setMinimumSize(70, 30)
-        self.btn_prev_page.setStyleSheet("QPushButton { background-color: #e94560; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; } QPushButton:hover { background-color: #ff5a7a; }")
+        self.btn_prev_page = QPushButton("◀ PREV")
+        self.btn_prev_page.setObjectName("navBtn")
+        self.btn_prev_page.setFixedSize(80, 30)
         self.btn_prev_page.clicked.connect(self._prev_preview_page)
         nav_layout.addWidget(self.btn_prev_page)
         
@@ -321,9 +329,9 @@ class PDFMasterApp(QMainWindow):
         self.page_counter.setStyleSheet("font-weight: bold; min-width: 60px; color: #eaeaea;")
         nav_layout.addWidget(self.page_counter)
         
-        self.btn_next_page = QPushButton("NEXT")
-        self.btn_next_page.setMinimumSize(70, 30)
-        self.btn_next_page.setStyleSheet("QPushButton { background-color: #e94560; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 11px; } QPushButton:hover { background-color: #ff5a7a; }")
+        self.btn_next_page = QPushButton("NEXT ▶")
+        self.btn_next_page.setObjectName("navBtn")
+        self.btn_next_page.setFixedSize(80, 30)
         self.btn_next_page.clicked.connect(self._next_preview_page)
         nav_layout.addWidget(self.btn_next_page)
         layout.addLayout(nav_layout)
@@ -343,6 +351,7 @@ class PDFMasterApp(QMainWindow):
     def _render_preview_page(self):
         if not hasattr(self, '_current_preview_path') or not self._current_preview_path:
             return
+        doc = None
         try:
             doc = fitz.open(self._current_preview_path)
             if self._current_preview_page < len(doc):
@@ -357,9 +366,11 @@ class PDFMasterApp(QMainWindow):
                 scaled = pixmap.scaled(target_w, target_h, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                 self.preview_image.setPixmap(scaled)
                 self.page_counter.setText(f"{self._current_preview_page + 1} / {self._preview_total_pages}")
-            doc.close()
         except Exception as e:
-            print(f"Preview render error: {e}")
+            logger.warning(f"Preview render error: {e}")
+        finally:
+            if doc:
+                doc.close()
     
     def _on_list_item_clicked(self, item):
         """리스트 아이템 클릭 시 미리보기 업데이트"""
@@ -867,6 +878,32 @@ class PDFMasterApp(QMainWindow):
         content = QWidget()
         content_layout = QVBoxLayout(content)
         
+        # 🔢 페이지 번호 삽입 (최상단)
+        grp_pn = QGroupBox("🔢 페이지 번호 삽입")
+        l_pn = QVBoxLayout(grp_pn)
+        self.sel_pn = FileSelectorWidget()
+        self.sel_pn.pathChanged.connect(self._update_preview)
+        l_pn.addWidget(self.sel_pn)
+        guide_pn = QLabel("📌 형식: {n}=현재페이지, {total}=전체페이지")
+        guide_pn.setObjectName("desc")
+        l_pn.addWidget(guide_pn)
+        opt_pn = QHBoxLayout()
+        opt_pn.addWidget(QLabel("위치:"))
+        self.cmb_pn_pos = QComboBox()
+        self.cmb_pn_pos.addItems(["하단 중앙", "상단 중앙", "하단 좌측", "하단 우측", "상단 좌측", "상단 우측"])
+        self.cmb_pn_pos.setToolTip("페이지 번호 위치 선택")
+        opt_pn.addWidget(self.cmb_pn_pos)
+        opt_pn.addWidget(QLabel("형식:"))
+        self.cmb_pn_format = QComboBox()
+        self.cmb_pn_format.addItems(["{n} / {total}", "Page {n} of {total}", "- {n} -", "{n}", "페이지 {n}"])
+        self.cmb_pn_format.setEditable(True)
+        opt_pn.addWidget(self.cmb_pn_format)
+        l_pn.addLayout(opt_pn)
+        b_pn = QPushButton("🔢 페이지 번호 삽입")
+        b_pn.clicked.connect(self.action_page_numbers)
+        l_pn.addWidget(b_pn)
+        content_layout.addWidget(grp_pn)
+        
         # 추출
         grp_split = QGroupBox("✂️ 페이지 추출")
         l_s = QVBoxLayout(grp_split)
@@ -950,6 +987,26 @@ class PDFMasterApp(QMainWindow):
         s, _ = QFileDialog.getSaveFileName(self, "저장", "rotated.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("rotate", file_path=path, output_path=s, angle=angle)
+    
+    def action_page_numbers(self):
+        """페이지 번호 삽입 실행"""
+        path = self.sel_pn.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        
+        # 위치 매핑
+        pos_map = {
+            "하단 중앙": "bottom", "상단 중앙": "top",
+            "하단 좌측": "bottom-left", "하단 우측": "bottom-right",
+            "상단 좌측": "top-left", "상단 우측": "top-right"
+        }
+        position = pos_map.get(self.cmb_pn_pos.currentText(), "bottom")
+        format_str = self.cmb_pn_format.currentText()
+        
+        s, _ = QFileDialog.getSaveFileName(self, "저장", "numbered.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker("add_page_numbers", file_path=path, output_path=s,
+                          position=position, format=format_str)
 
     # ===================== Tab 4: 편집/보안 =====================
     def setup_edit_sec_tab(self):
@@ -1303,32 +1360,6 @@ class PDFMasterApp(QMainWindow):
         b_split.clicked.connect(self.action_split_adv)
         l_split.addWidget(b_split)
         layout.addWidget(grp_split)
-        
-        # 페이지 번호
-        grp_pn = QGroupBox("🔢 페이지 번호 삽입")
-        l_pn = QVBoxLayout(grp_pn)
-        self.sel_pn = FileSelectorWidget()
-        self.sel_pn.pathChanged.connect(self._update_preview)
-        l_pn.addWidget(self.sel_pn)
-        guide_pn = QLabel("📌 형식: {n}=현재페이지, {total}=전체페이지")
-        guide_pn.setObjectName("desc")
-        l_pn.addWidget(guide_pn)
-        opt_pn = QHBoxLayout()
-        opt_pn.addWidget(QLabel("위치:"))
-        self.cmb_pn_pos = QComboBox()
-        self.cmb_pn_pos.addItems(["하단 중앙", "상단 중앙", "하단 좌측", "하단 우측", "상단 좌측", "상단 우측"])
-        self.cmb_pn_pos.setToolTip("페이지 번호 위치 선택")
-        opt_pn.addWidget(self.cmb_pn_pos)
-        opt_pn.addWidget(QLabel("형식:"))
-        self.cmb_pn_format = QComboBox()
-        self.cmb_pn_format.addItems(["{n} / {total}", "Page {n} of {total}", "- {n} -", "{n}", "페이지 {n}"])
-        self.cmb_pn_format.setEditable(True)
-        opt_pn.addWidget(self.cmb_pn_format)
-        l_pn.addLayout(opt_pn)
-        b_pn = QPushButton("🔢 페이지 번호 삽입")
-        b_pn.clicked.connect(self.action_page_numbers)
-        l_pn.addWidget(b_pn)
-        layout.addWidget(grp_pn)
         
         # 스탬프
         grp_stamp = QGroupBox("📌 스탬프 추가")

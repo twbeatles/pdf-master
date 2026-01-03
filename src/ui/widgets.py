@@ -230,6 +230,36 @@ class FileSelectorWidget(QWidget):
     def clear_path(self):
         self.drop_zone.set_path("")
         self.pathChanged.emit("")
+    
+    def set_theme(self, is_dark):
+        """테마 변경 시 위젯 스타일 동기화"""
+        self.drop_zone.set_theme(is_dark)
+        if is_dark:
+            self.btn_clear.setStyleSheet("""
+                QPushButton { 
+                    background-color: #3e272b; 
+                    color: #ff6b6b; 
+                    border: 1px solid #5c3a3a; 
+                    padding: 10px;
+                }
+                QPushButton:hover { 
+                    background-color: #5c3a3a; 
+                    color: #ff8787; 
+                }
+            """)
+        else:
+            self.btn_clear.setStyleSheet("""
+                QPushButton { 
+                    background-color: #ffe0e0; 
+                    color: #d32f2f; 
+                    border: 1px solid #ffcdd2; 
+                    padding: 10px;
+                }
+                QPushButton:hover { 
+                    background-color: #ffcdd2; 
+                    color: #c62828; 
+                }
+            """)
 
 class FileListWidget(QListWidget):
     """다중 파일 드래그 앤 드롭 리스트 (PDF)"""
