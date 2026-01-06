@@ -128,32 +128,35 @@ class WorkerThread(QThread):
         for file_idx, file_path in enumerate(file_paths):
             if not file_path or not os.path.exists(file_path):
                 continue
-            doc = fitz.open(file_path)
-            full_text = ""
-            
-            for i, page in enumerate(doc):
-                full_text += f"\n--- Page {i+1} ---\n"
+            doc = None
+            try:
+                doc = fitz.open(file_path)
+                full_text = ""
                 
-                if include_details:
-                    # v3.2: 상세 정보 추출 (폰트, 크기, 색상)
-                    blocks = page.get_text("dict")["blocks"]
-                    for block in blocks:
-                        if block.get("type") == 0:  # 텍스트 블록
-                            for line in block.get("lines", []):
-                                for span in line.get("spans", []):
-                                    text = span.get("text", "")
-                                    font = span.get("font", "unknown")
-                                    size = span.get("size", 0)
-                                    color = span.get("color", 0)
-                                    # RGB로 변환
-                                    r = (color >> 16) & 0xFF
-                                    g = (color >> 8) & 0xFF
-                                    b = color & 0xFF
-                                    full_text += f"[Font: {font}, Size: {size:.1f}pt, Color: RGB({r},{g},{b})] {text}\n"
-                else:
-                    full_text += page.get_text()
-            
-            doc.close()
+                for i, page in enumerate(doc):
+                    full_text += f"\n--- Page {i+1} ---\n"
+                    
+                    if include_details:
+                        # v3.2: 상세 정보 추출 (폰트, 크기, 색상)
+                        blocks = page.get_text("dict")["blocks"]
+                        for block in blocks:
+                            if block.get("type") == 0:  # 텍스트 블록
+                                for line in block.get("lines", []):
+                                    for span in line.get("spans", []):
+                                        text = span.get("text", "")
+                                        font = span.get("font", "unknown")
+                                        size = span.get("size", 0)
+                                        color = span.get("color", 0)
+                                        # RGB로 변환
+                                        r = (color >> 16) & 0xFF
+                                        g = (color >> 8) & 0xFF
+                                        b = color & 0xFF
+                                        full_text += f"[Font: {font}, Size: {size:.1f}pt, Color: RGB({r},{g},{b})] {text}\n"
+                    else:
+                        full_text += page.get_text()
+            finally:
+                if doc:
+                    doc.close()
             
             # 출력 경로 결정
             if output_dir:
@@ -174,71 +177,88 @@ class WorkerThread(QThread):
         file_path = self.kwargs.get('file_path')
         output_dir = self.kwargs.get('output_dir')
         page_range = self.kwargs.get('page_range')
+        
         doc_src = fitz.open(file_path)
-        total_pages = len(doc_src)
-        pages_to_keep = []
-        parts = page_range.split(',')
-        for part in parts:
-            part = part.strip()
-            if '-' in part:
-                s, e = map(int, part.split('-'))
-                for p in range(s-1, e):
-                    if 0 <= p < total_pages: pages_to_keep.append(p)
-            elif part.isdigit():
-                p = int(part) - 1
-                if 0 <= p < total_pages: pages_to_keep.append(p)
-        pages_to_keep = sorted(list(set(pages_to_keep)))
-        if not pages_to_keep:
-            raise ValueError("유효한 페이지가 없습니다.")
         doc_final = fitz.open()
-        for idx, p_num in enumerate(pages_to_keep):
-            doc_final.insert_pdf(doc_src, from_page=p_num, to_page=p_num)
-            self.progress_signal.emit(int((idx+1)/len(pages_to_keep)*100))
-        base = os.path.splitext(os.path.basename(file_path))[0]
-        out = os.path.join(output_dir, f"{base}_extracted.pdf")
-        doc_final.save(out)
-        doc_src.close()
-        doc_final.close()
-        self.finished_signal.emit(f"✅ 추출 완료!\n{len(pages_to_keep)}페이지 추출됨")
+        try:
+            total_pages = len(doc_src)
+            pages_to_keep = []
+            parts = page_range.split(',')
+            for part in parts:
+                part = part.strip()
+                if '-' in part:
+                    s, e = map(int, part.split('-'))
+                    for p in range(s-1, e):
+                        if 0 <= p < total_pages:
+                            pages_to_keep.append(p)
+                elif part.isdigit():
+                    p = int(part) - 1
+                    if 0 <= p < total_pages:
+                        pages_to_keep.append(p)
+            pages_to_keep = sorted(list(set(pages_to_keep)))
+            
+            if not pages_to_keep:
+                raise ValueError("유효한 페이지가 없습니다.")
+            
+            total_count = max(1, len(pages_to_keep))  # Division by zero 방지
+            for idx, p_num in enumerate(pages_to_keep):
+                doc_final.insert_pdf(doc_src, from_page=p_num, to_page=p_num)
+                self.progress_signal.emit(int((idx + 1) / total_count * 100))
+            
+            base = os.path.splitext(os.path.basename(file_path))[0]
+            out = os.path.join(output_dir, f"{base}_extracted.pdf")
+            doc_final.save(out)
+            self.finished_signal.emit(f"✅ 추출 완료!\n{len(pages_to_keep)}페이지 추출됨")
+        finally:
+            doc_src.close()
+            doc_final.close()
 
     def delete_pages(self):
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
         page_range = self.kwargs.get('page_range')
-        doc = fitz.open(file_path)
-        total_pages = len(doc)
-        pages_to_delete = []
-        parts = page_range.split(',')
-        for part in parts:
-            part = part.strip()
-            if '-' in part:
-                s, e = map(int, part.split('-'))
-                for p in range(s-1, e):
+        doc = None
+        try:
+            doc = fitz.open(file_path)
+            total_pages = len(doc)
+            pages_to_delete = []
+            parts = page_range.split(',')
+            for part in parts:
+                part = part.strip()
+                if '-' in part:
+                    s, e = map(int, part.split('-'))
+                    for p in range(s-1, e):
+                        if 0 <= p < total_pages: pages_to_delete.append(p)
+                elif part.isdigit():
+                    p = int(part) - 1
                     if 0 <= p < total_pages: pages_to_delete.append(p)
-            elif part.isdigit():
-                p = int(part) - 1
-                if 0 <= p < total_pages: pages_to_delete.append(p)
-        pages_to_delete = sorted(list(set(pages_to_delete)), reverse=True)
-        if not pages_to_delete:
-            raise ValueError("삭제할 페이지가 없습니다.")
-        for p in pages_to_delete:
-            doc.delete_page(p)
-        doc.save(output_path)
-        doc.close()
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 삭제 완료!\n{len(pages_to_delete)}페이지 삭제됨")
+            pages_to_delete = sorted(list(set(pages_to_delete)), reverse=True)
+            if not pages_to_delete:
+                raise ValueError("삭제할 페이지가 없습니다.")
+            for p in pages_to_delete:
+                doc.delete_page(p)
+            doc.save(output_path)
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 삭제 완료!\n{len(pages_to_delete)}페이지 삭제됨")
+        finally:
+            if doc:
+                doc.close()
 
     def rotate(self):
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
         angle = self.kwargs.get('angle')
+        
         doc = fitz.open(file_path)
-        for i, page in enumerate(doc):
-            page.set_rotation(page.rotation + angle)
-            self.progress_signal.emit(int((i+1)/len(doc) * 100))
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 회전 완료!\n{angle}° 회전됨")
+        try:
+            total_pages = max(1, len(doc))  # Division by zero 방지
+            for i, page in enumerate(doc):
+                page.set_rotation(page.rotation + angle)
+                self.progress_signal.emit(int((i + 1) / total_pages * 100))
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ 회전 완료!\n{angle}° 회전됨")
+        finally:
+            doc.close()
 
     def watermark(self):
         file_path = self.kwargs.get('file_path')
@@ -248,83 +268,89 @@ class WorkerThread(QThread):
         color = self.kwargs.get('color', (0.5, 0.5, 0.5))
         fontsize = self.kwargs.get('fontsize', 40)
         rotation = self.kwargs.get('rotation', 45)
-        fontname = self.kwargs.get('fontname', 'helv')  # helv, tiro, cobo, symb
-        position = self.kwargs.get('position', 'center')  # center, tile
-        layer = self.kwargs.get('layer', 'foreground')  # v3.2: foreground/background
-        scale_percent = self.kwargs.get('scale_percent', 100)  # v3.2: 크기 비율
+        fontname = self.kwargs.get('fontname', 'helv')
+        position = self.kwargs.get('position', 'center')
+        layer = self.kwargs.get('layer', 'foreground')
+        scale_percent = self.kwargs.get('scale_percent', 100)
         
-        # v3.2: 크기 비율 적용
         actual_fontsize = int(fontsize * scale_percent / 100)
         
         doc = fitz.open(file_path)
-        for i, page in enumerate(doc):
-            # v3.2: 배경 레이어 - 콘텐츠 뒤에 삽입
-            if layer == 'background':
-                # 임시 새 페이지 생성 후 원본 위에 오버레이
-                rect = page.rect
-                shape = page.new_shape()
-                
-                if position == 'tile':
-                    for y in range(0, int(rect.height), 200):
-                        for x in range(0, int(rect.width), 300):
-                            shape.insert_text(
-                                fitz.Point(x, y), text, fontsize=actual_fontsize,
-                                fontname=fontname, rotate=rotation,
-                                color=color, fill_opacity=opacity
-                            )
+        try:
+            total_pages = max(1, len(doc))
+            for i, page in enumerate(doc):
+                if layer == 'background':
+                    rect = page.rect
+                    shape = page.new_shape()
+                    if position == 'tile':
+                        for y in range(0, int(rect.height), 200):
+                            for x in range(0, int(rect.width), 300):
+                                shape.insert_text(
+                                    fitz.Point(x, y), text, fontsize=actual_fontsize,
+                                    fontname=fontname, rotate=rotation,
+                                    color=color, fill_opacity=opacity
+                                )
+                    else:
+                        shape.insert_text(
+                            fitz.Point(rect.width/2, rect.height/2),
+                            text, fontsize=actual_fontsize, fontname=fontname,
+                            rotate=rotation, color=color, fill_opacity=opacity
+                        )
+                    shape.commit(overlay=False)
                 else:
-                    shape.insert_text(
-                        fitz.Point(rect.width/2, rect.height/2),
-                        text, fontsize=actual_fontsize, fontname=fontname,
-                        rotate=rotation, color=color, fill_opacity=opacity
-                    )
-                shape.commit(overlay=False)  # 배경에 삽입
-            else:
-                # 전경 레이어 (기본)
-                if position == 'tile':
-                    for y in range(0, int(page.rect.height), 200):
-                        for x in range(0, int(page.rect.width), 300):
-                            page.insert_text(
-                                fitz.Point(x, y), text, fontsize=actual_fontsize,
-                                fontname=fontname, rotate=rotation,
-                                color=color, fill_opacity=opacity
-                            )
-                else:
-                    page.insert_text(
-                        fitz.Point(page.rect.width/2, page.rect.height/2),
-                        text, fontsize=actual_fontsize, fontname=fontname,
-                        rotate=rotation, color=color, fill_opacity=opacity
-                    )
-            self.progress_signal.emit(int((i+1)/len(doc) * 100))
-        doc.save(output_path)
-        doc.close()
-        layer_name = "배경" if layer == 'background' else "전경"
-        self.finished_signal.emit(f"✅ 워터마크 적용 완료! ({layer_name}, {int(opacity*100)}%)")
+                    if position == 'tile':
+                        for y in range(0, int(page.rect.height), 200):
+                            for x in range(0, int(page.rect.width), 300):
+                                page.insert_text(
+                                    fitz.Point(x, y), text, fontsize=actual_fontsize,
+                                    fontname=fontname, rotate=rotation,
+                                    color=color, fill_opacity=opacity
+                                )
+                    else:
+                        page.insert_text(
+                            fitz.Point(page.rect.width/2, page.rect.height/2),
+                            text, fontsize=actual_fontsize, fontname=fontname,
+                            rotate=rotation, color=color, fill_opacity=opacity
+                        )
+                self.progress_signal.emit(int((i + 1) / total_pages * 100))
+            doc.save(output_path)
+            layer_name = "배경" if layer == 'background' else "전경"
+            self.finished_signal.emit(f"✅ 워터마크 적용 완료! ({layer_name}, {int(opacity*100)}%)")
+        finally:
+            doc.close()
 
     def metadata_update(self):
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
         new_meta = self.kwargs.get('metadata')
+        
         doc = fitz.open(file_path)
-        meta = doc.metadata
-        for k, v in new_meta.items():
-            if v: meta[k] = v
-        doc.set_metadata(meta)
-        doc.save(output_path)
-        doc.close()
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 메타데이터 저장 완료!")
+        try:
+            meta = doc.metadata
+            for k, v in new_meta.items():
+                if v:
+                    meta[k] = v
+            doc.set_metadata(meta)
+            doc.save(output_path)
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 메타데이터 저장 완료!")
+        finally:
+            doc.close()
 
     def protect(self):
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
         pw = self.kwargs.get('password')
-        doc = fitz.open(file_path)
-        perm = int(fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_PRINT | fitz.PDF_PERM_COPY)
-        doc.save(output_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=pw, user_pw=pw, permissions=perm)
-        doc.close()
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 암호화 완료!")
+        doc = None
+        try:
+            doc = fitz.open(file_path)
+            perm = int(fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_PRINT | fitz.PDF_PERM_COPY)
+            doc.save(output_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=pw, user_pw=pw, permissions=perm)
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 암호화 완료!")
+        finally:
+            if doc:
+                doc.close()
 
     def compress(self):
         file_path = self.kwargs.get('file_path')
@@ -378,19 +404,26 @@ class WorkerThread(QThread):
     def images_to_pdf(self):
         files = self.kwargs.get('files')
         output_path = self.kwargs.get('output_path')
-        doc = fitz.open()
-        for idx, img_path in enumerate(files):
-            img = fitz.open(img_path)
-            rect = img[0].rect
-            pdf_bytes = img.convert_to_pdf()
-            img.close()
-            img_pdf = fitz.open("pdf", pdf_bytes)
-            doc.insert_pdf(img_pdf)
-            img_pdf.close()
-            self.progress_signal.emit(int((idx + 1) / len(files) * 100))
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 이미지 → PDF 변환 완료!\n{len(files)}개 이미지 → 1개 PDF")
+        doc = None
+        try:
+            doc = fitz.open()
+            for idx, img_path in enumerate(files):
+                img = fitz.open(img_path)
+                try:
+                    pdf_bytes = img.convert_to_pdf()
+                finally:
+                    img.close()
+                img_pdf = fitz.open("pdf", pdf_bytes)
+                try:
+                    doc.insert_pdf(img_pdf)
+                finally:
+                    img_pdf.close()
+                self.progress_signal.emit(int((idx + 1) / len(files) * 100))
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ 이미지 → PDF 변환 완료!\n{len(files)}개 이미지 → 1개 PDF")
+        finally:
+            if doc:
+                doc.close()
 
     def reorder(self):
         """페이지 순서 변경"""
@@ -1732,3 +1765,70 @@ class WorkerThread(QThread):
         else:
             doc.close()
             self.error_signal.emit("드로잉 데이터가 없습니다.")
+
+
+    # convert_to_word 함수 제거됨 (v4.2 - pdf2docx 의존성 제거)
+
+
+    def ai_summarize(self):
+        """AI 기반 PDF 요약"""
+        file_path = self.kwargs.get('file_path')
+        output_path = self.kwargs.get('output_path')
+        api_key = self.kwargs.get('api_key', '')
+        language = self.kwargs.get('language', 'ko')
+        style = self.kwargs.get('style', 'concise')
+        max_pages = self.kwargs.get('max_pages', None)
+        
+        try:
+            from .ai_service import AIService
+        except ImportError:
+            self.error_signal.emit("AI 서비스 모듈을 찾을 수 없습니다.")
+            return
+        
+        if not file_path or not os.path.exists(file_path):
+            self.error_signal.emit("PDF 파일을 찾을 수 없습니다.")
+            return
+            
+        if not api_key:
+            self.error_signal.emit("Gemini API 키가 필요합니다.\n설정에서 API 키를 입력해주세요.")
+            return
+        
+        try:
+            self.progress_signal.emit(10)
+            
+            # AI 서비스 초기화
+            ai_service = AIService(api_key=api_key)
+            
+            if not ai_service.is_available:
+                self.error_signal.emit("AI 서비스를 사용할 수 없습니다.\ngoogle-generativeai 패키지를 설치해주세요.")
+                return
+            
+            self.progress_signal.emit(30)
+            
+            # PDF 요약 실행
+            summary = ai_service.summarize_pdf(
+                pdf_path=file_path,
+                language=language,
+                style=style,
+                max_pages=max_pages
+            )
+            
+            self.progress_signal.emit(80)
+            
+            # 결과 저장
+            if output_path:
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(f"# PDF 요약\n\n")
+                    f.write(f"**원본 파일**: {os.path.basename(file_path)}\n\n")
+                    f.write(f"---\n\n")
+                    f.write(summary)
+            
+            # 결과를 kwargs에 저장 (UI에서 접근 가능)
+            self.kwargs['summary_result'] = summary
+            
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ AI 요약 완료!\n{len(summary)} 글자")
+            
+        except Exception as e:
+            logger.error(f"AI summarization failed: {e}")
+            self.error_signal.emit(f"AI 요약 실패: {str(e)}")

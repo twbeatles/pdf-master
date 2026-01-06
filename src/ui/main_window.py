@@ -3,23 +3,47 @@ import os
 import json
 import fitz
 import subprocess
+import logging
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, 
     QPushButton, QLabel, QFileDialog, QMessageBox, QComboBox, 
     QSpinBox, QSplitter, QGroupBox, QScrollArea, QApplication, 
     QInputDialog, QLineEdit, QProgressBar, QListWidget, QListWidgetItem,
-    QAbstractItemView, QFrame, QFormLayout, QMenuBar, QMenu
+    QAbstractItemView, QFrame, QFormLayout, QMenuBar, QMenu, QTextEdit,
+    QStackedWidget, QDialog, QDialogButtonBox
 )
 from PyQt6.QtCore import Qt, QTimer, QSize
 from PyQt6.QtGui import QIcon, QAction, QPixmap, QImage, QKeySequence, QShortcut
 
 from ..core.settings import load_settings, save_settings
 from ..core.worker import WorkerThread
+from ..core.undo_manager import UndoManager
 from .widgets import FileSelectorWidget, FileListWidget, ImageListWidget, DropZoneWidget, WheelEventFilter, ToastWidget
 from .styles import DARK_STYLESHEET, LIGHT_STYLESHEET, ThemeColors
+from .thumbnail_grid import ThumbnailGridWidget
+from .zoomable_preview import ZoomablePreviewWidget
+
+logger = logging.getLogger(__name__)
+
+# AI 기능 가용성 체크 (오프라인 환경 안전 처리)
+# 새 SDK (google-genai) 우선, 기존 SDK (google-generativeai) 폴백
+AI_AVAILABLE = False
+try:
+    from google import genai
+    AI_AVAILABLE = True
+except ImportError:
+    try:
+        import google.generativeai
+        AI_AVAILABLE = True
+        logger.info("Using deprecated google-generativeai. Consider upgrading to google-genai.")
+    except ImportError:
+        AI_AVAILABLE = False
+        logger.info("No Gemini SDK installed. AI features will be disabled.")
+
+# PDF to Word 변환 기능 삭제 (v4.2 - 의존성 간소화)
 
 APP_NAME = "PDF Master"
-VERSION = "3.1"
+VERSION = "4.2"
 
 class PDFMasterApp(QMainWindow):
     def __init__(self):
@@ -29,6 +53,9 @@ class PDFMasterApp(QMainWindow):
         self._last_output_path = None  # 마지막 저장 경로 추적
         self._current_preview_page = 0
         self._current_preview_doc = None
+        
+        # v4.0: Undo/Redo 매니저
+        self.undo_manager = UndoManager(max_history=50)
         
         # 휠 이벤트 필터 설치 (스크롤로 값 변경 방지)
         self._wheel_filter = WheelEventFilter(self)
@@ -80,10 +107,11 @@ class PDFMasterApp(QMainWindow):
         self.setup_merge_tab()
         self.setup_convert_tab()
         self.setup_page_tab()
-        self.setup_reorder_tab()  # NEW: 페이지 순서 변경
+        self.setup_reorder_tab()  # 페이지 순서 변경
         self.setup_edit_sec_tab()
-        self.setup_batch_tab()    # NEW: 일괄 처리
-        self.setup_advanced_tab()  # NEW: 고급 기능
+        self.setup_batch_tab()    # 일괄 처리
+        self.setup_advanced_tab() # 고급 기능
+        self.setup_ai_tab()       # v4.0: AI 요약
         
         # 컴팩트한 상태 바
         status_frame = QFrame()
@@ -135,7 +163,9 @@ class PDFMasterApp(QMainWindow):
         """Keyboard shortcuts"""
         QShortcut(QKeySequence("Ctrl+O"), self, self._shortcut_open_file)
         QShortcut(QKeySequence("Ctrl+Q"), self, self.close)
-        QShortcut(QKeySequence("Ctrl+T"), self, self._toggle_theme)  # v2.7: 테마 토글
+        QShortcut(QKeySequence("Ctrl+T"), self, self._toggle_theme)
+        QShortcut(QKeySequence("Ctrl+Z"), self, self._undo_action)  # v4.0: Undo
+        QShortcut(QKeySequence("Ctrl+Y"), self, self._redo_action)  # v4.0: Redo
         QShortcut(QKeySequence("F1"), self, self._show_help)
         QShortcut(QKeySequence("Ctrl+1"), self, lambda: self.tabs.setCurrentIndex(0))
         QShortcut(QKeySequence("Ctrl+2"), self, lambda: self.tabs.setCurrentIndex(1))
@@ -144,6 +174,29 @@ class PDFMasterApp(QMainWindow):
         QShortcut(QKeySequence("Ctrl+5"), self, lambda: self.tabs.setCurrentIndex(4))
         QShortcut(QKeySequence("Ctrl+6"), self, lambda: self.tabs.setCurrentIndex(5))
         QShortcut(QKeySequence("Ctrl+7"), self, lambda: self.tabs.setCurrentIndex(6))
+        QShortcut(QKeySequence("Ctrl+8"), self, lambda: self.tabs.setCurrentIndex(7))  # v4.0: AI 탭
+    
+    def _undo_action(self):
+        """실행 취소"""
+        if self.undo_manager.can_undo:
+            record = self.undo_manager.undo()
+            if record:
+                self.status_label.setText(f"↩️ 취소: {record.description}")
+                toast = ToastWidget(f"취소: {record.description}", toast_type='info', duration=2000)
+                toast.show_toast(self)
+        else:
+            self.status_label.setText("취소할 작업이 없습니다")
+    
+    def _redo_action(self):
+        """다시 실행"""
+        if self.undo_manager.can_redo:
+            record = self.undo_manager.redo()
+            if record:
+                self.status_label.setText(f"↪️ 다시 실행: {record.description}")
+                toast = ToastWidget(f"다시 실행: {record.description}", toast_type='info', duration=2000)
+                toast.show_toast(self)
+        else:
+            self.status_label.setText("다시 실행할 작업이 없습니다")
     
     def _shortcut_open_file(self):
         """Open file via shortcut"""
@@ -179,12 +232,33 @@ class PDFMasterApp(QMainWindow):
 
     
     def closeEvent(self, event):
-        """앱 종료 시 윈도우 위치 저장"""
+        """앱 종료 시 리소스 정리 및 설정 저장"""
+        # 1. Worker 스레드 안전 종료
+        if self.worker and self.worker.isRunning():
+            logger.info("Waiting for worker thread to finish...")
+            self.worker.quit()
+            if not self.worker.wait(3000):  # 3초 대기
+                logger.warning("Worker thread did not finish in time, terminating...")
+                self.worker.terminate()
+                self.worker.wait(1000)
+        
+        # 2. 미리보기 PDF 문서 닫기
+        if self._current_preview_doc:
+            try:
+                self._current_preview_doc.close()
+                self._current_preview_doc = None
+                logger.debug("Preview document closed")
+            except Exception as e:
+                logger.warning(f"Failed to close preview document: {e}")
+        
+        # 3. 윈도우 위치 저장
         self.settings["window_geometry"] = {
             "x": self.x(), "y": self.y(),
             "width": self.width(), "height": self.height()
         }
         save_settings(self.settings)
+        
+        logger.info("Application closed cleanly")
         event.accept()
     
     def _create_menu_bar(self):
@@ -495,6 +569,29 @@ class PDFMasterApp(QMainWindow):
     
     # Worker helpers
     def run_worker(self, mode, output_path=None, **kwargs):
+        """작업 스레드 실행 (안전한 동시 작업 처리)"""
+        # 이전 Worker 시그널 연결 해제 (누적 방지)
+        if self.worker:
+            try:
+                self.worker.progress_signal.disconnect()
+                self.worker.finished_signal.disconnect()
+                self.worker.error_signal.disconnect()
+            except (TypeError, RuntimeError):
+                pass  # 이미 해제되었거나 연결이 없는 경우
+        
+        # 이전 Worker가 실행 중인지 확인
+        if self.worker and self.worker.isRunning():
+            # 사용자에게 경고
+            result = QMessageBox.question(
+                self, "작업 진행 중",
+                "이전 작업이 아직 진행 중입니다.\n완료될 때까지 기다리시겠습니까?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if result == QMessageBox.StandardButton.Yes:
+                self.worker.wait()  # 완료 대기
+            else:
+                return  # 새 작업 취소
+        
         # output_path 추적 (폴더 열기 기능용)
         if output_path:
             self._last_output_path = output_path
@@ -519,6 +616,14 @@ class PDFMasterApp(QMainWindow):
         self.status_label.setText("✅ 작업 완료!")
         self.progress_bar.setValue(100)
         self.btn_open_folder.setVisible(True)  # 폴더 열기 버튼 표시
+        
+        # v4.0: AI 요약 결과 처리
+        if hasattr(self, '_ai_worker_mode') and self._ai_worker_mode:
+            self._ai_worker_mode = False
+            if self.worker and hasattr(self.worker, 'kwargs'):
+                summary = self.worker.kwargs.get('summary_result', '')
+                if summary and hasattr(self, 'txt_summary_result'):
+                    self.txt_summary_result.setPlainText(summary)
         
         # Toast 알림 표시
         toast = ToastWidget("작업이 완료되었습니다!", toast_type='success', duration=4000)
@@ -762,6 +867,9 @@ class PDFMasterApp(QMainWindow):
         b_txt.clicked.connect(self.action_txt)
         l_txt.addWidget(b_txt)
         content_layout.addWidget(grp_txt)
+        
+        
+        # PDF → Word 변환 기능 제거됨 (v4.2)
         
         content_layout.addStretch()
         scroll.setWidget(content)
@@ -2347,3 +2455,248 @@ class PDFMasterApp(QMainWindow):
         if s:
             self.run_worker("add_ink_annotation", file_path=path, output_path=s,
                           page_num=page_num, points=points, color=color, width=width)
+    
+    # ===================== Tab 8: AI 요약 (v4.0) =====================
+    def setup_ai_tab(self):
+        """AI 요약 탭 설정"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        
+        # AI 요약 섹션
+        grp_summary = QGroupBox("🤖 AI 기반 PDF 요약")
+        l_summary = QVBoxLayout(grp_summary)
+        
+        # ⚠️ AI 패키지 미설치 경고 배너
+        if not AI_AVAILABLE:
+            ai_warning = QLabel("❌ AI 기능을 사용할 수 없습니다\n\ngoogle-generativeai 패키지가 설치되지 않았습니다.\n인터넷 연결 후 설치해주세요:\npip install google-generativeai")
+            ai_warning.setStyleSheet("""
+                QLabel {
+                    background-color: #3a1a1a;
+                    color: #ff6b6b;
+                    padding: 15px;
+                    border: 2px solid #ff6b6b;
+                    border-radius: 8px;
+                    font-size: 12px;
+                }
+            """)
+            ai_warning.setWordWrap(True)
+            ai_warning.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            l_summary.addWidget(ai_warning)
+            l_summary.addWidget(QLabel(""))  # 간격
+        
+        # API 키 설정
+        api_layout = QHBoxLayout()
+        api_layout.addWidget(QLabel("Gemini API 키:"))
+        self.txt_api_key = QLineEdit()
+        self.txt_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+        self.txt_api_key.setPlaceholderText("API 키를 입력하세요...")
+        self.txt_api_key.setEnabled(AI_AVAILABLE)  # 오프라인 시 비활성화
+        saved_key = self.settings.get("gemini_api_key", "")
+        if saved_key:
+            self.txt_api_key.setText(saved_key)
+        api_layout.addWidget(self.txt_api_key)
+        
+        btn_save_key = QPushButton("💾 저장")
+        btn_save_key.setFixedWidth(70)
+        btn_save_key.setEnabled(AI_AVAILABLE)
+        btn_save_key.clicked.connect(self._save_api_key)
+        api_layout.addWidget(btn_save_key)
+        
+        l_summary.addLayout(api_layout)
+        
+        # API 키 안내
+        api_hint = QLabel("💡 <a href='https://aistudio.google.com/'>Google AI Studio</a>에서 무료 API 키를 발급받을 수 있습니다.")
+        api_hint.setOpenExternalLinks(True)
+        api_hint.setStyleSheet("color: #888; font-size: 11px;")
+        l_summary.addWidget(api_hint)
+        
+        l_summary.addWidget(QLabel(""))  # 간격
+        
+        # PDF 파일 선택
+        step1 = QLabel("1️⃣ PDF 파일 선택")
+        step1.setObjectName("stepLabel")
+        l_summary.addWidget(step1)
+        
+        self.sel_ai_pdf = FileSelectorWidget("요약할 PDF 파일", ['.pdf'])
+        self.sel_ai_pdf.pathChanged.connect(self._update_preview)
+        l_summary.addWidget(self.sel_ai_pdf)
+        
+        # 요약 옵션
+        step2 = QLabel("2️⃣ 요약 옵션")
+        step2.setObjectName("stepLabel")
+        l_summary.addWidget(step2)
+        
+        opt_layout = QHBoxLayout()
+        opt_layout.addWidget(QLabel("스타일:"))
+        self.cmb_summary_style = QComboBox()
+        self.cmb_summary_style.addItems(["간결하게", "상세하게", "불릿 포인트"])
+        self.cmb_summary_style.setEnabled(AI_AVAILABLE)
+        opt_layout.addWidget(self.cmb_summary_style)
+        
+        opt_layout.addWidget(QLabel("언어:"))
+        self.cmb_summary_lang = QComboBox()
+        self.cmb_summary_lang.addItems(["한국어", "English"])
+        self.cmb_summary_lang.setEnabled(AI_AVAILABLE)
+        opt_layout.addWidget(self.cmb_summary_lang)
+        
+        opt_layout.addWidget(QLabel("최대 페이지:"))
+        self.spn_max_pages = QSpinBox()
+        self.spn_max_pages.setRange(0, 100)
+        self.spn_max_pages.setValue(0)
+        self.spn_max_pages.setToolTip("0 = 전체 페이지")
+        self.spn_max_pages.setEnabled(AI_AVAILABLE)
+        opt_layout.addWidget(self.spn_max_pages)
+        
+        opt_layout.addStretch()
+        l_summary.addLayout(opt_layout)
+        
+        # 요약 실행 버튼
+        self.btn_ai_summarize = QPushButton("🤖 AI 요약 실행")
+        self.btn_ai_summarize.setObjectName("actionBtn")
+        self.btn_ai_summarize.setEnabled(AI_AVAILABLE)
+        self.btn_ai_summarize.clicked.connect(self.action_ai_summarize)
+        if not AI_AVAILABLE:
+            self.btn_ai_summarize.setToolTip("google-generativeai 패키지가 설치되지 않음")
+        l_summary.addWidget(self.btn_ai_summarize)
+        
+        # 요약 결과 표시
+        step3 = QLabel("3️⃣ 요약 결과")
+        step3.setObjectName("stepLabel")
+        l_summary.addWidget(step3)
+        
+        self.txt_summary_result = QTextEdit()
+        self.txt_summary_result.setPlaceholderText("요약 결과가 여기에 표시됩니다..." if AI_AVAILABLE else "AI 기능을 사용할 수 없습니다")
+        self.txt_summary_result.setMinimumHeight(200)
+        self.txt_summary_result.setReadOnly(True)
+        l_summary.addWidget(self.txt_summary_result)
+        
+        # 저장 버튼
+        btn_save_summary = QPushButton("📄 요약 저장 (.txt)")
+        btn_save_summary.setObjectName("secondaryBtn")
+        btn_save_summary.clicked.connect(self._save_summary_result)
+        l_summary.addWidget(btn_save_summary)
+        
+        content_layout.addWidget(grp_summary)
+        
+        # 페이지 썸네일 그리드 섹션
+        grp_thumb = QGroupBox("🖼️ 페이지 썸네일 그리드")
+        l_thumb = QVBoxLayout(grp_thumb)
+        
+        thumb_desc = QLabel("PDF의 모든 페이지를 그리드로 미리볼 수 있습니다")
+        thumb_desc.setObjectName("desc")
+        l_thumb.addWidget(thumb_desc)
+        
+        self.sel_thumb_pdf = FileSelectorWidget("PDF 파일", ['.pdf'])
+        l_thumb.addWidget(self.sel_thumb_pdf)
+        
+        btn_show_grid = QPushButton("🔲 썸네일 그리드 보기")
+        btn_show_grid.setObjectName("actionBtn")
+        btn_show_grid.clicked.connect(self._show_thumbnail_grid)
+        l_thumb.addWidget(btn_show_grid)
+        
+        content_layout.addWidget(grp_thumb)
+        
+        content_layout.addStretch()
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
+        self.tabs.addTab(tab, "🤖 AI")
+    
+    def _save_api_key(self):
+        """API 키 저장"""
+        key = self.txt_api_key.text().strip()
+        self.settings["gemini_api_key"] = key
+        save_settings(self.settings)
+        toast = ToastWidget("API 키가 저장되었습니다", toast_type='success', duration=2000)
+        toast.show_toast(self)
+    
+    def _save_summary_result(self):
+        """요약 결과 저장"""
+        text = self.txt_summary_result.toPlainText()
+        if not text:
+            return QMessageBox.warning(self, "알림", "저장할 요약 결과가 없습니다.")
+        
+        s, _ = QFileDialog.getSaveFileName(self, "요약 저장", "summary.txt", "텍스트 (*.txt)")
+        if s:
+            with open(s, 'w', encoding='utf-8') as f:
+                f.write(text)
+            toast = ToastWidget("요약이 저장되었습니다", toast_type='success', duration=2000)
+            toast.show_toast(self)
+    
+    def action_ai_summarize(self):
+        """AI 요약 실행"""
+        # 오프라인 안전 체크
+        if not AI_AVAILABLE:
+            return QMessageBox.critical(self, "AI 기능 사용 불가", 
+                "google-generativeai 패키지가 설치되지 않았습니다.\n\n"
+                "인터넷 연결 후 다음 명령으로 설치해주세요:\n"
+                "pip install google-generativeai")
+        
+        path = self.sel_ai_pdf.get_path()
+        api_key = self.txt_api_key.text().strip()
+        
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        if not api_key:
+            return QMessageBox.warning(self, "알림", "Gemini API 키를 입력하세요.")
+        
+        style_map = {"간결하게": "concise", "상세하게": "detailed", "불릿 포인트": "bullet"}
+        style = style_map.get(self.cmb_summary_style.currentText(), "concise")
+        
+        lang = "ko" if self.cmb_summary_lang.currentText() == "한국어" else "en"
+        
+        max_pages = self.spn_max_pages.value()
+        if max_pages == 0:
+            max_pages = None
+        
+        self.txt_summary_result.clear()
+        self.txt_summary_result.setPlaceholderText("⏳ AI가 요약 중입니다...")
+        
+        # Worker 실행 (결과는 finished 시그널에서 처리)
+        self._ai_worker_mode = True
+        self.run_worker("ai_summarize", 
+                       file_path=path, 
+                       api_key=api_key,
+                       language=lang,
+                       style=style,
+                       max_pages=max_pages)
+    
+    
+    # action_convert_to_word 함수 제거됨 (v4.2)
+    
+    def _show_thumbnail_grid(self):
+        """썸네일 그리드 다이얼로그 표시"""
+        path = self.sel_thumb_pdf.get_path()
+        if not path:
+            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+        
+        # 다이얼로그 생성
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"📋 페이지 썸네일 - {os.path.basename(path)}")
+        dialog.resize(800, 600)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # 썸네일 그리드 위젯
+        thumbnail_grid = ThumbnailGridWidget()
+        thumbnail_grid.pageSelected.connect(lambda pg: self._on_grid_page_selected(pg, dialog))
+        layout.addWidget(thumbnail_grid)
+        
+        # 닫기 버튼
+        btn_close = QPushButton("닫기")
+        btn_close.clicked.connect(dialog.accept)
+        layout.addWidget(btn_close)
+        
+        # PDF 로드
+        thumbnail_grid.load_pdf(path)
+        
+        dialog.exec()
+    
+    def _on_grid_page_selected(self, page_index: int, dialog: QDialog):
+        """그리드에서 페이지 선택 시"""
+        self._current_preview_page = page_index
+        self._render_preview_page()
+        self.status_label.setText(f"📄 {page_index + 1}페이지 선택됨")

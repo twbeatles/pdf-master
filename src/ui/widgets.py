@@ -418,42 +418,54 @@ class ToastWidget(QFrame):
         icons = {'success': '✅', 'error': '❌', 'warning': '⚠️', 'info': 'ℹ️'}
         icon = icons.get(toast_type, 'ℹ️')
         
+        # 향상된 스타일 (v4.1)
         self.setStyleSheet(f"""
             ToastWidget {{
-                background-color: {bg};
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                    stop:0 {bg}, stop:1 rgba(0,0,0,0.95));
                 border: 2px solid {fg};
-                border-radius: 10px;
+                border-radius: 12px;
             }}
         """)
         
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(15, 10, 15, 10)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(12)
         
         icon_label = QLabel(icon)
-        icon_label.setStyleSheet(f"font-size: 20px; background: transparent;")
+        icon_label.setStyleSheet(f"font-size: 22px; background: transparent;")
         layout.addWidget(icon_label)
         
         msg_label = QLabel(message)
-        msg_label.setStyleSheet(f"color: {fg}; font-size: 13px; font-weight: 500; background: transparent;")
+        msg_label.setStyleSheet(f"""
+            color: {fg}; 
+            font-size: 13px; 
+            font-weight: 600; 
+            background: transparent;
+            letter-spacing: 0.3px;
+        """)
         msg_label.setWordWrap(True)
         layout.addWidget(msg_label, 1)
         
         close_btn = QPushButton("×")
-        close_btn.setFixedSize(24, 24)
+        close_btn.setFixedSize(26, 26)
         close_btn.setStyleSheet(f"""
             QPushButton {{ 
                 background: transparent; 
                 color: {fg}; 
                 border: none; 
-                font-size: 18px; 
+                font-size: 20px; 
                 font-weight: bold;
+                border-radius: 13px;
             }}
-            QPushButton:hover {{ background: rgba(255,255,255,0.1); border-radius: 12px; }}
+            QPushButton:hover {{ 
+                background: rgba(255,255,255,0.15); 
+            }}
         """)
         close_btn.clicked.connect(self.close_toast)
         layout.addWidget(close_btn)
         
-        self.setFixedWidth(350)
+        self.setFixedWidth(380)
         self.adjustSize()
         
         # Import here to avoid circular import

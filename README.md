@@ -1,4 +1,4 @@
-# PDF Master v3.1
+# PDF Master v4.2
 
 📑 **올인원 PDF 편집 프로그램** - PyQt6 기반 데스크톱 앱
 
@@ -11,26 +11,36 @@
 ## ✨ 주요 기능
 
 ### 📄 기본 기능
-- **PDF 병합** - 여러 PDF를 하나로 합치기
-- **PDF → 이미지** - PNG/JPG/WEBP 변환 (DPI 설정)
-- **텍스트 추출** - PDF에서 텍스트 추출
+- **PDF 병합** - 여러 PDF를 하나로 합치기 (드래그 앤 드롭)
+- **PDF → 이미지** - PNG/JPG/WEBP 변환 (DPI 설정 가능)
+- **이미지 → PDF** - 여러 이미지를 PDF로 합치기
+- **텍스트 추출** - PDF에서 텍스트 추출 (TXT 저장)
 
 ### ✂️ 페이지 편집
-- **페이지 번호 삽입** - 위치/형식 커스텀
+- **페이지 번호 삽입** - 위치/형식/폰트 커스텀
 - **페이지 추출/삭제/회전**
 - **페이지 순서 변경** - 드래그 앤 드롭
+- **페이지 썸네일 그리드** - 모든 페이지 한눈에 보기
 
 ### 🔒 보안 & 편집
-- **암호화/복호화** - AES-256
-- **워터마크** - 텍스트/이미지
-- **메타데이터 편집**
-- **PDF 압축** - 파일 크기 최적화
+- **암호화/복호화** - AES-256 보안
+- **워터마크** - 텍스트/타일 (전경/배경 선택)
+- **스탬프 추가** - 기밀, 승인됨, 사본 등
+- **메타데이터 편집** - 제목, 저자, 키워드 등
 
 ### 🔧 고급 기능
 - **PDF 분할** - 각 페이지별/범위별
-- **스탬프 추가** - 기밀, 승인됨 등
+- **PDF 압축** - 파일 크기 최적화
 - **테이블 추출** - CSV 저장
 - **주석/하이라이트** - 텍스트 마크업
+
+### 🤖 AI 기능
+- **AI 기반 PDF 요약** - Gemini API 연동 (`gemini-flash-latest` 모델)
+
+### 🎨 UI/UX
+- **Premium 테마** - 모던 그라데이션, 글래스모피즘
+- **Undo/Redo** - Ctrl+Z/Y 단축키
+- **미리보기 줌/패닝** - 마우스 휠 줌, 드래그 이동
 
 ---
 
@@ -45,13 +55,28 @@ PyMuPDF (fitz)
 
 ### 설치
 ```bash
-pip install -r requirements.txt
+# 기본 설치
+pip install PyQt6 PyMuPDF
+
+# AI 기능 (선택)
+pip install google-genai
 ```
 
 ### 실행
 ```bash
 python main.py
 ```
+
+---
+
+## 📦 빌드 (PyInstaller)
+
+```bash
+# 경량화 빌드
+pyinstaller pdf_master.spec --clean
+```
+
+빌드 결과: `dist/PDF_Master_v4.2.exe` (~30-40MB)
 
 ---
 
@@ -62,52 +87,20 @@ python main.py
 | `Ctrl+O` | 파일 열기 |
 | `Ctrl+Q` | 종료 |
 | `Ctrl+T` | 테마 전환 |
-| `Ctrl+1~7` | 탭 전환 |
-| `F1` | 도움말 |
-
----
-
-## 🏗️ 빌드
-
-### PyInstaller 빌드
-```bash
-pyinstaller pdf_master.spec
-```
-
-빌드 결과: `dist/PDF_Master.exe`
-
----
-
-## 📁 프로젝트 구조
-
-```
-pdf-master-main/
-├── main.py              # 엔트리포인트
-├── src/
-│   ├── core/
-│   │   ├── worker.py    # PDF 작업 스레드
-│   │   └── settings.py  # 설정 관리
-│   └── ui/
-│       ├── main_window.py  # 메인 윈도우
-│       ├── widgets.py      # 커스텀 위젯
-│       └── styles.py       # 테마/스타일
-└── pdf_master.spec      # PyInstaller 빌드
-```
+| `Ctrl+Z` | 실행 취소 |
+| `Ctrl+Y` | 다시 실행 |
+| `Ctrl+1~8` | 탭 전환 |
 
 ---
 
 ## 📝 변경 이력
 
-### v3.1 (2026-01-03)
-- 🐛 8개 버그 수정 (메모리 누수, division by zero 등)
-- 🎨 UI 테마 통일 (파란색 액센트)
-- ⌨️ 단축키 Ctrl+5~7 추가
-- 📍 페이지 번호 기능 → 페이지 탭 이동
-
-### v3.0
-- 7개 탭 구조 (병합/변환/페이지/순서/편집/일괄/고급)
-- 실시간 미리보기 패널
-- 다크/라이트 테마
+### v4.2 (2026-01-06)
+- 🔄 **google-genai SDK** - 새 공식 SDK 사용
+- 🧠 **gemini-flash-latest** - 최신 AI 모델
+- ❌ **PDF → Word 기능 제거** - 의존성 간소화
+- 🐛 **리소스 관리 개선** - PDF 핸들 누수 수정
+- 📦 **빌드 경량화** - ~30-40MB
 
 ---
 

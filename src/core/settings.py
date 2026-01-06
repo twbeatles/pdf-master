@@ -15,7 +15,8 @@ DEFAULT_SETTINGS = {
     "recent_files": [],
     "last_output_dir": "",
     "splitter_sizes": None,
-    "window_geometry": None
+    "window_geometry": None,
+    "gemini_api_key": ""  # v4.0: AI 요약용 API 키
 }
 
 def load_settings():
