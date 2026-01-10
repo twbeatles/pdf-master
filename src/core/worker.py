@@ -4,7 +4,33 @@ import traceback
 import logging
 from PyQt6.QtCore import QThread, pyqtSignal
 
+# 상수 임포트
+try:
+    from .constants import (
+        COMPRESSION_SETTINGS, PAGE_SIZES, DEFAULT_PAGE_SIZE,
+        WATERMARK_DEFAULTS, WATERMARK_TILE_SPACING_X, WATERMARK_TILE_SPACING_Y,
+        MAX_PAGE_RANGE_LENGTH
+    )
+except ImportError:
+    # 독립 실행 시 폴백
+    COMPRESSION_SETTINGS = {
+        'low': {'garbage': 4, 'deflate': True, 'deflate_images': True, 'deflate_fonts': True, 'clean': True},
+        'medium': {'garbage': 3, 'deflate': True, 'deflate_images': True},
+        'high': {'garbage': 2, 'deflate': True},
+    }
+    PAGE_SIZES = {'A4': (595, 842), 'A3': (842, 1191), 'Letter': (612, 792), 'Legal': (612, 1008)}
+    DEFAULT_PAGE_SIZE = (595, 842)
+    WATERMARK_DEFAULTS = {'opacity': 0.3, 'color': (0.5, 0.5, 0.5), 'fontsize': 40, 'rotation': 45, 'fontname': 'helv'}
+    WATERMARK_TILE_SPACING_X = 300
+    WATERMARK_TILE_SPACING_Y = 200
+    MAX_PAGE_RANGE_LENGTH = 1000
+
 logger = logging.getLogger(__name__)
+
+class CancelledError(Exception):
+    """작업 취소 시 발생하는 예외"""
+    pass
+
 
 class WorkerThread(QThread):
     progress_signal = pyqtSignal(int)
@@ -15,19 +41,93 @@ class WorkerThread(QThread):
         super().__init__()
         self.mode = mode
         self.kwargs = kwargs
+        self._is_cancelled = False
         logger.debug(f"WorkerThread initialized: mode={mode}")
+
+    def _parse_page_range(self, page_range_str: str, total_pages: int) -> list:
+        """페이지 범위 문자열을 파싱하여 페이지 번호 리스트(0-indexed) 반환
+        
+        Note: 입력 순서를 유지합니다. "5-1"은 5,4,3,2,1 순서로 반환됩니다.
+        """
+        if not page_range_str:
+            return []
+            
+        pages = []  # 순서 유지를 위해 리스트 사용
+        seen = set()  # 중복 체크용
+        max_results = MAX_PAGE_RANGE_LENGTH  # 결과 길이 제한
+        parts = page_range_str.split(',')
+        
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+                
+            try:
+                if '-' in part:
+                    # 범위 처리 (예: 1-5, 5-1)
+                    start_str, end_str = part.split('-')
+                    start = int(start_str)
+                    end = int(end_str)
+                    
+                    if start <= end:
+                        # 순방향: 1-5 -> 1,2,3,4,5
+                        for p in range(start, end + 1):
+                            if 1 <= p <= total_pages and (p - 1) not in seen:
+                                pages.append(p - 1)
+                                seen.add(p - 1)
+                                if len(pages) >= max_results:
+                                    logger.warning(f"페이지 범위가 최대 제한({max_results})에 도달했습니다.")
+                                    return pages
+                    else:
+                        # 역방향: 5-1 -> 5,4,3,2,1
+                        for p in range(start, end - 1, -1):
+                            if 1 <= p <= total_pages and (p - 1) not in seen:
+                                pages.append(p - 1)
+                                seen.add(p - 1)
+                                if len(pages) >= max_results:
+                                    logger.warning(f"페이지 범위가 최대 제한({max_results})에 도달했습니다.")
+                                    return pages
+                else:
+                    # 단일 페이지
+                    p = int(part)
+                    if 1 <= p <= total_pages and (p - 1) not in seen:
+                        pages.append(p - 1)
+                        seen.add(p - 1)
+                        if len(pages) >= max_results:
+                            logger.warning(f"페이지 범위가 최대 제한({max_results})에 도달했습니다.")
+                            return pages
+            except ValueError:
+                logger.warning(f"잘못된 페이지 형식 무시됨: {part}")
+                continue
+                
+        return pages
+    
+    def cancel(self):
+        """작업 취소 요청"""
+        self._is_cancelled = True
+        logger.info(f"Cancel requested for task: {self.mode}")
+    
+    def _check_cancelled(self):
+        """취소 여부 확인 - 장시간 작업 중간에 호출"""
+        if self._is_cancelled:
+            raise CancelledError("작업이 사용자에 의해 취소되었습니다.")
 
     def run(self):
         logger.info(f"Starting task: {self.mode}")
+        self._is_cancelled = False  # 시작 시 초기화
         try:
             method = getattr(self, self.mode, None)
             if method:
                 method()
-                logger.info(f"Task completed: {self.mode}")
+                if not self._is_cancelled:
+                    logger.info(f"Task completed: {self.mode}")
             else:
                 error_msg = f"알 수 없는 작업: {self.mode}"
                 logger.error(error_msg)
                 self.error_signal.emit(error_msg)
+        except CancelledError:
+            logger.info(f"Task cancelled: {self.mode}")
+            self.error_signal.emit("작업이 취소되었습니다.")
         except FileNotFoundError as e:
             error_msg = f"파일을 찾을 수 없습니다: {e.filename}"
             logger.error(f"FileNotFoundError in {self.mode}: {e}")
@@ -41,7 +141,7 @@ class WorkerThread(QThread):
             logger.error(f"PDF FileDataError in {self.mode}: {e}")
             self.error_signal.emit(error_msg)
         except Exception as e:
-            traceback.print_exc()
+            # traceback.print_exc()  # 로거로 대체
             logger.error(f"Unexpected error in {self.mode}: {e}", exc_info=True)
             self.error_signal.emit(f"오류 발생: {str(e)}")
 
@@ -67,6 +167,7 @@ class WorkerThread(QThread):
         doc_merged = fitz.open()
         try:
             for idx, path in enumerate(valid_files):
+                self._check_cancelled()  # 취소 체크포인트
                 try:
                     doc = fitz.open(path)
                     doc_merged.insert_pdf(doc)
@@ -105,6 +206,7 @@ class WorkerThread(QThread):
                 doc = fitz.open(file_path)
                 base = os.path.splitext(os.path.basename(file_path))[0]
                 for i, page in enumerate(doc):
+                    self._check_cancelled()  # 취소 체크포인트
                     pix = page.get_pixmap(matrix=mat)
                     save_path = os.path.join(output_dir, f"{base}_p{i+1:03d}.{fmt}")
                     pix.save(save_path)
@@ -134,6 +236,7 @@ class WorkerThread(QThread):
                 full_text = ""
                 
                 for i, page in enumerate(doc):
+                    self._check_cancelled()  # 취소 체크포인트
                     full_text += f"\n--- Page {i+1} ---\n"
                     
                     if include_details:
@@ -182,23 +285,15 @@ class WorkerThread(QThread):
         doc_final = fitz.open()
         try:
             total_pages = len(doc_src)
-            pages_to_keep = []
-            parts = page_range.split(',')
-            for part in parts:
-                part = part.strip()
-                if '-' in part:
-                    s, e = map(int, part.split('-'))
-                    for p in range(s-1, e):
-                        if 0 <= p < total_pages:
-                            pages_to_keep.append(p)
-                elif part.isdigit():
-                    p = int(part) - 1
-                    if 0 <= p < total_pages:
-                        pages_to_keep.append(p)
-            pages_to_keep = sorted(list(set(pages_to_keep)))
+            # v3.2: 개선된 페이지 파싱 유틸리티 사용
+            pages_to_keep = self._parse_page_range(page_range, total_pages)
+            
+            # 원본 순서 유지를 위해 입력 문자열 재파싱 또는 set 정렬 사용
+            # _parse_page_range는 정렬된 리스트를 반환하므로, 사용자가 입력한 순서가 중요하다면 로직 변경 필요
+            # 현재 로직은 단순 추출이므로 정렬된 순서 유지
             
             if not pages_to_keep:
-                raise ValueError("유효한 페이지가 없습니다.")
+                raise ValueError(f"유효한 페이지 범위가 아닙니다: {page_range}")
             
             total_count = max(1, len(pages_to_keep))  # Division by zero 방지
             for idx, p_num in enumerate(pages_to_keep):
@@ -221,22 +316,19 @@ class WorkerThread(QThread):
         try:
             doc = fitz.open(file_path)
             total_pages = len(doc)
-            pages_to_delete = []
-            parts = page_range.split(',')
-            for part in parts:
-                part = part.strip()
-                if '-' in part:
-                    s, e = map(int, part.split('-'))
-                    for p in range(s-1, e):
-                        if 0 <= p < total_pages: pages_to_delete.append(p)
-                elif part.isdigit():
-                    p = int(part) - 1
-                    if 0 <= p < total_pages: pages_to_delete.append(p)
-            pages_to_delete = sorted(list(set(pages_to_delete)), reverse=True)
+            
+            # v3.2: 개선된 페이지 파싱 유틸리티 사용
+            pages_to_delete = self._parse_page_range(page_range, total_pages)
+            
+            # 삭제는 뒤에서부터 해야 인덱스가 꼬이지 않음
+            pages_to_delete = sorted(pages_to_delete, reverse=True)
             if not pages_to_delete:
                 raise ValueError("삭제할 페이지가 없습니다.")
-            for p in pages_to_delete:
+            total_to_delete = len(pages_to_delete)
+            for idx, p in enumerate(pages_to_delete):
+                self._check_cancelled()  # 취소 체크포인트
                 doc.delete_page(p)
+                self.progress_signal.emit(int((idx + 1) / total_to_delete * 90))
             doc.save(output_path)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ 삭제 완료!\n{len(pages_to_delete)}페이지 삭제됨")
@@ -253,6 +345,7 @@ class WorkerThread(QThread):
         try:
             total_pages = max(1, len(doc))  # Division by zero 방지
             for i, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
                 page.set_rotation(page.rotation + angle)
                 self.progress_signal.emit(int((i + 1) / total_pages * 100))
             doc.save(output_path)
@@ -277,8 +370,14 @@ class WorkerThread(QThread):
         
         doc = fitz.open(file_path)
         try:
+            # 입력 검증
+            if not text:
+                self.error_signal.emit("워터마크 텍스트가 없습니다.")
+                return
+
             total_pages = max(1, len(doc))
             for i, page in enumerate(doc):
+                self._check_cancelled()
                 if layer == 'background':
                     rect = page.rect
                     shape = page.new_shape()
@@ -343,6 +442,10 @@ class WorkerThread(QThread):
         pw = self.kwargs.get('password')
         doc = None
         try:
+            if not pw:
+                self.error_signal.emit("비밀번호가 설정되지 않았습니다.")
+                return
+
             doc = fitz.open(file_path)
             perm = int(fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_PRINT | fitz.PDF_PERM_COPY)
             doc.save(output_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=pw, user_pw=pw, permissions=perm)
@@ -356,50 +459,32 @@ class WorkerThread(QThread):
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
         quality = self.kwargs.get('quality', 'high')  # low, medium, high
-        target_dpi = self.kwargs.get('target_dpi', 150)  # v3.2: DPI 기반 이미지 재샘플링
         
-        # 품질별 설정
-        settings = {
-            'low': {'garbage': 4, 'deflate': True, 'deflate_images': True, 'deflate_fonts': True, 'clean': True},
-            'medium': {'garbage': 3, 'deflate': True, 'deflate_images': True},
-            'high': {'garbage': 2, 'deflate': True},
-        }
+        # 입력 유효성 검사
+        if not file_path or not os.path.exists(file_path):
+            self.error_signal.emit("입력 파일이 존재하지 않습니다.")
+            return
+        if not output_path:
+            self.error_signal.emit("출력 경로가 지정되지 않았습니다.")
+            return
         
-        doc = fitz.open(file_path)
         original_size = os.path.getsize(file_path)
+        doc = fitz.open(file_path)
+        try:
+            total_pages = len(doc)
+            for page_num in range(total_pages):
+                self._check_cancelled()  # 취소 체크포인트
+                self.progress_signal.emit(int((page_num + 1) / total_pages * 80))
+            
+            doc.save(output_path, **COMPRESSION_SETTINGS.get(quality, COMPRESSION_SETTINGS['high']))
+        finally:
+            doc.close()
         
-        # v3.2: DPI 기반 이미지 다운스케일
-        if target_dpi < 150:  # 낮은 DPI로 이미지 재샘플링
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-                images = page.get_images()
-                for img in images:
-                    xref = img[0]
-                    try:
-                        base_img = doc.extract_image(xref)
-                        if base_img:
-                            pix = fitz.Pixmap(doc, xref)
-                            if pix.width > 100 and pix.height > 100:
-                                # 스케일 계산
-                                scale = target_dpi / 150
-                                new_w = int(pix.width * scale)
-                                new_h = int(pix.height * scale)
-                                if new_w > 50 and new_h > 50:
-                                    # 이미지 축소 (Pixmap shrink 사용)
-                                    shrink_factor = max(1, int(1 / scale))
-                                    pix.shrink(shrink_factor)
-                    except Exception:
-                        pass
-                self.progress_signal.emit(int((page_num + 1) / len(doc) * 50))
-        
-        doc.save(output_path, **settings.get(quality, settings['high']))
-        doc.close()
         new_size = os.path.getsize(output_path)
         ratio = (1 - new_size / original_size) * 100 if original_size > 0 else 0
         self.progress_signal.emit(100)
         quality_name = {'low': '최대 압축', 'medium': '중간', 'high': '고품질'}.get(quality, '고품질')
-        dpi_info = f", {target_dpi}DPI" if target_dpi < 150 else ""
-        self.finished_signal.emit(f"✅ 압축 완료! ({quality_name}{dpi_info})\n{original_size//1024}KB → {new_size//1024}KB ({ratio:.1f}% 감소)")
+        self.finished_signal.emit(f"✅ 압축 완료! ({quality_name})\n{original_size//1024}KB → {new_size//1024}KB ({ratio:.1f}% 감소)")
 
     def images_to_pdf(self):
         files = self.kwargs.get('files')
@@ -408,6 +493,7 @@ class WorkerThread(QThread):
         try:
             doc = fitz.open()
             for idx, img_path in enumerate(files):
+                self._check_cancelled()  # 취소 체크포인트
                 img = fitz.open(img_path)
                 try:
                     pdf_bytes = img.convert_to_pdf()
@@ -431,17 +517,24 @@ class WorkerThread(QThread):
         output_path = self.kwargs.get('output_path')
         page_order = self.kwargs.get('page_order')
         
-        doc_src = fitz.open(file_path)
-        doc_out = fitz.open()
-        
-        for idx, page_num in enumerate(page_order):
-            doc_out.insert_pdf(doc_src, from_page=page_num, to_page=page_num)
-            self.progress_signal.emit(int((idx + 1) / len(page_order) * 100))
-        
-        doc_out.save(output_path)
-        doc_src.close()
-        doc_out.close()
-        self.finished_signal.emit(f"✅ 페이지 순서 변경 완료!\n{len(page_order)}페이지 재정렬됨")
+        doc_src = None
+        doc_out = None
+        try:
+            doc_src = fitz.open(file_path)
+            doc_out = fitz.open()
+            
+            for idx, page_num in enumerate(page_order):
+                self._check_cancelled()  # 취소 체크포인트
+                doc_out.insert_pdf(doc_src, from_page=page_num, to_page=page_num)
+                self.progress_signal.emit(int((idx + 1) / len(page_order) * 100))
+            
+            doc_out.save(output_path)
+            self.finished_signal.emit(f"✅ 페이지 순서 변경 완료!\n{len(page_order)}페이지 재정렬됨")
+        finally:
+            if doc_out:
+                doc_out.close()
+            if doc_src:
+                doc_src.close()
 
     def batch(self):
         """일괄 처리"""
@@ -451,7 +544,10 @@ class WorkerThread(QThread):
         option = self.kwargs.get('option', '')
         
         success_count = 0
+        skipped_count = 0
         for idx, file_path in enumerate(files):
+            self._check_cancelled()  # 취소 체크포인트
+            doc = None
             try:
                 base = os.path.splitext(os.path.basename(file_path))[0]
                 out_path = os.path.join(output_dir, f"{base}_processed.pdf")
@@ -476,14 +572,22 @@ class WorkerThread(QThread):
                 else:
                     doc.save(out_path)
                 
-                doc.close()
                 success_count += 1
+            except CancelledError:
+                raise  # 취소는 상위로 전파
             except Exception as e:
-                print(f"Batch error on {file_path}: {e}")
+                logger.warning(f"Batch error on {file_path}: {e}")
+                skipped_count += 1
+            finally:
+                if doc:
+                    doc.close()
             
             self.progress_signal.emit(int((idx + 1) / len(files) * 100))
         
-        self.finished_signal.emit(f"✅ 일괄 처리 완료!\n{success_count}/{len(files)}개 파일 처리됨")
+        result_msg = f"✅ 일괄 처리 완료!\n{success_count}/{len(files)}개 파일 처리됨"
+        if skipped_count > 0:
+            result_msg += f"\n⚠️ {skipped_count}개 파일 건너뜀"
+        self.finished_signal.emit(result_msg)
 
     def split_by_pages(self):
         """PDF 분할 - 각 페이지를 개별 파일로"""
@@ -492,34 +596,45 @@ class WorkerThread(QThread):
         split_mode = self.kwargs.get('split_mode', 'each')
         ranges = self.kwargs.get('ranges', '')
         
-        doc = fitz.open(file_path)
-        base_name = os.path.splitext(os.path.basename(file_path))[0]
-        
-        if split_mode == 'each':
-            for i in range(len(doc)):
-                new_doc = fitz.open()
-                new_doc.insert_pdf(doc, from_page=i, to_page=i)
-                out_path = os.path.join(output_dir, f"{base_name}_page_{i+1}.pdf")
-                new_doc.save(out_path)
-                new_doc.close()
-                self.progress_signal.emit(int((i + 1) / len(doc) * 100))
-            self.finished_signal.emit(f"✅ PDF 분할 완료!\n{len(doc)}개 파일 생성됨")
-        else:
-            count = 0
-            for part_idx, rng in enumerate(ranges.split(',')):
-                rng = rng.strip()
-                if '-' in rng:
-                    start, end = map(int, rng.split('-'))
-                else:
-                    start = end = int(rng)
-                new_doc = fitz.open()
-                new_doc.insert_pdf(doc, from_page=start-1, to_page=end-1)
-                out_path = os.path.join(output_dir, f"{base_name}_part_{part_idx+1}.pdf")
-                new_doc.save(out_path)
-                new_doc.close()
-                count += 1
-            self.finished_signal.emit(f"✅ PDF 분할 완료!\n{count}개 파일 생성됨")
-        doc.close()
+        doc = None
+        try:
+            doc = fitz.open(file_path)
+            base_name = os.path.splitext(os.path.basename(file_path))[0]
+            page_count = len(doc)
+            
+            if split_mode == 'each':
+                for i in range(page_count):
+                    self._check_cancelled()  # 취소 체크포인트
+                    new_doc = fitz.open()
+                    try:
+                        new_doc.insert_pdf(doc, from_page=i, to_page=i)
+                        out_path = os.path.join(output_dir, f"{base_name}_page_{i+1}.pdf")
+                        new_doc.save(out_path)
+                    finally:
+                        new_doc.close()
+                    self.progress_signal.emit(int((i + 1) / page_count * 100))
+                self.finished_signal.emit(f"✅ PDF 분할 완료!\n{page_count}개 파일 생성됨")
+            else:
+                count = 0
+                range_list = [r.strip() for r in ranges.split(',') if r.strip()]
+                for part_idx, rng in enumerate(range_list):
+                    self._check_cancelled()  # 취소 체크포인트
+                    if '-' in rng:
+                        start, end = map(int, rng.split('-'))
+                    else:
+                        start = end = int(rng)
+                    new_doc = fitz.open()
+                    try:
+                        new_doc.insert_pdf(doc, from_page=start-1, to_page=end-1)
+                        out_path = os.path.join(output_dir, f"{base_name}_part_{part_idx+1}.pdf")
+                        new_doc.save(out_path)
+                    finally:
+                        new_doc.close()
+                    count += 1
+                self.finished_signal.emit(f"✅ PDF 분할 완료!\n{count}개 파일 생성됨")
+        finally:
+            if doc:
+                doc.close()
 
     def add_page_numbers(self):
         """페이지 번호 삽입"""
@@ -548,55 +663,58 @@ class WorkerThread(QThread):
             return roman
         
         doc = fitz.open(file_path)
-        total = len(doc)
-        
-        for i, page in enumerate(doc):
-            if skip_first and i == 0:
-                continue
+        try:
+            total = len(doc)
+            
+            for i, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                if skip_first and i == 0:
+                    continue
+                    
+                page_num = start_number + i if not skip_first else start_number + i - 1
                 
-            page_num = start_number + i if not skip_first else start_number + i - 1
+                # v3.2: 로마 숫자 변환
+                if use_roman:
+                    num_str = to_roman(page_num)
+                    total_str = to_roman(total)
+                else:
+                    num_str = str(page_num)
+                    total_str = str(total)
+                
+                text = format_str.replace('{n}', num_str).replace('{total}', total_str)
+                rect = page.rect
+                
+                # 위치별 텍스트박스 영역 설정
+                if position == 'bottom' or position == 'bottom-center':
+                    r = fitz.Rect(0, rect.height - margin - 20, rect.width, rect.height - margin)
+                    align = 1  # center
+                elif position == 'top' or position == 'top-center':
+                    r = fitz.Rect(0, margin, rect.width, margin + 20)
+                    align = 1
+                elif position == 'bottom-left':
+                    r = fitz.Rect(margin, rect.height - margin - 20, 150, rect.height - margin)
+                    align = 0  # left
+                elif position == 'bottom-right':
+                    r = fitz.Rect(rect.width - 150, rect.height - margin - 20, rect.width - margin, rect.height - margin)
+                    align = 2  # right
+                elif position == 'top-left':
+                    r = fitz.Rect(margin, margin, 150, margin + 20)
+                    align = 0
+                elif position == 'top-right':
+                    r = fitz.Rect(rect.width - 150, margin, rect.width - margin, margin + 20)
+                    align = 2
+                else:
+                    r = fitz.Rect(0, rect.height - margin - 20, rect.width, rect.height - margin)
+                    align = 1
+                
+                page.insert_textbox(r, text, fontsize=fontsize, fontname=fontname, color=color, align=align)
+                self.progress_signal.emit(int((i + 1) / total * 100))
             
-            # v3.2: 로마 숫자 변환
-            if use_roman:
-                num_str = to_roman(page_num)
-                total_str = to_roman(total)
-            else:
-                num_str = str(page_num)
-                total_str = str(total)
-            
-            text = format_str.replace('{n}', num_str).replace('{total}', total_str)
-            rect = page.rect
-            
-            # 위치별 텍스트박스 영역 설정
-            if position == 'bottom' or position == 'bottom-center':
-                r = fitz.Rect(0, rect.height - margin - 20, rect.width, rect.height - margin)
-                align = 1  # center
-            elif position == 'top' or position == 'top-center':
-                r = fitz.Rect(0, margin, rect.width, margin + 20)
-                align = 1
-            elif position == 'bottom-left':
-                r = fitz.Rect(margin, rect.height - margin - 20, 150, rect.height - margin)
-                align = 0  # left
-            elif position == 'bottom-right':
-                r = fitz.Rect(rect.width - 150, rect.height - margin - 20, rect.width - margin, rect.height - margin)
-                align = 2  # right
-            elif position == 'top-left':
-                r = fitz.Rect(margin, margin, 150, margin + 20)
-                align = 0
-            elif position == 'top-right':
-                r = fitz.Rect(rect.width - 150, margin, rect.width - margin, margin + 20)
-                align = 2
-            else:
-                r = fitz.Rect(0, rect.height - margin - 20, rect.width, rect.height - margin)
-                align = 1
-            
-            page.insert_textbox(r, text, fontsize=fontsize, fontname=fontname, color=color, align=align)
-            self.progress_signal.emit(int((i + 1) / total * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        format_type = "로마 숫자" if use_roman else "아라비아 숫자"
-        self.finished_signal.emit(f"✅ 페이지 번호 삽입 완료! ({format_type})\n{total}페이지")
+            doc.save(output_path)
+            format_type = "로마 숫자" if use_roman else "아라비아 숫자"
+            self.finished_signal.emit(f"✅ 페이지 번호 삽입 완료! ({format_type})\n{total}페이지")
+        finally:
+            doc.close()
 
     def insert_blank_page(self):
         """빈 페이지 삽입"""
@@ -605,11 +723,14 @@ class WorkerThread(QThread):
         position = self.kwargs.get('position', 0)
         
         doc = fitz.open(file_path)
-        doc.insert_page(position, width=595, height=842)  # A4 size
-        doc.save(output_path)
-        doc.close()
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 빈 페이지 삽입 완료!\n위치: {position + 1}페이지")
+        try:
+            width, height = DEFAULT_PAGE_SIZE  # A4
+            doc.insert_page(position, width=width, height=height)
+            doc.save(output_path)
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 빈 페이지 삽입 완료!\n위치: {position + 1}페이지")
+        finally:
+            doc.close()
 
     def replace_page(self):
         """특정 페이지 교체"""
@@ -621,15 +742,24 @@ class WorkerThread(QThread):
         
         doc = fitz.open(file_path)
         replace_doc = fitz.open(replace_path)
-        
-        doc.delete_page(target_page)
-        doc.insert_pdf(replace_doc, from_page=source_page, to_page=source_page, start_at=target_page)
-        
-        doc.save(output_path)
-        replace_doc.close()
-        doc.close()
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 페이지 교체 완료!")
+        try:
+            # 입력 검증
+            if target_page < 0 or target_page >= len(doc):
+                self.error_signal.emit(f"대상 페이지 번호가 유효하지 않습니다: {target_page + 1}")
+                return
+            if source_page < 0 or source_page >= len(replace_doc):
+                self.error_signal.emit(f"소스 페이지 번호가 유효하지 않습니다: {source_page + 1}")
+                return
+            
+            doc.delete_page(target_page)
+            doc.insert_pdf(replace_doc, from_page=source_page, to_page=source_page, start_at=target_page)
+            
+            doc.save(output_path)
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 페이지 교체 완료!")
+        finally:
+            replace_doc.close()
+            doc.close()
 
     def image_watermark(self):
         """이미지 워터마크"""
@@ -639,27 +769,30 @@ class WorkerThread(QThread):
         position = self.kwargs.get('position', 'center')
         
         doc = fitz.open(file_path)
-        
-        for i, page in enumerate(doc):
-            rect = page.rect
-            if position == 'center':
-                x, y = (rect.width - 150) / 2, (rect.height - 150) / 2
-            elif position == 'top-left':
-                x, y = 20, 20
-            elif position == 'top-right':
-                x, y = rect.width - 170, 20
-            elif position == 'bottom-left':
-                x, y = 20, rect.height - 170
-            else:
-                x, y = rect.width - 170, rect.height - 170
+        try:
+            total_pages = len(doc)
+            for i, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                rect = page.rect
+                if position == 'center':
+                    x, y = (rect.width - 150) / 2, (rect.height - 150) / 2
+                elif position == 'top-left':
+                    x, y = 20, 20
+                elif position == 'top-right':
+                    x, y = rect.width - 170, 20
+                elif position == 'bottom-left':
+                    x, y = 20, rect.height - 170
+                else:
+                    x, y = rect.width - 170, rect.height - 170
+                
+                img_rect = fitz.Rect(x, y, x + 150, y + 150)
+                page.insert_image(img_rect, filename=image_path, overlay=True)
+                self.progress_signal.emit(int((i + 1) / total_pages * 100))
             
-            img_rect = fitz.Rect(x, y, x + 150, y + 150)
-            page.insert_image(img_rect, filename=image_path, overlay=True)
-            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 이미지 워터마크 완료!")
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ 이미지 워터마크 완료!")
+        finally:
+            doc.close()
 
     def crop_pdf(self):
         """PDF 자르기"""
@@ -668,19 +801,22 @@ class WorkerThread(QThread):
         margins = self.kwargs.get('margins', {'left': 0, 'top': 0, 'right': 0, 'bottom': 0})
         
         doc = fitz.open(file_path)
-        
-        for i, page in enumerate(doc):
-            rect = page.rect
-            new_rect = fitz.Rect(
-                rect.x0 + margins['left'], rect.y0 + margins['top'],
-                rect.x1 - margins['right'], rect.y1 - margins['bottom']
-            )
-            page.set_cropbox(new_rect)
-            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ PDF 자르기 완료!")
+        try:
+            total_pages = len(doc)
+            for i, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                rect = page.rect
+                new_rect = fitz.Rect(
+                    rect.x0 + margins['left'], rect.y0 + margins['top'],
+                    rect.x1 - margins['right'], rect.y1 - margins['bottom']
+                )
+                page.set_cropbox(new_rect)
+                self.progress_signal.emit(int((i + 1) / total_pages * 100))
+            
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ PDF 자르기 완료!")
+        finally:
+            doc.close()
 
     def add_stamp(self):
         """PDF 스탬프 추가"""
@@ -691,27 +827,30 @@ class WorkerThread(QThread):
         color = self.kwargs.get('color', (1, 0, 0))  # 빨강
         
         doc = fitz.open(file_path)
-        
-        for i, page in enumerate(doc):
-            rect = page.rect
-            if position == 'top-right':
-                point = fitz.Point(rect.width - 100, 40)
-            elif position == 'top-left':
-                point = fitz.Point(30, 40)
-            elif position == 'bottom-right':
-                point = fitz.Point(rect.width - 100, rect.height - 30)
-            else:
-                point = fitz.Point(30, rect.height - 30)
+        try:
+            total_pages = len(doc)
+            for i, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                rect = page.rect
+                if position == 'top-right':
+                    point = fitz.Point(rect.width - 100, 40)
+                elif position == 'top-left':
+                    point = fitz.Point(30, 40)
+                elif position == 'bottom-right':
+                    point = fitz.Point(rect.width - 100, rect.height - 30)
+                else:
+                    point = fitz.Point(30, rect.height - 30)
+                
+                # 스탬프 테두리 (좌표 기반 간단 구현)
+                stamp_rect = fitz.Rect(point.x - 10, point.y - 20, point.x + 80, point.y + 5)
+                page.draw_rect(stamp_rect, color=color, width=2)
+                page.insert_text(point, stamp_text, fontsize=14, fontname="helv", color=color)
+                self.progress_signal.emit(int((i + 1) / total_pages * 100))
             
-            # 스탬프 테두리 (좌표 기반 간단 구현)
-            stamp_rect = fitz.Rect(point.x - 10, point.y - 20, point.x + 80, point.y + 5)
-            page.draw_rect(stamp_rect, color=color, width=2)
-            page.insert_text(point, stamp_text, fontsize=14, fontname="helv", color=color)
-            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 스탬프 추가 완료!")
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ 스탬프 추가 완료!")
+        finally:
+            doc.close()
 
     def extract_links(self):
         """PDF에서 모든 링크 추출"""
@@ -720,18 +859,20 @@ class WorkerThread(QThread):
         
         doc = fitz.open(file_path)
         all_links = []
-        
-        for i, page in enumerate(doc):
-            links = page.get_links()
-            for link in links:
-                if 'uri' in link:
-                    all_links.append({
-                        'page': i + 1,
-                        'url': link['uri']
-                    })
-            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
-        
-        doc.close()
+        try:
+            total_pages = len(doc)
+            for i, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                links = page.get_links()
+                for link in links:
+                    if 'uri' in link:
+                        all_links.append({
+                            'page': i + 1,
+                            'url': link['uri']
+                        })
+                self.progress_signal.emit(int((i + 1) / total_pages * 100))
+        finally:
+            doc.close()
         
         # 결과 파일로 저장
         with open(output_path, 'w', encoding='utf-8') as f:
@@ -748,23 +889,24 @@ class WorkerThread(QThread):
         doc = fitz.open(file_path)
         fields = []
         
-        for page_num, page in enumerate(doc):
-            widgets = page.widgets()
-            if widgets:
-                for widget in widgets:
-                    fields.append({
-                        'page': page_num + 1,
-                        'name': widget.field_name or f"field_{len(fields)}",
-                        'type': widget.field_type_string,
-                        'value': widget.field_value or "",
-                        'rect': list(widget.rect)
-                    })
-        
-        doc.close()
-        
-        # 결과를 kwargs에 저장 (메인 스레드에서 접근)
-        self.kwargs['result_fields'] = fields
-        self.finished_signal.emit(f"✅ 양식 필드 감지 완료!\n{len(fields)}개 필드 발견")
+        try:
+            for page_num, page in enumerate(doc):
+                widgets = page.widgets()
+                if widgets:
+                    for widget in widgets:
+                        fields.append({
+                            'page': page_num + 1,
+                            'name': widget.field_name or f"field_{len(fields)}",
+                            'type': widget.field_type_string,
+                            'value': widget.field_value or "",
+                            'rect': list(widget.rect)
+                        })
+            
+            # 결과를 kwargs에 저장 (메인 스레드에서 접근)
+            self.kwargs['result_fields'] = fields
+            self.finished_signal.emit(f"✅ 양식 필드 감지 완료!\n{len(fields)}개 필드 발견")
+        finally:
+            doc.close()
     
     def fill_form(self):
         """PDF 양식 필드에 값 채우기"""
@@ -775,20 +917,22 @@ class WorkerThread(QThread):
         doc = fitz.open(file_path)
         filled_count = 0
         
-        for page in doc:
-            widgets = page.widgets()
-            if widgets:
-                for widget in widgets:
-                    field_name = widget.field_name
-                    if field_name and field_name in field_values:
-                        widget.field_value = field_values[field_name]
-                        widget.update()
-                        filled_count += 1
-        
-        doc.save(output_path)
-        doc.close()
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 양식 작성 완료!\n{filled_count}개 필드 채움")
+        try:
+            for page in doc:
+                widgets = page.widgets()
+                if widgets:
+                    for widget in widgets:
+                        field_name = widget.field_name
+                        if field_name and field_name in field_values:
+                            widget.field_value = field_values[field_name]
+                            widget.update()
+                            filled_count += 1
+            
+            doc.save(output_path)
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 양식 작성 완료!\n{filled_count}개 필드 채움")
+        finally:
+            doc.close()
     
     def compare_pdfs(self):
         """두 PDF 비교"""
@@ -946,14 +1090,16 @@ class WorkerThread(QThread):
         count = self.kwargs.get('count', 1)
         
         doc = fitz.open(file_path)
-        
-        for i in range(count):
-            doc.fullcopy_page(page_num, page_num + 1 + i)
-            self.progress_signal.emit(int((i + 1) / count * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 페이지 복제 완료!\n{page_num + 1}페이지를 {count}번 복제")
+        try:
+            for i in range(count):
+                self._check_cancelled()  # 취소 체크포인트
+                doc.fullcopy_page(page_num, page_num + 1 + i)
+                self.progress_signal.emit(int((i + 1) / count * 100))
+            
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ 페이지 복제 완료!\n{page_num + 1}페이지를 {count}번 복제")
+        finally:
+            doc.close()
     
     def reverse_pages(self):
         """페이지 역순 정렬"""
@@ -961,24 +1107,26 @@ class WorkerThread(QThread):
         output_path = self.kwargs.get('output_path')
         
         doc = fitz.open(file_path)
-        page_count = len(doc)
-        
-        # 단일 페이지 PDF 처리
-        if page_count <= 1:
+        try:
+            page_count = len(doc)
+            
+            # 단일 페이지 PDF 처리
+            if page_count <= 1:
+                doc.save(output_path)
+                self.progress_signal.emit(100)
+                self.finished_signal.emit("✅ 역순 정렬 완료!\n1페이지 (변경 없음)")
+                return
+            
+            # 역순으로 페이지 이동
+            for i in range(page_count - 1):
+                self._check_cancelled()  # 취소 체크포인트
+                doc.move_page(page_count - 1, i)
+                self.progress_signal.emit(int((i + 1) / (page_count - 1) * 100))
+            
             doc.save(output_path)
+            self.finished_signal.emit(f"✅ 역순 정렬 완료!\n{page_count}페이지")
+        finally:
             doc.close()
-            self.progress_signal.emit(100)
-            self.finished_signal.emit("✅ 역순 정렬 완료!\n1페이지 (변경 없음)")
-            return
-        
-        # 역순으로 페이지 이동
-        for i in range(page_count - 1):
-            doc.move_page(page_count - 1, i)
-            self.progress_signal.emit(int((i + 1) / (page_count - 1) * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 역순 정렬 완료!\n{page_count}페이지")
     
     def resize_pages(self):
         """페이지 크기 변경"""
@@ -986,26 +1134,21 @@ class WorkerThread(QThread):
         output_path = self.kwargs.get('output_path')
         target_size = self.kwargs.get('target_size', 'A4')
         
-        # 표준 크기 (포인트)
-        sizes = {
-            'A4': (595, 842),
-            'A3': (842, 1191),
-            'Letter': (612, 792),
-            'Legal': (612, 1008),
-        }
-        
-        target_w, target_h = sizes.get(target_size, (595, 842))
+        target_w, target_h = PAGE_SIZES.get(target_size, DEFAULT_PAGE_SIZE)
         
         doc = fitz.open(file_path)
-        
-        for i, page in enumerate(doc):
-            # 새 크기로 페이지 설정
-            page.set_mediabox(fitz.Rect(0, 0, target_w, target_h))
-            self.progress_signal.emit(int((i + 1) / len(doc) * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 페이지 크기 변경 완료!\n{len(doc)}페이지 → {target_size}")
+        try:
+            total_pages = len(doc)
+            for i, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                # 새 크기로 페이지 설정
+                page.set_mediabox(fitz.Rect(0, 0, target_w, target_h))
+                self.progress_signal.emit(int((i + 1) / total_pages * 100))
+            
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ 페이지 크기 변경 완료!\n{len(doc)}페이지 → {target_size}")
+        finally:
+            doc.close()
     
     def extract_images(self):
         """PDF에서 모든 이미지 추출"""
@@ -1020,53 +1163,57 @@ class WorkerThread(QThread):
         image_info_list = []  # v3.2: 이미지 정보 목록
         seen_xrefs = set()  # v3.2: 중복 추적
         
-        for page_num, page in enumerate(doc):
-            images = page.get_images()
-            for img_idx, img in enumerate(images):
-                xref = img[0]
+        try:
+            total_pages = len(doc)
+            for page_num, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                images = page.get_images()
+                for img_idx, img in enumerate(images):
+                    xref = img[0]
+                    
+                    # v3.2: 중복 제거
+                    if deduplicate and xref in seen_xrefs:
+                        continue
+                    seen_xrefs.add(xref)
+                    
+                    try:
+                        base_image = doc.extract_image(xref)
+                        image_bytes = base_image["image"]
+                        image_ext = base_image["ext"]
+                        
+                        image_path = os.path.join(output_dir, f"page{page_num + 1}_img{img_idx + 1}.{image_ext}")
+                        with open(image_path, "wb") as f:
+                            f.write(image_bytes)
+                        
+                        # v3.2: 상세 정보 수집
+                        if include_info:
+                            info = {
+                                "filename": os.path.basename(image_path),
+                                "page": page_num + 1,
+                                "xref": xref,
+                                "width": base_image.get("width", 0),
+                                "height": base_image.get("height", 0),
+                                "colorspace": str(base_image.get("colorspace", "unknown")),
+                                "bpc": base_image.get("bpc", 0),  # bits per component
+                                "size_bytes": len(image_bytes),
+                                "format": image_ext
+                            }
+                            image_info_list.append(info)
+                        
+                        image_count += 1
+                    except Exception as e:
+                        logger.error(f"Image extraction error on page {page_num + 1}: {e}")
                 
-                # v3.2: 중복 제거
-                if deduplicate and xref in seen_xrefs:
-                    continue
-                seen_xrefs.add(xref)
-                
-                try:
-                    base_image = doc.extract_image(xref)
-                    image_bytes = base_image["image"]
-                    image_ext = base_image["ext"]
-                    
-                    image_path = os.path.join(output_dir, f"page{page_num + 1}_img{img_idx + 1}.{image_ext}")
-                    with open(image_path, "wb") as f:
-                        f.write(image_bytes)
-                    
-                    # v3.2: 상세 정보 수집
-                    if include_info:
-                        info = {
-                            "filename": os.path.basename(image_path),
-                            "page": page_num + 1,
-                            "xref": xref,
-                            "width": base_image.get("width", 0),
-                            "height": base_image.get("height", 0),
-                            "colorspace": str(base_image.get("colorspace", "unknown")),
-                            "bpc": base_image.get("bpc", 0),  # bits per component
-                            "size_bytes": len(image_bytes),
-                            "format": image_ext
-                        }
-                        image_info_list.append(info)
-                    
-                    image_count += 1
-                except Exception as e:
-                    print(f"Image extraction error on page {page_num + 1}: {e}")
+                self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
             
-            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
-        
-        # v3.2: 정보 파일 저장
-        if include_info and image_info_list:
-            info_path = os.path.join(output_dir, "_images_info.json")
-            with open(info_path, "w", encoding="utf-8") as f:
-                json.dump(image_info_list, f, indent=2, ensure_ascii=False)
-        
-        doc.close()
+            # v3.2: 정보 파일 저장
+            if include_info and image_info_list:
+                info_path = os.path.join(output_dir, "_images_info.json")
+                with open(info_path, "w", encoding="utf-8") as f:
+                    json.dump(image_info_list, f, indent=2, ensure_ascii=False)
+                    
+        finally:
+            doc.close()
         dedup_msg = " (중복 제거됨)" if deduplicate else ""
         self.finished_signal.emit(f"✅ 이미지 추출 완료!{dedup_msg}\n{image_count}개 이미지 저장됨")
     
@@ -1229,19 +1376,22 @@ class WorkerThread(QThread):
         
         doc = fitz.open(file_path)
         highlight_count = 0
-        
-        for page_num, page in enumerate(doc):
-            text_instances = page.search_for(search_term)
-            for inst in text_instances:
-                highlight = page.add_highlight_annot(inst)
-                highlight.set_colors(stroke=color)
-                highlight.update()
-                highlight_count += 1
-            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 하이라이트 완료!\n'{search_term}': {highlight_count}개 표시")
+        try:
+            total_pages = len(doc)
+            for page_num, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                text_instances = page.search_for(search_term)
+                for inst in text_instances:
+                    highlight = page.add_highlight_annot(inst)
+                    highlight.set_colors(stroke=color)
+                    highlight.update()
+                    highlight_count += 1
+                self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
+            
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ 하이라이트 완료!\n'{search_term}': {highlight_count}개 표시")
+        finally:
+            doc.close()
 
     # ===================== v3.0 신규 기능 =====================
     
@@ -1265,7 +1415,7 @@ class WorkerThread(QThread):
                         'data': table_data
                     })
             except Exception as e:
-                print(f"Page {page_num + 1} table extraction error: {e}")
+                logger.error(f"Page {page_num + 1} table extraction error: {e}")
             self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
         
         # CSV로 저장
@@ -1430,24 +1580,30 @@ class WorkerThread(QThread):
         target = self.kwargs.get('target')  # URL 또는 페이지 번호
         
         doc = fitz.open(file_path)
-        page = doc[page_num]
-        
-        link = {
-            'kind': fitz.LINK_URI if link_type == 'uri' else fitz.LINK_GOTO,
-            'from': fitz.Rect(rect),
-        }
-        
-        if link_type == 'uri':
-            link['uri'] = target
-        else:
-            link['page'] = int(target) - 1  # 0-indexed
-            link['to'] = fitz.Point(0, 0)
-        
-        page.insert_link(link)
-        doc.save(output_path)
-        doc.close()
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 링크 추가 완료!\n페이지 {page_num + 1}")
+        try:
+            if page_num < 0 or page_num >= len(doc):
+                self.error_signal.emit(f"페이지 번호 오류: {page_num + 1}")
+                return
+                
+            page = doc[page_num]
+            
+            link = {
+                'kind': fitz.LINK_URI if link_type == 'uri' else fitz.LINK_GOTO,
+                'from': fitz.Rect(rect),
+            }
+            
+            if link_type == 'uri':
+                link['uri'] = target
+            else:
+                link['page'] = int(target) - 1  # 0-indexed
+                link['to'] = fitz.Point(0, 0)
+            
+            page.insert_link(link)
+            doc.save(output_path)
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 링크 추가 완료!\n페이지 {page_num + 1}")
+        finally:
+            doc.close()
     
     def list_attachments(self):
         """PDF 첨부 파일 목록"""
@@ -1456,20 +1612,22 @@ class WorkerThread(QThread):
         doc = fitz.open(file_path)
         attachments = []
         
-        count = doc.embfile_count()
-        for i in range(count):
-            info = doc.embfile_info(i)
-            attachments.append({
-                'index': i,
-                'name': info.get('name', 'Unknown'),
-                'size': info.get('size', 0),
-                'created': info.get('creationDate', ''),
-            })
-        
-        doc.close()
-        self.kwargs['result_attachments'] = attachments
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 첨부 파일 목록!\n{len(attachments)}개 발견")
+        try:
+            count = doc.embfile_count()
+            for i in range(count):
+                info = doc.embfile_info(i)
+                attachments.append({
+                    'index': i,
+                    'name': info.get('name', 'Unknown'),
+                    'size': info.get('size', 0),
+                    'created': info.get('creationDate', ''),
+                })
+            
+            self.kwargs['result_attachments'] = attachments
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 첨부 파일 목록!\n{len(attachments)}개 발견")
+        finally:
+            doc.close()
     
     def add_attachment(self):
         """PDF에 파일 첨부"""
@@ -1523,20 +1681,28 @@ class WorkerThread(QThread):
         search_term = self.kwargs.get('search_term', '')
         fill_color = self.kwargs.get('fill_color', (0, 0, 0))  # 검정색 기본
         
+        if not search_term:
+            self.error_signal.emit("삭제할 텍스트가 입력되지 않았습니다.")
+            return
+        
         doc = fitz.open(file_path)
-        redact_count = 0
-        
-        for page_num, page in enumerate(doc):
-            text_instances = page.search_for(search_term)
-            for inst in text_instances:
-                page.add_redact_annot(inst, fill=fill_color)
-                redact_count += 1
-            page.apply_redactions()
-            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ {redact_count}개 영역 교정 완료!")
+        try:
+            redact_count = 0
+            total_pages = len(doc)
+            
+            for page_num, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                text_instances = page.search_for(search_term)
+                for inst in text_instances:
+                    page.add_redact_annot(inst, fill=fill_color)
+                    redact_count += 1
+                page.apply_redactions()
+                self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
+            
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ {redact_count}개 영역 교정 완료!")
+        finally:
+            doc.close()
     
     def extract_markdown(self):
         """PDF를 Markdown으로 추출"""
@@ -1545,23 +1711,28 @@ class WorkerThread(QThread):
         
         doc = fitz.open(file_path)
         markdown_text = f"# {os.path.basename(file_path)}\n\n"
+        total_pages = 0
         
-        for page_num, page in enumerate(doc):
-            text = page.get_text("text")
-            markdown_text += f"\n---\n\n## Page {page_num + 1}\n\n"
-            # 기본 텍스트 변환 (단순 줄바꿈 정리)
-            lines = text.split('\n')
-            for line in lines:
-                line = line.strip()
-                if line:
-                    markdown_text += line + "\n\n"
-            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
+        try:
+            total_pages = len(doc)
+            for page_num, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                text = page.get_text("text")
+                markdown_text += f"\n---\n\n## Page {page_num + 1}\n\n"
+                # 기본 텍스트 변환 (단순 줄바꿈 정리)
+                lines = text.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line:
+                        markdown_text += line + "\n\n"
+                self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
+        finally:
+            doc.close()
         
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(markdown_text)
         
-        doc.close()
-        self.finished_signal.emit(f"✅ Markdown 추출 완료!\n{len(doc)}페이지")
+        self.finished_signal.emit(f"✅ Markdown 추출 완료!\n{total_pages}페이지")
     
     def copy_page_between_docs(self):
         """다른 PDF에서 페이지 복사"""
@@ -1593,18 +1764,21 @@ class WorkerThread(QThread):
         color = tuple(self.kwargs.get('color', [1, 1, 0.9]))  # 연한 노란색 기본
         
         doc = fitz.open(file_path)
-        
-        for page_num, page in enumerate(doc):
-            rect = page.rect
-            shape = page.new_shape()
-            shape.draw_rect(rect)
-            shape.finish(color=color, fill=color)
-            shape.commit(overlay=False)  # 배경으로 삽입
-            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 배경색 추가 완료!\n{len(doc)}페이지")
+        try:
+            total_pages = len(doc)
+            for page_num, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                rect = page.rect
+                shape = page.new_shape()
+                shape.draw_rect(rect)
+                shape.finish(color=color, fill=color)
+                shape.commit(overlay=False)  # 배경으로 삽입
+                self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
+            
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ 배경색 추가 완료!\n{len(doc)}페이지")
+        finally:
+            doc.close()
     
     def add_text_markup(self):
         """검색어에 밑줄 또는 취소선 추가"""
@@ -1615,25 +1789,28 @@ class WorkerThread(QThread):
         
         doc = fitz.open(file_path)
         count = 0
-        
-        for page_num, page in enumerate(doc):
-            instances = page.search_for(search_term)
-            for inst in instances:
-                if markup_type == 'underline':
-                    annot = page.add_underline_annot(inst)
-                elif markup_type == 'strikeout':
-                    annot = page.add_strikeout_annot(inst)
-                elif markup_type == 'squiggly':
-                    annot = page.add_squiggly_annot(inst)
-                if annot:
-                    annot.update()
-                count += 1
-            self.progress_signal.emit(int((page_num + 1) / len(doc) * 100))
-        
-        doc.save(output_path)
-        doc.close()
-        markup_name = {'underline': '밑줄', 'strikeout': '취소선', 'squiggly': '물결선'}.get(markup_type, markup_type)
-        self.finished_signal.emit(f"✅ {markup_name} 추가 완료!\n'{search_term}': {count}개")
+        try:
+            total_pages = len(doc)
+            for page_num, page in enumerate(doc):
+                self._check_cancelled()  # 취소 체크포인트
+                instances = page.search_for(search_term)
+                for inst in instances:
+                    if markup_type == 'underline':
+                        annot = page.add_underline_annot(inst)
+                    elif markup_type == 'strikeout':
+                        annot = page.add_strikeout_annot(inst)
+                    elif markup_type == 'squiggly':
+                        annot = page.add_squiggly_annot(inst)
+                    if annot:
+                        annot.update()
+                    count += 1
+                self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
+            
+            doc.save(output_path)
+            markup_name = {'underline': '밑줄', 'strikeout': '취소선', 'squiggly': '물결선'}.get(markup_type, markup_type)
+            self.finished_signal.emit(f"✅ {markup_name} 추가 완료!\n'{search_term}': {count}개")
+        finally:
+            doc.close()
     
     def insert_textbox(self):
         """PDF에 텍스트 상자 삽입"""
@@ -1647,15 +1824,22 @@ class WorkerThread(QThread):
         align = self.kwargs.get('align', 0)  # 0=left, 1=center, 2=right
         
         doc = fitz.open(file_path)
-        page = doc[page_num]
-        
-        page.insert_textbox(fitz.Rect(rect), text, fontsize=fontsize, 
-                           fontname="helv", color=color, align=align)
-        
-        doc.save(output_path)
-        doc.close()
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ 텍스트 상자 삽입 완료!\n페이지 {page_num + 1}")
+        try:
+            # 유효성 검사 추가
+            if page_num < 0 or page_num >= len(doc):
+                self.error_signal.emit(f"페이지 번호 오류: {page_num + 1}")
+                return
+                
+            page = doc[page_num]
+            
+            page.insert_textbox(fitz.Rect(rect), text, fontsize=fontsize, 
+                               fontname="helv", color=color, align=align)
+            
+            doc.save(output_path)
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 텍스트 상자 삽입 완료!\n페이지 {page_num + 1}")
+        finally:
+            doc.close()
 
     # ===================== v3.2 신규 기능 =====================
     
@@ -1671,23 +1855,24 @@ class WorkerThread(QThread):
         icon = self.kwargs.get('icon', 'Note')  # Note, Comment, Key, Help, Insert, Paragraph
         
         doc = fitz.open(file_path)
-        
-        if page_num >= len(doc):
-            page_num = len(doc) - 1
-        
-        page = doc[page_num]
-        point = fitz.Point(x, y)
-        
-        # 스티키 노트 주석 추가
-        annot = page.add_text_annot(point, content, icon=icon)
-        if annot:
-            annot.set_info(title=title, content=content)
-            annot.update()
-        
-        self.progress_signal.emit(100)
-        doc.save(output_path)
-        doc.close()
-        self.finished_signal.emit(f"✅ 스티키 노트 추가 완료!\n페이지 {page_num + 1}, 아이콘: {icon}")
+        try:
+            if page_num >= len(doc):
+                page_num = len(doc) - 1
+            
+            page = doc[page_num]
+            point = fitz.Point(x, y)
+            
+            # 스티키 노트 주석 추가
+            annot = page.add_text_annot(point, content, icon=icon)
+            if annot:
+                annot.set_info(title=title, content=content)
+                annot.update()
+            
+            self.progress_signal.emit(100)
+            doc.save(output_path)
+            self.finished_signal.emit(f"✅ 스티키 노트 추가 완료!\n페이지 {page_num + 1}, 아이콘: {icon}")
+        finally:
+            doc.close()
     
     def add_ink_annotation(self):
         """PDF에 프리핸드 드로잉(잉크 주석) 추가"""

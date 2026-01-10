@@ -141,6 +141,63 @@ QPushButton#dangerBtn:hover {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f87171, stop:1 #ef4444); 
 }
 
+/* Icon Button (작은 아이콘 전용) */
+QPushButton#iconBtn {
+    background: transparent;
+    border: 1px solid #2d3748;
+    color: #94a3b8;
+    padding: 8px;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    border-radius: 8px;
+    font-size: 16px;
+}
+QPushButton#iconBtn:hover {
+    background: rgba(79, 140, 255, 0.15);
+    border-color: #4f8cff;
+    color: #4f8cff;
+}
+QPushButton#iconBtn:pressed {
+    background: rgba(79, 140, 255, 0.25);
+}
+
+/* Ghost Button (텍스트 전용) */
+QPushButton#ghostBtn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 8px 16px;
+    font-weight: 500;
+}
+QPushButton#ghostBtn:hover {
+    color: #f0f4f8;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Success Button */
+QPushButton#successBtn {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #10b981, stop:1 #059669);
+}
+QPushButton#successBtn:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #34d399, stop:1 #10b981);
+}
+
+/* Warning Button */
+QPushButton#warningBtn {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f59e0b, stop:1 #d97706);
+    color: #1a1a2e;
+}
+QPushButton#warningBtn:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #fbbf24, stop:1 #f59e0b);
+}
+
+/* ===== 포커스 링 (접근성) ===== */
+QPushButton:focus, QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
+    outline: none;
+}
+
 /* ===== 입력 위젯 (네온 포커스) ===== */
 QListWidget, QLineEdit, QSpinBox, QComboBox, QTextEdit { 
     background-color: #0f1318; 
@@ -514,6 +571,49 @@ QPushButton#actionBtn {
 /* Danger Button */
 QPushButton#dangerBtn { 
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ef4444, stop:1 #dc2626); 
+}
+
+/* Icon Button (작은 아이콘 전용) */
+QPushButton#iconBtn {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    padding: 8px;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    border-radius: 8px;
+    font-size: 16px;
+}
+QPushButton#iconBtn:hover {
+    background: rgba(79, 140, 255, 0.1);
+    border-color: #4f8cff;
+    color: #4f8cff;
+}
+
+/* Ghost Button (텍스트 전용) */
+QPushButton#ghostBtn {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    padding: 8px 16px;
+    font-weight: 500;
+}
+QPushButton#ghostBtn:hover {
+    color: #1e293b;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* Success Button */
+QPushButton#successBtn {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #10b981, stop:1 #059669);
+}
+
+/* Warning Button */
+QPushButton#warningBtn {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f59e0b, stop:1 #d97706);
+    color: #1a1a2e;
 }
 
 /* ===== 입력 위젯 ===== */

@@ -1,4 +1,4 @@
-# PDF Master v4.2
+# PDF Master v4.3
 
 📑 **올인원 PDF 편집 프로그램** - PyQt6 기반 데스크톱 앱
 
@@ -37,8 +37,11 @@
 ### 🤖 AI 기능
 - **AI 기반 PDF 요약** - Gemini API 연동 (`gemini-flash-latest` 모델)
 
-### 🎨 UI/UX
+### 🎨 UI/UX (v4.3 신규)
+- **진행 오버레이** - 작업 중 풀스크린 오버레이 + 취소 버튼
 - **Premium 테마** - 모던 그라데이션, 글래스모피즘
+- **새 버튼 스타일** - iconBtn, ghostBtn, successBtn, warningBtn
+- **빈 상태 위젯** - 친근한 안내 UI
 - **Undo/Redo** - Ctrl+Z/Y 단축키
 - **미리보기 줌/패닝** - 마우스 휠 줌, 드래그 이동
 
@@ -76,7 +79,7 @@ python main.py
 pyinstaller pdf_master.spec --clean
 ```
 
-빌드 결과: `dist/PDF_Master_v4.2.exe` (~30-40MB)
+빌드 결과: `dist/PDF_Master_v4.3.exe` (~30-40MB)
 
 ---
 
@@ -94,6 +97,13 @@ pyinstaller pdf_master.spec --clean
 ---
 
 ## 📝 변경 이력
+
+### v4.3 (2026-01-10)
+- 🎨 **진행 오버레이** - 작업 중 취소 가능한 풀스크린 다이얼로그
+- 🆕 **EmptyStateWidget** - 빈 상태 안내 UI 위젯
+- 🎯 **버튼 스타일 확장** - iconBtn, ghostBtn, successBtn, warningBtn
+- 🔄 **테마 동기화 개선** - 모든 위젯 테마 자동 동기화
+- 🖼️ **미리보기 패널 개선** - 그라데이션 배경, border-radius 통일
 
 ### v4.2 (2026-01-06)
 - 🔄 **google-genai SDK** - 새 공식 SDK 사용

@@ -173,6 +173,8 @@ class ZoomablePreviewWidget(QWidget):
         self._doc = None
         
         self._setup_ui()
+        
+        # Note: 리소스 정리는 closeEvent에서 수행됨\n        # destroyed 시그널은 객체가 이미 삭제된 후에 발생하므로 사용하지 않음
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -271,10 +273,24 @@ class ZoomablePreviewWidget(QWidget):
             logger.error(f"Failed to load PDF: {e}")
     
     def _close_doc(self):
-        """문서 닫기"""
+        """문서 닫기 (안전하게)"""
         if self._doc:
-            self._doc.close()
-            self._doc = None
+            try:
+                self._doc.close()
+                logger.debug("ZoomablePreviewWidget: document closed")
+            except Exception as e:
+                logger.warning(f"Error closing document: {e}")
+            finally:
+                self._doc = None
+    
+    def clear(self):
+        """리소스 해제 및 디스플레이 초기화"""
+        self._close_doc()
+        self._pdf_path = ""
+        self._current_page = 0
+        self._total_pages = 0
+        self.graphics_view.set_pixmap(QPixmap())
+        self.page_label.setText("0 / 0")
     
     def _render_current_page(self):
         """현재 페이지 렌더링"""
@@ -283,8 +299,16 @@ class ZoomablePreviewWidget(QWidget):
             
         page = self._doc[self._current_page]
         
-        # 고해상도 렌더링 (줌에 대응)
-        zoom = max(2.0, self.graphics_view.zoom_level * 2)
+        # 고해상도 렌더링 (줌에 대응, 메모리 제한을 위해 최대 4.0으로 제한)
+        zoom = min(4.0, max(2.0, self.graphics_view.zoom_level * 2))
+        
+        # 대용량 페이지 메모리 보호: 렌더링 결과가 너무 크면 줌 감소
+        page_width = page.rect.width * zoom
+        page_height = page.rect.height * zoom
+        max_dimension = 8000  # 최대 8000px
+        if page_width > max_dimension or page_height > max_dimension:
+            zoom = max_dimension / max(page.rect.width, page.rect.height)
+        
         mat = fitz.Matrix(zoom, zoom)
         pix = page.get_pixmap(matrix=mat)
         

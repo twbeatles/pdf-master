@@ -161,6 +161,8 @@ class ThumbnailGridWidget(QWidget):
         self._is_dark_theme = True
         
         self._setup_ui()
+        
+        # Note: 스레드 정리는 closeEvent에서 수행됨 (destroyed 시그널은 불안정)
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -248,6 +250,26 @@ class ThumbnailGridWidget(QWidget):
         self._loader_thread.loading_complete.connect(self._on_loading_complete)
         self._loader_thread.start()
     
+    def _cleanup_loader_thread(self):
+        """로더 스레드 정리 (타임아웃 적용)"""
+        if self._loader_thread:
+            # 시그널 연결 해제
+            try:
+                self._loader_thread.thumbnail_ready.disconnect()
+                self._loader_thread.progress.disconnect()
+                self._loader_thread.loading_complete.disconnect()
+            except Exception:
+                pass  # 연결되지 않은 경우 무시
+                
+            if self._loader_thread.isRunning():
+                self._loader_thread.cancel()
+                if not self._loader_thread.wait(3000):  # 3초 타임아웃
+                    logger.warning("ThumbnailLoaderThread did not finish in time")
+                    self._loader_thread.terminate()
+                    self._loader_thread.wait(1000)
+            
+            self._loader_thread = None
+    
     def _clear_thumbnails(self):
         """모든 썸네일 제거"""
         for thumb in self._thumbnails:
@@ -326,7 +348,5 @@ class ThumbnailGridWidget(QWidget):
     
     def closeEvent(self, event):
         """위젯 종료 시 스레드 정리"""
-        if self._loader_thread and self._loader_thread.isRunning():
-            self._loader_thread.cancel()
-            self._loader_thread.wait()
+        self._cleanup_loader_thread()
         super().closeEvent(event)

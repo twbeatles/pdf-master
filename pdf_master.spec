@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PDF Master v4.2 - PyInstaller Spec File
+# PDF Master v4.3 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
 # Python 3.12+ 호환, PDF to Word 기능 제거
 
@@ -158,7 +158,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='PDF_Master_v4.2',
+    name='PDF_Master_v4.3',
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,
@@ -176,5 +176,5 @@ exe = EXE(
 
 # =====================================================================
 # 빌드: pyinstaller pdf_master.spec --clean
-# 예상 결과: dist/PDF_Master_v4.2.exe (~30-40MB)
+# 예상 결과: dist/PDF_Master_v4.3.exe (~30-40MB)
 # =====================================================================

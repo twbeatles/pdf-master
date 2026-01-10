@@ -18,10 +18,11 @@ from PyQt6.QtGui import QIcon, QAction, QPixmap, QImage, QKeySequence, QShortcut
 from ..core.settings import load_settings, save_settings
 from ..core.worker import WorkerThread
 from ..core.undo_manager import UndoManager
-from .widgets import FileSelectorWidget, FileListWidget, ImageListWidget, DropZoneWidget, WheelEventFilter, ToastWidget
+from .widgets import FileSelectorWidget, FileListWidget, ImageListWidget, DropZoneWidget, WheelEventFilter, ToastWidget, EmptyStateWidget
 from .styles import DARK_STYLESHEET, LIGHT_STYLESHEET, ThemeColors
 from .thumbnail_grid import ThumbnailGridWidget
 from .zoomable_preview import ZoomablePreviewWidget
+from .progress_overlay import ProgressOverlayWidget
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ except ImportError:
 # PDF to Word 변환 기능 삭제 (v4.2 - 의존성 간소화)
 
 APP_NAME = "PDF Master"
-VERSION = "4.2"
+VERSION = "4.3"
 
 class PDFMasterApp(QMainWindow):
     def __init__(self):
@@ -151,6 +152,11 @@ class PDFMasterApp(QMainWindow):
         
         # v2.7: 윈도우 위치 복원
         self._restore_window_geometry()
+        
+        # v4.3: 진행 오버레이 위젯 초기화 (개선된 UX)
+        self.progress_overlay = ProgressOverlayWidget(central)
+        self.progress_overlay.cancelled.connect(self._on_worker_cancelled)
+        self.progress_overlay.hide()
     
     def _install_wheel_filters(self):
         """모든 입력 위젯에 휠 이벤트 필터 설치"""
@@ -233,9 +239,12 @@ class PDFMasterApp(QMainWindow):
     
     def closeEvent(self, event):
         """앱 종료 시 리소스 정리 및 설정 저장"""
-        # 1. Worker 스레드 안전 종료
+        # 1. Worker 스레드 안전 종료 (취소 요청 후 대기)
         if self.worker and self.worker.isRunning():
-            logger.info("Waiting for worker thread to finish...")
+            logger.info("Cancelling and waiting for worker thread to finish...")
+            # 먼저 취소 요청 (graceful shutdown)
+            if hasattr(self.worker, 'cancel'):
+                self.worker.cancel()
             self.worker.quit()
             if not self.worker.wait(3000):  # 3초 대기
                 logger.warning("Worker thread did not finish in time, terminating...")
@@ -543,16 +552,32 @@ class PDFMasterApp(QMainWindow):
         for widget in self.findChildren(DropZoneWidget):
             widget.set_theme(is_dark)
         
+        # EmptyStateWidget 테마 동기화
+        for widget in self.findChildren(EmptyStateWidget):
+            widget.set_theme(is_dark)
+        
+        # 진행 오버레이 테마 동기화
+        if hasattr(self, 'progress_overlay'):
+            self.progress_overlay.set_theme(is_dark)
+        
         # 미리보기 패널 테마 동기화
         if hasattr(self, 'preview_image'):
             if is_dark:
-                self.preview_image.setStyleSheet("background: #0f0f23; border-radius: 8px; border: 1px solid #333;")
-                self.preview_label.setStyleSheet("color: #888; padding: 10px; font-size: 12px;")
-                self.page_counter.setStyleSheet("font-weight: bold; min-width: 60px; color: #eaeaea;")
+                self.preview_image.setStyleSheet("""
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #141922, stop:1 #0f1318);
+                    border-radius: 12px;
+                    border: 1px solid #2d3748;
+                """)
+                self.preview_label.setStyleSheet("color: #94a3b8; padding: 12px; font-size: 13px; background: transparent;")
+                self.page_counter.setStyleSheet("font-weight: 700; min-width: 60px; color: #f0f4f8;")
             else:
-                self.preview_image.setStyleSheet("background: #f0f0f0; border-radius: 8px; border: 1px solid #ddd;")
-                self.preview_label.setStyleSheet("color: #666; padding: 10px; font-size: 12px; background: transparent;")
-                self.page_counter.setStyleSheet("font-weight: bold; min-width: 60px; color: #333;")
+                self.preview_image.setStyleSheet("""
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #f8fafc);
+                    border-radius: 12px;
+                    border: 1px solid #e2e8f0;
+                """)
+                self.preview_label.setStyleSheet("color: #64748b; padding: 12px; font-size: 13px; background: transparent;")
+                self.page_counter.setStyleSheet("font-weight: 700; min-width: 60px; color: #1e293b;")
     
     def _show_help(self):
         QMessageBox.information(self, "도움말", f"""📑 {APP_NAME} v{VERSION}
@@ -601,18 +626,63 @@ class PDFMasterApp(QMainWindow):
         elif 'output_dir' in kwargs:
             self._last_output_path = kwargs['output_dir']
         
+        # 작업 모드에 따른 설명
+        mode_descriptions = {
+            "merge": "PDF 파일을 병합하고 있습니다...",
+            "convert_to_img": "PDF를 이미지로 변환 중입니다...",
+            "images_to_pdf": "이미지를 PDF로 변환 중입니다...",
+            "extract_text": "텍스트를 추출하고 있습니다...",
+            "split": "페이지를 추출하고 있습니다...",
+            "delete_pages": "페이지를 삭제하고 있습니다...",
+            "rotate": "페이지를 회전하고 있습니다...",
+            "add_page_numbers": "페이지 번호를 추가하고 있습니다...",
+            "watermark": "워터마크를 적용하고 있습니다...",
+            "encrypt": "PDF를 암호화하고 있습니다...",
+            "compress": "PDF를 압축하고 있습니다...",
+            "ai_summary": "AI가 PDF를 분석하고 있습니다..."
+        }
+        description = mode_descriptions.get(mode, "처리 중입니다...")
+        
         self.worker = WorkerThread(mode, **kwargs)
-        self.worker.progress_signal.connect(self.progress_bar.setValue)
+        self.worker.progress_signal.connect(self._on_progress_update)
         self.worker.finished_signal.connect(self.on_success)
         self.worker.error_signal.connect(self.on_fail)
         self.progress_bar.setValue(0)
         self.btn_open_folder.setVisible(False)
         self.status_label.setText("⏳ 작업 처리 중...")
         self.set_ui_busy(True)
+        
+        # 진행 오버레이 표시 (개선된 UX)
+        self.progress_overlay.show_progress("작업 처리 중...", description)
+        
         self.worker.start()
+    
+    def _on_progress_update(self, value: int):
+        """진행률 업데이트 (오버레이 + 상태바)"""
+        self.progress_bar.setValue(value)
+        self.progress_overlay.update_progress(value)
+    
+    def _on_worker_cancelled(self):
+        """작업 취소 처리"""
+        if self.worker and self.worker.isRunning():
+            if hasattr(self.worker, 'cancel'):
+                self.worker.cancel()
+            self.status_label.setText("🚫 작업 취소 중...")
+            # 취소 후 정리
+            QTimer.singleShot(500, self._cleanup_cancelled_worker)
+    
+    def _cleanup_cancelled_worker(self):
+        """취소된 작업 정리"""
+        self.set_ui_busy(False)
+        self.progress_overlay.hide_progress()
+        self.status_label.setText("🚫 작업이 취소되었습니다")
+        self.progress_bar.setValue(0)
+        toast = ToastWidget("작업이 취소되었습니다", toast_type='warning', duration=3000)
+        toast.show_toast(self)
     
     def on_success(self, msg):
         self.set_ui_busy(False)
+        self.progress_overlay.hide_progress()  # 오버레이 숨기기
         self.status_label.setText("✅ 작업 완료!")
         self.progress_bar.setValue(100)
         self.btn_open_folder.setVisible(True)  # 폴더 열기 버튼 표시
@@ -634,6 +704,7 @@ class PDFMasterApp(QMainWindow):
     
     def on_fail(self, msg):
         self.set_ui_busy(False)
+        self.progress_overlay.hide_progress()  # 오버레이 숨기기
         self.status_label.setText("❌ 오류 발생")
         self.progress_bar.setValue(0)
         self.btn_open_folder.setVisible(False)

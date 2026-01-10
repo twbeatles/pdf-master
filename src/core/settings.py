@@ -9,6 +9,17 @@ logger = logging.getLogger(__name__)
 
 SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".pdf_master_settings.json")
 
+# keyring 가용성 체크 (보안 저장용)
+KEYRING_AVAILABLE = False
+try:
+    import keyring
+    KEYRING_AVAILABLE = True
+except ImportError:
+    logger.info("keyring not available, API key will be stored in settings file")
+
+KEYRING_SERVICE = "PDFMaster"
+KEYRING_USERNAME = "gemini_api_key"
+
 # 기본 설정
 DEFAULT_SETTINGS = {
     "theme": "dark",
@@ -16,8 +27,63 @@ DEFAULT_SETTINGS = {
     "last_output_dir": "",
     "splitter_sizes": None,
     "window_geometry": None,
-    "gemini_api_key": ""  # v4.0: AI 요약용 API 키
+    # gemini_api_key는 keyring 미사용 시에만 파일에 저장됨
 }
+
+def get_api_key() -> str:
+    """
+    API 키 안전하게 가져오기 (keyring 우선, 파일 폴백)
+    
+    Returns:
+        API 키 문자열 (없으면 빈 문자열)
+    """
+    if KEYRING_AVAILABLE:
+        try:
+            key = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME)
+            if key:
+                return key
+        except Exception as e:
+            logger.warning(f"Failed to get API key from keyring: {e}")
+    
+    # 파일에서 폴백
+    settings = load_settings()
+    return settings.get("gemini_api_key", "")
+
+def set_api_key(api_key: str) -> bool:
+    """
+    API 키 안전하게 저장하기 (keyring 우선, 파일 폴백)
+    
+    Args:
+        api_key: 저장할 API 키
+        
+    Returns:
+        저장 성공 여부
+    """
+    if KEYRING_AVAILABLE:
+        try:
+            if api_key:
+                keyring.set_password(KEYRING_SERVICE, KEYRING_USERNAME, api_key)
+            else:
+                try:
+                    keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
+                except keyring.errors.PasswordDeleteError:
+                    pass  # 삭제할 키가 없는 경우 무시
+            
+            # 파일에서 기존 키 제거 (보안)
+            settings = load_settings()
+            if "gemini_api_key" in settings:
+                del settings["gemini_api_key"]
+                save_settings(settings)
+            
+            logger.info("API key saved to keyring")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to save API key to keyring, falling back to file: {e}")
+    
+    # 파일에 폴백 저장
+    settings = load_settings()
+    settings["gemini_api_key"] = api_key
+    return save_settings(settings)
 
 def load_settings():
     """Load application settings from JSON file."""
@@ -64,8 +130,17 @@ def reset_settings():
     try:
         if os.path.exists(SETTINGS_FILE):
             os.remove(SETTINGS_FILE)
+        
+        # keyring에서도 API 키 삭제
+        if KEYRING_AVAILABLE:
+            try:
+                keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
+            except Exception:
+                pass
+        
         logger.info("Settings reset to defaults")
         return True
     except Exception as e:
         logger.error(f"Failed to reset settings: {e}")
         return False
+

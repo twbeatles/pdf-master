@@ -5,7 +5,9 @@ Gemini API를 활용한 PDF 요약 서비스를 제공합니다.
 """
 import logging
 import fitz
+import time
 from typing import Optional
+from functools import wraps
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,64 @@ except ImportError:
         logger.warning("No Gemini SDK installed. AI features will be disabled.")
 
 
+class AIServiceError(Exception):
+    """AI 서비스 관련 기본 예외"""
+    pass
+
+
+class APIKeyError(AIServiceError):
+    """API 키 관련 오류"""
+    pass
+
+
+class APITimeoutError(AIServiceError):
+    """API 타임아웃 오류"""
+    pass
+
+
+class APIRateLimitError(AIServiceError):
+    """API 호출 제한 오류"""
+    pass
+
+
+def retry_with_backoff(max_retries: int = 3, base_delay: float = 1.0, max_delay: float = 30.0):
+    """
+    지수 백오프를 사용한 재시도 데코레이터
+    
+    Args:
+        max_retries: 최대 재시도 횟수
+        base_delay: 기본 대기 시간 (초)
+        max_delay: 최대 대기 시간 (초)
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+            for attempt in range(max_retries + 1):
+                try:
+                    return func(*args, **kwargs)
+                except (ConnectionError, TimeoutError) as e:
+                    last_exception = e
+                    if attempt < max_retries:
+                        delay = min(base_delay * (2 ** attempt), max_delay)
+                        logger.warning(f"Attempt {attempt + 1} failed, retrying in {delay:.1f}s: {e}")
+                        time.sleep(delay)
+                    else:
+                        logger.error(f"All {max_retries + 1} attempts failed")
+                        raise
+                except Exception as e:
+                    # 재시도 불가능한 오류는 즉시 발생
+                    error_str = str(e).lower()
+                    if 'rate limit' in error_str or 'quota' in error_str:
+                        raise APIRateLimitError(f"API 호출 제한에 도달했습니다: {e}")
+                    elif 'api key' in error_str or 'invalid' in error_str or 'authentication' in error_str:
+                        raise APIKeyError(f"API 키가 유효하지 않습니다: {e}")
+                    raise
+            raise last_exception
+        return wrapper
+    return decorator
+
+
 class AIService:
     """
     Gemini API를 사용한 AI 서비스 클래스
@@ -40,15 +100,19 @@ class AIService:
     
     DEFAULT_MODEL = "gemini-flash-latest"
     MAX_TEXT_LENGTH = 30000  # Gemini API 입력 제한
+    DEFAULT_TIMEOUT = 30  # 기본 타임아웃 (초)
+    MAX_RETRIES = 3  # 기본 재시도 횟수
     
-    def __init__(self, api_key: str = "", model: str = None):
+    def __init__(self, api_key: str = "", model: str = None, timeout: int = None):
         """
         Args:
             api_key: Gemini API 키
-            model: 사용할 모델명 (기본값: gemini-2.0-flash)
+            model: 사용할 모델명 (기본값: gemini-flash-latest)
+            timeout: API 호출 타임아웃 (초, 기본값: 30)
         """
         self._api_key = api_key
         self._model = model or self.DEFAULT_MODEL
+        self._timeout = timeout or self.DEFAULT_TIMEOUT
         self._configured = False
         self._client = None  # 새 SDK용 클라이언트
         
@@ -63,6 +127,11 @@ class AIService:
             
         if not self._api_key:
             logger.warning("API key not provided")
+            return False
+        
+        # API 키 형식 기본 검증
+        if not self._validate_api_key_format(self._api_key):
+            logger.error("Invalid API key format")
             return False
             
         try:
@@ -81,6 +150,74 @@ class AIService:
         except Exception as e:
             logger.error(f"Failed to configure Gemini API: {e}")
             return False
+    
+    def _validate_api_key_format(self, api_key: str) -> bool:
+        """
+        API 키 형식 기본 검증
+        
+        Args:
+            api_key: 검증할 API 키
+            
+        Returns:
+            형식이 유효한지 여부
+        """
+        if not api_key or not isinstance(api_key, str):
+            return False
+        
+        # 최소 길이 확인 (Gemini API 키는 보통 39자)
+        if len(api_key) < 20:
+            return False
+        
+        # 공백 없음 확인
+        if ' ' in api_key or '\n' in api_key or '\t' in api_key:
+            return False
+        
+        return True
+    
+    def validate_api_key(self) -> tuple[bool, str]:
+        """
+        API 키 유효성 실제 검증 (API 호출로 확인)
+        
+        Returns:
+            (성공 여부, 메시지) 튜플
+        """
+        if not GENAI_AVAILABLE:
+            return False, "Gemini SDK가 설치되지 않았습니다."
+        
+        if not self._api_key:
+            return False, "API 키가 설정되지 않았습니다."
+        
+        if not self._validate_api_key_format(self._api_key):
+            return False, "API 키 형식이 올바르지 않습니다."
+        
+        try:
+            # 간단한 테스트 요청으로 API 키 확인
+            test_prompt = "Hi"
+            if LEGACY_SDK:
+                import google.generativeai as genai_legacy
+                genai_legacy.configure(api_key=self._api_key)
+                model = genai_legacy.GenerativeModel(self._model)
+                response = model.generate_content(test_prompt)
+            else:
+                from google import genai
+                client = genai.Client(api_key=self._api_key)
+                response = client.models.generate_content(
+                    model=self._model,
+                    contents=test_prompt
+                )
+            
+            if response:
+                return True, "API 키가 유효합니다."
+            return False, "API 응답을 받지 못했습니다."
+            
+        except Exception as e:
+            error_str = str(e).lower()
+            if 'api key' in error_str or 'invalid' in error_str or 'authentication' in error_str:
+                return False, "API 키가 유효하지 않습니다."
+            elif 'rate limit' in error_str or 'quota' in error_str:
+                return False, "API 호출 제한에 도달했습니다. 잠시 후 다시 시도하세요."
+            else:
+                return False, f"API 연결 오류: {e}"
     
     def set_api_key(self, api_key: str) -> bool:
         """
@@ -138,6 +275,7 @@ class AIService:
             if doc:
                 doc.close()
     
+    @retry_with_backoff(max_retries=3, base_delay=1.0)
     def _generate_content(self, prompt: str) -> str:
         """
         API를 통해 콘텐츠 생성 (SDK 버전에 따라 분기)
@@ -147,24 +285,51 @@ class AIService:
             
         Returns:
             생성된 텍스트
+            
+        Raises:
+            APITimeoutError: 타임아웃 발생 시
+            APIKeyError: API 키 오류 시
+            APIRateLimitError: Rate limit 초과 시
         """
-        if LEGACY_SDK:
-            # 기존 SDK 방식
-            import google.generativeai as genai_legacy
-            model = genai_legacy.GenerativeModel(self._model)
-            response = model.generate_content(prompt)
-            if response and hasattr(response, 'text') and response.text:
-                return response.text
+        from concurrent.futures import ThreadPoolExecutor, TimeoutError
+        import concurrent.futures
+        
+        def api_call():
+            if LEGACY_SDK:
+                # 기존 SDK 방식
+                import google.generativeai as genai_legacy
+                model = genai_legacy.GenerativeModel(self._model)
+                response = model.generate_content(prompt)
+                if response and hasattr(response, 'text') and response.text:
+                    return response.text
+            else:
+                # 새 SDK 방식
+                response = self._client.models.generate_content(
+                    model=self._model,
+                    contents=prompt
+                )
+                if response and hasattr(response, 'text') and response.text:
+                    return response.text
             return ""
-        else:
-            # 새 SDK 방식
-            response = self._client.models.generate_content(
-                model=self._model,
-                contents=prompt
-            )
-            if response and hasattr(response, 'text') and response.text:
-                return response.text
-            return ""
+
+        # ThreadPoolExecutor를 사용하여 타임아웃 관리
+        executor = ThreadPoolExecutor(max_workers=1)
+        try:
+            future = executor.submit(api_call)
+            # 타임아웃 설정
+            result = future.result(timeout=self._timeout)
+            return result
+        except TimeoutError:
+            logger.error(f"API call timed out after {self._timeout} seconds")
+            # 타임아웃 시 future 취소 시도
+            future.cancel()
+            raise APITimeoutError(f"API 호출이 {self._timeout}초 후 타임아웃되었습니다.")
+        except Exception as e:
+            logger.error(f"API call error: {e}")
+            raise e
+        finally:
+            # 타임아웃/오류 발생 시에도 executor 종료
+            executor.shutdown(wait=False, cancel_futures=True)
     
     def summarize_text(self, text: str, language: str = "ko", 
                        style: str = "concise") -> str:
@@ -178,6 +343,12 @@ class AIService:
             
         Returns:
             요약된 텍스트
+            
+        Raises:
+            RuntimeError: AI 서비스 사용 불가 시
+            APITimeoutError: 타임아웃 발생 시
+            APIKeyError: API 키 오류 시
+            APIRateLimitError: Rate limit 초과 시
         """
         if not self.is_available:
             raise RuntimeError("AI service not available. Check API key and installation.")
@@ -205,7 +376,12 @@ class AIService:
         try:
             result = self._generate_content(prompt)
             return result if result else "요약을 생성할 수 없습니다."
-                
+        except APITimeoutError:
+            raise RuntimeError("요약 생성 시간이 초과되었습니다. 잠시 후 다시 시도하세요.")
+        except APIKeyError as e:
+            raise RuntimeError(str(e))
+        except APIRateLimitError as e:
+            raise RuntimeError(str(e))
         except Exception as e:
             logger.error(f"Summarization failed: {e}")
             raise RuntimeError(f"요약 생성 실패: {e}")
@@ -263,7 +439,12 @@ class AIService:
         try:
             result = self._generate_content(prompt)
             return result if result else "답변을 생성할 수 없습니다."
-                
+        except APITimeoutError:
+            raise RuntimeError("답변 생성 시간이 초과되었습니다. 잠시 후 다시 시도하세요.")
+        except APIKeyError as e:
+            raise RuntimeError(str(e))
+        except APIRateLimitError as e:
+            raise RuntimeError(str(e))
         except Exception as e:
             logger.error(f"Q&A failed: {e}")
             raise RuntimeError(f"답변 생성 실패: {e}")
