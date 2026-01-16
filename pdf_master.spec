@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PDF Master v4.3 - PyInstaller Spec File
+# PDF Master v4.4 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
 # Python 3.12+ 호환, PDF to Word 기능 제거
 
@@ -31,27 +31,69 @@ hiddenimports += [
 datas = []
 
 # =====================================================================
-# AI 기능 (조건부)
+# AI 기능 (조건부) - google-genai SDK
 # =====================================================================
+# 패키지명: google-genai (pip install google-genai)
+# Import: from google import genai
+# 참고: google-generativeai는 2025년 11월 deprecated됨
+
+ai_hiddenimports = []
+
 try:
     from google import genai
+    # google-genai 핵심 모듈
+    ai_hiddenimports += [
+        'google.genai',
+        'google.genai.types',
+        'google.genai.client',
+        'google.genai.models',
+        'google.genai.errors',
+    ]
+    
+    # google-genai 의존성
+    ai_hiddenimports += [
+        'google.auth',
+        'google.auth.transport',
+        'google.auth.transport.requests',
+        'google.auth.credentials',
+        'google.api_core',
+        'google.api_core.exceptions',
+        'google.api_core.retry',
+        'google.protobuf',
+        'httpx',
+        'httpcore',
+        'anyio',
+        'sniffio',
+        'h11',
+        'certifi',
+    ]
+    
+    # submodules 자동 수집
     try:
-        hiddenimports += collect_submodules('google.genai')
+        ai_hiddenimports += collect_submodules('google.genai')
     except Exception:
         pass
-    hiddenimports += ['google.genai']
-    print("✓ google-genai SDK detected")
+    
+    hiddenimports += ai_hiddenimports
+    print(f"✓ google-genai SDK detected ({len(ai_hiddenimports)} imports)")
+    
 except ImportError:
+    # deprecated SDK 폴백 (2025.11 이전 호환)
     try:
         import google.generativeai
+        ai_hiddenimports += [
+            'google.generativeai',
+            'google.ai.generativelanguage',
+        ]
         try:
-            hiddenimports += collect_submodules('google.generativeai')
-            hiddenimports += collect_submodules('google.ai')
+            ai_hiddenimports += collect_submodules('google.generativeai')
+            ai_hiddenimports += collect_submodules('google.ai')
         except Exception:
             pass
-        print("⚠ Using deprecated google-generativeai SDK")
+        hiddenimports += ai_hiddenimports
+        print(f"⚠ Using deprecated google-generativeai SDK ({len(ai_hiddenimports)} imports)")
     except ImportError:
-        print("○ No Gemini SDK installed")
+        print("○ No Gemini SDK installed - AI features disabled")
 
 # =====================================================================
 # PDF to Word 기능 제거 (v4.2) - pdf2docx 의존성 삭제
@@ -158,7 +200,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='PDF_Master_v4.3',
+    name='PDF_Master_v4.4',
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,
@@ -176,5 +218,5 @@ exe = EXE(
 
 # =====================================================================
 # 빌드: pyinstaller pdf_master.spec --clean
-# 예상 결과: dist/PDF_Master_v4.3.exe (~30-40MB)
+# 예상 결과: dist/PDF_Master_v4.4.exe (~30-40MB)
 # =====================================================================

@@ -41,7 +41,7 @@ class WorkerThread(QThread):
         super().__init__()
         self.mode = mode
         self.kwargs = kwargs
-        self._is_cancelled = False
+        self._cancel_requested = False
         logger.debug(f"WorkerThread initialized: mode={mode}")
 
     def _parse_page_range(self, page_range_str: str, total_pages: int) -> list:
@@ -104,22 +104,22 @@ class WorkerThread(QThread):
     
     def cancel(self):
         """작업 취소 요청"""
-        self._is_cancelled = True
+        self._cancel_requested = True
         logger.info(f"Cancel requested for task: {self.mode}")
     
     def _check_cancelled(self):
         """취소 여부 확인 - 장시간 작업 중간에 호출"""
-        if self._is_cancelled:
+        if self._cancel_requested:
             raise CancelledError("작업이 사용자에 의해 취소되었습니다.")
 
     def run(self):
         logger.info(f"Starting task: {self.mode}")
-        self._is_cancelled = False  # 시작 시 초기화
+        self._cancel_requested = False  # 시작 시 초기화
         try:
             method = getattr(self, self.mode, None)
             if method:
                 method()
-                if not self._is_cancelled:
+                if not self._cancel_requested:
                     logger.info(f"Task completed: {self.mode}")
             else:
                 error_msg = f"알 수 없는 작업: {self.mode}"
@@ -170,6 +170,12 @@ class WorkerThread(QThread):
                 self._check_cancelled()  # 취소 체크포인트
                 try:
                     doc = fitz.open(path)
+                    # v4.4: 암호화 PDF 감지
+                    if doc.is_encrypted:
+                        logger.warning(f"Encrypted PDF skipped: {path}")
+                        skipped_count += 1
+                        doc.close()
+                        continue
                     doc_merged.insert_pdf(doc)
                     doc.close()
                 except Exception as e:
@@ -617,21 +623,52 @@ class WorkerThread(QThread):
             else:
                 count = 0
                 range_list = [r.strip() for r in ranges.split(',') if r.strip()]
+                if not range_list:
+                    self.error_signal.emit("분할할 범위가 지정되지 않았습니다.")
+                    return
+                    
+                total_ranges = len(range_list)
                 for part_idx, rng in enumerate(range_list):
                     self._check_cancelled()  # 취소 체크포인트
-                    if '-' in rng:
-                        start, end = map(int, rng.split('-'))
-                    else:
-                        start = end = int(rng)
-                    new_doc = fitz.open()
                     try:
-                        new_doc.insert_pdf(doc, from_page=start-1, to_page=end-1)
-                        out_path = os.path.join(output_dir, f"{base_name}_part_{part_idx+1}.pdf")
-                        new_doc.save(out_path)
-                    finally:
-                        new_doc.close()
-                    count += 1
-                self.finished_signal.emit(f"✅ PDF 분할 완료!\n{count}개 파일 생성됨")
+                        if '-' in rng:
+                            parts = rng.split('-')
+                            if len(parts) != 2:
+                                logger.warning(f"잘못된 범위 형식: {rng}")
+                                continue
+                            start, end = int(parts[0]), int(parts[1])
+                        else:
+                            start = end = int(rng)
+                        
+                        # 페이지 범위 유효성 검사
+                        if start < 1 or end < 1:
+                            logger.warning(f"유효하지 않은 페이지 번호: {rng}")
+                            continue
+                        if start > page_count or end > page_count:
+                            logger.warning(f"페이지 범위 초과: {rng} (전체 {page_count}페이지)")
+                            # 범위를 조정하여 계속 진행
+                            start = min(start, page_count)
+                            end = min(end, page_count)
+                        if start > end:
+                            start, end = end, start  # 역순이면 swap
+                        
+                        new_doc = fitz.open()
+                        try:
+                            new_doc.insert_pdf(doc, from_page=start-1, to_page=end-1)
+                            out_path = os.path.join(output_dir, f"{base_name}_part_{part_idx+1}.pdf")
+                            new_doc.save(out_path)
+                        finally:
+                            new_doc.close()
+                        count += 1
+                        self.progress_signal.emit(int((part_idx + 1) / total_ranges * 100))
+                    except ValueError as e:
+                        logger.warning(f"범위 파싱 오류: {rng} - {e}")
+                        continue
+                
+                if count == 0:
+                    self.error_signal.emit("유효한 페이지 범위가 없습니다.")
+                else:
+                    self.finished_signal.emit(f"✅ PDF 분할 완료!\n{count}개 파일 생성됨")
         finally:
             if doc:
                 doc.close()

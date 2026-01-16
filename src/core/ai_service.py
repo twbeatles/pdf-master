@@ -9,26 +9,52 @@ import time
 from typing import Optional
 from functools import wraps
 
+# AI 관련 상수 import
+try:
+    from .constants import AI_MAX_TEXT_LENGTH, AI_DEFAULT_TIMEOUT, AI_MAX_RETRIES, AI_BASE_DELAY, AI_MAX_DELAY
+except ImportError:
+    # 독립 실행 시 폴백
+    AI_MAX_TEXT_LENGTH = 30000
+    AI_DEFAULT_TIMEOUT = 30
+    AI_MAX_RETRIES = 3
+    AI_BASE_DELAY = 1.0
+    AI_MAX_DELAY = 30.0
+
 logger = logging.getLogger(__name__)
 
-# Gemini API 가용성 체크 (새 SDK 우선, 기존 SDK 폴백)
+# =====================================================================
+# Gemini API SDK 가용성 체크
+# =====================================================================
+# 공식 패키지: google-genai (pip install google-genai)
+# Import 방식: from google import genai
+# 참고: google-generativeai는 2025년 11월 30일 deprecated됨
+
 GENAI_AVAILABLE = False
 LEGACY_SDK = False
+GENAI_CLIENT = None  # SDK 클라이언트 참조
 
 try:
     from google import genai
     GENAI_AVAILABLE = True
-    logger.info("Using new google-genai SDK")
+    GENAI_CLIENT = genai
+    logger.info("google-genai SDK loaded successfully")
 except ImportError:
     try:
-        # 기존 SDK 폴백 (deprecated)
+        # deprecated SDK 폴백 (호환성 유지)
         import google.generativeai as genai_legacy
         GENAI_AVAILABLE = True
         LEGACY_SDK = True
-        logger.warning("Using deprecated google-generativeai SDK. Please upgrade to google-genai.")
+        GENAI_CLIENT = genai_legacy
+        logger.warning(
+            "Using deprecated google-generativeai SDK. "
+            "Please upgrade: pip install google-genai"
+        )
     except ImportError:
         GENAI_AVAILABLE = False
-        logger.warning("No Gemini SDK installed. AI features will be disabled.")
+        logger.warning(
+            "No Gemini SDK installed. AI features disabled. "
+            "Install with: pip install google-genai"
+        )
 
 
 class AIServiceError(Exception):
@@ -99,9 +125,9 @@ class AIService:
     """
     
     DEFAULT_MODEL = "gemini-flash-latest"
-    MAX_TEXT_LENGTH = 30000  # Gemini API 입력 제한
-    DEFAULT_TIMEOUT = 30  # 기본 타임아웃 (초)
-    MAX_RETRIES = 3  # 기본 재시도 횟수
+    MAX_TEXT_LENGTH = AI_MAX_TEXT_LENGTH  # constants.py에서 가져옴
+    DEFAULT_TIMEOUT = AI_DEFAULT_TIMEOUT  # constants.py에서 가져옴
+    MAX_RETRIES = AI_MAX_RETRIES  # constants.py에서 가져옴
     
     def __init__(self, api_key: str = "", model: str = None, timeout: int = None):
         """
@@ -312,24 +338,21 @@ class AIService:
                     return response.text
             return ""
 
-        # ThreadPoolExecutor를 사용하여 타임아웃 관리
-        executor = ThreadPoolExecutor(max_workers=1)
-        try:
-            future = executor.submit(api_call)
-            # 타임아웃 설정
-            result = future.result(timeout=self._timeout)
-            return result
-        except TimeoutError:
-            logger.error(f"API call timed out after {self._timeout} seconds")
-            # 타임아웃 시 future 취소 시도
-            future.cancel()
-            raise APITimeoutError(f"API 호출이 {self._timeout}초 후 타임아웃되었습니다.")
-        except Exception as e:
-            logger.error(f"API call error: {e}")
-            raise e
-        finally:
-            # 타임아웃/오류 발생 시에도 executor 종료
-            executor.shutdown(wait=False, cancel_futures=True)
+        # ThreadPoolExecutor를 with문으로 사용하여 리소스 보장
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            try:
+                future = executor.submit(api_call)
+                # 타임아웃 설정
+                result = future.result(timeout=self._timeout)
+                return result
+            except TimeoutError:
+                logger.error(f"API call timed out after {self._timeout} seconds")
+                # 타임아웃 시 future 취소 시도
+                future.cancel()
+                raise APITimeoutError(f"API 호출이 {self._timeout}초 후 타임아웃되었습니다.")
+            except Exception as e:
+                logger.error(f"API call error: {e}")
+                raise e
     
     def summarize_text(self, text: str, language: str = "ko", 
                        style: str = "concise") -> str:

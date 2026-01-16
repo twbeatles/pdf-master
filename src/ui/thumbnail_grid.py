@@ -344,7 +344,44 @@ class ThumbnailGridWidget(QWidget):
     def set_theme(self, is_dark: bool):
         """테마 설정"""
         self._is_dark_theme = is_dark
-        # 테마에 따른 스타일 업데이트 가능
+        
+        # 스크롤 영역 스타일
+        if is_dark:
+            self.scroll_area.setStyleSheet("""
+                QScrollArea {
+                    background: transparent;
+                    border: none;
+                }
+                QScrollBar:vertical {
+                    background: #1a1a2e;
+                    width: 8px;
+                    border-radius: 4px;
+                }
+                QScrollBar::handle:vertical {
+                    background: #4f8cff;
+                    border-radius: 4px;
+                }
+            """)
+            self.info_label.setStyleSheet("color: #888;")
+            self.loading_label.setStyleSheet("color: #666; font-size: 14px; padding: 40px;")
+        else:
+            self.scroll_area.setStyleSheet("""
+                QScrollArea {
+                    background: transparent;
+                    border: none;
+                }
+                QScrollBar:vertical {
+                    background: #f0f0f0;
+                    width: 8px;
+                    border-radius: 4px;
+                }
+                QScrollBar::handle:vertical {
+                    background: #4f8cff;
+                    border-radius: 4px;
+                }
+            """)
+            self.info_label.setStyleSheet("color: #666;")
+            self.loading_label.setStyleSheet("color: #888; font-size: 14px; padding: 40px;")
     
     def closeEvent(self, event):
         """위젯 종료 시 스레드 정리"""

@@ -27,6 +27,7 @@ DEFAULT_SETTINGS = {
     "last_output_dir": "",
     "splitter_sizes": None,
     "window_geometry": None,
+    "language": "auto",  # auto, ko, en
     # gemini_api_key는 keyring 미사용 시에만 파일에 저장됨
 }
 

@@ -25,11 +25,16 @@ def is_valid_pdf(file_path: str) -> bool:
     if not os.path.exists(file_path):
         return False
     
-    # 최소 크기 검사 (PDF 헤더 + 어느 정도의 내용)
+    # 최소/최대 크기 검사
     try:
         file_size = os.path.getsize(file_path)
         if file_size < 100:  # 100바이트 미만은 유효한 PDF가 아님
             logger.warning(f"PDF file too small: {file_path} ({file_size} bytes)")
+            return False
+        # v4.4: MAX_FILE_SIZE (2GB) 검사
+        MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB
+        if file_size > MAX_FILE_SIZE:
+            logger.warning(f"PDF file too large: {file_path} ({file_size / (1024*1024*1024):.2f} GB)")
             return False
     except OSError as e:
         logger.warning(f"Cannot access file: {file_path}: {e}")
@@ -63,11 +68,19 @@ class EmptyStateWidget(QFrame):
     """
     actionClicked = pyqtSignal()
     
-    def __init__(self, icon: str = "📄", title: str = "파일이 없습니다", 
-                 description: str = "파일을 드래그하거나 추가하세요",
+    def __init__(self, icon: str = "📄", title: str = None, 
+                 description: str = None,
                  action_text: str = None, parent=None):
         super().__init__(parent)
+        from ..core.i18n import tm
+        
+        if title is None:
+            title = tm.get("empty_title")
+        if description is None:
+            description = tm.get("empty_desc")
+            
         self._is_dark_theme = True
+
         
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -177,10 +190,11 @@ class DropZoneWidget(QFrame):
         self.icon_label.setStyleSheet("font-size: 32px; background: transparent; border: none;")
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        self.text_label = QLabel("PDF 파일을 여기에 드래그하세요")
+        from ..core.i18n import tm
+        self.text_label = QLabel(tm.get("drop_title"))
         self.text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        self.hint_label = QLabel("또는 아래 버튼으로 선택")
+        self.hint_label = QLabel(tm.get("drop_hint"))
         self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         self.path_label = QLabel("")
@@ -243,7 +257,7 @@ class DropZoneWidget(QFrame):
                             background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(79, 140, 255, 0.15), stop:1 rgba(58, 122, 232, 0.1));
                         }
                     """)
-                    self.text_label.setText("✅ 여기에 놓으세요!")
+                    self.text_label.setText(tm.get("drop_success"))
                     self.text_label.setStyleSheet("color: #4f8cff; font-size: 15px; font-weight: bold; background: transparent; border: none;")
                     event.acceptProposedAction()
                     return
@@ -252,7 +266,8 @@ class DropZoneWidget(QFrame):
     def dragLeaveEvent(self, event):
         self._is_dragging = False
         self._apply_theme_style()
-        self.text_label.setText("PDF 파일을 여기에 드래그하세요")
+        from ..core.i18n import tm
+        self.text_label.setText(tm.get("drop_title"))
         
     def dropEvent(self, event: QDropEvent):
         self._is_dragging = False
@@ -262,7 +277,8 @@ class DropZoneWidget(QFrame):
                 if any(path.lower().endswith(ext) for ext in self.accept_extensions):
                     self._current_path = path
                     self._apply_theme_style()
-                    self.text_label.setText("PDF 파일을 여기에 드래그하세요")
+                    from ..core.i18n import tm
+                    self.text_label.setText(tm.get("drop_title"))
                     self.path_label.setText(f"✓ {os.path.basename(path)}")
                     self.icon_label.setText("✅")
                     self.fileDropped.emit(path)
@@ -297,7 +313,8 @@ class FileSelectorWidget(QWidget):
         layout.addWidget(self.drop_zone)
         
         btn_layout = QHBoxLayout()
-        self.btn_browse = QPushButton("📂 파일 선택")
+        from ..core.i18n import tm
+        self.btn_browse = QPushButton(tm.get("btn_browse"))
         self.btn_browse.setObjectName("secondaryBtn")
         self.btn_browse.setToolTip("클릭하여 파일을 선택하세요")
         self.btn_browse.clicked.connect(self.browse_file)
@@ -305,7 +322,7 @@ class FileSelectorWidget(QWidget):
         # 최근 파일 버튼
         self.btn_recent = QToolButton()
         self.btn_recent.setText("📋")
-        self.btn_recent.setToolTip("최근 파일")
+        self.btn_recent.setToolTip(tm.get("recent_files"))
         self.btn_recent.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         self.btn_recent.setFixedWidth(35)
         self.recent_menu = QMenu(self)
@@ -313,7 +330,7 @@ class FileSelectorWidget(QWidget):
         self.btn_recent.aboutToShowMenu = self._update_recent_menu
         self.recent_menu.aboutToShow.connect(self._update_recent_menu)
         
-        self.btn_clear = QPushButton("🗑️ 지우기")
+        self.btn_clear = QPushButton(tm.get("btn_clear"))
         self.btn_clear.setObjectName("secondaryBtn")
         self.btn_clear.setFixedWidth(100)  # 80 -> 100
         self.btn_clear.setToolTip("선택된 파일 해제")
@@ -342,7 +359,8 @@ class FileSelectorWidget(QWidget):
         settings = load_settings()
         recent = settings.get("recent_files", [])
         if not recent:
-            action = self.recent_menu.addAction("(최근 파일 없음)")
+            from ..core.i18n import tm
+            action = self.recent_menu.addAction(tm.get("no_recent_files"))
             action.setEnabled(False)
         else:
             for path in recent[:10]:
@@ -358,7 +376,8 @@ class FileSelectorWidget(QWidget):
         
     def browse_file(self):
         ext_filter = " ".join([f"*{e}" for e in self.extensions])
-        f, _ = QFileDialog.getOpenFileName(self, "파일 선택", "", f"파일 ({ext_filter})")
+        from ..core.i18n import tm
+        f, _ = QFileDialog.getOpenFileName(self, tm.get("file"), "", f"{tm.get('file')} ({ext_filter})")
         if f:
             self.drop_zone.set_path(f)
             self.pathChanged.emit(f)
@@ -537,6 +556,38 @@ class ImageListWidget(QListWidget):
 
     def get_all_paths(self):
         return [self.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.count())]
+
+
+class DraggableListWidget(QListWidget):
+    """
+    드래그 앤 드롭으로 순서 변경이 가능한 리스트 위젯 (v4.4)
+    
+    CLAUDE.md에 문서화된 대로 itemsReordered 시그널 지원
+    """
+    itemsReordered = pyqtSignal(list)  # 재정렬된 항목 리스트
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.model().rowsMoved.connect(self._on_rows_moved)
+    
+    def _on_rows_moved(self, *args):
+        """행 이동 시 시그널 발생"""
+        items = self.get_all_items()
+        self.itemsReordered.emit(items)
+    
+    def get_all_items(self) -> list:
+        """모든 항목의 데이터 반환"""
+        return [self.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.count())]
+    
+    def add_item(self, text: str, data=None):
+        """항목 추가"""
+        item = QListWidgetItem(text)
+        if data is not None:
+            item.setData(Qt.ItemDataRole.UserRole, data)
+        self.addItem(item)
 
 
 class ToastWidget(QFrame):
