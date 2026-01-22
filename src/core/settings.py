@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import shutil
+import tempfile
 from datetime import datetime
 
 # 로깅 설정
@@ -28,6 +29,7 @@ DEFAULT_SETTINGS = {
     "splitter_sizes": None,
     "window_geometry": None,
     "language": "auto",  # auto, ko, en
+    "chat_histories": {},
     # gemini_api_key는 keyring 미사용 시에만 파일에 저장됨
 }
 
@@ -114,16 +116,36 @@ def load_settings():
     return DEFAULT_SETTINGS.copy()
 
 def save_settings(settings):
-    """Save application settings to JSON file."""
+    """Save application settings to JSON file (atomic write for safety)."""
     if settings is None:
         logger.warning("Attempted to save None settings, skipping")
         return False
+    
+    tmp_path = None
     try:
-        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(settings, f, ensure_ascii=False, indent=2)
+        # v4.5: 원자적 파일 쓰기 - 임시 파일에 먼저 쓰고 교체
+        dir_name = os.path.dirname(SETTINGS_FILE)
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name, exist_ok=True)
+        
+        with tempfile.NamedTemporaryFile(
+            mode='w', encoding='utf-8', dir=dir_name,
+            delete=False, suffix='.tmp'
+        ) as tmp:
+            json.dump(settings, tmp, ensure_ascii=False, indent=2)
+            tmp_path = tmp.name
+        
+        # 원자적으로 교체 (Windows/Linux 모두 지원)
+        os.replace(tmp_path, SETTINGS_FILE)
         return True
     except Exception as e:
         logger.error(f"Failed to save settings: {e}")
+        # 임시 파일 정리
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
         return False
 
 def reset_settings():
@@ -144,4 +166,3 @@ def reset_settings():
     except Exception as e:
         logger.error(f"Failed to reset settings: {e}")
         return False
-

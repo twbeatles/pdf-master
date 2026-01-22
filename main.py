@@ -3,19 +3,28 @@ import os
 import logging
 import traceback
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 # 로그 파일 경로
 LOG_FILE = os.path.join(os.path.expanduser("~"), ".pdf_master.log")
 
 def setup_logging():
-    """로깅 설정 초기화"""
+    """로깅 설정 초기화 (v4.5: 로그 파일 순환 적용)"""
+    # v4.5: RotatingFileHandler로 로그 파일 무한 증가 방지
+    file_handler = RotatingFileHandler(
+        LOG_FILE,
+        maxBytes=5*1024*1024,  # 5MB
+        backupCount=3,
+        encoding='utf-8'
+    )
+    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(LOG_FILE, encoding='utf-8'),
-            logging.StreamHandler()
-        ]
+        handlers=[file_handler, stream_handler]
     )
     return logging.getLogger(__name__)
 

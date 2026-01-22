@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PDF Master v4.4 - PyInstaller Spec File
+# PDF Master v4.5 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
-# Python 3.12+ 호환, PDF to Word 기능 제거
+# Python 3.10+ 호환, v4.5 코드 변경 사항 반영
 
 import sys
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
@@ -25,7 +25,31 @@ hiddenimports += [
     'PyQt6.QtCore',
     'PyQt6.QtGui', 
     'PyQt6.QtWidgets',
+    'PyQt6.QtPrintSupport',  # v4.5: 인쇄 기능
 ]
+
+# v4.5: Python 표준 라이브러리 (명시적 추가)
+hiddenimports += [
+    'threading',    # AI 싱글톤 스레드 안전성
+    'tempfile',     # Undo 백업 디렉토리
+    'shutil',       # 파일 복사/설정 백업
+    'json',         # 설정 파일 처리
+    'locale',       # i18n 언어 감지
+    'datetime',     # Undo 타임스탬프
+    'dataclasses',  # UndoManager ActionRecord
+]
+
+# v4.5: keyring (보안 API 키 저장)
+try:
+    import keyring
+    hiddenimports += ['keyring', 'keyring.backends']
+    try:
+        hiddenimports += collect_submodules('keyring')
+    except Exception:
+        pass
+    print("✓ keyring detected")
+except ImportError:
+    print("○ keyring not installed - API key will be stored in file")
 
 # 데이터 파일 수집
 datas = []
@@ -200,7 +224,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='PDF_Master_v4.4',
+    name='PDF_Master_v4.5',
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,
@@ -218,5 +242,5 @@ exe = EXE(
 
 # =====================================================================
 # 빌드: pyinstaller pdf_master.spec --clean
-# 예상 결과: dist/PDF_Master_v4.4.exe (~30-40MB)
+# 예상 결과: dist/PDF_Master_v4.5.exe (~30-40MB)
 # =====================================================================

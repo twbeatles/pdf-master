@@ -33,6 +33,13 @@ class ThumbnailLoaderThread(QThread):
         doc = None
         try:
             doc = fitz.open(self.pdf_path)
+            
+            # v4.5: 암호화된 PDF 체크
+            if doc.is_encrypted:
+                logger.warning(f"Encrypted PDF skipped in thumbnail loader: {self.pdf_path}")
+                self.loading_complete.emit()
+                return
+            
             total = len(doc)
             
             for i in range(total):
@@ -211,10 +218,8 @@ class ThumbnailGridWidget(QWidget):
         if not pdf_path:
             return
             
-        # 기존 로더 취소
-        if self._loader_thread and self._loader_thread.isRunning():
-            self._loader_thread.cancel()
-            self._loader_thread.wait()
+        # v4.5: 기존 로더 완전히 정리 (스레드 누수 방지)
+        self._cleanup_loader_thread()
         
         self._pdf_path = pdf_path
         self._clear_thumbnails()

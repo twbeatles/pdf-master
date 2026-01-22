@@ -1,7 +1,17 @@
 """
-PDF Master Constants v4.2
+PDF Master Constants v4.5
 공통 상수 값들을 정의합니다.
 """
+
+# ===================== 앱 정보 (v4.5) =====================
+
+APP_NAME = "PDF Master"
+VERSION = "4.5"
+
+# ===================== 채팅 히스토리 설정 (v4.5) =====================
+
+MAX_CHAT_HISTORY_ENTRIES = 40
+MAX_CHAT_HISTORY_PDFS = 20
 
 # ===================== 페이지 크기 (포인트) =====================
 
@@ -114,3 +124,19 @@ AI_MAX_TEXT_LENGTH = 30000
 AI_MAX_RETRIES = 3
 AI_BASE_DELAY = 1.0
 AI_MAX_DELAY = 30.0
+
+# ===================== Undo 백업 설정 (v4.5) =====================
+
+# 최대 백업 폴더 크기 (MB)
+UNDO_BACKUP_MAX_SIZE_MB = 500
+
+# 최대 백업 파일 수
+UNDO_BACKUP_MAX_FILES = 100
+
+# 백업 파일 보존 시간 (시간)
+UNDO_BACKUP_MAX_AGE_HOURS = 24
+
+# ===================== UI 설정 (v4.5) =====================
+
+# 최근 파일 최대 개수
+RECENT_FILES_MAX = 20

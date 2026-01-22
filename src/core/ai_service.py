@@ -86,6 +86,8 @@ def retry_with_backoff(max_retries: int = 3, base_delay: float = 1.0, max_delay:
         base_delay: 기본 대기 시간 (초)
         max_delay: 최대 대기 시간 (초)
     """
+    import random  # v4.5: jitter를 위한 import
+    
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -96,7 +98,9 @@ def retry_with_backoff(max_retries: int = 3, base_delay: float = 1.0, max_delay:
                 except (ConnectionError, TimeoutError) as e:
                     last_exception = e
                     if attempt < max_retries:
-                        delay = min(base_delay * (2 ** attempt), max_delay)
+                        # v4.5: 랜덤 jitter 추가 (Thundering Herd 방지)
+                        jitter = random.uniform(0, 1)
+                        delay = min(base_delay * (2 ** attempt) + jitter, max_delay)
                         logger.warning(f"Attempt {attempt + 1} failed, retrying in {delay:.1f}s: {e}")
                         time.sleep(delay)
                     else:
@@ -279,12 +283,19 @@ class AIService:
             doc = fitz.open(pdf_path)
             text_parts = []
             page_count = len(doc) if max_pages is None else min(len(doc), max_pages)
+            current_length = 0  # v4.5: 메모리 최적화 - 누적 길이 추적
             
             for i in range(page_count):
                 page = doc[i]
                 text = page.get_text()
                 if text.strip():
                     text_parts.append(f"[Page {i+1}]\n{text}")
+                    current_length += len(text_parts[-1])
+                    
+                    # v4.5: 최대 길이 초과 시 조기 종료 (메모리 절약)
+                    if current_length > self.MAX_TEXT_LENGTH:
+                        logger.info(f"Text extraction stopped at page {i+1} due to length limit")
+                        break
             
             full_text = "\n\n".join(text_parts)
             
@@ -434,13 +445,15 @@ class AIService:
         # 2. 요약 생성
         return self.summarize_text(text, language, style)
     
-    def ask_about_pdf(self, pdf_path: str, question: str) -> str:
+    def ask_about_pdf(self, pdf_path: str, question: str,
+                      conversation_history: list = None) -> str:
         """
-        PDF 내용에 대해 질문
+        PDF 내용에 대해 질문 (v4.5: 대화 맥락 지원)
         
         Args:
             pdf_path: PDF 파일 경로
             question: 질문 내용
+            conversation_history: 이전 대화 기록 [{"role": "user"|"assistant", "content": "..."}]
             
         Returns:
             답변 텍스트
@@ -450,10 +463,20 @@ class AIService:
         
         text = self.extract_text_from_pdf(pdf_path)
         
+        # v4.5: 대화 기록 포맷팅
+        history_context = ""
+        if conversation_history:
+            history_parts = []
+            for entry in conversation_history[-5:]:  # 최근 5개 대화만 사용
+                role = "사용자" if entry.get("role") == "user" else "AI"
+                history_parts.append(f"{role}: {entry.get('content', '')}")
+            if history_parts:
+                history_context = "\n\n이전 대화:\n" + "\n".join(history_parts)
+        
         prompt = f"""다음 PDF 문서의 내용을 기반으로 질문에 답변해주세요.
 
 문서 내용:
-{text}
+{text}{history_context}
 
 질문: {question}
 
@@ -471,14 +494,84 @@ class AIService:
         except Exception as e:
             logger.error(f"Q&A failed: {e}")
             raise RuntimeError(f"답변 생성 실패: {e}")
+    
+    def extract_keywords(self, pdf_path: str, max_keywords: int = 10, 
+                         language: str = "ko") -> list:
+        """
+        PDF에서 핵심 키워드 추출
+        
+        Args:
+            pdf_path: PDF 파일 경로
+            max_keywords: 추출할 최대 키워드 수 (기본값: 10)
+            language: 출력 언어 ("ko", "en")
+            
+        Returns:
+            키워드 리스트
+        """
+        if not self.is_available:
+            raise RuntimeError("AI service not available. Check API key and installation.")
+        
+        text = self.extract_text_from_pdf(pdf_path)
+        
+        if not text.strip():
+            return []
+        
+        lang_instruction = "한국어로" if language == "ko" else "in English"
+        
+        prompt = f"""다음 PDF 문서에서 가장 중요한 핵심 키워드/주제를 추출해주세요.
 
+규칙:
+1. 최대 {max_keywords}개의 키워드만 추출
+2. 각 키워드는 한 줄에 하나씩
+3. 키워드만 출력 (번호나 설명 없이)
+4. {lang_instruction} 작성
+
+문서 내용:
+{text}
+
+키워드:"""
+
+        try:
+            result = self._generate_content(prompt)
+            if not result:
+                return []
+            
+            # 결과 파싱 - 각 줄을 키워드로 처리
+            keywords = []
+            for line in result.strip().split('\n'):
+                keyword = line.strip()
+                # 번호 제거 (예: "1. 키워드" -> "키워드")
+                if keyword and len(keyword) > 0:
+                    # 번호 패턴 제거
+                    import re
+                    keyword = re.sub(r'^[\d]+[\.\)\-\s]+', '', keyword).strip()
+                    if keyword and keyword not in keywords:
+                        keywords.append(keyword)
+                        if len(keywords) >= max_keywords:
+                            break
+            
+            return keywords
+            
+        except APITimeoutError:
+            raise RuntimeError("키워드 추출 시간이 초과되었습니다.")
+        except APIKeyError as e:
+            raise RuntimeError(str(e))
+        except APIRateLimitError as e:
+            raise RuntimeError(str(e))
+        except Exception as e:
+            logger.error(f"Keyword extraction failed: {e}")
+            raise RuntimeError(f"키워드 추출 실패: {e}")
 
 # 싱글톤 인스턴스 (선택적 사용)
 _ai_service_instance: Optional[AIService] = None
+_ai_service_lock = __import__('threading').Lock()  # v4.5: 스레드 안전성
 
 def get_ai_service() -> AIService:
-    """전역 AI 서비스 인스턴스 반환"""
+    """전역 AI 서비스 인스턴스 반환 (스레드 안전)"""
     global _ai_service_instance
     if _ai_service_instance is None:
-        _ai_service_instance = AIService()
+        with _ai_service_lock:
+            # Double-check locking pattern
+            if _ai_service_instance is None:
+                _ai_service_instance = AIService()
     return _ai_service_instance

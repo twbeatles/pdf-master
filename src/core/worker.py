@@ -9,8 +9,10 @@ try:
     from .constants import (
         COMPRESSION_SETTINGS, PAGE_SIZES, DEFAULT_PAGE_SIZE,
         WATERMARK_DEFAULTS, WATERMARK_TILE_SPACING_X, WATERMARK_TILE_SPACING_Y,
-        MAX_PAGE_RANGE_LENGTH
+        MAX_PAGE_RANGE_LENGTH, MAX_FILE_SIZE, MIN_PDF_SIZE
     )
+    from .i18n import TranslationManager
+    tm = TranslationManager()
 except ImportError:
     # 독립 실행 시 폴백
     COMPRESSION_SETTINGS = {
@@ -24,6 +26,9 @@ except ImportError:
     WATERMARK_TILE_SPACING_X = 300
     WATERMARK_TILE_SPACING_Y = 200
     MAX_PAGE_RANGE_LENGTH = 1000
+    MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024
+    MIN_PDF_SIZE = 100
+    tm = None  # 폴백: i18n 없음
 
 logger = logging.getLogger(__name__)
 
@@ -111,10 +116,105 @@ class WorkerThread(QThread):
         """취소 여부 확인 - 장시간 작업 중간에 호출"""
         if self._cancel_requested:
             raise CancelledError("작업이 사용자에 의해 취소되었습니다.")
+    
+    def _get_msg(self, key: str, *args) -> str:
+        """v4.5: i18n 메시지 헬퍼 - 폴백 지원"""
+        if tm:
+            return tm.get(key, *args)
+        # 폴백: 기본 한국어 메시지
+        fallback = {
+            "err_ai_module_not_found": "AI 서비스 모듈을 찾을 수 없습니다.",
+            "err_pdf_not_found": "PDF 파일을 찾을 수 없습니다.",
+            "err_api_key_required": "Gemini API 키가 필요합니다.",
+            "err_ai_unavailable": "AI 서비스를 사용할 수 없습니다.",
+            "err_question_required": "질문을 입력해주세요.",
+            "err_input_file_missing": "입력 파일이 존재하지 않습니다.",
+            "err_output_path_missing": "출력 경로가 지정되지 않았습니다.",
+            "err_cancelled": "작업이 취소되었습니다.",
+            "err_pdf_corrupted": "PDF 파일이 손상되었거나 형식이 올바르지 않습니다.",
+            "err_operation_failed": "오류 발생: {}",
+            "err_file_access_denied": "파일 접근 권한이 없습니다: {}",
+        }
+        msg = fallback.get(key, key)
+        if args:
+            try:
+                return msg.format(*args)
+            except (IndexError, KeyError):
+                return msg
+        return msg
+    
+    def _init_ai_service(self, require_api_key: bool = True):
+        """v4.5: AI 서비스 초기화 헬퍼 - 코드 중복 제거
+        
+        Returns:
+            tuple: (AIService 인스턴스, 에러 메시지) - 성공 시 에러는 None
+        """
+        try:
+            from .ai_service import AIService
+        except ImportError:
+            return None, self._get_msg("err_ai_module_not_found")
+        
+        file_path = self.kwargs.get('file_path')
+        if not file_path or not os.path.exists(file_path):
+            return None, self._get_msg("err_pdf_not_found")
+        
+        api_key = self.kwargs.get('api_key', '')
+        if require_api_key and not api_key:
+            return None, self._get_msg("err_api_key_required")
+        
+        ai_service = AIService(api_key=api_key)
+        if not ai_service.is_available:
+            return None, self._get_msg("err_ai_unavailable")
+        
+        return ai_service, None
+    
+    def _validate_file_size(self, file_path: str, emit_error: bool = True) -> bool:
+        """v4.5: 파일 크기 검증 헬퍼
+        
+        Args:
+            file_path: 검증할 파일 경로
+            emit_error: True면 에러 시그널 발생
+            
+        Returns:
+            bool: 유효한 크기면 True
+        """
+        if not file_path or not os.path.exists(file_path):
+            return False
+        try:
+            file_size = os.path.getsize(file_path)
+            if file_size > MAX_FILE_SIZE:
+                size_gb = file_size / (1024**3)
+                max_gb = MAX_FILE_SIZE / (1024**3)
+                if emit_error:
+                    self.error_signal.emit(
+                        self._get_msg("err_file_too_large", f"{size_gb:.2f}GB", f"{max_gb:.0f}GB")
+                    )
+                logger.warning(f"File too large: {file_path} ({size_gb:.2f}GB)")
+                return False
+            if file_size < MIN_PDF_SIZE:
+                if emit_error:
+                    self.error_signal.emit(self._get_msg("err_file_too_small"))
+                return False
+            return True
+        except OSError as e:
+            logger.error(f"File size check failed: {e}")
+            return False
+
+    def _is_pdf_encrypted(self, file_path: str) -> bool:
+        """암호화된 PDF 여부 확인"""
+        doc = None
+        try:
+            doc = fitz.open(file_path)
+            return bool(doc.is_encrypted)
+        except Exception:
+            return False
+        finally:
+            if doc:
+                doc.close()
 
     def run(self):
         logger.info(f"Starting task: {self.mode}")
-        self._cancel_requested = False  # 시작 시 초기화
+        # v4.5: _cancel_requested는 __init__에서 초기화됨 (중복 제거)
         try:
             method = getattr(self, self.mode, None)
             if method:
@@ -122,28 +222,27 @@ class WorkerThread(QThread):
                 if not self._cancel_requested:
                     logger.info(f"Task completed: {self.mode}")
             else:
-                error_msg = f"알 수 없는 작업: {self.mode}"
+                error_msg = f"Unknown task: {self.mode}"
                 logger.error(error_msg)
                 self.error_signal.emit(error_msg)
         except CancelledError:
             logger.info(f"Task cancelled: {self.mode}")
-            self.error_signal.emit("작업이 취소되었습니다.")
+            self.error_signal.emit(self._get_msg("err_cancelled"))
         except FileNotFoundError as e:
-            error_msg = f"파일을 찾을 수 없습니다: {e.filename}"
+            error_msg = self._get_msg("err_pdf_not_found")
             logger.error(f"FileNotFoundError in {self.mode}: {e}")
             self.error_signal.emit(error_msg)
         except PermissionError as e:
-            error_msg = f"파일 접근 권한이 없습니다: {e.filename}"
+            error_msg = self._get_msg("err_file_access_denied", e.filename or "")
             logger.error(f"PermissionError in {self.mode}: {e}")
             self.error_signal.emit(error_msg)
         except fitz.FileDataError as e:
-            error_msg = f"PDF 파일이 손상되었거나 형식이 올바르지 않습니다."
+            error_msg = self._get_msg("err_pdf_corrupted")
             logger.error(f"PDF FileDataError in {self.mode}: {e}")
             self.error_signal.emit(error_msg)
         except Exception as e:
-            # traceback.print_exc()  # 로거로 대체
             logger.error(f"Unexpected error in {self.mode}: {e}", exc_info=True)
-            self.error_signal.emit(f"오류 발생: {str(e)}")
+            self.error_signal.emit(self._get_msg("err_operation_failed", str(e)))
 
     def merge(self):
         files = self.kwargs.get('files', [])
@@ -151,16 +250,16 @@ class WorkerThread(QThread):
         
         # 입력 유효성 검사
         if not files:
-            self.error_signal.emit("병합할 파일이 선택되지 않았습니다.")
+            self.error_signal.emit(self._get_msg("err_no_files_selected"))
             return
         if not output_path:
-            self.error_signal.emit("저장 경로가 지정되지 않았습니다.")
+            self.error_signal.emit(self._get_msg("err_output_path_missing"))
             return
         
         # 유효한 파일만 필터링
         valid_files = [f for f in files if f and os.path.exists(f)]
         if not valid_files:
-            self.error_signal.emit("유효한 PDF 파일이 없습니다.")
+            self.error_signal.emit(self._get_msg("err_no_valid_pdf"))
             return
         
         skipped_count = 0
@@ -372,6 +471,15 @@ class WorkerThread(QThread):
         layer = self.kwargs.get('layer', 'foreground')
         scale_percent = self.kwargs.get('scale_percent', 100)
         
+        # v4.5: 입력 검증 강화
+        valid_positions = ['center', 'tile', 'top', 'bottom', 'top-left', 'top-right', 'bottom-left', 'bottom-right']
+        if position not in valid_positions:
+            logger.warning(f"Invalid watermark position '{position}', defaulting to 'center'")
+            position = 'center'
+        
+        # opacity 범위 제한
+        opacity = max(0.0, min(1.0, opacity))
+        
         actual_fontsize = int(fontsize * scale_percent / 100)
         
         doc = fitz.open(file_path)
@@ -382,10 +490,24 @@ class WorkerThread(QThread):
                 return
 
             total_pages = max(1, len(doc))
+            margin = 50  # 가장자리 여백
+            
             for i, page in enumerate(doc):
                 self._check_cancelled()
+                rect = page.rect
+                
+                # v4.5: 모든 위치 옵션 지원
+                positions = {
+                    'center': (rect.width / 2, rect.height / 2),
+                    'top': (rect.width / 2, margin + actual_fontsize),
+                    'bottom': (rect.width / 2, rect.height - margin),
+                    'top-left': (margin, margin + actual_fontsize),
+                    'top-right': (rect.width - margin, margin + actual_fontsize),
+                    'bottom-left': (margin, rect.height - margin),
+                    'bottom-right': (rect.width - margin, rect.height - margin),
+                }
+                
                 if layer == 'background':
-                    rect = page.rect
                     shape = page.new_shape()
                     if position == 'tile':
                         for y in range(0, int(rect.height), 200):
@@ -396,26 +518,28 @@ class WorkerThread(QThread):
                                     color=color, fill_opacity=opacity
                                 )
                     else:
+                        x, y = positions.get(position, positions['center'])
                         shape.insert_text(
-                            fitz.Point(rect.width/2, rect.height/2),
-                            text, fontsize=actual_fontsize, fontname=fontname,
-                            rotate=rotation, color=color, fill_opacity=opacity
+                            fitz.Point(x, y), text, fontsize=actual_fontsize,
+                            fontname=fontname, rotate=rotation,
+                            color=color, fill_opacity=opacity
                         )
                     shape.commit(overlay=False)
                 else:
                     if position == 'tile':
-                        for y in range(0, int(page.rect.height), 200):
-                            for x in range(0, int(page.rect.width), 300):
+                        for y in range(0, int(rect.height), 200):
+                            for x in range(0, int(rect.width), 300):
                                 page.insert_text(
                                     fitz.Point(x, y), text, fontsize=actual_fontsize,
                                     fontname=fontname, rotate=rotation,
                                     color=color, fill_opacity=opacity
                                 )
                     else:
+                        x, y = positions.get(position, positions['center'])
                         page.insert_text(
-                            fitz.Point(page.rect.width/2, page.rect.height/2),
-                            text, fontsize=actual_fontsize, fontname=fontname,
-                            rotate=rotation, color=color, fill_opacity=opacity
+                            fitz.Point(x, y), text, fontsize=actual_fontsize,
+                            fontname=fontname, rotate=rotation,
+                            color=color, fill_opacity=opacity
                         )
                 self.progress_signal.emit(int((i + 1) / total_pages * 100))
             doc.save(output_path)
@@ -478,11 +602,14 @@ class WorkerThread(QThread):
         doc = fitz.open(file_path)
         try:
             total_pages = len(doc)
+            # v4.5: 진행률 개선 - 페이지 스캔 20%, 저장(실제 압축) 80%
             for page_num in range(total_pages):
                 self._check_cancelled()  # 취소 체크포인트
-                self.progress_signal.emit(int((page_num + 1) / total_pages * 80))
+                self.progress_signal.emit(int((page_num + 1) / total_pages * 20))
             
+            self.progress_signal.emit(25)  # 저장 시작
             doc.save(output_path, **COMPRESSION_SETTINGS.get(quality, COMPRESSION_SETTINGS['high']))
+            self.progress_signal.emit(95)  # 저장 완료
         finally:
             doc.close()
         
@@ -560,18 +687,18 @@ class WorkerThread(QThread):
                 
                 doc = fitz.open(file_path)
                 
-                if "압축" in operation:
+                if operation == "compress":
                     doc.save(out_path, garbage=4, deflate=True)
-                elif "워터마크" in operation and option:
+                elif operation == "watermark" and option:
                     for page in doc:
                         page.insert_text(fitz.Point(page.rect.width/2, page.rect.height/2),
                             option, fontsize=40, fontname="helv", rotate=45, 
                             color=(0.5, 0.5, 0.5), fill_opacity=0.3, align=1)
                     doc.save(out_path)
-                elif "암호화" in operation and option:
+                elif operation == "encrypt" and option:
                     perm = int(fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_PRINT | fitz.PDF_PERM_COPY)
                     doc.save(out_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=option, user_pw=option, permissions=perm)
-                elif "회전" in operation:
+                elif operation == "rotate":
                     for page in doc:
                         page.set_rotation(page.rotation + 90)
                     doc.save(out_path)
@@ -804,6 +931,10 @@ class WorkerThread(QThread):
         output_path = self.kwargs.get('output_path')
         image_path = self.kwargs.get('image_path')
         position = self.kwargs.get('position', 'center')
+        # v4.5: 크기/투명도 파라미터 지원
+        img_width = self.kwargs.get('width', 150)
+        img_height = self.kwargs.get('height', 150)
+        opacity = self.kwargs.get('opacity', 1.0)  # 0.0 ~ 1.0
         
         doc = fitz.open(file_path)
         try:
@@ -812,22 +943,25 @@ class WorkerThread(QThread):
                 self._check_cancelled()  # 취소 체크포인트
                 rect = page.rect
                 if position == 'center':
-                    x, y = (rect.width - 150) / 2, (rect.height - 150) / 2
+                    x, y = (rect.width - img_width) / 2, (rect.height - img_height) / 2
                 elif position == 'top-left':
                     x, y = 20, 20
                 elif position == 'top-right':
-                    x, y = rect.width - 170, 20
+                    x, y = rect.width - img_width - 20, 20
                 elif position == 'bottom-left':
-                    x, y = 20, rect.height - 170
-                else:
-                    x, y = rect.width - 170, rect.height - 170
+                    x, y = 20, rect.height - img_height - 20
+                else:  # bottom-right
+                    x, y = rect.width - img_width - 20, rect.height - img_height - 20
                 
-                img_rect = fitz.Rect(x, y, x + 150, y + 150)
-                page.insert_image(img_rect, filename=image_path, overlay=True)
+                img_rect = fitz.Rect(x, y, x + img_width, y + img_height)
+                # v4.5: opacity를 alpha로 변환 (0~255)
+                alpha = int(opacity * 255) if 0 <= opacity <= 1 else 255
+                page.insert_image(img_rect, filename=image_path, overlay=True, alpha=alpha)
                 self.progress_signal.emit(int((i + 1) / total_pages * 100))
             
             doc.save(output_path)
-            self.finished_signal.emit(f"✅ 이미지 워터마크 완료!")
+            opacity_pct = int(opacity * 100) if 0 <= opacity <= 1 else 100
+            self.finished_signal.emit(f"✅ 이미지 워터마크 완료! ({img_width}x{img_height}, {opacity_pct}%)")
         finally:
             doc.close()
 
@@ -978,98 +1112,114 @@ class WorkerThread(QThread):
         output_path = self.kwargs.get('output_path')
         generate_visual_diff = self.kwargs.get('generate_visual_diff', False)  # v3.2: 시각적 diff PDF 생성
         
-        doc1 = fitz.open(file_path1)
-        doc2 = fitz.open(file_path2)
+        doc1 = None
+        doc2 = None
         
-        results = []
-        diff_pages = []  # v3.2: 차이가 발견된 페이지 정보
-        max_pages = max(len(doc1), len(doc2))
-        
-        for i in range(max_pages):
-            self.progress_signal.emit(int((i + 1) / max_pages * 100))
+        try:
+            doc1 = fitz.open(file_path1)
+            doc2 = fitz.open(file_path2)
             
-            if i >= len(doc1):
-                results.append(f"페이지 {i+1}: 파일1에 없음")
-                continue
-            if i >= len(doc2):
-                results.append(f"페이지 {i+1}: 파일2에 없음")
-                continue
+            # v4.5: 암호화된 PDF 체크
+            if doc1.is_encrypted:
+                self.error_signal.emit(f"파일1이 암호화되어 있습니다: {os.path.basename(file_path1)}")
+                return
+            if doc2.is_encrypted:
+                self.error_signal.emit(f"파일2가 암호화되어 있습니다: {os.path.basename(file_path2)}")
+                return
             
-            text1 = doc1[i].get_text()
-            text2 = doc2[i].get_text()
+            results = []
+            diff_pages = []  # v3.2: 차이가 발견된 페이지 정보
+            max_pages = max(len(doc1), len(doc2))
             
-            if text1 != text2:
-                # 간단한 차이 분석
-                lines1 = set(text1.split('\n'))
-                lines2 = set(text2.split('\n'))
-                only_in_1 = lines1 - lines2
-                only_in_2 = lines2 - lines1
+            for i in range(max_pages):
+                self._check_cancelled()  # v4.5: 취소 체크포인트
+                self.progress_signal.emit(int((i + 1) / max_pages * 100))
                 
-                if only_in_1 or only_in_2:
-                    results.append(f"페이지 {i+1}: 차이 발견")
-                    diff_pages.append(i)
-                    if only_in_1:
-                        results.append(f"  - 파일1에만: {len(only_in_1)}줄")
-                    if only_in_2:
-                        results.append(f"  - 파일2에만: {len(only_in_2)}줄")
-        
-        # v3.2: 시각적 diff PDF 생성
-        visual_diff_path = None
-        if generate_visual_diff and diff_pages:
-            visual_diff_path = output_path.replace('.txt', '_visual_diff.pdf')
-            diff_doc = fitz.open()
-            
-            for page_idx in diff_pages:
-                if page_idx < len(doc1):
-                    page1 = doc1[page_idx]
-                    # 페이지 복사
-                    new_page = diff_doc.new_page(width=page1.rect.width, height=page1.rect.height)
-                    new_page.show_pdf_page(new_page.rect, doc1, page_idx)
+                if i >= len(doc1):
+                    results.append(f"페이지 {i+1}: 파일1에 없음")
+                    continue
+                if i >= len(doc2):
+                    results.append(f"페이지 {i+1}: 파일2에 없음")
+                    continue
+                
+                text1 = doc1[i].get_text()
+                text2 = doc2[i].get_text()
+                
+                if text1 != text2:
+                    # 간단한 차이 분석
+                    lines1 = set(text1.split('\n'))
+                    lines2 = set(text2.split('\n'))
+                    only_in_1 = lines1 - lines2
+                    only_in_2 = lines2 - lines1
                     
-                    # 파일2에서 다른 텍스트 영역 찾아서 하이라이트
-                    if page_idx < len(doc2):
-                        text1_blocks = page1.get_text("blocks")
-                        page2 = doc2[page_idx]
-                        text2_blocks_content = set(
-                            b[4] for b in page2.get_text("blocks") if b[6] == 0
-                        )
-                        
-                        for block in text1_blocks:
-                            if block[6] == 0:  # 텍스트 블록
-                                block_text = block[4]
-                                if block_text not in text2_blocks_content:
-                                    # 빨간색 하이라이트 추가
-                                    rect = fitz.Rect(block[:4])
-                                    new_page.draw_rect(rect, color=(1, 0, 0), width=2)
-                                    # 빨간색 반투명 오버레이
-                                    shape = new_page.new_shape()
-                                    shape.draw_rect(rect)
-                                    shape.finish(color=(1, 0, 0), fill=(1, 0.8, 0.8), fill_opacity=0.3)
-                                    shape.commit()
+                    if only_in_1 or only_in_2:
+                        results.append(f"페이지 {i+1}: 차이 발견")
+                        diff_pages.append(i)
+                        if only_in_1:
+                            results.append(f"  - 파일1에만: {len(only_in_1)}줄")
+                        if only_in_2:
+                            results.append(f"  - 파일2에만: {len(only_in_2)}줄")
             
-            if len(diff_doc) > 0:
-                diff_doc.save(visual_diff_path)
-            diff_doc.close()
+            # v3.2: 시각적 diff PDF 생성
+            visual_diff_path = None
+            if generate_visual_diff and diff_pages:
+                visual_diff_path = output_path.replace('.txt', '_visual_diff.pdf')
+                diff_doc = fitz.open()
+                
+                for page_idx in diff_pages:
+                    if page_idx < len(doc1):
+                        page1 = doc1[page_idx]
+                        # 페이지 복사
+                        new_page = diff_doc.new_page(width=page1.rect.width, height=page1.rect.height)
+                        new_page.show_pdf_page(new_page.rect, doc1, page_idx)
+                        
+                        # 파일2에서 다른 텍스트 영역 찾아서 하이라이트
+                        if page_idx < len(doc2):
+                            text1_blocks = page1.get_text("blocks")
+                            page2 = doc2[page_idx]
+                            text2_blocks_content = set(
+                                b[4] for b in page2.get_text("blocks") if b[6] == 0
+                            )
+                            
+                            for block in text1_blocks:
+                                if block[6] == 0:  # 텍스트 블록
+                                    block_text = block[4]
+                                    if block_text not in text2_blocks_content:
+                                        # 빨간색 하이라이트 추가
+                                        rect = fitz.Rect(block[:4])
+                                        new_page.draw_rect(rect, color=(1, 0, 0), width=2)
+                                        # 빨간색 반투명 오버레이
+                                        shape = new_page.new_shape()
+                                        shape.draw_rect(rect)
+                                        shape.finish(color=(1, 0, 0), fill=(1, 0.8, 0.8), fill_opacity=0.3)
+                                        shape.commit()
+                
+                if len(diff_doc) > 0:
+                    diff_doc.save(visual_diff_path)
+                diff_doc.close()
+            
+            # 결과 저장
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write("# PDF 비교 결과\n\n")
+                f.write(f"파일1: {os.path.basename(file_path1)}\n")
+                f.write(f"파일2: {os.path.basename(file_path2)}\n\n")
+                if results:
+                    for r in results:
+                        f.write(r + "\n")
+                else:
+                    f.write("두 파일의 텍스트 내용이 동일합니다.\n")
+                if visual_diff_path:
+                    f.write(f"\n📊 시각적 비교 PDF: {os.path.basename(visual_diff_path)}\n")
+            
+            diff_count = len([r for r in results if "차이 발견" in r])
+            visual_msg = " +시각적 비교 PDF" if visual_diff_path else ""
+            self.finished_signal.emit(f"✅ PDF 비교 완료!{visual_msg}\n{diff_count}개 페이지에서 차이 발견")
         
-        doc1.close()
-        doc2.close()
-        
-        # 결과 저장
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write("# PDF 비교 결과\n\n")
-            f.write(f"파일1: {os.path.basename(file_path1)}\n")
-            f.write(f"파일2: {os.path.basename(file_path2)}\n\n")
-            if results:
-                for r in results:
-                    f.write(r + "\n")
-            else:
-                f.write("두 파일의 텍스트 내용이 동일합니다.\n")
-            if visual_diff_path:
-                f.write(f"\n📊 시각적 비교 PDF: {os.path.basename(visual_diff_path)}\n")
-        
-        diff_count = len([r for r in results if "차이 발견" in r])
-        visual_msg = " +시각적 비교 PDF" if visual_diff_path else ""
-        self.finished_signal.emit(f"✅ PDF 비교 완료!{visual_msg}\n{diff_count}개 페이지에서 차이 발견")
+        finally:
+            if doc1:
+                doc1.close()
+            if doc2:
+                doc2.close()
 
     # ===================== v2.8 신규 기능 =====================
     
@@ -1266,70 +1416,71 @@ class WorkerThread(QThread):
         add_timestamp = self.kwargs.get('add_timestamp', False)  # v3.2: 타임스탬프
         
         doc = fitz.open(file_path)
-        
-        if page_num == -1:
-            page_num = len(doc) - 1
-        
-        page = doc[page_num]
-        page_rect = page.rect
-        
-        # 서명 이미지 크기 (가로 150pt)
-        sig_width = 150
-        sig_height = 50
-        
-        # v3.2: 타임스탬프/서명자 텍스트 높이 추가
-        text_height = 0
-        if signer_name or add_timestamp:
-            text_height = 30
-        
-        # 위치 계산
-        positions = {
-            'bottom_right': fitz.Rect(page_rect.width - sig_width - 50, page_rect.height - sig_height - 50 - text_height,
-                                      page_rect.width - 50, page_rect.height - 50 - text_height),
-            'bottom_left': fitz.Rect(50, page_rect.height - sig_height - 50 - text_height,
-                                     50 + sig_width, page_rect.height - 50 - text_height),
-            'top_right': fitz.Rect(page_rect.width - sig_width - 50, 50,
-                                   page_rect.width - 50, 50 + sig_height),
-            'top_left': fitz.Rect(50, 50, 50 + sig_width, 50 + sig_height),
-        }
-        
-        rect = positions.get(position, positions['bottom_right'])
-        
-        # 서명 이미지 삽입
-        page.insert_image(rect, filename=signature_path)
-        
-        # v3.2: 서명자 이름 및 타임스탬프 추가
-        if signer_name or add_timestamp:
-            text_parts = []
-            if signer_name:
-                text_parts.append(f"서명자: {signer_name}")
-            if add_timestamp:
-                now = datetime.now().strftime("%Y-%m-%d %H:%M")
-                text_parts.append(f"일시: {now}")
+        try:
+            if page_num == -1:
+                page_num = len(doc) - 1
             
-            text_str = " | ".join(text_parts)
-            text_rect = fitz.Rect(rect.x0, rect.y1 + 5, rect.x1, rect.y1 + 25)
-            page.insert_textbox(text_rect, text_str, fontsize=8, fontname="helv", 
-                               color=(0.3, 0.3, 0.3), align=1)
-        
-        # v3.2: 메타데이터에 서명 정보 기록
-        if signer_name:
-            meta = doc.metadata
-            existing_keywords = meta.get('keywords', '') or ''
-            new_keywords = f"{existing_keywords}; Signed by: {signer_name}" if existing_keywords else f"Signed by: {signer_name}"
-            meta['keywords'] = new_keywords
-            doc.set_metadata(meta)
-        
-        self.progress_signal.emit(100)
-        
-        doc.save(output_path)
-        doc.close()
-        extra_info = ""
-        if signer_name:
-            extra_info += f" (서명자: {signer_name})"
-        if add_timestamp:
-            extra_info += " +타임스탬프"
-        self.finished_signal.emit(f"✅ 전자 서명 삽입 완료!{extra_info}\n{page_num + 1}페이지")
+            page = doc[page_num]
+            page_rect = page.rect
+            
+            # 서명 이미지 크기 (가로 150pt)
+            sig_width = 150
+            sig_height = 50
+            
+            # v3.2: 타임스탬프/서명자 텍스트 높이 추가
+            text_height = 0
+            if signer_name or add_timestamp:
+                text_height = 30
+            
+            # 위치 계산
+            positions = {
+                'bottom_right': fitz.Rect(page_rect.width - sig_width - 50, page_rect.height - sig_height - 50 - text_height,
+                                          page_rect.width - 50, page_rect.height - 50 - text_height),
+                'bottom_left': fitz.Rect(50, page_rect.height - sig_height - 50 - text_height,
+                                         50 + sig_width, page_rect.height - 50 - text_height),
+                'top_right': fitz.Rect(page_rect.width - sig_width - 50, 50,
+                                       page_rect.width - 50, 50 + sig_height),
+                'top_left': fitz.Rect(50, 50, 50 + sig_width, 50 + sig_height),
+            }
+            
+            rect = positions.get(position, positions['bottom_right'])
+            
+            # 서명 이미지 삽입
+            page.insert_image(rect, filename=signature_path)
+            
+            # v3.2: 서명자 이름 및 타임스탬프 추가
+            if signer_name or add_timestamp:
+                text_parts = []
+                if signer_name:
+                    text_parts.append(f"서명자: {signer_name}")
+                if add_timestamp:
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+                    text_parts.append(f"일시: {now}")
+                
+                text_str = " | ".join(text_parts)
+                text_rect = fitz.Rect(rect.x0, rect.y1 + 5, rect.x1, rect.y1 + 25)
+                page.insert_textbox(text_rect, text_str, fontsize=8, fontname="helv", 
+                                   color=(0.3, 0.3, 0.3), align=1)
+            
+            # v3.2: 메타데이터에 서명 정보 기록
+            if signer_name:
+                meta = doc.metadata
+                existing_keywords = meta.get('keywords', '') or ''
+                new_keywords = f"{existing_keywords}; Signed by: {signer_name}" if existing_keywords else f"Signed by: {signer_name}"
+                meta['keywords'] = new_keywords
+                doc.set_metadata(meta)
+            
+            self.progress_signal.emit(100)
+            
+            doc.save(output_path)
+            extra_info = ""
+            if signer_name:
+                extra_info += f" (서명자: {signer_name})"
+            if add_timestamp:
+                extra_info += " +타임스탬프"
+            self.finished_signal.emit(f"✅ 전자 서명 삽입 완료!{extra_info}\n{page_num + 1}페이지")
+        finally:
+            doc.close()
 
     # ===================== v2.9 신규 기능 =====================
     
@@ -1579,33 +1730,45 @@ class WorkerThread(QThread):
         shapes = self.kwargs.get('shapes', [])  # [{type, params, color, width}]
         
         doc = fitz.open(file_path)
-        page = doc[page_num]
-        
-        for shape_info in shapes:
-            shape_type = shape_info.get('type', 'line')
-            color = tuple(shape_info.get('color', [1, 0, 0]))
-            width = shape_info.get('width', 1)
-            fill = shape_info.get('fill')
+        try:
+            # v4.5: 페이지 번호 유효성 검사
+            if page_num < 0 or page_num >= len(doc):
+                self.error_signal.emit(f"페이지 번호 오류: {page_num + 1} (전체 {len(doc)}페이지)")
+                return
             
-            if shape_type == 'line':
-                p1 = fitz.Point(shape_info['p1'][0], shape_info['p1'][1])
-                p2 = fitz.Point(shape_info['p2'][0], shape_info['p2'][1])
-                page.draw_line(p1, p2, color=color, width=width)
-            elif shape_type == 'rect':
-                rect = fitz.Rect(shape_info['rect'])
-                page.draw_rect(rect, color=color, width=width, fill=fill)
-            elif shape_type == 'circle':
-                center = fitz.Point(shape_info['center'][0], shape_info['center'][1])
-                radius = shape_info.get('radius', 50)
-                page.draw_circle(center, radius, color=color, width=width, fill=fill)
-            elif shape_type == 'oval':
-                rect = fitz.Rect(shape_info['rect'])
-                page.draw_oval(rect, color=color, width=width, fill=fill)
-        
-        doc.save(output_path)
-        doc.close()
-        self.progress_signal.emit(100)
-        self.finished_signal.emit(f"✅ {len(shapes)}개 도형 추가 완료!")
+            page = doc[page_num]
+            page_rect = page.rect
+            
+            for shape_info in shapes:
+                shape_type = shape_info.get('type', 'line')
+                color = tuple(shape_info.get('color', [1, 0, 0]))
+                # v4.5: 색상 값 범위 제한
+                color = tuple(max(0.0, min(1.0, c)) for c in color)
+                width = shape_info.get('width', 1)
+                fill = shape_info.get('fill')
+                if fill:
+                    fill = tuple(max(0.0, min(1.0, c)) for c in fill)
+                
+                if shape_type == 'line':
+                    p1 = fitz.Point(shape_info['p1'][0], shape_info['p1'][1])
+                    p2 = fitz.Point(shape_info['p2'][0], shape_info['p2'][1])
+                    page.draw_line(p1, p2, color=color, width=width)
+                elif shape_type == 'rect':
+                    rect = fitz.Rect(shape_info['rect'])
+                    page.draw_rect(rect, color=color, width=width, fill=fill)
+                elif shape_type == 'circle':
+                    center = fitz.Point(shape_info['center'][0], shape_info['center'][1])
+                    radius = shape_info.get('radius', 50)
+                    page.draw_circle(center, radius, color=color, width=width, fill=fill)
+                elif shape_type == 'oval':
+                    rect = fitz.Rect(shape_info['rect'])
+                    page.draw_oval(rect, color=color, width=width, fill=fill)
+            
+            doc.save(output_path)
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ {len(shapes)}개 도형 추가 완료!")
+        finally:
+            doc.close()
     
     def add_link(self):
         """PDF에 하이퍼링크 추가"""
@@ -1615,6 +1778,17 @@ class WorkerThread(QThread):
         link_type = self.kwargs.get('link_type', 'uri')  # uri, goto
         rect = self.kwargs.get('rect', [100, 100, 200, 120])  # [x0, y0, x1, y1]
         target = self.kwargs.get('target')  # URL 또는 페이지 번호
+        
+        # v4.5: link_type 유효성 검사
+        valid_link_types = ['uri', 'goto']
+        if link_type not in valid_link_types:
+            logger.warning(f"Invalid link_type '{link_type}', defaulting to 'uri'")
+            link_type = 'uri'
+        
+        # v4.5: target 유효성 검사
+        if not target:
+            self.error_signal.emit("링크 대상이 지정되지 않았습니다.")
+            return
         
         doc = fitz.open(file_path)
         try:
@@ -1630,10 +1804,21 @@ class WorkerThread(QThread):
             }
             
             if link_type == 'uri':
+                # v4.5: URL 형식 기본 검증
+                if not (target.startswith('http://') or target.startswith('https://') or target.startswith('mailto:')):
+                    logger.warning(f"URL might be invalid: {target}")
                 link['uri'] = target
             else:
-                link['page'] = int(target) - 1  # 0-indexed
-                link['to'] = fitz.Point(0, 0)
+                try:
+                    target_page = int(target) - 1  # 0-indexed
+                    if target_page < 0 or target_page >= len(doc):
+                        self.error_signal.emit(f"대상 페이지 번호 오류: {target} (전체 {len(doc)}페이지)")
+                        return
+                    link['page'] = target_page
+                    link['to'] = fitz.Point(0, 0)
+                except ValueError:
+                    self.error_signal.emit(f"페이지 번호는 숫자여야 합니다: {target}")
+                    return
             
             page.insert_link(link)
             doc.save(output_path)
@@ -1782,23 +1967,33 @@ class WorkerThread(QThread):
         source_doc = fitz.open(source_path)
         target_doc = fitz.open(target_path)
         
-        insert_pos = insert_at if insert_at >= 0 else len(target_doc)
-        
-        for i, page_num in enumerate(source_pages):
-            if 0 <= page_num < len(source_doc):
-                target_doc.insert_pdf(source_doc, from_page=page_num, to_page=page_num, start_at=insert_pos + i)
-            self.progress_signal.emit(int((i + 1) / len(source_pages) * 100))
-        
-        target_doc.save(output_path)
-        source_doc.close()
-        target_doc.close()
-        self.finished_signal.emit(f"✅ {len(source_pages)}페이지 복사 완료!")
+        try:
+            insert_pos = insert_at if insert_at >= 0 else len(target_doc)
+            
+            for i, page_num in enumerate(source_pages):
+                self._check_cancelled()  # v4.5: 취소 체크포인트 추가
+                if 0 <= page_num < len(source_doc):
+                    target_doc.insert_pdf(source_doc, from_page=page_num, to_page=page_num, start_at=insert_pos + i)
+                self.progress_signal.emit(int((i + 1) / len(source_pages) * 100))
+            
+            target_doc.save(output_path)
+            self.finished_signal.emit(f"✅ {len(source_pages)}페이지 복사 완료!")
+        finally:
+            source_doc.close()
+            target_doc.close()
     
     def add_background(self):
         """PDF 페이지에 배경색 추가"""
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
-        color = tuple(self.kwargs.get('color', [1, 1, 0.9]))  # 연한 노란색 기본
+        color = self.kwargs.get('color', [1, 1, 0.9])  # 연한 노란색 기본
+        
+        # v4.5: 색상 값 범위 검증 (0.0-1.0)
+        if isinstance(color, (list, tuple)):
+            color = tuple(max(0.0, min(1.0, c)) for c in color)
+        else:
+            logger.warning(f"Invalid color format, using default")
+            color = (1, 1, 0.9)
         
         doc = fitz.open(file_path)
         try:
@@ -1921,30 +2116,30 @@ class WorkerThread(QThread):
         width = self.kwargs.get('width', 2)  # 선 두께
         
         doc = fitz.open(file_path)
-        
-        if page_num >= len(doc):
-            page_num = len(doc) - 1
-        
-        page = doc[page_num]
-        
-        if points and len(points) >= 2:
-            # 포인트를 fitz.Point 객체 리스트로 변환
-            fitz_points = [fitz.Point(p[0], p[1]) for p in points]
+        try:
+            if page_num >= len(doc):
+                page_num = len(doc) - 1
             
-            # 잉크 주석 추가 (자유형 선)
-            annot = page.add_ink_annot([fitz_points])
-            if annot:
-                annot.set_colors(stroke=color)
-                annot.set_border(width=width)
-                annot.update()
+            page = doc[page_num]
             
-            self.progress_signal.emit(100)
-            doc.save(output_path)
+            if points and len(points) >= 2:
+                # 포인트를 fitz.Point 객체 리스트로 변환
+                fitz_points = [fitz.Point(p[0], p[1]) for p in points]
+                
+                # 잉크 주석 추가 (자유형 선)
+                annot = page.add_ink_annot([fitz_points])
+                if annot:
+                    annot.set_colors(stroke=color)
+                    annot.set_border(width=width)
+                    annot.update()
+                
+                self.progress_signal.emit(100)
+                doc.save(output_path)
+                self.finished_signal.emit(f"✅ 프리핸드 드로잉 추가 완료!\n페이지 {page_num + 1}, {len(points)}개 포인트")
+            else:
+                self.error_signal.emit("좌표 포인트가 2개 이상 필요합니다.")
+        finally:
             doc.close()
-            self.finished_signal.emit(f"✅ 프리핸드 드로잉 추가 완료!\n페이지 {page_num + 1}, {len(points)}개 포인트")
-        else:
-            doc.close()
-            self.error_signal.emit("좌표 포인트가 2개 이상 필요합니다.")
     
     def add_freehand_signature(self):
         """PDF에 프리핸드 서명 (여러 획) 추가"""
@@ -2004,15 +2199,18 @@ class WorkerThread(QThread):
         try:
             from .ai_service import AIService
         except ImportError:
-            self.error_signal.emit("AI 서비스 모듈을 찾을 수 없습니다.")
+            self.error_signal.emit(self._get_msg("err_ai_module_not_found"))
             return
         
         if not file_path or not os.path.exists(file_path):
-            self.error_signal.emit("PDF 파일을 찾을 수 없습니다.")
+            self.error_signal.emit(self._get_msg("err_pdf_not_found"))
+            return
+        if self._is_pdf_encrypted(file_path):
+            self.error_signal.emit(self._get_msg("err_pdf_encrypted", os.path.basename(file_path)))
             return
             
         if not api_key:
-            self.error_signal.emit("Gemini API 키가 필요합니다.\n설정에서 API 키를 입력해주세요.")
+            self.error_signal.emit(self._get_msg("err_api_key_required"))
             return
         
         try:
@@ -2022,7 +2220,7 @@ class WorkerThread(QThread):
             ai_service = AIService(api_key=api_key)
             
             if not ai_service.is_available:
-                self.error_signal.emit("AI 서비스를 사용할 수 없습니다.\ngoogle-generativeai 패키지를 설치해주세요.")
+                self.error_signal.emit(self._get_msg("err_ai_unavailable"))
                 return
             
             self.progress_signal.emit(30)
@@ -2054,3 +2252,115 @@ class WorkerThread(QThread):
         except Exception as e:
             logger.error(f"AI summarization failed: {e}")
             self.error_signal.emit(f"AI 요약 실패: {str(e)}")
+
+    def ai_ask_question(self):
+        """AI 기반 PDF 질의응답 (채팅)"""
+        file_path = self.kwargs.get('file_path')
+        question = self.kwargs.get('question', '')
+        api_key = self.kwargs.get('api_key', '')
+        conversation_history = self.kwargs.get('conversation_history')
+        
+        try:
+            from .ai_service import AIService
+        except ImportError:
+            self.error_signal.emit(self._get_msg("err_ai_module_not_found"))
+            return
+        
+        if not file_path or not os.path.exists(file_path):
+            self.error_signal.emit(self._get_msg("err_pdf_not_found"))
+            return
+        if self._is_pdf_encrypted(file_path):
+            self.error_signal.emit(self._get_msg("err_pdf_encrypted", os.path.basename(file_path)))
+            return
+            
+        if not api_key:
+            self.error_signal.emit(self._get_msg("err_api_key_required"))
+            return
+            
+        if not question.strip():
+            self.error_signal.emit(self._get_msg("err_question_required"))
+            return
+        
+        try:
+            self.progress_signal.emit(20)
+            
+            ai_service = AIService(api_key=api_key)
+            
+            if not ai_service.is_available:
+                self.error_signal.emit("AI 서비스를 사용할 수 없습니다.")
+                return
+            
+            self.progress_signal.emit(40)
+            
+            # PDF 질의응답 실행
+            answer = ai_service.ask_about_pdf(
+                pdf_path=file_path,
+                question=question,
+                conversation_history=conversation_history
+            )
+            
+            # 결과를 kwargs에 저장
+            self.kwargs['answer_result'] = answer
+            
+            self.progress_signal.emit(100)
+            self.finished_signal.emit(f"✅ 답변 생성 완료!")
+            
+        except Exception as e:
+            logger.error(f"AI Q&A failed: {e}")
+            self.error_signal.emit(f"답변 생성 실패: {str(e)}")
+
+    def ai_extract_keywords(self):
+        """AI 기반 키워드 추출"""
+        file_path = self.kwargs.get('file_path')
+        api_key = self.kwargs.get('api_key', '')
+        max_keywords = self.kwargs.get('max_keywords', 10)
+        language = self.kwargs.get('language', 'ko')
+        
+        try:
+            from .ai_service import AIService
+        except ImportError:
+            self.error_signal.emit(self._get_msg("err_ai_module_not_found"))
+            return
+        
+        if not file_path or not os.path.exists(file_path):
+            self.error_signal.emit(self._get_msg("err_pdf_not_found"))
+            return
+        if self._is_pdf_encrypted(file_path):
+            self.error_signal.emit(self._get_msg("err_pdf_encrypted", os.path.basename(file_path)))
+            return
+            
+        if not api_key:
+            self.error_signal.emit(self._get_msg("err_api_key_required"))
+            return
+        
+        try:
+            self.progress_signal.emit(20)
+            
+            ai_service = AIService(api_key=api_key)
+            
+            if not ai_service.is_available:
+                self.error_signal.emit("AI 서비스를 사용할 수 없습니다.")
+                return
+            
+            self.progress_signal.emit(40)
+            
+            # 키워드 추출 실행
+            keywords = ai_service.extract_keywords(
+                pdf_path=file_path,
+                max_keywords=max_keywords,
+                language=language
+            )
+            
+            # 결과를 kwargs에 저장
+            self.kwargs['keywords_result'] = keywords
+            
+            self.progress_signal.emit(100)
+            
+            if keywords:
+                self.finished_signal.emit(f"✅ 키워드 추출 완료!\n{len(keywords)}개 키워드")
+            else:
+                self.finished_signal.emit("키워드를 추출할 수 없습니다.")
+            
+        except Exception as e:
+            logger.error(f"Keyword extraction failed: {e}")
+            self.error_signal.emit(f"키워드 추출 실패: {str(e)}")

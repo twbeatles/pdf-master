@@ -1,4 +1,4 @@
-# PDF Master v4.4
+# PDF Master v4.5
 
 📑 **All-in-One PDF Editor** - PyQt6 based Desktop Application
 
@@ -50,7 +50,7 @@
 | **Encrypt PDF** | Set AES-256 password |
 | **Decrypt PDF** | Remove password |
 | **Watermark** | Text/Tile watermark (custom opacity, rotation, position) |
-| **Image Watermark** | Insert logo/image |
+| **Image Watermark** | Position(9), Scale, Opacity controls (v4.5 enhanced) |
 | **Add Stamp** | Confidential, Approved, Draft, etc. |
 
 ### 🔧 Advanced Editing
@@ -68,6 +68,10 @@
 | **Highlight Text** | Highlighter effect |
 | **Sticky Note** | Add memo notes |
 | **Underline/Strike** | Text markup |
+| **Draw Shapes** | Add rectangles, circles, lines (v4.5) |
+| **Add Hyperlinks** | URL or page navigation links (v4.5) |
+| **Insert Textbox** | Add text directly to PDF (v4.5) |
+| **Copy Pages** | Copy pages from another PDF (v4.5) |
 | **Redact Text** | Permanently remove sensitive info |
 | **Add Background** | Change page background color |
 | **Freehand Ink** | Insert handwritten signature/drawing |
@@ -86,6 +90,8 @@
 | Feature | Description |
 |---------|-------------|
 | **PDF Summary** | AI-based document summary (Korean/English) |
+| **PDF Chat** | Ask questions about PDF content to AI (v4.5) |
+| **Keyword Extraction** | AI-based keyword extraction (v4.5) |
 | **Summary Style** | Concise/Detailed/Bullet points |
 | **Page Limit** | Set max pages to summarize |
 
@@ -100,6 +106,7 @@
 - **Zoom/Pan Preview** - Mouse wheel zoom, drag move
 - **Thumbnail Grid** - View all pages at a glance
 - **Undo/Redo** - Undo/Redo for page delete, rotate, compress, etc.
+- **Preview Print** - Print directly from preview panel (v4.5)
 
 ---
 
@@ -214,7 +221,7 @@ pyinstaller pdf_master.spec --clean
 ```
 
 ### Build Result
-- Output: `dist/PDF_Master_v4.4.exe`
+- Output: `dist/PDF_Master_v4.5.exe`
 - Size: ~30-40MB (UPX Compressed)
 
 ---
@@ -266,17 +273,25 @@ Location: `~/.pdf_master_settings.json`
 
 ## 📝 Changelog
 
+### v4.5 (2026-01-22)
+- 📐 **Draw Shapes** - Add rectangles, circles, lines (position, size, color)
+- 🔗 **Add Hyperlinks** - Insert URL links or page navigation links
+- 📝 **Insert Textbox** - Add text directly to PDF (position, font, color)
+- 📋 **Copy Pages** - Copy specific pages from another PDF
+- 🖼️ **Image Watermark Enhanced** - 9 positions, scale (10-200%), opacity
+- 🖨️ **Preview Print** - Print directly from preview panel
+- 💬 **PDF Chat** - Ask questions about PDF content to AI
+- 🏷️ **Keyword Extraction** - AI-based keyword extraction
+- 🌐 **i18n Expansion** - 88 new translation keys
+
 ### v4.4 (2026-01-16)
 - 🌐 **Internationalization (i18n)** - English & Korean support
 - 🔄 **Language Setting** - Auto-detect & Manual switch available
-- 🐛 **UI Improvements** - Refactored dialogs and menu texts
 
 ### v4.3 (2026-01-16)
 - 🔄 **Undo/Redo** - Support for page delete, rotate, compress, etc.
 - 💾 **Auto Save Settings** - Window geometry, theme
 - 🎨 **Progress Overlay** - Full-screen modal with cancel
-- 🆕 **EmptyStateWidget** - Better empty state UI
-- 🎯 **Button Styles** - Premium styles added
 
 ---
 

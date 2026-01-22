@@ -52,6 +52,31 @@ def is_valid_pdf(file_path: str) -> bool:
         logger.warning(f"Cannot read PDF header: {file_path}: {e}")
         return False
 
+
+def is_pdf_encrypted(file_path: str) -> bool:
+    """
+    PDF 파일 암호화 여부 확인 (v4.5: 공용 함수)
+    
+    Args:
+        file_path: 검사할 PDF 파일 경로
+        
+    Returns:
+        암호화된 PDF인지 여부
+    """
+    if not file_path or not os.path.exists(file_path):
+        return False
+    
+    try:
+        import fitz
+        doc = fitz.open(file_path)
+        try:
+            return bool(doc.is_encrypted)
+        finally:
+            doc.close()
+    except Exception as e:
+        logger.debug(f"Cannot check PDF encryption: {file_path}: {e}")
+        return False
+
 class WheelEventFilter(QObject):
     """QSpinBox, QComboBox 등에서 스크롤 휠로 값이 변경되는 것을 방지"""
     def eventFilter(self, obj, event):

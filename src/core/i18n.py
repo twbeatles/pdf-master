@@ -405,6 +405,120 @@ TRANSLATIONS = {
         "cancelling": "🚫 작업 취소 중...",
         "processing_status": "⏳ 작업 처리 중...",
 
+        # v4.5 New Features
+        # Draw Shapes
+        "grp_draw_shapes": "📐 도형 그리기",
+        "lbl_shape_type": "도형:",
+        "shape_rect": "사각형",
+        "shape_circle": "원",
+        "shape_line": "선",
+        "lbl_shape_x": "X:",
+        "lbl_shape_y": "Y:",
+        "lbl_shape_width": "너비:",
+        "lbl_shape_height": "높이:",
+        "lbl_line_color": "선 색상:",
+        "lbl_fill_color": "채우기:",
+        "btn_draw_shape": "📐 도형 그리기",
+        
+        # Hyperlink
+        "grp_add_link": "🔗 하이퍼링크 추가",
+        "lbl_link_type": "링크 유형:",
+        "link_url": "URL 링크",
+        "link_page": "페이지 이동",
+        "lbl_link_url": "URL:",
+        "ph_link_url": "https://example.com",
+        "lbl_target_page": "대상 페이지:",
+        "lbl_link_area": "링크 영역 (x1,y1,x2,y2):",
+        "ph_link_area": "100,700,300,750",
+        "btn_add_link": "🔗 링크 추가",
+        
+        # Textbox
+        "grp_insert_textbox": "📝 텍스트 상자 삽입",
+        "lbl_textbox_content": "텍스트:",
+        "ph_textbox_content": "삽입할 텍스트...",
+        "lbl_textbox_x": "위치 X:",
+        "lbl_textbox_y": "위치 Y:",
+        "lbl_textbox_fontsize": "폰트 크기:",
+        "lbl_textbox_color": "텍스트 색상:",
+        "btn_insert_textbox": "📝 텍스트 삽입",
+        
+        # Copy Page Between Docs
+        "grp_copy_page": "📋 다른 PDF에서 페이지 복사",
+        "lbl_source_pdf": "소스 PDF:",
+        "lbl_copy_pages": "복사할 페이지:",
+        "ph_copy_pages": "예: 1-3, 5",
+        "lbl_insert_pos": "삽입 위치:",
+        "tooltip_insert_pos": "0 = 맨 앞, -1 = 맨 뒤",
+        "btn_copy_pages": "📋 페이지 복사",
+        
+        # Image Watermark Enhanced
+        "grp_img_watermark": "🖼️ 이미지 워터마크",
+        "lbl_wm_image": "이미지 파일:",
+        "lbl_wm_position": "위치:",
+        "pos_center": "중앙",
+        "pos_top_center": "상단 중앙",
+        "pos_bottom_center": "하단 중앙",
+        "lbl_wm_scale": "크기 (%):",
+        "lbl_wm_opacity": "투명도:",
+        "btn_apply_img_watermark": "🖼️ 이미지 워터마크 적용",
+        
+        # Preview Print
+        "btn_print_preview": "🖨️ 인쇄",
+        "tooltip_print_preview": "현재 PDF 인쇄",
+        
+        # Folder Drop
+        "msg_folder_dropped": "폴더에서 {}개의 PDF 파일을 추가했습니다",
+        "msg_folder_no_pdf": "폴더에 PDF 파일이 없습니다",
+        
+        # AI Chat
+        "grp_ai_chat": "💬 PDF 채팅",
+        "step_ai_chat": "📄 PDF에 대해 질문하세요",
+        "ph_ai_question": "질문을 입력하세요...",
+        "btn_ask_ai": "💬 질문하기",
+        "lbl_chat_history": "대화 기록:",
+        "msg_ai_thinking": "🤔 AI가 답변을 생성 중...",
+        "msg_chat_cleared": "대화 기록이 삭제되었습니다",
+        "btn_clear_chat": "🧹 대화 삭제",
+        
+        # Keyword Extraction
+        "grp_keywords": "🏷️ 키워드 추출",
+        "lbl_max_keywords": "최대 키워드 수:",
+        "btn_extract_keywords": "🏷️ 키워드 추출",
+        "lbl_keywords_result": "추출된 키워드:",
+        "msg_no_keywords": "키워드를 추출할 수 없습니다",
+        
+        # Background Color Enhanced
+        "lbl_custom_color": "사용자 지정:",
+        "btn_pick_color": "🎨 색상 선택",
+        "lbl_bg_pages": "적용 페이지:",
+        "ph_bg_pages": "전체 또는 1-3, 5",
+
+        # v4.5 Worker Error Messages (i18n)
+        "err_ai_module_not_found": "AI 서비스 모듈을 찾을 수 없습니다.",
+        "err_pdf_not_found": "PDF 파일을 찾을 수 없습니다.",
+        "err_api_key_required": "Gemini API 키가 필요합니다.\n설정에서 API 키를 입력해주세요.",
+        "err_ai_unavailable": "AI 서비스를 사용할 수 없습니다.\ngoogle-generativeai 패키지를 설치해주세요.",
+        "err_question_required": "질문을 입력해주세요.",
+        "err_input_file_missing": "입력 파일이 존재하지 않습니다.",
+        "err_output_path_missing": "출력 경로가 지정되지 않았습니다.",
+        "err_no_files_selected": "병합할 파일이 선택되지 않았습니다.",
+        "err_no_valid_pdf": "유효한 PDF 파일이 없습니다.",
+        "err_pdf_encrypted": "파일이 암호화되어 있습니다: {}",
+        "err_file_access_denied": "파일 접근 권한이 없습니다: {}",
+        "err_pdf_corrupted": "PDF 파일이 손상되었거나 형식이 올바르지 않습니다.",
+        "err_operation_failed": "오류 발생: {}",
+        "err_cancelled": "작업이 취소되었습니다.",
+        
+        # v4.5: Worker management
+        "task_in_progress": "작업 진행 중",
+        "task_wait_or_cancel": "이전 작업이 아직 진행 중입니다.\n완료될 때까지 기다리시겠습니까?",
+        
+        # v4.5: File validation
+        "err_file_too_large": "파일이 너무 큽니다: {} (최대 {})",
+        "err_file_too_small": "파일이 너무 작거나 손상되었습니다.",
+        "password_retry": "비밀번호가 틀렸습니다. 다시 시도하시겠습니까?",
+        "batch_processing_file": "처리 중: {}",
+
     },
     "en": {
         # General
@@ -804,6 +918,120 @@ TRANSLATIONS = {
         "msg_worker_cancelled": "Operation cancelled",
         "cancelling": "🚫 Cancelling...",
         "processing_status": "⏳ Processing...",
+
+        # v4.5 New Features
+        # Draw Shapes
+        "grp_draw_shapes": "📐 Draw Shapes",
+        "lbl_shape_type": "Shape:",
+        "shape_rect": "Rectangle",
+        "shape_circle": "Circle",
+        "shape_line": "Line",
+        "lbl_shape_x": "X:",
+        "lbl_shape_y": "Y:",
+        "lbl_shape_width": "Width:",
+        "lbl_shape_height": "Height:",
+        "lbl_line_color": "Line Color:",
+        "lbl_fill_color": "Fill:",
+        "btn_draw_shape": "📐 Draw Shape",
+        
+        # Hyperlink
+        "grp_add_link": "🔗 Add Hyperlink",
+        "lbl_link_type": "Link Type:",
+        "link_url": "URL Link",
+        "link_page": "Go to Page",
+        "lbl_link_url": "URL:",
+        "ph_link_url": "https://example.com",
+        "lbl_target_page": "Target Page:",
+        "lbl_link_area": "Link Area (x1,y1,x2,y2):",
+        "ph_link_area": "100,700,300,750",
+        "btn_add_link": "🔗 Add Link",
+        
+        # Textbox
+        "grp_insert_textbox": "📝 Insert Textbox",
+        "lbl_textbox_content": "Text:",
+        "ph_textbox_content": "Text to insert...",
+        "lbl_textbox_x": "Position X:",
+        "lbl_textbox_y": "Position Y:",
+        "lbl_textbox_fontsize": "Font Size:",
+        "lbl_textbox_color": "Text Color:",
+        "btn_insert_textbox": "📝 Insert Text",
+        
+        # Copy Page Between Docs
+        "grp_copy_page": "📋 Copy Pages from Another PDF",
+        "lbl_source_pdf": "Source PDF:",
+        "lbl_copy_pages": "Pages to Copy:",
+        "ph_copy_pages": "e.g., 1-3, 5",
+        "lbl_insert_pos": "Insert Position:",
+        "tooltip_insert_pos": "0 = Start, -1 = End",
+        "btn_copy_pages": "📋 Copy Pages",
+        
+        # Image Watermark Enhanced
+        "grp_img_watermark": "🖼️ Image Watermark",
+        "lbl_wm_image": "Image File:",
+        "lbl_wm_position": "Position:",
+        "pos_center": "Center",
+        "pos_top_center": "Top Center",
+        "pos_bottom_center": "Bottom Center",
+        "lbl_wm_scale": "Scale (%):",
+        "lbl_wm_opacity": "Opacity:",
+        "btn_apply_img_watermark": "🖼️ Apply Image Watermark",
+        
+        # Preview Print
+        "btn_print_preview": "🖨️ Print",
+        "tooltip_print_preview": "Print current PDF",
+        
+        # Folder Drop
+        "msg_folder_dropped": "Added {} PDF files from folder",
+        "msg_folder_no_pdf": "No PDF files in folder",
+        
+        # AI Chat
+        "grp_ai_chat": "💬 PDF Chat",
+        "step_ai_chat": "📄 Ask questions about the PDF",
+        "ph_ai_question": "Enter your question...",
+        "btn_ask_ai": "💬 Ask",
+        "lbl_chat_history": "Chat History:",
+        "msg_ai_thinking": "🤔 AI is generating response...",
+        "msg_chat_cleared": "Chat history cleared",
+        "btn_clear_chat": "🧹 Clear Chat",
+        
+        # Keyword Extraction
+        "grp_keywords": "🏷️ Keyword Extraction",
+        "lbl_max_keywords": "Max Keywords:",
+        "btn_extract_keywords": "🏷️ Extract Keywords",
+        "lbl_keywords_result": "Extracted Keywords:",
+        "msg_no_keywords": "Could not extract keywords",
+        
+        # Background Color Enhanced
+        "lbl_custom_color": "Custom:",
+        "btn_pick_color": "🎨 Pick Color",
+        "lbl_bg_pages": "Apply to Pages:",
+        "ph_bg_pages": "All or 1-3, 5",
+
+        # v4.5 Worker Error Messages (i18n)
+        "err_ai_module_not_found": "AI service module not found.",
+        "err_pdf_not_found": "PDF file not found.",
+        "err_api_key_required": "Gemini API key is required.\nPlease enter the API key in settings.",
+        "err_ai_unavailable": "AI service is unavailable.\nPlease install google-generativeai package.",
+        "err_question_required": "Please enter a question.",
+        "err_input_file_missing": "Input file does not exist.",
+        "err_output_path_missing": "Output path is not specified.",
+        "err_no_files_selected": "No files selected for merge.",
+        "err_no_valid_pdf": "No valid PDF files found.",
+        "err_pdf_encrypted": "File is encrypted: {}",
+        "err_file_access_denied": "Permission denied: {}",
+        "err_pdf_corrupted": "PDF file is corrupted or has invalid format.",
+        "err_operation_failed": "Error: {}",
+        "err_cancelled": "Operation cancelled.",
+        
+        # v4.5: Worker management
+        "task_in_progress": "Task in Progress",
+        "task_wait_or_cancel": "Previous task is still running.\nWait for it to complete?",
+        
+        # v4.5: File validation
+        "err_file_too_large": "File is too large: {} (max {})",
+        "err_file_too_small": "File is too small or corrupted.",
+        "password_retry": "Incorrect password. Would you like to try again?",
+        "batch_processing_file": "Processing: {}",
     }
 }
 
