@@ -608,6 +608,10 @@ class MainWindowTabsBasicMixin:
         b_enc = QPushButton(tm.get("btn_encrypt"))
         b_enc.clicked.connect(self.action_protect)
         h_sec.addWidget(b_enc)
+        b_dec = QPushButton(tm.get("btn_decrypt"))
+        b_dec.setToolTip(tm.get("tooltip_decrypt"))
+        b_dec.clicked.connect(self.action_unlock)
+        h_sec.addWidget(b_dec)
         b_comp = QPushButton(tm.get("btn_compress"))
         b_comp.clicked.connect(self.action_compress)
         h_sec.addWidget(b_comp)
@@ -662,6 +666,20 @@ class MainWindowTabsBasicMixin:
         s, _ = QFileDialog.getSaveFileName(self, "저장", "encrypted.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("protect", file_path=path, output_path=s, password=pw)
+
+    def action_unlock(self):
+        path = self.sel_sec.get_path()
+        pw = self.inp_pw.text()
+        
+        if not path:
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+            
+        if not pw:
+             return QMessageBox.warning(self, tm.get("info"), tm.get("err_password_required"))
+             
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "decrypted.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker("decrypt_pdf", file_path=path, output_path=s, password=pw)
 
     def action_compress(self):
         path = self.sel_sec.get_path()

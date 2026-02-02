@@ -72,6 +72,12 @@ TRANSLATIONS = {
         "prev_page": "◀ 이전",
         "next_page": "다음 ▶",
         
+        # Security
+        "err_wrong_password": "❌ 비밀번호가 틀렸습니다.",
+        "msg_decryption_success": "✅ PDF 복호화 완료!",
+        "err_password_required": "비밀번호를 입력해주세요.",
+        "err_pdf_not_encrypted": "PDF 파일이 암호화되어 있지 않습니다.",
+        
         # Worker Actions
         "action_merge": "PDF 파일 병합",
         "action_convert_to_img": "PDF → 이미지 변환",
@@ -585,6 +591,12 @@ TRANSLATIONS = {
         "password_msg": "'{}'\n\nEnter password:",
         "prev_page": "◀ PREV",
         "next_page": "NEXT ▶",
+
+        # Security
+        "err_wrong_password": "❌ Incorrect password.",
+        "msg_decryption_success": "✅ PDF decrypted successfully!",
+        "err_password_required": "Password is required.",
+        "err_pdf_not_encrypted": "PDF file is not encrypted.",
 
         # Worker Actions
         "action_merge": "Merge PDF",

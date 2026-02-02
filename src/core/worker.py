@@ -1626,16 +1626,17 @@ class WorkerThread(QThread):
         password = self.kwargs.get('password', '')
         
         doc = fitz.open(file_path)
+        # 이미 암호가 풀려있거나 암호화되지 않은 경우 처리
         if doc.is_encrypted:
             if not doc.authenticate(password):
                 doc.close()
-                raise ValueError("비밀번호가 올바르지 않습니다.")
+                raise ValueError(self._get_msg("err_wrong_password"))
         
-        # 암호 없이 저장
-        doc.save(output_path)
+        # 암호 없이 저장 (garbage collection & deflate 적용)
+        doc.save(output_path, garbage=4, deflate=True)
         doc.close()
         self.progress_signal.emit(100)
-        self.finished_signal.emit("✅ PDF 복호화 완료!")
+        self.finished_signal.emit(self._get_msg("msg_decryption_success"))
     
     def list_annotations(self):
         """PDF 주석 목록 추출"""
