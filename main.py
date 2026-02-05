@@ -40,7 +40,7 @@ sys.path.insert(0, base_path)
 
 from PyQt6.QtWidgets import QApplication, QMessageBox
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QGuiApplication
+from PyQt6.QtGui import QGuiApplication, QFont
 # Explicit imports to ensure PyInstaller bundles them
 import src.ui.styles
 import src.ui.widgets
@@ -78,6 +78,7 @@ def main():
     
     try:
         app = QApplication(sys.argv)
+        app.setFont(QFont("Segoe UI", 9))  # Windows 기본 폰트 크기 설정
         window = PDFMasterApp()
         window.show()
         logger.info("PDF Master ready")

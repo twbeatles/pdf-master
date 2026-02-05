@@ -270,6 +270,7 @@ class DropZoneWidget(QFrame):
             self.path_label.setStyleSheet("color: #00a080; font-size: 12px; font-weight: bold; background: transparent; border: none;")
         
     def dragEnterEvent(self, event: QDragEnterEvent):
+        from ..core.i18n import tm
         if event.mimeData().hasUrls():
             for url in event.mimeData().urls():
                 path = url.toLocalFile().lower()

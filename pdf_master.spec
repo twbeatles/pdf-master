@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PDF Master v4.5 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
-# Python 3.10+ 호환, v4.5 코드 변경 사항 반영
+# Python 3.10+ 호환, v4.5 코드 변경 사항 반영 (Verified 2026-02-05)
 
 import sys
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
@@ -37,6 +37,7 @@ hiddenimports += [
     'locale',       # i18n 언어 감지
     'datetime',     # Undo 타임스탬프
     'dataclasses',  # UndoManager ActionRecord
+    'src.core.i18n', # Explicitly include i18n for dynamic imports in widgets
 ]
 
 # v4.5: keyring (보안 API 키 저장)
