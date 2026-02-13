@@ -38,16 +38,7 @@ class MainWindowWorkerMixin:
             # 실행 중이면 잠시 대기
             if self.worker.isRunning():
                 self.worker.wait(500)
-            # 시그널 연결 해제 (누적 방지)
-            try:
-                self.worker.progress_signal.disconnect()
-                self.worker.finished_signal.disconnect()
-                self.worker.error_signal.disconnect()
-            except (TypeError, RuntimeError):
-                pass  # 이미 해제되었거나 연결이 없는 경우
-            # Qt 메모리 정리 예약
-            self.worker.deleteLater()
-            self.worker = None
+            self._finalize_worker()
 
         self._pending_worker = None
         self._cancel_pending = False
@@ -147,6 +138,7 @@ class MainWindowWorkerMixin:
         self.worker.progress_signal.connect(self._on_progress_update)
         self.worker.finished_signal.connect(self.on_success)
         self.worker.error_signal.connect(self.on_fail)
+        self.worker.cancelled_signal.connect(self.on_cancelled)
         self.progress_bar.setValue(0)
         self.btn_open_folder.setVisible(False)
         self.status_label.setText(tm.get("processing_status"))
@@ -159,6 +151,9 @@ class MainWindowWorkerMixin:
 
     def _on_progress_update(self, value: int):
         """진행률 업데이트 (오버레이 + 상태바)"""
+        sender = self.sender()
+        if sender is not None and sender is not self.worker:
+            return  # stale signal
         self.progress_bar.setValue(value)
         self.progress_overlay.update_progress(value)
 
@@ -169,8 +164,6 @@ class MainWindowWorkerMixin:
             if hasattr(self.worker, 'cancel'):
                 self.worker.cancel()
             self.status_label.setText(tm.get("cancelling"))
-            # 취소 후 정리
-            QTimer.singleShot(500, self._cleanup_cancelled_worker)
 
     def _cleanup_cancelled_worker(self):
         """취소된 작업 정리 (임시 파일 포함)"""
@@ -201,9 +194,31 @@ class MainWindowWorkerMixin:
         
         toast = ToastWidget(tm.get("msg_worker_cancelled"), toast_type='warning', duration=3000)
         toast.show_toast(self)
+
+    def on_cancelled(self, msg):
+        sender = self.sender()
+        if sender is not None and sender is not self.worker:
+            return  # stale signal
+
+        # v4.5: AI 모드 플래그 초기화 (취소 시에도 정상 초기화)
+        if hasattr(self, '_ai_worker_mode'):
+            self._ai_worker_mode = False
+        if hasattr(self, '_keyword_worker_mode'):
+            self._keyword_worker_mode = False
+        if hasattr(self, '_chat_worker_mode'):
+            self._chat_worker_mode = False
+            self._chat_pending_path = None
+
+        self._cleanup_cancelled_worker()
+        self._finalize_worker()
         self._run_pending_worker()
+        QTimer.singleShot(3000, self._reset_progress_if_idle)
 
     def on_success(self, msg):
+        sender = self.sender()
+        if sender is not None and sender is not self.worker:
+            return  # stale signal
+
         self.set_ui_busy(False)
         self.progress_overlay.hide_progress()  # 오버레이 숨기기
         self.status_label.setText(tm.get("completed"))
@@ -281,20 +296,21 @@ class MainWindowWorkerMixin:
         toast.show_toast(self)
         
         QMessageBox.information(self, tm.get("info"), msg)
+        self._finalize_worker()
         self._run_pending_worker()
         QTimer.singleShot(3000, self._reset_progress_if_idle)
 
     def on_fail(self, msg):
+        sender = self.sender()
+        if sender is not None and sender is not self.worker:
+            return  # stale signal
+
         # v4.5: AI 모드 플래그 초기화 (에러 시에도 정상 초기화)
         if hasattr(self, '_ai_worker_mode'):
             self._ai_worker_mode = False
         if hasattr(self, '_keyword_worker_mode'):
             self._keyword_worker_mode = False
-        
-        if msg == tm.get("err_cancelled") or (self.worker and getattr(self.worker, "_cancel_requested", False)):
-            if not getattr(self, "_cancel_handled", False):
-                self._cleanup_cancelled_worker()
-            return
+
         self.set_ui_busy(False)
         self.progress_overlay.hide_progress()  # 오버레이 숨기기
         self.status_label.setText(tm.get("error"))
@@ -325,11 +341,26 @@ class MainWindowWorkerMixin:
         toast.show_toast(self)
         
         QMessageBox.critical(self, tm.get("error"), tm.get("msg_worker_error", msg))
+        self._finalize_worker()
         self._run_pending_worker()
 
     def set_ui_busy(self, busy):
         self.tabs.setEnabled(not busy)
         self.btn_open_folder.setEnabled(not busy)
+
+    def _finalize_worker(self):
+        """현재 worker의 시그널 연결을 해제하고 Qt 메모리 정리를 예약합니다."""
+        if not self.worker:
+            return
+        try:
+            self.worker.progress_signal.disconnect()
+            self.worker.finished_signal.disconnect()
+            self.worker.error_signal.disconnect()
+            self.worker.cancelled_signal.disconnect()
+        except (TypeError, RuntimeError):
+            pass  # 이미 해제되었거나 연결이 없는 경우
+        self.worker.deleteLater()
+        self.worker = None
 
     def _run_pending_worker(self):
         """대기 중인 작업이 있으면 자동 실행"""

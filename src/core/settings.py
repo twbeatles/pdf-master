@@ -21,17 +21,23 @@ except ImportError:
 KEYRING_SERVICE = "PDFMaster"
 KEYRING_USERNAME = "gemini_api_key"
 
-# 기본 설정
-DEFAULT_SETTINGS = {
-    "theme": "dark",
-    "recent_files": [],
-    "last_output_dir": "",
-    "splitter_sizes": None,
-    "window_geometry": None,
-    "language": "auto",  # auto, ko, en
-    "chat_histories": {},
-    # gemini_api_key는 keyring 미사용 시에만 파일에 저장됨
-}
+def default_settings() -> dict:
+    """
+    기본 설정 생성.
+
+    NOTE: list/dict 같은 mutable 기본값이 호출 간 공유되지 않도록
+    매 호출마다 새 객체를 생성합니다.
+    """
+    return {
+        "theme": "dark",
+        "recent_files": [],
+        "last_output_dir": "",
+        "splitter_sizes": None,
+        "window_geometry": None,
+        "language": "auto",  # auto, ko, en
+        "chat_histories": {},
+        # gemini_api_key는 keyring 미사용 시에만 파일에 저장됨
+    }
 
 def get_api_key() -> str:
     """
@@ -90,14 +96,24 @@ def set_api_key(api_key: str) -> bool:
 
 def load_settings():
     """Load application settings from JSON file."""
+    defaults = default_settings()
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
                 settings = json.load(f)
+                if not isinstance(settings, dict):
+                    logger.warning("Settings file content is not a JSON object, falling back to defaults")
+                    return defaults
                 # 누락된 키에 기본값 추가
-                for key, default_value in DEFAULT_SETTINGS.items():
+                for key, default_value in defaults.items():
                     if key not in settings:
                         settings[key] = default_value
+
+                # 타입 방어: 잘못된 타입이면 기본값으로 교체
+                if not isinstance(settings.get("recent_files", []), list):
+                    settings["recent_files"] = []
+                if not isinstance(settings.get("chat_histories", {}), dict):
+                    settings["chat_histories"] = {}
                 return settings
         except json.JSONDecodeError as e:
             # 손상된 설정 파일 백업
@@ -108,12 +124,12 @@ def load_settings():
             except Exception as backup_error:
                 logger.error(f"Failed to backup corrupted settings: {backup_error}")
             # 기본 설정 반환
-            return DEFAULT_SETTINGS.copy()
+            return defaults
         except Exception as e:
             logger.error(f"Failed to load settings: {e}")
-            return DEFAULT_SETTINGS.copy()
+            return defaults
     # 기본 설정 반환
-    return DEFAULT_SETTINGS.copy()
+    return defaults
 
 def save_settings(settings):
     """Save application settings to JSON file (atomic write for safety)."""
@@ -145,7 +161,7 @@ def save_settings(settings):
             try:
                 os.remove(tmp_path)
             except Exception:
-                pass
+                logger.debug("Failed to remove temporary settings file", exc_info=True)
         return False
 
 def reset_settings():
@@ -159,7 +175,7 @@ def reset_settings():
             try:
                 keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
             except Exception:
-                pass
+                logger.debug("Failed to delete API key from keyring during reset", exc_info=True)
         
         logger.info("Settings reset to defaults")
         return True

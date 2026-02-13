@@ -1,5 +1,6 @@
 import os
 import fitz
+import tempfile
 import traceback
 import logging
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -41,6 +42,7 @@ class WorkerThread(QThread):
     progress_signal = pyqtSignal(int)
     finished_signal = pyqtSignal(str)
     error_signal = pyqtSignal(str)
+    cancelled_signal = pyqtSignal(str)
 
     def __init__(self, mode, **kwargs):
         super().__init__()
@@ -110,12 +112,65 @@ class WorkerThread(QThread):
     def cancel(self):
         """작업 취소 요청"""
         self._cancel_requested = True
+        # QThread 표준 취소 메커니즘도 함께 사용 (cooperative cancellation)
+        try:
+            self.requestInterruption()
+        except Exception:
+            logger.debug("requestInterruption() failed", exc_info=True)
         logger.info(f"Cancel requested for task: {self.mode}")
     
     def _check_cancelled(self):
         """취소 여부 확인 - 장시간 작업 중간에 호출"""
-        if self._cancel_requested:
+        if self._cancel_requested or self.isInterruptionRequested():
             raise CancelledError("작업이 사용자에 의해 취소되었습니다.")
+
+    def _atomic_pdf_save(self, doc: fitz.Document, output_path: str, **save_kwargs):
+        """
+        원자적 PDF 저장.
+
+        - 같은 디렉터리에 임시 파일로 먼저 저장한 뒤 os.replace로 교체합니다.
+        - 저장/교체 사이에 취소가 들어오면 최종 파일을 만들지 않고 취소 처리합니다.
+        """
+        if not output_path:
+            raise ValueError("output_path is required")
+
+        out_dir = os.path.dirname(os.path.abspath(output_path)) or "."
+        os.makedirs(out_dir, exist_ok=True)
+
+        fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=".tmp.pdf", dir=out_dir)
+        os.close(fd)
+
+        # doc가 원본 파일과 같은 경로를 잡고 있을 때(사용자가 덮어쓰기 저장),
+        # Windows에서 replace가 실패할 수 있어 fallback 용도로 사용
+        same_target = False
+        try:
+            doc_name = getattr(doc, "name", "") or ""
+            if doc_name:
+                same_target = os.path.abspath(doc_name) == os.path.abspath(output_path)
+        except Exception:
+            same_target = False
+
+        try:
+            self._check_cancelled()
+            doc.save(tmp_path, **save_kwargs)
+            self._check_cancelled()
+            try:
+                os.replace(tmp_path, output_path)
+            except PermissionError:
+                if same_target:
+                    try:
+                        doc.close()
+                    except Exception:
+                        logger.debug("Failed to close document before replace", exc_info=True)
+                    os.replace(tmp_path, output_path)
+                else:
+                    raise
+        finally:
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    logger.debug("Failed to remove temporary PDF file", exc_info=True)
     
     def _get_msg(self, key: str, *args) -> str:
         """v4.5: i18n 메시지 헬퍼 - 폴백 지원"""
@@ -227,7 +282,7 @@ class WorkerThread(QThread):
                 self.error_signal.emit(error_msg)
         except CancelledError:
             logger.info(f"Task cancelled: {self.mode}")
-            self.error_signal.emit(self._get_msg("err_cancelled"))
+            self.cancelled_signal.emit(self._get_msg("err_cancelled"))
         except FileNotFoundError as e:
             error_msg = self._get_msg("err_pdf_not_found")
             logger.error(f"FileNotFoundError in {self.mode}: {e}")
@@ -282,7 +337,7 @@ class WorkerThread(QThread):
                     skipped_count += 1
                 self.progress_signal.emit(int((idx + 1) / len(valid_files) * 100))
             
-            doc_merged.save(output_path)
+            self._atomic_pdf_save(doc_merged, output_path)
             
             result_msg = f"✅ 병합 완료!\n{len(valid_files) - skipped_count}개 파일 → 1개 PDF"
             if skipped_count > 0:
@@ -407,7 +462,7 @@ class WorkerThread(QThread):
             
             base = os.path.splitext(os.path.basename(file_path))[0]
             out = os.path.join(output_dir, f"{base}_extracted.pdf")
-            doc_final.save(out)
+            self._atomic_pdf_save(doc_final, out)
             self.finished_signal.emit(f"✅ 추출 완료!\n{len(pages_to_keep)}페이지 추출됨")
         finally:
             doc_src.close()
@@ -434,7 +489,7 @@ class WorkerThread(QThread):
                 self._check_cancelled()  # 취소 체크포인트
                 doc.delete_page(p)
                 self.progress_signal.emit(int((idx + 1) / total_to_delete * 90))
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ 삭제 완료!\n{len(pages_to_delete)}페이지 삭제됨")
         finally:
@@ -453,7 +508,7 @@ class WorkerThread(QThread):
                 self._check_cancelled()  # 취소 체크포인트
                 page.set_rotation(page.rotation + angle)
                 self.progress_signal.emit(int((i + 1) / total_pages * 100))
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 회전 완료!\n{angle}° 회전됨")
         finally:
             doc.close()
@@ -542,7 +597,7 @@ class WorkerThread(QThread):
                             color=color, fill_opacity=opacity
                         )
                 self.progress_signal.emit(int((i + 1) / total_pages * 100))
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             layer_name = "배경" if layer == 'background' else "전경"
             self.finished_signal.emit(f"✅ 워터마크 적용 완료! ({layer_name}, {int(opacity*100)}%)")
         finally:
@@ -560,7 +615,7 @@ class WorkerThread(QThread):
                 if v:
                     meta[k] = v
             doc.set_metadata(meta)
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ 메타데이터 저장 완료!")
         finally:
@@ -578,7 +633,7 @@ class WorkerThread(QThread):
 
             doc = fitz.open(file_path)
             perm = int(fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_PRINT | fitz.PDF_PERM_COPY)
-            doc.save(output_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=pw, user_pw=pw, permissions=perm)
+            self._atomic_pdf_save(doc, output_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=pw, user_pw=pw, permissions=perm)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ 암호화 완료!")
         finally:
@@ -608,7 +663,7 @@ class WorkerThread(QThread):
                 self.progress_signal.emit(int((page_num + 1) / total_pages * 20))
             
             self.progress_signal.emit(25)  # 저장 시작
-            doc.save(output_path, **COMPRESSION_SETTINGS.get(quality, COMPRESSION_SETTINGS['high']))
+            self._atomic_pdf_save(doc, output_path, **COMPRESSION_SETTINGS.get(quality, COMPRESSION_SETTINGS['high']))
             self.progress_signal.emit(95)  # 저장 완료
         finally:
             doc.close()
@@ -638,7 +693,7 @@ class WorkerThread(QThread):
                 finally:
                     img_pdf.close()
                 self.progress_signal.emit(int((idx + 1) / len(files) * 100))
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 이미지 → PDF 변환 완료!\n{len(files)}개 이미지 → 1개 PDF")
         finally:
             if doc:
@@ -661,7 +716,7 @@ class WorkerThread(QThread):
                 doc_out.insert_pdf(doc_src, from_page=page_num, to_page=page_num)
                 self.progress_signal.emit(int((idx + 1) / len(page_order) * 100))
             
-            doc_out.save(output_path)
+            self._atomic_pdf_save(doc_out, output_path)
             self.finished_signal.emit(f"✅ 페이지 순서 변경 완료!\n{len(page_order)}페이지 재정렬됨")
         finally:
             if doc_out:
@@ -688,23 +743,22 @@ class WorkerThread(QThread):
                 doc = fitz.open(file_path)
                 
                 if operation == "compress":
-                    doc.save(out_path, garbage=4, deflate=True)
+                    self._atomic_pdf_save(doc, out_path, garbage=4, deflate=True)
                 elif operation == "watermark" and option:
                     for page in doc:
                         page.insert_text(fitz.Point(page.rect.width/2, page.rect.height/2),
                             option, fontsize=40, fontname="helv", rotate=45, 
                             color=(0.5, 0.5, 0.5), fill_opacity=0.3, align=1)
-                    doc.save(out_path)
+                    self._atomic_pdf_save(doc, out_path)
                 elif operation == "encrypt" and option:
                     perm = int(fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_PRINT | fitz.PDF_PERM_COPY)
-                    doc.save(out_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=option, user_pw=option, permissions=perm)
+                    self._atomic_pdf_save(doc, out_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=option, user_pw=option, permissions=perm)
                 elif operation == "rotate":
                     for page in doc:
                         page.set_rotation(page.rotation + 90)
-                    doc.save(out_path)
+                    self._atomic_pdf_save(doc, out_path)
                 else:
-                    doc.save(out_path)
-                
+                    self._atomic_pdf_save(doc, out_path)
                 success_count += 1
             except CancelledError:
                 raise  # 취소는 상위로 전파
@@ -742,7 +796,7 @@ class WorkerThread(QThread):
                     try:
                         new_doc.insert_pdf(doc, from_page=i, to_page=i)
                         out_path = os.path.join(output_dir, f"{base_name}_page_{i+1}.pdf")
-                        new_doc.save(out_path)
+                        self._atomic_pdf_save(new_doc, out_path)
                     finally:
                         new_doc.close()
                     self.progress_signal.emit(int((i + 1) / page_count * 100))
@@ -783,7 +837,7 @@ class WorkerThread(QThread):
                         try:
                             new_doc.insert_pdf(doc, from_page=start-1, to_page=end-1)
                             out_path = os.path.join(output_dir, f"{base_name}_part_{part_idx+1}.pdf")
-                            new_doc.save(out_path)
+                            self._atomic_pdf_save(new_doc, out_path)
                         finally:
                             new_doc.close()
                         count += 1
@@ -874,7 +928,7 @@ class WorkerThread(QThread):
                 page.insert_textbox(r, text, fontsize=fontsize, fontname=fontname, color=color, align=align)
                 self.progress_signal.emit(int((i + 1) / total * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             format_type = "로마 숫자" if use_roman else "아라비아 숫자"
             self.finished_signal.emit(f"✅ 페이지 번호 삽입 완료! ({format_type})\n{total}페이지")
         finally:
@@ -890,7 +944,7 @@ class WorkerThread(QThread):
         try:
             width, height = DEFAULT_PAGE_SIZE  # A4
             doc.insert_page(position, width=width, height=height)
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ 빈 페이지 삽입 완료!\n위치: {position + 1}페이지")
         finally:
@@ -918,7 +972,7 @@ class WorkerThread(QThread):
             doc.delete_page(target_page)
             doc.insert_pdf(replace_doc, from_page=source_page, to_page=source_page, start_at=target_page)
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ 페이지 교체 완료!")
         finally:
@@ -959,7 +1013,7 @@ class WorkerThread(QThread):
                 page.insert_image(img_rect, filename=image_path, overlay=True, alpha=alpha)
                 self.progress_signal.emit(int((i + 1) / total_pages * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             opacity_pct = int(opacity * 100) if 0 <= opacity <= 1 else 100
             self.finished_signal.emit(f"✅ 이미지 워터마크 완료! ({img_width}x{img_height}, {opacity_pct}%)")
         finally:
@@ -984,7 +1038,7 @@ class WorkerThread(QThread):
                 page.set_cropbox(new_rect)
                 self.progress_signal.emit(int((i + 1) / total_pages * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ PDF 자르기 완료!")
         finally:
             doc.close()
@@ -1018,7 +1072,7 @@ class WorkerThread(QThread):
                 page.insert_text(point, stamp_text, fontsize=14, fontname="helv", color=color)
                 self.progress_signal.emit(int((i + 1) / total_pages * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 스탬프 추가 완료!")
         finally:
             doc.close()
@@ -1099,7 +1153,7 @@ class WorkerThread(QThread):
                             widget.update()
                             filled_count += 1
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ 양식 작성 완료!\n{filled_count}개 필드 채움")
         finally:
@@ -1195,7 +1249,7 @@ class WorkerThread(QThread):
                                         shape.commit()
                 
                 if len(diff_doc) > 0:
-                    diff_doc.save(visual_diff_path)
+                    self._atomic_pdf_save(diff_doc, visual_diff_path)
                 diff_doc.close()
             
             # 결과 저장
@@ -1283,7 +1337,7 @@ class WorkerThread(QThread):
                 doc.fullcopy_page(page_num, page_num + 1 + i)
                 self.progress_signal.emit(int((i + 1) / count * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 페이지 복제 완료!\n{page_num + 1}페이지를 {count}번 복제")
         finally:
             doc.close()
@@ -1299,7 +1353,7 @@ class WorkerThread(QThread):
             
             # 단일 페이지 PDF 처리
             if page_count <= 1:
-                doc.save(output_path)
+                self._atomic_pdf_save(doc, output_path)
                 self.progress_signal.emit(100)
                 self.finished_signal.emit("✅ 역순 정렬 완료!\n1페이지 (변경 없음)")
                 return
@@ -1310,7 +1364,7 @@ class WorkerThread(QThread):
                 doc.move_page(page_count - 1, i)
                 self.progress_signal.emit(int((i + 1) / (page_count - 1) * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 역순 정렬 완료!\n{page_count}페이지")
         finally:
             doc.close()
@@ -1332,7 +1386,7 @@ class WorkerThread(QThread):
                 page.set_mediabox(fitz.Rect(0, 0, target_w, target_h))
                 self.progress_signal.emit(int((i + 1) / total_pages * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 페이지 크기 변경 완료!\n{len(doc)}페이지 → {target_size}")
         finally:
             doc.close()
@@ -1472,7 +1526,7 @@ class WorkerThread(QThread):
             
             self.progress_signal.emit(100)
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             extra_info = ""
             if signer_name:
                 extra_info += f" (서명자: {signer_name})"
@@ -1514,7 +1568,7 @@ class WorkerThread(QThread):
         
         doc = fitz.open(file_path)
         doc.set_toc(bookmarks)
-        doc.save(output_path)
+        self._atomic_pdf_save(doc, output_path)
         doc.close()
         
         self.progress_signal.emit(100)
@@ -1576,7 +1630,7 @@ class WorkerThread(QThread):
                     highlight_count += 1
                 self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 하이라이트 완료!\n'{search_term}': {highlight_count}개 표시")
         finally:
             doc.close()
@@ -1633,7 +1687,7 @@ class WorkerThread(QThread):
                 raise ValueError(self._get_msg("err_wrong_password"))
         
         # 암호 없이 저장 (garbage collection & deflate 적용)
-        doc.save(output_path, garbage=4, deflate=True)
+        self._atomic_pdf_save(doc, output_path, garbage=4, deflate=True)
         doc.close()
         self.progress_signal.emit(100)
         self.finished_signal.emit(self._get_msg("msg_decryption_success"))
@@ -1697,7 +1751,7 @@ class WorkerThread(QThread):
         if annot:
             annot.update()
         
-        doc.save(output_path)
+        self._atomic_pdf_save(doc, output_path)
         doc.close()
         self.progress_signal.emit(100)
         self.finished_signal.emit(f"✅ 주석 추가 완료!\n페이지 {page_num + 1}")
@@ -1718,7 +1772,7 @@ class WorkerThread(QThread):
                 count += 1
                 annot = next_annot
         
-        doc.save(output_path)
+        self._atomic_pdf_save(doc, output_path)
         doc.close()
         self.progress_signal.emit(100)
         self.finished_signal.emit(f"✅ {count}개 주석 삭제 완료!")
@@ -1765,7 +1819,7 @@ class WorkerThread(QThread):
                     rect = fitz.Rect(shape_info['rect'])
                     page.draw_oval(rect, color=color, width=width, fill=fill)
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ {len(shapes)}개 도형 추가 완료!")
         finally:
@@ -1822,7 +1876,7 @@ class WorkerThread(QThread):
                     return
             
             page.insert_link(link)
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ 링크 추가 완료!\n페이지 {page_num + 1}")
         finally:
@@ -1864,7 +1918,7 @@ class WorkerThread(QThread):
             data = f.read()
         
         doc.embfile_add(os.path.basename(attach_path), data)
-        doc.save(output_path)
+        self._atomic_pdf_save(doc, output_path)
         doc.close()
         self.progress_signal.emit(100)
         self.finished_signal.emit(f"✅ 파일 첨부 완료!\n{os.path.basename(attach_path)}")
@@ -1922,7 +1976,7 @@ class WorkerThread(QThread):
                 page.apply_redactions()
                 self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ {redact_count}개 영역 교정 완료!")
         finally:
             doc.close()
@@ -1977,7 +2031,7 @@ class WorkerThread(QThread):
                     target_doc.insert_pdf(source_doc, from_page=page_num, to_page=page_num, start_at=insert_pos + i)
                 self.progress_signal.emit(int((i + 1) / len(source_pages) * 100))
             
-            target_doc.save(output_path)
+            self._atomic_pdf_save(target_doc, output_path)
             self.finished_signal.emit(f"✅ {len(source_pages)}페이지 복사 완료!")
         finally:
             source_doc.close()
@@ -2008,7 +2062,7 @@ class WorkerThread(QThread):
                 shape.commit(overlay=False)  # 배경으로 삽입
                 self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 배경색 추가 완료!\n{len(doc)}페이지")
         finally:
             doc.close()
@@ -2039,7 +2093,7 @@ class WorkerThread(QThread):
                     count += 1
                 self.progress_signal.emit(int((page_num + 1) / total_pages * 100))
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             markup_name = {'underline': '밑줄', 'strikeout': '취소선', 'squiggly': '물결선'}.get(markup_type, markup_type)
             self.finished_signal.emit(f"✅ {markup_name} 추가 완료!\n'{search_term}': {count}개")
         finally:
@@ -2068,7 +2122,7 @@ class WorkerThread(QThread):
             page.insert_textbox(fitz.Rect(rect), text, fontsize=fontsize, 
                                fontname="helv", color=color, align=align)
             
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.progress_signal.emit(100)
             self.finished_signal.emit(f"✅ 텍스트 상자 삽입 완료!\n페이지 {page_num + 1}")
         finally:
@@ -2102,7 +2156,7 @@ class WorkerThread(QThread):
                 annot.update()
             
             self.progress_signal.emit(100)
-            doc.save(output_path)
+            self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 스티키 노트 추가 완료!\n페이지 {page_num + 1}, 아이콘: {icon}")
         finally:
             doc.close()
@@ -2135,7 +2189,7 @@ class WorkerThread(QThread):
                     annot.update()
                 
                 self.progress_signal.emit(100)
-                doc.save(output_path)
+                self._atomic_pdf_save(doc, output_path)
                 self.finished_signal.emit(f"✅ 프리핸드 드로잉 추가 완료!\n페이지 {page_num + 1}, {len(points)}개 포인트")
             else:
                 self.error_signal.emit("좌표 포인트가 2개 이상 필요합니다.")
@@ -2174,7 +2228,7 @@ class WorkerThread(QThread):
                     annot.update()
                 
                 self.progress_signal.emit(100)
-                doc.save(output_path)
+                self._atomic_pdf_save(doc, output_path)
                 doc.close()
                 self.finished_signal.emit(f"✅ 프리핸드 서명 추가 완료!\n페이지 {page_num + 1}, {len(all_strokes)}개 획")
             else:
