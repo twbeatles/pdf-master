@@ -3,11 +3,16 @@ AI Service for PDF Master v4.2
 Gemini API를 활용한 PDF 요약 서비스를 제공합니다.
 (google-genai 패키지 사용 - 2025년 11월 이후 권장 SDK)
 """
+import atexit
 import logging
+import os
+import threading
 import fitz
 import time
-from typing import Optional
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from functools import wraps
+from typing import Optional
 
 # AI 관련 상수 import
 try:
@@ -19,6 +24,19 @@ except ImportError:
     AI_MAX_RETRIES = 3
     AI_BASE_DELAY = 1.0
     AI_MAX_DELAY = 30.0
+
+try:
+    from .perf import PerfTimer
+except ImportError:
+    class PerfTimer:  # type: ignore[override]
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, _exc_type, _exc_val, _exc_tb):
+            return False
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +150,12 @@ class AIService:
     MAX_TEXT_LENGTH = AI_MAX_TEXT_LENGTH  # constants.py에서 가져옴
     DEFAULT_TIMEOUT = AI_DEFAULT_TIMEOUT  # constants.py에서 가져옴
     MAX_RETRIES = AI_MAX_RETRIES  # constants.py에서 가져옴
+    _TEXT_CACHE_MAX_BYTES = 16 * 1024 * 1024
+    _text_cache: OrderedDict = OrderedDict()
+    _text_cache_bytes = 0
+    _text_cache_lock = threading.Lock()
+    _shared_executor: Optional[ThreadPoolExecutor] = None
+    _executor_lock = threading.Lock()
     
     def __init__(self, api_key: str = "", model: str = None, timeout: int = None):
         """
@@ -266,6 +290,62 @@ class AIService:
     def is_available(self) -> bool:
         """AI 서비스 사용 가능 여부"""
         return GENAI_AVAILABLE and self._configured
+
+    def _make_text_cache_key(self, pdf_path: str, max_pages: int | None) -> tuple:
+        abs_path = os.path.abspath(pdf_path)
+        try:
+            mtime_ns = os.stat(abs_path).st_mtime_ns
+        except OSError:
+            mtime_ns = 0
+        return abs_path, mtime_ns, max_pages, self.MAX_TEXT_LENGTH
+
+    @staticmethod
+    def _estimate_text_bytes(text: str) -> int:
+        return len(text.encode("utf-8", errors="ignore"))
+
+    def _get_cached_text(self, key: tuple) -> str | None:
+        cls = self.__class__
+        with cls._text_cache_lock:
+            item = cls._text_cache.get(key)
+            if item is None:
+                return None
+            text, _size = item
+            cls._text_cache.move_to_end(key)
+            return text
+
+    def _put_cached_text(self, key: tuple, text: str):
+        cls = self.__class__
+        size = self._estimate_text_bytes(text)
+        if size > cls._TEXT_CACHE_MAX_BYTES:
+            return
+        with cls._text_cache_lock:
+            old = cls._text_cache.pop(key, None)
+            if old:
+                cls._text_cache_bytes -= old[1]
+            cls._text_cache[key] = (text, size)
+            cls._text_cache_bytes += size
+            while cls._text_cache_bytes > cls._TEXT_CACHE_MAX_BYTES and cls._text_cache:
+                _, (_old_text, old_size) = cls._text_cache.popitem(last=False)
+                cls._text_cache_bytes -= old_size
+
+    @classmethod
+    def _get_shared_executor(cls) -> ThreadPoolExecutor:
+        with cls._executor_lock:
+            if cls._shared_executor is None:
+                cls._shared_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pdfmaster-ai")
+            return cls._shared_executor
+
+    @classmethod
+    def shutdown_executor(cls):
+        executor = None
+        with cls._executor_lock:
+            executor = cls._shared_executor
+            cls._shared_executor = None
+        if executor is not None:
+            try:
+                executor.shutdown(wait=False, cancel_futures=True)
+            except TypeError:
+                executor.shutdown(wait=False)
     
     def extract_text_from_pdf(self, pdf_path: str, max_pages: int = None) -> str:
         """
@@ -278,39 +358,51 @@ class AIService:
         Returns:
             추출된 텍스트
         """
-        doc = None
-        try:
-            doc = fitz.open(pdf_path)
-            text_parts = []
-            page_count = len(doc) if max_pages is None else min(len(doc), max_pages)
-            current_length = 0  # v4.5: 메모리 최적화 - 누적 길이 추적
-            
-            for i in range(page_count):
-                page = doc[i]
-                text = page.get_text()
-                if text.strip():
-                    text_parts.append(f"[Page {i+1}]\n{text}")
-                    current_length += len(text_parts[-1])
-                    
-                    # v4.5: 최대 길이 초과 시 조기 종료 (메모리 절약)
-                    if current_length > self.MAX_TEXT_LENGTH:
-                        logger.info(f"Text extraction stopped at page {i+1} due to length limit")
-                        break
-            
-            full_text = "\n\n".join(text_parts)
-            
-            # 텍스트 길이 제한
-            if len(full_text) > self.MAX_TEXT_LENGTH:
-                full_text = full_text[:self.MAX_TEXT_LENGTH] + "\n\n[... 텍스트가 잘렸습니다 ...]"
-                
-            return full_text
-            
-        except Exception as e:
-            logger.error(f"Failed to extract text from PDF: {e}")
-            raise
-        finally:
-            if doc:
-                doc.close()
+        cache_key = self._make_text_cache_key(pdf_path, max_pages)
+        with PerfTimer(
+            "core.ai.extract_text",
+            logger=logger,
+            extra={"file": os.path.basename(pdf_path), "max_pages": max_pages},
+        ):
+            cached = self._get_cached_text(cache_key)
+            if cached is not None:
+                logger.debug("AI text cache hit: %s", os.path.basename(pdf_path))
+                return cached
+
+            doc = None
+            try:
+                doc = fitz.open(pdf_path)
+                text_parts = []
+                page_count = len(doc) if max_pages is None else min(len(doc), max_pages)
+                current_length = 0  # v4.5: 메모리 최적화 - 누적 길이 추적
+
+                for i in range(page_count):
+                    page = doc[i]
+                    text = page.get_text()
+                    if text.strip():
+                        text_parts.append(f"[Page {i+1}]\n{text}")
+                        current_length += len(text_parts[-1])
+
+                        # v4.5: 최대 길이 초과 시 조기 종료 (메모리 절약)
+                        if current_length > self.MAX_TEXT_LENGTH:
+                            logger.info(f"Text extraction stopped at page {i+1} due to length limit")
+                            break
+
+                full_text = "\n\n".join(text_parts)
+
+                # 텍스트 길이 제한
+                if len(full_text) > self.MAX_TEXT_LENGTH:
+                    full_text = full_text[:self.MAX_TEXT_LENGTH] + "\n\n[... 텍스트가 잘렸습니다 ...]"
+
+                self._put_cached_text(cache_key, full_text)
+                return full_text
+
+            except Exception as e:
+                logger.error(f"Failed to extract text from PDF: {e}")
+                raise
+            finally:
+                if doc:
+                    doc.close()
     
     @retry_with_backoff(max_retries=3, base_delay=1.0)
     def _generate_content(self, prompt: str) -> str:
@@ -328,9 +420,6 @@ class AIService:
             APIKeyError: API 키 오류 시
             APIRateLimitError: Rate limit 초과 시
         """
-        from concurrent.futures import ThreadPoolExecutor, TimeoutError
-        import concurrent.futures
-        
         def api_call():
             if LEGACY_SDK:
                 # 기존 SDK 방식
@@ -349,14 +438,22 @@ class AIService:
                     return response.text
             return ""
 
-        # ThreadPoolExecutor를 with문으로 사용하여 리소스 보장
-        with ThreadPoolExecutor(max_workers=1) as executor:
+        with PerfTimer("core.ai.generate_content", logger=logger, extra={"model": self._model}):
+            executor = self._get_shared_executor()
             try:
-                future = executor.submit(api_call)
+                try:
+                    future = executor.submit(api_call)
+                except RuntimeError:
+                    # 종료된 executor를 재생성 후 재시도
+                    with self.__class__._executor_lock:
+                        if self.__class__._shared_executor is executor:
+                            self.__class__._shared_executor = None
+                    executor = self._get_shared_executor()
+                    future = executor.submit(api_call)
                 # 타임아웃 설정
                 result = future.result(timeout=self._timeout)
                 return result
-            except TimeoutError:
+            except FutureTimeoutError:
                 logger.error(f"API call timed out after {self._timeout} seconds")
                 # 타임아웃 시 future 취소 시도
                 future.cancel()
@@ -564,7 +661,7 @@ class AIService:
 
 # 싱글톤 인스턴스 (선택적 사용)
 _ai_service_instance: Optional[AIService] = None
-_ai_service_lock = __import__('threading').Lock()  # v4.5: 스레드 안전성
+_ai_service_lock = threading.Lock()  # v4.5: 스레드 안전성
 
 def get_ai_service() -> AIService:
     """전역 AI 서비스 인스턴스 반환 (스레드 안전)"""
@@ -575,3 +672,6 @@ def get_ai_service() -> AIService:
             if _ai_service_instance is None:
                 _ai_service_instance = AIService()
     return _ai_service_instance
+
+
+atexit.register(AIService.shutdown_executor)
