@@ -48,9 +48,9 @@ try:
         hiddenimports += collect_submodules('keyring')
     except Exception:
         pass
-    print("✓ keyring detected")
+    print("[OK] keyring detected")
 except ImportError:
-    print("○ keyring not installed - API key will be stored in file")
+    print("[INFO] keyring not installed - API key will be stored in file")
 
 # 데이터 파일 수집
 datas = []
@@ -100,7 +100,7 @@ try:
         pass
     
     hiddenimports += ai_hiddenimports
-    print(f"✓ google-genai SDK detected ({len(ai_hiddenimports)} imports)")
+    print(f"[OK] google-genai SDK detected ({len(ai_hiddenimports)} imports)")
     
 except ImportError:
     # deprecated SDK 폴백 (2025.11 이전 호환)
@@ -116,15 +116,15 @@ except ImportError:
         except Exception:
             pass
         hiddenimports += ai_hiddenimports
-        print(f"⚠ Using deprecated google-generativeai SDK ({len(ai_hiddenimports)} imports)")
+        print(f"[WARN] Using deprecated google-generativeai SDK ({len(ai_hiddenimports)} imports)")
     except ImportError:
-        print("○ No Gemini SDK installed - AI features disabled")
+        print("[INFO] No Gemini SDK installed - AI features disabled")
 
 # =====================================================================
 # PDF to Word 기능 제거 (v4.2) - pdf2docx 의존성 삭제
 # =====================================================================
 
-print(f"✓ Total hidden imports: {len(hiddenimports)}")
+print(f"[OK] Total hidden imports: {len(hiddenimports)}")
 
 # =====================================================================
 # Excludes (불필요한 모듈 - 경량화)
