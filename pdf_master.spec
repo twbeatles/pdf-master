@@ -4,10 +4,13 @@
 # Python 3.10+ 호환, v4.5 코드 변경 사항 반영 (Verified 2026-02-05)
 
 import sys
+import os
 import importlib.util
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 block_cipher = None
+IS_WINDOWS = (os.name == "nt") or sys.platform.startswith("win")
+ENABLE_STRIP = not IS_WINDOWS
 
 
 def _module_exists(module_name: str) -> bool:
@@ -263,7 +266,8 @@ exe = EXE(
     name='PDF_Master_v4.5',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=True,
+    # Windows에서 strip 실행 파일이 없는 환경이 많아 자동 비활성화
+    strip=ENABLE_STRIP,
     upx=True,
     upx_exclude=['vcruntime140.dll', 'python*.dll', 'api-ms-*.dll', 'ucrtbase.dll'],
     runtime_tmpdir=None,
