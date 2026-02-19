@@ -4,9 +4,40 @@
 # Python 3.10+ 호환, v4.5 코드 변경 사항 반영 (Verified 2026-02-05)
 
 import sys
+import importlib.util
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 block_cipher = None
+
+
+def _module_exists(module_name: str) -> bool:
+    try:
+        return importlib.util.find_spec(module_name) is not None
+    except Exception:
+        return False
+
+
+def _prune_hiddenimports(modules):
+    """
+    Remove non-runtime or unavailable modules from hiddenimports.
+    - drop test modules (build size/noise reduction)
+    - drop modules that are not importable in current environment
+    - deduplicate while preserving order
+    """
+    out = []
+    seen = set()
+    for module_name in modules:
+        if not module_name:
+            continue
+        if ".tests" in module_name or ".test_" in module_name:
+            continue
+        if module_name in seen:
+            continue
+        if not _module_exists(module_name):
+            continue
+        seen.add(module_name)
+        out.append(module_name)
+    return out
 
 # =====================================================================
 # Hidden Imports (필수 모듈)
@@ -98,6 +129,9 @@ try:
         ai_hiddenimports += collect_submodules('google.genai')
     except Exception:
         pass
+
+    # v4.5.1: 테스트/미설치 모듈 정리
+    ai_hiddenimports = _prune_hiddenimports(ai_hiddenimports)
     
     hiddenimports += ai_hiddenimports
     print(f"[OK] google-genai SDK detected ({len(ai_hiddenimports)} imports)")
@@ -115,6 +149,7 @@ except ImportError:
             ai_hiddenimports += collect_submodules('google.ai')
         except Exception:
             pass
+        ai_hiddenimports = _prune_hiddenimports(ai_hiddenimports)
         hiddenimports += ai_hiddenimports
         print(f"[WARN] Using deprecated google-generativeai SDK ({len(ai_hiddenimports)} imports)")
     except ImportError:

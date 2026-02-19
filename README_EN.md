@@ -253,6 +253,26 @@ pdf-master-main/
         └── zoomable_preview.py # Zoomable Preview
 ```
 
+Detailed UI module split used by current codebase:
+
+```
+src/ui/
+├── main_window.py               # Main window assembly/lifecycle
+├── main_window_config.py        # App constants/AI availability
+├── main_window_core.py          # Menu/header/theme/shortcuts
+├── main_window_preview.py       # Preview/recent files
+├── main_window_worker.py        # Worker binding/overlay flow
+├── main_window_undo.py          # Undo/Redo + backup cleanup
+├── main_window_tabs_basic.py    # Basic tabs
+├── main_window_tabs_advanced.py # Advanced sub-tabs/actions
+├── main_window_tabs_ai.py       # AI tab/chat/keywords
+├── progress_overlay.py
+├── styles.py
+├── thumbnail_grid.py
+├── widgets.py
+└── zoomable_preview.py
+```
+
 ---
 
 ## 🔧 Config File
@@ -273,6 +293,16 @@ Location: `~/.pdf_master_settings.json`
 
 ## 📝 Changelog
 
+### v4.5.1 (2026-02-19) - Stability/Compatibility
+- Added worker input preflight validation (existence/size checks before execution)
+- Added bidirectional kwargs normalization for advanced actions:
+  `draw_shapes`, `add_link`, `insert_textbox`, `copy_page_between_docs`, `image_watermark`
+- Fixed advanced action behavior mismatch between UI inputs and worker execution
+- Fixed Undo registration typo for `duplicate_page`
+- Improved folder opening compatibility on Linux/macOS via Qt `QDesktopServices`
+- Replaced deprecated locale detection path in i18n (`getlocale + env fallback`)
+- Added regression tests for worker compat/preflight/i18n
+
 ### v4.5 (2026-01-22)
 - 📐 **Draw Shapes** - Add rectangles, circles, lines (position, size, color)
 - 🔗 **Add Hyperlinks** - Insert URL links or page navigation links
@@ -292,6 +322,16 @@ Location: `~/.pdf_master_settings.json`
 - 🔄 **Undo/Redo** - Support for page delete, rotate, compress, etc.
 - 💾 **Auto Save Settings** - Window geometry, theme
 - 🎨 **Progress Overlay** - Full-screen modal with cancel
+
+---
+
+## 🧪 Test Status (v4.5.1)
+
+- Added:
+  - `tests/test_worker_param_compat.py`
+  - `tests/test_worker_preflight.py`
+  - `tests/test_i18n.py`
+- Current baseline remains `pytest -q` pass for existing + new test suites.
 
 ---
 

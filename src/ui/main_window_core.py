@@ -1,10 +1,9 @@
 import logging
 import os
 import subprocess
-import sys
 
-from PyQt6.QtCore import QByteArray
-from PyQt6.QtGui import QAction, QKeySequence, QShortcut
+from PyQt6.QtCore import QByteArray, QUrl
+from PyQt6.QtGui import QAction, QDesktopServices, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -67,13 +66,13 @@ class MainWindowCoreMixin:
                 folder = self._last_output_path
             else:
                 folder = os.path.dirname(self._last_output_path)
-            if sys.platform == 'win32':
+            if os.name == 'nt':
                 if os.path.isdir(self._last_output_path):
                     subprocess.Popen(['explorer', folder])
                 else:
                     subprocess.Popen(['explorer', '/select,', self._last_output_path])
             else:
-                subprocess.Popen(['open', folder])
+                QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
 
     def _save_splitter_state(self):
         """Save splitter position"""

@@ -105,6 +105,16 @@ error_signal = pyqtSignal(str)         # 에러 메시지
 | `insert_textbox` | 텍스트 상자 삽입 (v4.5) | `insert_textbox()` |
 | `copy_page_between_docs` | 페이지 복사 (v4.5) | `copy_page_between_docs()` |
 
+#### v4.5.1 안정화 핵심 (2026-02-19)
+- `run()` 시작 시 `_preflight_inputs()`를 통해 입력 파일 존재/크기를 선검증합니다.
+- `_normalize_mode_kwargs()`를 통해 UI/Worker 간 kwargs 계약 차이를 런타임에서 정규화합니다.
+- 다음 모드는 구/신 kwargs를 양방향으로 수용합니다:
+  - `draw_shapes`
+  - `add_link`
+  - `insert_textbox`
+  - `copy_page_between_docs`
+  - `image_watermark`
+
 #### 취소 처리
 ```python
 def cancel(self):
@@ -231,7 +241,7 @@ class UndoManager:
 - **TranslationManager**: 싱글톤 번역 관리자
 - **기능**:
   - `tm.get(key)`: 키 기반 번역 문자열 반환
-  - `locale` 자동 감지 (KO/EN)
+  - `locale` 자동 감지 (KO/EN, v4.5.1: `getlocale + env fallback`)
   - 언어 설정 관리 (`language` setting)
 - **리소스**: `TRANSLATIONS` 딕셔너리에 언어별(ko, en) 문자열 정의
 
@@ -381,8 +391,19 @@ class ZoomablePreviewWidget(QWidget):
 
 1. **API 키 저장**: `keyring` 라이브러리 우선 사용, 불가 시 설정 파일 폴백
 2. **PDF 검증**: 파일 헤더 (`%PDF-`) 확인으로 유효성 검증
-3. **파일 크기 제한**: `MAX_FILE_SIZE = 2GB`
+3. **파일 크기 제한**: `MAX_FILE_SIZE = 2GB` (v4.5.1: Worker preflight에서 실행 전 검증)
 4. **입력 검증**: 페이지 범위 문자열 길이 제한 (`MAX_PAGE_RANGE_LENGTH = 1000`)
+
+---
+
+## 🧪 테스트 업데이트 (v4.5.1)
+
+- `tests/test_worker_param_compat.py`
+  - 고급 기능 kwargs 호환성 검증 (도형/링크/텍스트박스/페이지복사/이미지워터마크)
+- `tests/test_worker_preflight.py`
+  - 실행 전 입력 검증(fail-fast) 검증
+- `tests/test_i18n.py`
+  - 비권장 `locale.getdefaultlocale()` 미사용 경로 검증
 
 ---
 

@@ -297,6 +297,172 @@ class WorkerThread(QThread):
             logger.error(f"File size check failed: {e}")
             return False
 
+    def _validate_non_pdf_size(self, file_path: str, emit_error: bool = True) -> bool:
+        """비-PDF 입력 파일의 존재/최대 크기만 검증."""
+        if not file_path or not os.path.exists(file_path):
+            if emit_error:
+                self.error_signal.emit(self._get_msg("err_input_file_missing"))
+            return False
+        try:
+            file_size = os.path.getsize(file_path)
+            if file_size > MAX_FILE_SIZE:
+                size_gb = file_size / (1024**3)
+                max_gb = MAX_FILE_SIZE / (1024**3)
+                if emit_error:
+                    self.error_signal.emit(
+                        self._get_msg("err_file_too_large", f"{size_gb:.2f}GB", f"{max_gb:.0f}GB")
+                    )
+                logger.warning(f"File too large: {file_path} ({size_gb:.2f}GB)")
+                return False
+            return True
+        except OSError as e:
+            logger.error(f"Non-PDF file size check failed: {e}")
+            return False
+
+    def _normalize_mode_kwargs(self):
+        """
+        모드별 kwargs 정규화.
+
+        NOTE: 신규 입력은 정규화 레이어를 통해서만 소비합니다.
+        """
+        kwargs = self.kwargs
+
+        if self.mode == "draw_shapes":
+            shapes = kwargs.get("shapes")
+            if not shapes and any(k in kwargs for k in ("shape_type", "x", "y", "width", "height")):
+                shape_type = kwargs.get("shape_type", "rect")
+                x = float(kwargs.get("x", 100))
+                y = float(kwargs.get("y", 100))
+                w = float(kwargs.get("width", 120))
+                h = float(kwargs.get("height", 80))
+                stroke_width = float(kwargs.get("line_width", 1))
+                line_color = kwargs.get("line_color", kwargs.get("color", (1, 0, 0)))
+                fill_color = kwargs.get("fill_color", kwargs.get("fill"))
+                shape = {"type": shape_type, "color": line_color, "width": stroke_width}
+                if fill_color is not None:
+                    shape["fill"] = fill_color
+                if shape_type == "line":
+                    shape["p1"] = [x, y]
+                    shape["p2"] = [x + w, y + h]
+                elif shape_type == "circle":
+                    shape["center"] = [x + (w / 2.0), y + (h / 2.0)]
+                    shape["radius"] = max(1.0, min(abs(w), abs(h)) / 2.0)
+                elif shape_type == "oval":
+                    shape["rect"] = [x, y, x + w, y + h]
+                else:
+                    shape["type"] = "rect"
+                    shape["rect"] = [x, y, x + w, y + h]
+                kwargs["shapes"] = [shape]
+
+        elif self.mode == "add_link":
+            link_type = kwargs.get("link_type", "uri")
+            if link_type == "url":
+                kwargs["link_type"] = "uri"
+            elif link_type == "page":
+                kwargs["link_type"] = "goto"
+
+        elif self.mode == "insert_textbox":
+            if "rect" not in kwargs:
+                x = float(kwargs.get("x", 100))
+                y = float(kwargs.get("y", 100))
+                w = float(kwargs.get("width", 200))
+                h = float(kwargs.get("height", 50))
+                kwargs["rect"] = [x, y, x + w, y + h]
+
+        elif self.mode == "copy_page_between_docs":
+            if not kwargs.get("target_path"):
+                kwargs["target_path"] = kwargs.get("file_path")
+            source_pages = kwargs.get("source_pages")
+            if source_pages is None:
+                page_range = kwargs.get("page_range", "")
+                if isinstance(page_range, str) and page_range.strip():
+                    kwargs["source_pages"] = self._parse_page_range(page_range, 10**9)
+                else:
+                    kwargs["source_pages"] = [0]
+            elif isinstance(source_pages, int):
+                kwargs["source_pages"] = [source_pages]
+
+        elif self.mode == "image_watermark":
+            alias_map = {
+                "top-center": "top",
+                "bottom-center": "bottom",
+            }
+            pos = kwargs.get("position")
+            if isinstance(pos, str):
+                kwargs["position"] = alias_map.get(pos, pos)
+
+            if "scale" in kwargs and kwargs.get("image_path"):
+                try:
+                    scale = float(kwargs.get("scale", 1.0))
+                except (TypeError, ValueError):
+                    scale = 1.0
+                scale = max(0.01, scale)
+                try:
+                    pix = fitz.Pixmap(kwargs["image_path"])
+                    base_w, base_h = pix.width, pix.height
+                    del pix
+                    kwargs["width"] = max(1, int(base_w * scale))
+                    kwargs["height"] = max(1, int(base_h * scale))
+                except Exception:
+                    logger.debug("Failed to compute watermark image size from scale", exc_info=True)
+
+    def _preflight_inputs(self) -> bool:
+        """작업 실행 전 입력 파일 검증 (fail-fast)."""
+        kwargs = self.kwargs
+
+        def _validate_pdf_path(path: str) -> bool:
+            if not path or not os.path.exists(path):
+                self.error_signal.emit(self._get_msg("err_pdf_not_found"))
+                return False
+            return self._validate_file_size(path, emit_error=True)
+
+        # 단일 PDF 입력
+        for key in ("file_path", "file_path1", "file_path2", "source_path", "target_path", "replace_path"):
+            if key in kwargs and kwargs.get(key) is not None:
+                if not _validate_pdf_path(kwargs.get(key)):
+                    return False
+
+        # 단일 비-PDF 입력
+        for key in ("image_path", "signature_path", "attach_path"):
+            if key in kwargs and kwargs.get(key) is not None:
+                if not self._validate_non_pdf_size(kwargs.get(key), emit_error=True):
+                    return False
+
+        # 목록 입력 검증
+        for key in ("files", "file_paths"):
+            if key not in kwargs:
+                continue
+            paths = kwargs.get(key)
+            if paths is None:
+                continue
+            if not isinstance(paths, list):
+                paths = [paths]
+            if not paths:
+                self.error_signal.emit(self._get_msg("err_input_file_missing"))
+                return False
+
+            is_pdf_list = not (self.mode == "images_to_pdf" and key == "files")
+            valid_count = 0
+            for path in paths:
+                if not path:
+                    continue
+                if is_pdf_list:
+                    if not _validate_pdf_path(path):
+                        return False
+                else:
+                    if not self._validate_non_pdf_size(path, emit_error=True):
+                        return False
+                valid_count += 1
+
+            if valid_count == 0:
+                if is_pdf_list:
+                    self.error_signal.emit(self._get_msg("err_no_valid_pdf"))
+                else:
+                    self.error_signal.emit(self._get_msg("err_input_file_missing"))
+                return False
+
+        return True
+
     def _is_pdf_encrypted(self, file_path: str) -> bool:
         """암호화된 PDF 여부 확인"""
         doc = None
@@ -313,8 +479,12 @@ class WorkerThread(QThread):
         logger.info(f"Starting task: {self.mode}")
         # v4.5: _cancel_requested는 __init__에서 초기화됨 (중복 제거)
         try:
+            self._normalize_mode_kwargs()
             method = getattr(self, self.mode, None)
             if method:
+                if not self._preflight_inputs():
+                    logger.info(f"Preflight validation failed: {self.mode}")
+                    return
                 self._last_progress_value = None
                 self._last_progress_emit_ts_ms = 0.0
                 with PerfTimer(f"core.worker.{self.mode}", logger=logger, extra={"mode": self.mode}):
@@ -1029,6 +1199,7 @@ class WorkerThread(QThread):
 
     def image_watermark(self):
         """이미지 워터마크"""
+        self._normalize_mode_kwargs()
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
         image_path = self.kwargs.get('image_path')
@@ -1046,6 +1217,10 @@ class WorkerThread(QThread):
                 rect = page.rect
                 if position == 'center':
                     x, y = (rect.width - img_width) / 2, (rect.height - img_height) / 2
+                elif position == 'top':
+                    x, y = (rect.width - img_width) / 2, 20
+                elif position == 'bottom':
+                    x, y = (rect.width - img_width) / 2, rect.height - img_height - 20
                 elif position == 'top-left':
                     x, y = 20, 20
                 elif position == 'top-right':
@@ -1827,20 +2002,23 @@ class WorkerThread(QThread):
     
     def draw_shapes(self):
         """PDF에 도형 그리기"""
+        self._normalize_mode_kwargs()
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
         page_num = self.kwargs.get('page_num', 0)
         shapes = self.kwargs.get('shapes', [])  # [{type, params, color, width}]
-        
+
         doc = fitz.open(file_path)
         try:
+            if not shapes:
+                self.error_signal.emit("도형 데이터가 없습니다.")
+                return
             # v4.5: 페이지 번호 유효성 검사
             if page_num < 0 or page_num >= len(doc):
                 self.error_signal.emit(f"페이지 번호 오류: {page_num + 1} (전체 {len(doc)}페이지)")
                 return
             
             page = doc[page_num]
-            page_rect = page.rect
             
             for shape_info in shapes:
                 shape_type = shape_info.get('type', 'line')
@@ -1875,6 +2053,7 @@ class WorkerThread(QThread):
     
     def add_link(self):
         """PDF에 하이퍼링크 추가"""
+        self._normalize_mode_kwargs()
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
         page_num = self.kwargs.get('page_num', 0)
@@ -1889,7 +2068,7 @@ class WorkerThread(QThread):
             link_type = 'uri'
         
         # v4.5: target 유효성 검사
-        if not target:
+        if target is None or (isinstance(target, str) and not target.strip()):
             self.error_signal.emit("링크 대상이 지정되지 않았습니다.")
             return
         
@@ -1907,13 +2086,25 @@ class WorkerThread(QThread):
             }
             
             if link_type == 'uri':
+                target_str = str(target).strip()
                 # v4.5: URL 형식 기본 검증
-                if not (target.startswith('http://') or target.startswith('https://') or target.startswith('mailto:')):
-                    logger.warning(f"URL might be invalid: {target}")
-                link['uri'] = target
+                if not (
+                    target_str.startswith('http://') or
+                    target_str.startswith('https://') or
+                    target_str.startswith('mailto:')
+                ):
+                    logger.warning(f"URL might be invalid: {target_str}")
+                link['uri'] = target_str
             else:
                 try:
-                    target_page = int(target) - 1  # 0-indexed
+                    raw_target = int(target)
+                    if 0 <= raw_target < len(doc):
+                        target_page = raw_target  # already 0-indexed
+                    elif 1 <= raw_target <= len(doc):
+                        target_page = raw_target - 1  # 1-indexed input
+                    else:
+                        self.error_signal.emit(f"대상 페이지 번호 오류: {target} (전체 {len(doc)}페이지)")
+                        return
                     if target_page < 0 or target_page >= len(doc):
                         self.error_signal.emit(f"대상 페이지 번호 오류: {target} (전체 {len(doc)}페이지)")
                         return
@@ -2062,26 +2253,51 @@ class WorkerThread(QThread):
     
     def copy_page_between_docs(self):
         """다른 PDF에서 페이지 복사"""
+        self._normalize_mode_kwargs()
         source_path = self.kwargs.get('source_path')
         target_path = self.kwargs.get('target_path')
         output_path = self.kwargs.get('output_path')
         source_pages = self.kwargs.get('source_pages', [0])  # 복사할 페이지 번호들 (0-indexed)
+        page_range = self.kwargs.get('page_range', '')
         insert_at = self.kwargs.get('insert_at', -1)  # 삽입 위치 (-1 = 끝)
         
         source_doc = fitz.open(source_path)
         target_doc = fitz.open(target_path)
         
         try:
-            insert_pos = insert_at if insert_at >= 0 else len(target_doc)
+            if not isinstance(source_pages, list):
+                if isinstance(source_pages, int):
+                    source_pages = [source_pages]
+                elif isinstance(source_pages, str):
+                    source_pages = self._parse_page_range(source_pages, len(source_doc))
+                else:
+                    source_pages = []
+            if not source_pages:
+                if isinstance(page_range, str) and page_range.strip():
+                    source_pages = self._parse_page_range(page_range, len(source_doc))
+                if not source_pages:
+                    source_pages = [0]
+
+            try:
+                insert_pos = int(insert_at)
+            except (TypeError, ValueError):
+                insert_pos = -1
+            if insert_pos < 0:
+                insert_pos = len(target_doc)
+            insert_pos = min(insert_pos, len(target_doc))
+
+            inserted_count = 0
+            total_to_copy = max(1, len(source_pages))
             
             for i, page_num in enumerate(source_pages):
                 self._check_cancelled()  # v4.5: 취소 체크포인트 추가
                 if 0 <= page_num < len(source_doc):
-                    target_doc.insert_pdf(source_doc, from_page=page_num, to_page=page_num, start_at=insert_pos + i)
-                self._emit_progress_if_due(int((i + 1) / len(source_pages) * 100))
+                    target_doc.insert_pdf(source_doc, from_page=page_num, to_page=page_num, start_at=insert_pos + inserted_count)
+                    inserted_count += 1
+                self._emit_progress_if_due(int((i + 1) / total_to_copy * 100))
             
             self._atomic_pdf_save(target_doc, output_path)
-            self.finished_signal.emit(f"✅ {len(source_pages)}페이지 복사 완료!")
+            self.finished_signal.emit(f"✅ {inserted_count}페이지 복사 완료!")
         finally:
             source_doc.close()
             target_doc.close()
@@ -2150,6 +2366,7 @@ class WorkerThread(QThread):
     
     def insert_textbox(self):
         """PDF에 텍스트 상자 삽입"""
+        self._normalize_mode_kwargs()
         file_path = self.kwargs.get('file_path')
         output_path = self.kwargs.get('output_path')
         page_num = self.kwargs.get('page_num', 0)

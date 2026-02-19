@@ -115,6 +115,31 @@ error_signal = pyqtSignal(str)        # 에러 메시지
 | `insert_textbox` | 텍스트 상자 (v4.5) | `pdf_path`, `text`, `x`, `y` |
 | `copy_page_between_docs` | 페이지 복사 (v4.5) | `file_path`, `source_path`, `page_range` |
 
+> 참고 (v4.5.1): `WorkerThread`는 `_normalize_mode_kwargs()`를 통해 UI/레거시 kwargs를 정규화하여 양방향 호환을 보장합니다.
+
+### Worker kwargs 계약 보강 (v4.5.1)
+
+- `draw_shapes`
+  - 단일 입력(`shape_type/x/y/width/height/line_color/fill_color`)도 내부 `shapes=[...]`로 정규화됨
+- `add_link`
+  - `link_type`로 `url/page` 별칭 허용 (`uri/goto`로 매핑)
+  - `target`은 0-index/1-index 모두 허용 (범위 내에서 안전 변환)
+- `insert_textbox`
+  - `rect` 미지정 시 `x,y,width,height`로 자동 사각형 생성 (기본 200x50)
+- `copy_page_between_docs`
+  - `target_path`가 없으면 `file_path`를 대상 문서로 사용
+  - `source_pages`가 없으면 `page_range`를 파싱하여 사용
+- `image_watermark`
+  - `scale` 입력 시 원본 이미지 기준으로 `width/height` 계산
+  - 위치 별칭 `top-center`, `bottom-center` 허용
+
+### 입력 사전검증 (v4.5.1)
+
+- `run()` 시작 시 `_preflight_inputs()` 수행
+- PDF 입력은 존재/크기(최소/최대) 선검증
+- 비-PDF 입력(`image_path`, `signature_path`, `attach_path`)은 존재/최대 크기 선검증
+- 검증 실패 시 작업 실행 전 `error_signal`로 즉시 종료 (fail-fast)
+
 ### 2. `src/core/ai_service.py` - AIService
 
 Gemini API를 사용한 AI 서비스 클래스입니다.
@@ -226,6 +251,7 @@ class TranslationManager:
 **특징:**
 - 한국어/영어 지원 (`ko`, `en`)
 - `locale` 모듈을 통한 시스템 언어 자동 감지
+  - v4.5.1: `locale.getdefaultlocale()` 대신 `getlocale + 환경변수 fallback`
 - `TranslationManager().get("key")`로 사용
 - `active_lang_code` 속성으로 현재 언어 확인
 ```
@@ -262,6 +288,9 @@ def _toggle_theme(self)  # 테마 전환
 def _apply_theme(self)   # 테마 적용
 def _update_preview(self, path)  # 미리보기 업데이트
 ```
+
+추가 반영 (v4.5.1):
+- `_open_last_folder()`에서 비-Windows 환경은 Qt `QDesktopServices` 기반으로 폴더 열기 처리
 
 ### 8. `src/ui/styles.py` - ThemeColors
 
@@ -497,6 +526,18 @@ pyinstaller pdf_master.spec --clean
 - AI 키워드 추출 (ai_extract_keywords)
 - AI 싱글톤 스레드 안전성 (Double-check locking)
 - i18n 88개 키 추가 + 하드코딩 메시지 제거
+
+### v4.5.1 (2026-02-19) - 안정화
+- Worker kwargs 정규화 레이어 추가 (`_normalize_mode_kwargs`)
+- Worker 실행 전 입력 사전검증 추가 (`_preflight_inputs`)
+- 고급 기능 5종 UI/Worker 계약 불일치 수정
+- Undo 등록 모드 오타 수정 (`duplicate_page`)
+- Linux/macOS 폴더 열기 호환 개선 (Qt `QDesktopServices`)
+- i18n 로케일 감지 비권장 경로 제거
+- 테스트 추가:
+  - `tests/test_worker_param_compat.py`
+  - `tests/test_worker_preflight.py`
+  - `tests/test_i18n.py`
 
 ### v4.4
 - 다국어 지원 (i18n): 한국어/영어

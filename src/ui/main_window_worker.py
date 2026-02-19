@@ -115,7 +115,7 @@ class MainWindowWorkerMixin:
         undo_supported_modes = [
             'delete_pages', 'rotate', 'add_page_numbers', 'watermark', 'compress',
             'add_stamp', 'image_watermark', 'crop_pdf', 'insert_textbox', 'draw_shapes',
-            'reorder', 'reverse_pages', 'duplicate_pages', 'insert_blank_page',
+            'reorder', 'reverse_pages', 'duplicate_page', 'insert_blank_page',
             'add_link', 'add_background', 'add_text_markup'
         ]
         if mode in undo_supported_modes:

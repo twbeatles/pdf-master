@@ -295,6 +295,15 @@ API 키는 현재 UI 기준으로 설정 파일에 저장되며, `keyring` 사�
 
 ## 📝 변경 이력
 
+### v4.5.1 (2026-02-19) - 안정화/호환성 업데이트
+- 🛡️ **Worker 사전검증(Preflight) 추가** - 작업 시작 전 입력 파일 존재/크기 검증으로 fail-fast 처리
+- 🔁 **Worker 파라미터 양방향 호환** - 신규/구 kwargs 동시 수용 (`draw_shapes`, `add_link`, `insert_textbox`, `copy_page_between_docs`, `image_watermark`)
+- 🧭 **고급 기능 오동작 수정** - 도형/링크/텍스트상자/페이지복사/이미지워터마크 UI 전달값이 실제 작업에 반영되도록 보완
+- ↩️ **Undo 모드 정합성 수정** - `duplicate_page` 작업의 Undo 등록 누락 수정
+- 🖥️ **폴더 열기 호환성 개선** - Linux/macOS에서 Qt `QDesktopServices` 경로 열기 사용
+- 🌐 **i18n 로케일 감지 개선** - `locale.getdefaultlocale()` 비권장 경로 제거 (`getlocale + env fallback`)
+- ✅ **회귀 테스트 확장** - Worker 파라미터 호환/사전검증/i18n 감지 테스트 추가
+
 ### v4.5 (2026-01-22)
 - 📐 **도형 그리기** - 사각형, 원, 선 추가 (위치, 크기, 색상 지정)
 - 🔗 **하이퍼링크 추가** - URL 링크 또는 페이지 이동 링크 삽입
@@ -323,6 +332,16 @@ API 키는 현재 UI 기준으로 설정 파일에 저장되며, `keyring` 사�
 - 🧠 **gemini-flash-latest** - 최신 AI 모델
 - ❌ **PDF → Word 기능 제거** - 의존성 간소화
 - 📦 **빌드 경량화** - ~30-40MB
+
+---
+
+## 🧪 테스트 현황 (v4.5.1)
+
+- 신규 테스트:
+  - `tests/test_worker_param_compat.py` (고급 기능 kwargs 호환 검증)
+  - `tests/test_worker_preflight.py` (실행 전 입력 검증 fail-fast 검증)
+  - `tests/test_i18n.py` (시스템 언어 감지 경로 검증)
+- 기존 테스트와 함께 `pytest -q` 통과 기준으로 유지합니다.
 
 ---
 
