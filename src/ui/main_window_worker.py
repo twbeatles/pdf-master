@@ -18,8 +18,8 @@ class MainWindowWorkerMixin:
         # 이전 Worker가 실행 중인지 확인
         if self.worker and self.worker.isRunning():
             result = QMessageBox.question(
-                self, tm.get("task_in_progress", "작업 진행 중"),
-                tm.get("task_wait_or_cancel", "이전 작업이 아직 진행 중입니다.\n완료될 때까지 기다리시겠습니까?"),
+                self, tm.get("task_in_progress"),
+                tm.get("task_wait_or_cancel"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if result == QMessageBox.StandardButton.Yes:
@@ -28,7 +28,7 @@ class MainWindowWorkerMixin:
                     "output_path": output_path,
                     "kwargs": dict(kwargs),
                 }
-                toast = ToastWidget("이전 작업 완료 후 자동 실행됩니다.", toast_type='info', duration=2000)
+                toast = ToastWidget(tm.get("msg_worker_queued"), toast_type='info', duration=2000)
                 toast.show_toast(self)
                 return
             return  # 새 작업 취소
@@ -61,52 +61,55 @@ class MainWindowWorkerMixin:
         
         # 작업 모드에 따른 설명 (Undo에서도 사용)
         mode_descriptions = {
-            "merge": "PDF 파일 병합",
-            "convert_to_img": "PDF → 이미지 변환",
-            "images_to_pdf": "이미지 → PDF 변환",
-            "extract_text": "텍스트 추출",
-            "split": "페이지 추출",
-            "delete_pages": "페이지 삭제",
-            "rotate": "페이지 회전",
-            "add_page_numbers": "페이지 번호 추가",
-            "watermark": "워터마크 적용",
-            "image_watermark": "이미지 워터마크 적용",
-            "protect": "PDF 암호화",
-            "compress": "PDF 압축",
-            "metadata_update": "메타데이터 수정",
-            "reorder": "페이지 순서 변경",
-            "batch": "일괄 처리",
-            "split_by_pages": "PDF 분할",
-            "resize_pages": "페이지 크기 변경",
-            "add_stamp": "스탬프 추가",
-            "crop_pdf": "페이지 자르기",
-            "insert_textbox": "텍스트 상자 삽입",
-            "draw_shapes": "도형 그리기",
-            "add_link": "하이퍼링크 추가",
-            "copy_page_between_docs": "페이지 복사",
-            "insert_signature": "전자 서명 삽입",
-            "add_sticky_note": "스티키 노트 추가",
-            "add_ink_annotation": "프리핸드 주석 추가",
-            "add_text_markup": "텍스트 마크업",
-            "add_background": "배경색 추가",
-            "add_attachment": "첨부 파일 추가",
-            "extract_attachments": "첨부 파일 추출",
-            "list_annotations": "주석 목록 추출",
-            "remove_annotations": "주석 삭제",
-            "extract_images": "이미지 추출",
-            "extract_links": "링크 추출",
-            "extract_tables": "테이블 추출",
-            "extract_markdown": "Markdown 추출",
-            "search_text": "텍스트 검색",
-            "highlight_text": "텍스트 하이라이트",
-            "get_pdf_info": "PDF 정보 추출",
-            "get_bookmarks": "북마크 추출",
-            "decrypt_pdf": "PDF 복호화",
-            "compare_pdfs": "PDF 비교",
-            "detect_fields": "양식 필드 감지",
-            "ai_summarize": "AI PDF 분석",
-            "ai_ask_question": "AI PDF 채팅",
-            "ai_extract_keywords": "AI 키워드 추출"
+            "merge": tm.get("action_merge"),
+            "convert_to_img": tm.get("action_convert_to_img"),
+            "images_to_pdf": tm.get("action_images_to_pdf"),
+            "extract_text": tm.get("action_extract_text"),
+            "split": tm.get("action_split"),
+            "delete_pages": tm.get("action_delete_pages"),
+            "rotate": tm.get("action_rotate"),
+            "add_page_numbers": tm.get("action_add_page_numbers"),
+            "watermark": tm.get("action_watermark"),
+            "image_watermark": tm.get("mode_image_watermark"),
+            "protect": tm.get("action_encrypt"),
+            "compress": tm.get("action_compress"),
+            "metadata_update": tm.get("mode_metadata_update"),
+            "reorder": tm.get("mode_reorder"),
+            "batch": tm.get("mode_batch"),
+            "split_by_pages": tm.get("mode_split_by_pages"),
+            "resize_pages": tm.get("mode_resize_pages"),
+            "add_stamp": tm.get("mode_add_stamp"),
+            "crop_pdf": tm.get("mode_crop_pdf"),
+            "insert_textbox": tm.get("mode_insert_textbox"),
+            "draw_shapes": tm.get("mode_draw_shapes"),
+            "add_link": tm.get("mode_add_link"),
+            "copy_page_between_docs": tm.get("mode_copy_pages"),
+            "insert_signature": tm.get("mode_insert_signature"),
+            "add_freehand_signature": tm.get("mode_add_freehand_signature"),
+            "add_sticky_note": tm.get("mode_add_sticky_note"),
+            "add_ink_annotation": tm.get("mode_add_ink"),
+            "add_text_markup": tm.get("mode_add_text_markup"),
+            "add_background": tm.get("mode_add_background"),
+            "add_attachment": tm.get("mode_add_attachment"),
+            "list_attachments": tm.get("mode_list_attachments"),
+            "extract_attachments": tm.get("mode_extract_attachments"),
+            "get_form_fields": tm.get("mode_get_form_fields"),
+            "fill_form": tm.get("mode_fill_form"),
+            "list_annotations": tm.get("mode_list_annotations"),
+            "remove_annotations": tm.get("mode_remove_annotations"),
+            "extract_images": tm.get("mode_extract_images"),
+            "extract_links": tm.get("mode_extract_links"),
+            "extract_tables": tm.get("mode_extract_tables"),
+            "extract_markdown": tm.get("mode_extract_markdown"),
+            "search_text": tm.get("mode_search_text"),
+            "highlight_text": tm.get("mode_highlight_text"),
+            "get_pdf_info": tm.get("mode_get_pdf_info"),
+            "get_bookmarks": tm.get("mode_get_bookmarks"),
+            "decrypt_pdf": tm.get("mode_decrypt_pdf"),
+            "compare_pdfs": tm.get("mode_compare_pdfs"),
+            "ai_summarize": tm.get("mode_ai_summarize"),
+            "ai_ask_question": tm.get("mode_ai_ask"),
+            "ai_extract_keywords": tm.get("mode_ai_keywords"),
         }
         
         # v4.3: Undo 지원 작업 - 백업 생성
@@ -132,7 +135,7 @@ class MainWindowWorkerMixin:
                         'output_path': output
                     }
         
-        description = mode_descriptions.get(mode, "처리 중") + "..."
+        description = mode_descriptions.get(mode, tm.get("processing_plain")) + "..."
         
         self.worker = WorkerThread(mode, **kwargs)
         self.worker.progress_signal.connect(self._on_progress_update)
@@ -251,7 +254,7 @@ class MainWindowWorkerMixin:
                         cursor.removeSelectedText()
                         cursor.deletePreviousChar()
                         # 답변 추가
-                        self.txt_chat_history.append(f"<b>🤖 답변:</b> {answer}")
+                        self.txt_chat_history.append(f"<b>{tm.get('chat_assistant_prefix')}</b> {answer}")
                         self.txt_chat_history.append("<hr>")
                 self._chat_pending_path = None
         
@@ -291,11 +294,51 @@ class MainWindowWorkerMixin:
             )
             logger.info(f"Registered undo for: {undo_info['action_type']}")
         
+        custom_dialog_shown = False
+        if self.worker and hasattr(self.worker, "kwargs"):
+            mode = getattr(self.worker, "mode", "")
+            if mode == "get_form_fields" and hasattr(self, "form_fields_list"):
+                fields = self.worker.kwargs.get("result_fields", []) or []
+                self.form_fields_list.clear()
+                self._form_field_data = {}
+                from PyQt6.QtCore import Qt
+                from PyQt6.QtWidgets import QListWidgetItem
+                for field in fields:
+                    name = field.get("name", f"field_{self.form_fields_list.count()}")
+                    value = field.get("value", "")
+                    item = QListWidgetItem(f"📋 {name}: {value}")
+                    item.setData(Qt.ItemDataRole.UserRole, name)
+                    item.setToolTip(tm.get("msg_field_tooltip", field.get("type", "-"), field.get("page", 0)))
+                    self.form_fields_list.addItem(item)
+                    self._form_field_data[name] = value
+                if not fields:
+                    QMessageBox.information(self, tm.get("info"), tm.get("msg_no_form_fields"))
+                else:
+                    toast = ToastWidget(tm.get("msg_form_fields_detected", len(fields)), toast_type='success', duration=2000)
+                    toast.show_toast(self)
+                custom_dialog_shown = True
+            elif mode == "list_attachments":
+                attachments = self.worker.kwargs.get("result_attachments", []) or []
+                if not attachments:
+                    QMessageBox.information(self, tm.get("info"), tm.get("msg_no_attachments"))
+                else:
+                    rows = [
+                        tm.get("msg_attachment_row", att.get("name", "Unknown"), att.get("size", 0))
+                        for att in attachments
+                    ]
+                    QMessageBox.information(
+                        self,
+                        tm.get("title_attachment_list"),
+                        tm.get("msg_attachment_list_body", len(attachments), "\n".join(rows)),
+                    )
+                custom_dialog_shown = True
+
         # Toast 알림 표시
         toast = ToastWidget(tm.get("completed"), toast_type='success', duration=4000)
         toast.show_toast(self)
-        
-        QMessageBox.information(self, tm.get("info"), msg)
+
+        if not custom_dialog_shown:
+            QMessageBox.information(self, tm.get("info"), msg)
         self._finalize_worker()
         self._run_pending_worker()
         QTimer.singleShot(3000, self._reset_progress_if_idle)

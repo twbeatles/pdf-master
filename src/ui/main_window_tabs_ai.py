@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..core.i18n import tm
-from ..core.settings import save_settings
+from ..core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
 from .main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
 from .thumbnail_grid import ThumbnailGridWidget
 from .widgets import FileSelectorWidget, ToastWidget, is_pdf_encrypted
@@ -29,6 +29,20 @@ logger = logging.getLogger(__name__)
 
 
 class MainWindowTabsAiMixin:
+
+    def _load_api_key_for_ui(self) -> str:
+        """keyring 우선 경로로 API 키를 로드하고 레거시 값을 1회 마이그레이션."""
+        current = get_api_key() or ""
+        legacy = self.settings.get("gemini_api_key", "")
+        if legacy:
+            if not current:
+                if set_api_key(legacy):
+                    current = legacy
+            # keyring 사용 시에만 파일 저장 키 제거
+            if KEYRING_AVAILABLE and "gemini_api_key" in self.settings:
+                self.settings.pop("gemini_api_key", None)
+                save_settings(self.settings)
+        return current
 
     def _load_chat_histories(self):
         """저장된 채팅 히스토리 로드"""
@@ -117,7 +131,7 @@ class MainWindowTabsAiMixin:
         self.txt_api_key.setEchoMode(QLineEdit.EchoMode.Password)
         self.txt_api_key.setPlaceholderText(tm.get("ph_api_key"))
         self.txt_api_key.setEnabled(AI_AVAILABLE)
-        saved_key = self.settings.get("gemini_api_key", "")
+        saved_key = self._load_api_key_for_ui()
         if saved_key:
             self.txt_api_key.setText(saved_key)
         api_layout.addWidget(self.txt_api_key)
@@ -265,7 +279,7 @@ class MainWindowTabsAiMixin:
         # 대화 히스토리
         l_chat.addWidget(QLabel(tm.get("lbl_chat_history")))
         self.txt_chat_history = QTextEdit()
-        self.txt_chat_history.setPlaceholderText("...")
+        self.txt_chat_history.setPlaceholderText(tm.get("ph_chat_history"))
         self.txt_chat_history.setMinimumHeight(150)
         self.txt_chat_history.setReadOnly(True)
         l_chat.addWidget(self.txt_chat_history)
@@ -328,10 +342,15 @@ class MainWindowTabsAiMixin:
     def _save_api_key(self):
         """API 키 저장"""
         key = self.txt_api_key.text().strip()
-        self.settings["gemini_api_key"] = key
-        save_settings(self.settings)
-        toast = ToastWidget(tm.get("msg_key_saved"), toast_type='success', duration=2000)
-        toast.show_toast(self)
+        if set_api_key(key):
+            # keyring 사용 시에만 레거시 평문 키 제거
+            if KEYRING_AVAILABLE and "gemini_api_key" in self.settings:
+                self.settings.pop("gemini_api_key", None)
+                save_settings(self.settings)
+            toast = ToastWidget(tm.get("msg_key_saved"), toast_type='success', duration=2000)
+            toast.show_toast(self)
+        else:
+            QMessageBox.warning(self, tm.get("error"), tm.get("msg_key_save_failed"))
 
     def _save_summary_result(self):
         """요약 결과 저장"""
@@ -339,7 +358,7 @@ class MainWindowTabsAiMixin:
         if not text:
             return QMessageBox.warning(self, tm.get("info"), tm.get("msg_no_summary"))
         
-        s, _ = QFileDialog.getSaveFileName(self, tm.get("dlg_save_summary"), "summary.txt", "텍스트 (*.txt)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("dlg_save_summary"), "summary.txt", tm.get("file_filter_text"))
         if s:
             with open(s, 'w', encoding='utf-8') as f:
                 f.write(text)
@@ -408,7 +427,7 @@ class MainWindowTabsAiMixin:
         self._save_chat_histories()
         
         # 질문을 채팅 히스토리에 추가
-        self.txt_chat_history.append(f"<b>🧑 질문:</b> {question}")
+        self.txt_chat_history.append(f"<b>{tm.get('chat_user_prefix')}</b> {question}")
         self.txt_chat_history.append(f"<i>{tm.get('msg_ai_thinking')}</i>")
         self.txt_ai_question.clear()
         
@@ -438,9 +457,9 @@ class MainWindowTabsAiMixin:
             role = entry.get("role")
             content = entry.get("content", "")
             if role == "user":
-                self.txt_chat_history.append(f"<b>🧑 질문:</b> {content}")
+                self.txt_chat_history.append(f"<b>{tm.get('chat_user_prefix')}</b> {content}")
             elif role == "assistant":
-                self.txt_chat_history.append(f"<b>🤖 답변:</b> {content}")
+                self.txt_chat_history.append(f"<b>{tm.get('chat_assistant_prefix')}</b> {content}")
                 self.txt_chat_history.append("<hr>")
 
     def _clear_chat_history(self):

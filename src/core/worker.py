@@ -231,6 +231,9 @@ class WorkerThread(QThread):
             "err_pdf_corrupted": "PDF 파일이 손상되었거나 형식이 올바르지 않습니다.",
             "err_operation_failed": "오류 발생: {}",
             "err_file_access_denied": "파일 접근 권한이 없습니다: {}",
+            "err_invalid_markup_type": "지원하지 않는 마크업 유형입니다: {}",
+            "err_page_out_of_range": "페이지 번호 오류: {} (전체 {}페이지)",
+            "err_pdf_has_no_pages": "PDF에 페이지가 없습니다.",
         }
         msg = fallback.get(key, key)
         if args:
@@ -1694,8 +1697,22 @@ class WorkerThread(QThread):
         
         doc = fitz.open(file_path)
         try:
+            total_pages = len(doc)
+            if total_pages == 0:
+                self.error_signal.emit(self._get_msg("err_pdf_has_no_pages"))
+                return
+
+            try:
+                page_num = int(page_num)
+            except (TypeError, ValueError):
+                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num), str(total_pages)))
+                return
+
             if page_num == -1:
-                page_num = len(doc) - 1
+                page_num = total_pages - 1
+            elif page_num < 0 or page_num >= total_pages:
+                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(total_pages)))
+                return
             
             page = doc[page_num]
             page_rect = page.rect
@@ -2338,6 +2355,11 @@ class WorkerThread(QThread):
         output_path = self.kwargs.get('output_path')
         search_term = self.kwargs.get('search_term', '')
         markup_type = self.kwargs.get('markup_type', 'underline')  # underline, strikeout, squiggly
+        valid_markup_types = {'underline', 'strikeout', 'squiggly'}
+
+        if markup_type not in valid_markup_types:
+            self.error_signal.emit(self._get_msg("err_invalid_markup_type", str(markup_type)))
+            return
         
         doc = fitz.open(file_path)
         count = 0
@@ -2347,6 +2369,7 @@ class WorkerThread(QThread):
                 self._check_cancelled()  # 취소 체크포인트
                 instances = page.search_for(search_term)
                 for inst in instances:
+                    annot = None
                     if markup_type == 'underline':
                         annot = page.add_underline_annot(inst)
                     elif markup_type == 'strikeout':
@@ -2472,37 +2495,52 @@ class WorkerThread(QThread):
         width = self.kwargs.get('width', 2)
         
         doc = fitz.open(file_path)
-        
-        if page_num == -1:
-            page_num = len(doc) - 1
-        
-        page = doc[page_num]
-        
-        if strokes:
+        try:
+            total_pages = len(doc)
+            if total_pages == 0:
+                self.error_signal.emit(self._get_msg("err_pdf_has_no_pages"))
+                return
+
+            try:
+                page_num = int(page_num)
+            except (TypeError, ValueError):
+                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num), str(total_pages)))
+                return
+
+            if page_num == -1:
+                page_num = total_pages - 1
+            elif page_num < 0 or page_num >= total_pages:
+                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(total_pages)))
+                return
+
+            page = doc[page_num]
+
+            if not strokes:
+                self.error_signal.emit("드로잉 데이터가 없습니다.")
+                return
+
             # 각 획을 fitz.Point 리스트로 변환
             all_strokes = []
             for stroke in strokes:
                 fitz_stroke = [fitz.Point(p[0], p[1]) for p in stroke if len(p) >= 2]
                 if len(fitz_stroke) >= 2:
                     all_strokes.append(fitz_stroke)
-            
-            if all_strokes:
-                annot = page.add_ink_annot(all_strokes)
-                if annot:
-                    annot.set_colors(stroke=color)
-                    annot.set_border(width=width)
-                    annot.update()
-                
-                self._emit_progress_if_due(100)
-                self._atomic_pdf_save(doc, output_path)
-                doc.close()
-                self.finished_signal.emit(f"✅ 프리핸드 서명 추가 완료!\n페이지 {page_num + 1}, {len(all_strokes)}개 획")
-            else:
-                doc.close()
+
+            if not all_strokes:
                 self.error_signal.emit("유효한 획이 없습니다.")
-        else:
+                return
+
+            annot = page.add_ink_annot(all_strokes)
+            if annot:
+                annot.set_colors(stroke=color)
+                annot.set_border(width=width)
+                annot.update()
+
+            self._emit_progress_if_due(100)
+            self._atomic_pdf_save(doc, output_path)
+            self.finished_signal.emit(f"✅ 프리핸드 서명 추가 완료!\n페이지 {page_num + 1}, {len(all_strokes)}개 획")
+        finally:
             doc.close()
-            self.error_signal.emit("드로잉 데이터가 없습니다.")
 
 
     # convert_to_word 함수 제거됨 (v4.2 - pdf2docx 의존성 제거)

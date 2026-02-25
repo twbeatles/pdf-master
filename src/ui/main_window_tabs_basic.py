@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ..core.constants import SUPPORTED_IMAGE_FORMATS
 from ..core.i18n import tm
 from ..core.settings import save_settings
 from .widgets import FileListWidget, FileSelectorWidget, ImageListWidget, ToastWidget
@@ -164,7 +165,10 @@ class MainWindowTabsBasicMixin:
         opt = QHBoxLayout()
         opt.addWidget(QLabel(tm.get("lbl_format")))
         self.cmb_fmt = QComboBox()
-        self.cmb_fmt.addItems(["png", "jpg"])
+        # 문서 정합 기준 포맷: png/jpg/webp/bmp/tiff
+        preferred_output_formats = ["png", "jpg", "webp", "bmp", "tiff"]
+        supported = set(SUPPORTED_IMAGE_FORMATS)
+        self.cmb_fmt.addItems([fmt for fmt in preferred_output_formats if fmt in supported])
         opt.addWidget(self.cmb_fmt)
         opt.addWidget(QLabel(tm.get("lbl_dpi")))
         self.spn_dpi = QSpinBox()
@@ -174,13 +178,13 @@ class MainWindowTabsBasicMixin:
         
         # 프리셋 버튼
         btn_save_preset = QPushButton("💾")
-        btn_save_preset.setToolTip("현재 설정을 프리셋으로 저장")
+        btn_save_preset.setToolTip(tm.get("tooltip_save_preset"))
         btn_save_preset.setFixedWidth(36)
         btn_save_preset.clicked.connect(self._save_convert_preset)
         opt.addWidget(btn_save_preset)
         
         btn_load_preset = QPushButton("📂")
-        btn_load_preset.setToolTip("저장된 프리셋 불러오기")
+        btn_load_preset.setToolTip(tm.get("tooltip_load_preset"))
         btn_load_preset.setFixedWidth(36)
         btn_load_preset.clicked.connect(self._load_convert_preset)
         opt.addWidget(btn_load_preset)
@@ -261,7 +265,7 @@ class MainWindowTabsBasicMixin:
         self.tabs.addTab(tab, f"🔄 {tm.get('tab_convert')}")
 
     def _add_images(self):
-        files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_img"), "", "이미지 (*.png *.jpg *.jpeg *.bmp *.gif *.webp)")
+        files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_img"), "", tm.get("file_filter_images"))
         for f in files:
             item = QListWidgetItem(f"🖼️ {os.path.basename(f)}")
             item.setData(Qt.ItemDataRole.UserRole, f)
@@ -270,19 +274,19 @@ class MainWindowTabsBasicMixin:
 
     def _add_pdf_for_img(self):
         """이미지 변환용 PDF 추가"""
-        files, _ = QFileDialog.getOpenFileNames(self, "PDF 선택", "", "PDF (*.pdf)")
+        files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")
         for f in files:
             self.img_conv_list.add_file(f)
 
     def _add_pdf_for_txt(self):
         """텍스트 추출용 PDF 추가"""
-        files, _ = QFileDialog.getOpenFileNames(self, "PDF 선택", "", "PDF (*.pdf)")
+        files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")
         for f in files:
             self.txt_conv_list.add_file(f)
 
     def _save_convert_preset(self):
         """변환 설정 프리셋 저장"""
-        name, ok = QInputDialog.getText(self, "프리셋 저장", "프리셋 이름:")
+        name, ok = QInputDialog.getText(self, tm.get("dlg_save_preset"), tm.get("lbl_preset_name"))
         if ok and name:
             presets = self.settings.get("convert_presets", {})
             presets[name] = {
@@ -291,33 +295,37 @@ class MainWindowTabsBasicMixin:
             }
             self.settings["convert_presets"] = presets
             save_settings(self.settings)
-            toast = ToastWidget(f"프리셋 '{name}' 저장됨", toast_type='success', duration=2000)
+            toast = ToastWidget(tm.get("msg_preset_saved", name), toast_type='success', duration=2000)
             toast.show_toast(self)
 
     def _load_convert_preset(self):
         """변환 설정 프리셋 불러오기"""
         presets = self.settings.get("convert_presets", {})
         if not presets:
-            QMessageBox.information(self, "프리셋", "저장된 프리셋이 없습니다.")
+            QMessageBox.information(self, tm.get("dlg_preset"), tm.get("msg_no_presets"))
             return
         
         # 프리셋 선택 다이얼로그
-        name, ok = QInputDialog.getItem(self, "프리셋 불러오기", "프리셋 선택:", 
+        name, ok = QInputDialog.getItem(self, tm.get("dlg_load_preset"), tm.get("lbl_select_preset"), 
                                         list(presets.keys()), 0, False)
         if ok and name:
             preset = presets[name]
-            idx = self.cmb_fmt.findText(preset.get("format", "png"))
+            preset_fmt = (preset.get("format", "png") or "png").lower()
+            idx = self.cmb_fmt.findText(preset_fmt)
             if idx >= 0:
                 self.cmb_fmt.setCurrentIndex(idx)
+            else:
+                fallback_idx = self.cmb_fmt.findText("png")
+                self.cmb_fmt.setCurrentIndex(max(0, fallback_idx))
             self.spn_dpi.setValue(preset.get("dpi", 150))
-            toast = ToastWidget(f"프리셋 '{name}' 적용됨", toast_type='info', duration=2000)
+            toast = ToastWidget(tm.get("msg_preset_applied", name), toast_type='info', duration=2000)
             toast.show_toast(self)
 
     def action_img(self):
         paths = self.img_conv_list.get_all_paths()
         if not paths:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 추가하세요.")
-        d = QFileDialog.getExistingDirectory(self, "저장 폴더 선택")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_pdf_files"))
+        d = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
         if d:
             self.run_worker("convert_to_img", file_paths=paths, output_dir=d, 
                           fmt=self.cmb_fmt.currentText(), dpi=self.spn_dpi.value())
@@ -325,16 +333,16 @@ class MainWindowTabsBasicMixin:
     def action_img_to_pdf(self):
         files = self.img_list.get_all_paths()
         if not files:
-            return QMessageBox.warning(self, "알림", "이미지 파일을 추가하세요.")
-        save, _ = QFileDialog.getSaveFileName(self, "저장", "images.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_image_files"))
+        save, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "images.pdf", "PDF (*.pdf)")
         if save:
             self.run_worker("images_to_pdf", files=files, output_path=save)
 
     def action_txt(self):
         paths = self.txt_conv_list.get_all_paths()
         if not paths:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 추가하세요.")
-        d = QFileDialog.getExistingDirectory(self, "저장 폴더 선택")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_pdf_files"))
+        d = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
         if d:
             self.run_worker("extract_text", file_paths=paths, output_dir=d)
 
@@ -370,11 +378,11 @@ class MainWindowTabsBasicMixin:
         ]
         for label, value in pn_positions:
             self.cmb_pn_pos.addItem(label, value)
-        self.cmb_pn_pos.setToolTip("페이지 번호 위치 선택") 
+        self.cmb_pn_pos.setToolTip(tm.get("tooltip_page_number_pos"))
         opt_pn.addWidget(self.cmb_pn_pos)
         opt_pn.addWidget(QLabel(tm.get("lbl_format")))
         self.cmb_pn_format = QComboBox()
-        self.cmb_pn_format.addItems(["{n} / {total}", "Page {n} of {total}", "- {n} -", "{n}", "페이지 {n}"])
+        self.cmb_pn_format.addItems(["{n} / {total}", "Page {n} of {total}", "- {n} -", "{n}", tm.get("format_page_local")])
         self.cmb_pn_format.setEditable(True)
         opt_pn.addWidget(self.cmb_pn_format)
         l_pn.addLayout(opt_pn)
@@ -450,8 +458,8 @@ class MainWindowTabsBasicMixin:
         path = self.sel_split.get_path()
         rng = self.inp_range.text()
         if not path or not rng:
-            return QMessageBox.warning(self, "알림", "파일과 페이지 범위를 입력하세요.")
-        d = QFileDialog.getExistingDirectory(self, "저장 폴더")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_range_required"))
+        d = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
         if d:
             self.run_worker("split", file_path=path, output_dir=d, page_range=rng)
 
@@ -459,19 +467,19 @@ class MainWindowTabsBasicMixin:
         path = self.sel_del.get_path()
         rng = self.inp_del_range.text()
         if not path or not rng:
-            return QMessageBox.warning(self, "알림", "파일과 삭제할 페이지를 입력하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "deleted.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_delete_range_required"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "deleted.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("delete_pages", file_path=path, output_path=s, page_range=rng)
 
     def action_rotate(self):
         path = self.sel_rot.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_file"))
         angle = self.cmb_rot.currentData()
         if angle is None:
             angle = 90
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "rotated.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "rotated.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("rotate", file_path=path, output_path=s, angle=angle)
 
@@ -479,12 +487,12 @@ class MainWindowTabsBasicMixin:
         """페이지 번호 삽입 실행"""
         path = self.sel_pn.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         
         position = self.cmb_pn_pos.currentData() or "bottom"
         format_str = self.cmb_pn_format.currentText()
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "numbered.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "numbered.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("add_page_numbers", file_path=path, output_path=s,
                           position=position, format=format_str)
@@ -642,9 +650,9 @@ class MainWindowTabsBasicMixin:
     def action_metadata(self):
         path = self.sel_meta.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_file"))
         meta = {'title': self.inp_title.text(), 'author': self.inp_author.text(), 'subject': self.inp_subj.text()}
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "metadata_updated.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "metadata_updated.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("metadata_update", file_path=path, output_path=s, metadata=meta)
 
@@ -652,9 +660,9 @@ class MainWindowTabsBasicMixin:
         path = self.sel_wm.get_path()
         text = self.inp_wm.text()
         if not path or not text:
-            return QMessageBox.warning(self, "알림", "파일과 텍스트를 입력하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_text_required"))
         color = self.cmb_wm_color.currentData() or (0.5, 0.5, 0.5)
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "watermarked.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "watermarked.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("watermark", file_path=path, output_path=s, text=text, color=color)
 
@@ -662,8 +670,8 @@ class MainWindowTabsBasicMixin:
         path = self.sel_sec.get_path()
         pw = self.inp_pw.text()
         if not path or not pw:
-            return QMessageBox.warning(self, "알림", "파일과 비밀번호를 입력하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "encrypted.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_password_required"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "encrypted.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("protect", file_path=path, output_path=s, password=pw)
 
@@ -684,8 +692,8 @@ class MainWindowTabsBasicMixin:
     def action_compress(self):
         path = self.sel_sec.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "compressed.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_file"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "compressed.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("compress", file_path=path, output_path=s)
 
@@ -746,7 +754,7 @@ class MainWindowTabsBasicMixin:
                 item.setData(Qt.ItemDataRole.UserRole, i)
                 self.reorder_list.addItem(item)
         except Exception as e:
-            QMessageBox.warning(self, "오류", f"페이지 로드 실패: {e}")
+            QMessageBox.warning(self, tm.get("error"), tm.get("msg_page_load_failed", str(e)))
         finally:
             if doc:
                 doc.close()
@@ -762,9 +770,9 @@ class MainWindowTabsBasicMixin:
     def action_reorder(self):
         path = self.sel_reorder.get_path()
         if not path or self.reorder_list.count() == 0:
-            return QMessageBox.warning(self, "알림", "PDF를 선택하고 페이지를 확인하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf_and_check_pages"))
         page_order = [self.reorder_list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.reorder_list.count())]
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "reordered.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "reordered.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("reorder", file_path=path, output_path=s, page_order=page_order)
 
@@ -849,7 +857,7 @@ class MainWindowTabsBasicMixin:
         self.tabs.addTab(tab, f"📦 {tm.get('tab_batch')}")
 
     def _batch_add_files(self):
-        files, _ = QFileDialog.getOpenFileNames(self, "PDF 선택", "", "PDF (*.pdf)")
+        files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")
         for f in files:
             item = QListWidgetItem(f"📄 {os.path.basename(f)}")
             item.setData(Qt.ItemDataRole.UserRole, f)
@@ -857,7 +865,7 @@ class MainWindowTabsBasicMixin:
             self.batch_list.addItem(item)
 
     def _batch_add_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "폴더 선택")
+        folder = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_folder"))
         if folder:
             for f in os.listdir(folder):
                 if f.lower().endswith('.pdf'):
@@ -870,14 +878,14 @@ class MainWindowTabsBasicMixin:
     def action_batch(self):
         files = self.batch_list.get_all_paths()
         if not files:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 추가하세요.")
-        out_dir = QFileDialog.getExistingDirectory(self, "출력 폴더 선택")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_pdf_files"))
+        out_dir = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
         if not out_dir:
             return
         op = self.cmb_batch_op.currentData() or self.cmb_batch_op.currentText()
         opt = self.inp_batch_opt.text()
         if op in ("watermark", "encrypt") and not opt:
-            return QMessageBox.warning(self, "알림", tm.get("ph_batch_option"))
+            return QMessageBox.warning(self, tm.get("info"), tm.get("ph_batch_option"))
         self.run_worker("batch", files=files, output_dir=out_dir, operation=op, option=opt)
 
     # ===================== Tab 7: 고급 기능 =====================

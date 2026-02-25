@@ -317,11 +317,14 @@ class MainWindowPreviewMixin:
             meta = doc.metadata
             title = meta.get("title", "-") if meta else "-"
             author = meta.get("author", "-") if meta else "-"
-            info = f"""{os.path.basename(path)}
-
-페이지: {len(doc)}p  크기: {size_kb:.1f}KB
-제목: {title or '-'}
-작성자: {author or '-'}"""
+            info = tm.get(
+                "preview_info",
+                os.path.basename(path),
+                len(doc),
+                size_kb,
+                title or "-",
+                author or "-",
+            )
             self.preview_label.setText(info)
 
             self._current_preview_path = path
@@ -332,7 +335,7 @@ class MainWindowPreviewMixin:
             if len(doc) > 0:
                 self._render_preview_page()
         except Exception as e:
-            self.preview_label.setText(f"미리보기 오류: {e}")
+            self.preview_label.setText(tm.get("preview_error", str(e)))
             self._reset_preview_state()
 
     def _add_to_recent_files(self, path):

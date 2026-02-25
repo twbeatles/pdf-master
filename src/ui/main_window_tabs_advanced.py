@@ -1,7 +1,6 @@
 import logging
 import os
 
-import fitz
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -29,6 +28,41 @@ logger = logging.getLogger(__name__)
 
 
 class MainWindowTabsAdvancedMixin:
+
+    def _normalize_page_input(self, page_value: int, last_page_value: int = 0) -> int:
+        """UI 1-based 페이지 입력을 worker 0-based 인덱스로 정규화."""
+        return -1 if page_value == last_page_value else page_value - 1
+
+    def _parse_freehand_strokes(self, text: str):
+        """x1,y1;x2,y2|x3,y3;x4,y4 형식을 strokes 배열로 변환."""
+        raw = (text or "").strip()
+        if not raw:
+            raise ValueError(tm.get("msg_stroke_required"))
+
+        strokes = []
+        for chunk in raw.split("|"):
+            stroke_points = []
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            for point in chunk.split(";"):
+                pair = point.strip()
+                if not pair:
+                    continue
+                coords = [c.strip() for c in pair.split(",")]
+                if len(coords) != 2:
+                    raise ValueError(tm.get("msg_invalid_stroke_format"))
+                try:
+                    stroke_points.append([float(coords[0]), float(coords[1])])
+                except ValueError as exc:
+                    raise ValueError(tm.get("msg_invalid_stroke_format")) from exc
+            if len(stroke_points) < 2:
+                raise ValueError(tm.get("msg_invalid_stroke_no_points"))
+            strokes.append(stroke_points)
+
+        if not strokes:
+            raise ValueError(tm.get("msg_stroke_required"))
+        return strokes
 
     def setup_advanced_tab(self):
         """고급 기능 탭 - 4개 서브탭으로 구성"""
@@ -82,7 +116,7 @@ class MainWindowTabsAdvancedMixin:
         opt_split.addWidget(self.inp_split_range)
         l_split.addLayout(opt_split)
         b_split = QPushButton(tm.get("btn_split_pdf"))
-        b_split.setToolTip("PDF를 여러 파일로 분할합니다")
+        b_split.setToolTip(tm.get("tooltip_split_pdf"))
         b_split.clicked.connect(self.action_split_adv)
         l_split.addWidget(b_split)
         layout.addWidget(grp_split)
@@ -123,10 +157,9 @@ class MainWindowTabsAdvancedMixin:
         self.sel_crop.pathChanged.connect(self._update_preview)
         l_crop.addWidget(self.sel_crop)
         opt_crop = QHBoxLayout()
-        sides = ["left", "top", "right", "bottom"]
         labels = [tm.get("lbl_left"), tm.get("lbl_top"), tm.get("lbl_right"), tm.get("lbl_bottom")]
-        py_sides = ["좌", "상", "우", "하"] # Keep py names as is for attribute access unless refactored
-        for i, side_name in enumerate(py_sides):
+        attr_sides = ["left", "top", "right", "bottom"]
+        for i, side_name in enumerate(attr_sides):
             opt_crop.addWidget(QLabel(labels[i]))
             spn = QSpinBox()
             spn.setRange(0, 200)
@@ -208,7 +241,7 @@ class MainWindowTabsAdvancedMixin:
         self.sel_rev.pathChanged.connect(self._update_preview)
         l_rev.addWidget(self.sel_rev)
         b_rev = QPushButton(tm.get("btn_reverse_page"))
-        b_rev.setToolTip("페이지 순서를 뒤집습니다")
+        b_rev.setToolTip(tm.get("tooltip_reverse_pages"))
         b_rev.clicked.connect(self.action_reverse_pages)
         l_rev.addWidget(b_rev)
         layout.addWidget(grp_rev)
@@ -288,7 +321,7 @@ class MainWindowTabsAdvancedMixin:
         self.sel_links.pathChanged.connect(self._update_preview)
         l_links.addWidget(self.sel_links)
         b_links = QPushButton(tm.get("btn_extract_link"))
-        b_links.setToolTip("PDF에 포함된 모든 URL 추출")
+        b_links.setToolTip(tm.get("tooltip_extract_links"))
         b_links.clicked.connect(self.action_extract_links)
         l_links.addWidget(b_links)
         layout.addWidget(grp_links)
@@ -300,7 +333,7 @@ class MainWindowTabsAdvancedMixin:
         self.sel_extract.pathChanged.connect(self._update_preview)
         l_extract.addWidget(self.sel_extract)
         b_extract = QPushButton(tm.get("btn_extract_img_adv"))
-        b_extract.setToolTip("PDF에 포함된 모든 이미지 추출")
+        b_extract.setToolTip(tm.get("tooltip_extract_images"))
         b_extract.clicked.connect(self.action_extract_images)
         l_extract.addWidget(b_extract)
         layout.addWidget(grp_extract)
@@ -312,7 +345,7 @@ class MainWindowTabsAdvancedMixin:
         self.sel_table.pathChanged.connect(self._update_preview)
         l_table.addWidget(self.sel_table)
         b_table = QPushButton(tm.get("btn_extract_table"))
-        b_table.setToolTip("PDF의 표 데이터를 CSV로 추출")
+        b_table.setToolTip(tm.get("tooltip_extract_tables"))
         b_table.clicked.connect(self.action_extract_tables)
         l_table.addWidget(b_table)
         layout.addWidget(grp_table)
@@ -324,7 +357,7 @@ class MainWindowTabsAdvancedMixin:
         self.sel_bm.pathChanged.connect(self._update_preview)
         l_bm.addWidget(self.sel_bm)
         b_bm = QPushButton(tm.get("btn_extract_bookmark"))
-        b_bm.setToolTip("PDF의 목차/북마크 구조 추출")
+        b_bm.setToolTip(tm.get("tooltip_extract_bookmarks"))
         b_bm.clicked.connect(self.action_get_bookmarks)
         l_bm.addWidget(b_bm)
         layout.addWidget(grp_bm)
@@ -336,7 +369,7 @@ class MainWindowTabsAdvancedMixin:
         self.sel_info.pathChanged.connect(self._update_preview)
         l_info.addWidget(self.sel_info)
         b_info = QPushButton(tm.get("btn_extract_info"))
-        b_info.setToolTip("페이지 수, 글자 수, 폰트 등 상세 정보")
+        b_info.setToolTip(tm.get("tooltip_pdf_info"))
         b_info.clicked.connect(self.action_pdf_info)
         l_info.addWidget(b_info)
         layout.addWidget(grp_info)
@@ -348,7 +381,7 @@ class MainWindowTabsAdvancedMixin:
         self.sel_md.pathChanged.connect(self._update_preview)
         l_md.addWidget(self.sel_md)
         b_md = QPushButton(tm.get("btn_extract_md"))
-        b_md.setToolTip("PDF 텍스트를 Markdown 형식으로 저장")
+        b_md.setToolTip(tm.get("tooltip_extract_markdown"))
         b_md.clicked.connect(self.action_extract_markdown)
         l_md.addWidget(b_md)
         layout.addWidget(grp_md)
@@ -766,8 +799,9 @@ class MainWindowTabsAdvancedMixin:
         sig_opts.addWidget(self.cmb_sig_pos)
         sig_opts.addWidget(QLabel(tm.get("tab_page") + ":"))
         self.spn_sig_page = QSpinBox()
-        self.spn_sig_page.setRange(-1, 9999)
-        self.spn_sig_page.setValue(-1)
+        self.spn_sig_page.setRange(0, 9999)
+        self.spn_sig_page.setValue(0)
+        self.spn_sig_page.setSpecialValueText(tm.get("label_last_page"))
         self.spn_sig_page.setToolTip(tm.get("tooltip_sig_pos"))
         sig_opts.addWidget(self.spn_sig_page)
         sig_opts.addStretch()
@@ -776,6 +810,46 @@ class MainWindowTabsAdvancedMixin:
         b_sig.clicked.connect(self.action_insert_signature)
         l_sig.addWidget(b_sig)
         layout.addWidget(grp_sig)
+
+        # 프리핸드 서명
+        grp_freehand = QGroupBox(tm.get("grp_freehand_sig"))
+        l_freehand = QVBoxLayout(grp_freehand)
+        self.sel_freehand_pdf = FileSelectorWidget()
+        self.sel_freehand_pdf.pathChanged.connect(self._update_preview)
+        l_freehand.addWidget(self.sel_freehand_pdf)
+        freehand_opts = QHBoxLayout()
+        freehand_opts.addWidget(QLabel(tm.get("tab_page") + ":"))
+        self.spn_freehand_page = QSpinBox()
+        self.spn_freehand_page.setRange(0, 9999)
+        self.spn_freehand_page.setValue(0)
+        self.spn_freehand_page.setSpecialValueText(tm.get("label_last_page"))
+        freehand_opts.addWidget(self.spn_freehand_page)
+        freehand_opts.addWidget(QLabel(tm.get("lbl_line_width")))
+        self.spn_freehand_width = QSpinBox()
+        self.spn_freehand_width.setRange(1, 20)
+        self.spn_freehand_width.setValue(2)
+        freehand_opts.addWidget(self.spn_freehand_width)
+        freehand_opts.addWidget(QLabel(tm.get("lbl_color")))
+        self.cmb_freehand_color = QComboBox()
+        freehand_colors = [
+            (tm.get("color_black"), (0, 0, 0)),
+            (tm.get("color_blue"), (0, 0, 1)),
+            (tm.get("color_red"), (1, 0, 0)),
+        ]
+        for label, value in freehand_colors:
+            self.cmb_freehand_color.addItem(label, value)
+        freehand_opts.addWidget(self.cmb_freehand_color)
+        freehand_opts.addStretch()
+        l_freehand.addLayout(freehand_opts)
+        l_freehand.addWidget(QLabel(tm.get("lbl_freehand_guide")))
+        self.txt_freehand_strokes = QLineEdit()
+        self.txt_freehand_strokes.setPlaceholderText(tm.get("ph_freehand_strokes"))
+        l_freehand.addWidget(self.txt_freehand_strokes)
+        b_freehand = QPushButton(tm.get("btn_add_freehand_sig"))
+        b_freehand.setObjectName("actionBtn")
+        b_freehand.clicked.connect(self.action_add_freehand_signature)
+        l_freehand.addWidget(b_freehand)
+        layout.addWidget(grp_freehand)
         
         # PDF 복호화
         grp_decrypt = QGroupBox(tm.get("grp_decrypt"))
@@ -854,20 +928,20 @@ class MainWindowTabsAdvancedMixin:
     def action_split_adv(self):
         path = self.sel_split_adv.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        out_dir = QFileDialog.getExistingDirectory(self, "저장 폴더 선택")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        out_dir = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
         if out_dir:
             mode = self.cmb_split_mode.currentData() or "each"
             if mode == "range" and not self.inp_split_range.text().strip():
-                return QMessageBox.warning(self, "알림", "페이지 범위를 입력하세요.")
+                return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_page_range"))
             self.run_worker("split_by_pages", file_path=path, output_dir=out_dir, 
                           split_mode=mode, ranges=self.inp_split_range.text())
 
     def action_stamp(self):
         path = self.sel_stamp.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "stamped.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "stamped.pdf", "PDF (*.pdf)")
         if s:
             pos = self.cmb_stamp_pos.currentData() or "top-right"
             self.run_worker("add_stamp", file_path=path, output_path=s,
@@ -876,22 +950,22 @@ class MainWindowTabsAdvancedMixin:
     def action_crop(self):
         path = self.sel_crop.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "cropped.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "cropped.pdf", "PDF (*.pdf)")
         if s:
             margins = {
-                'left': self.spn_crop_좌.value(),
-                'top': self.spn_crop_상.value(),
-                'right': self.spn_crop_우.value(),
-                'bottom': self.spn_crop_하.value()
+                'left': self.spn_crop_left.value(),
+                'top': self.spn_crop_top.value(),
+                'right': self.spn_crop_right.value(),
+                'bottom': self.spn_crop_bottom.value()
             }
             self.run_worker("crop_pdf", file_path=path, output_path=s, margins=margins)
 
     def action_blank_page(self):
         path = self.sel_blank.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_blank.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_blank.pdf", "PDF (*.pdf)")
         if s:
             pos = self.spn_blank_pos.value() - 1  # 0-indexed
             self.run_worker("insert_blank_page", file_path=path, output_path=s, position=pos)
@@ -902,8 +976,8 @@ class MainWindowTabsAdvancedMixin:
         """PDF 링크 추출"""
         path = self.sel_links.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "links.txt", "텍스트 (*.txt)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "links.txt", "Text (*.txt)")
         if s:
             self.run_worker("extract_links", file_path=path, output_path=s)
 
@@ -911,45 +985,17 @@ class MainWindowTabsAdvancedMixin:
         """PDF 양식 필드 감지"""
         path = self.sel_form.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        
-        doc = None
-        try:
-            import fitz
-            doc = fitz.open(path)
-            self.form_fields_list.clear()
-            self._form_field_data = {}  # 필드 데이터 저장
-            
-            for page_num, page in enumerate(doc):
-                widgets = page.widgets()
-                if widgets:
-                    for widget in widgets:
-                        name = widget.field_name or f"field_{self.form_fields_list.count()}"
-                        value = widget.field_value or ""
-                        item = QListWidgetItem(f"📋 {name}: {value}")
-                        item.setData(Qt.ItemDataRole.UserRole, name)
-                        item.setToolTip(f"타입: {widget.field_type_string}, 페이지: {page_num + 1}")
-                        self.form_fields_list.addItem(item)
-                        self._form_field_data[name] = value
-            
-            count = self.form_fields_list.count()
-            if count == 0:
-                QMessageBox.information(self, "양식", "양식 필드가 없습니다.")
-            else:
-                toast = ToastWidget(f"{count}개 필드 감지됨", toast_type='success', duration=2000)
-                toast.show_toast(self)
-        except Exception as e:
-            QMessageBox.warning(self, "오류", f"필드 감지 실패: {e}")
-        finally:
-            if doc:
-                doc.close()
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        self.form_fields_list.clear()
+        self._form_field_data = {}
+        self.run_worker("get_form_fields", file_path=path)
 
     def _edit_form_field(self, item):
         """양식 필드 값 수정"""
         name = item.data(Qt.ItemDataRole.UserRole)
         current_value = self._form_field_data.get(name, "")
         
-        new_value, ok = QInputDialog.getText(self, "필드 수정", f"'{name}' 값:", 
+        new_value, ok = QInputDialog.getText(self, tm.get("dlg_edit_field"), tm.get("msg_edit_field_value", name),
                                              QLineEdit.EchoMode.Normal, current_value)
         if ok:
             self._form_field_data[name] = new_value
@@ -959,11 +1005,11 @@ class MainWindowTabsAdvancedMixin:
         """양식 작성 저장"""
         path = self.sel_form.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not hasattr(self, '_form_field_data') or not self._form_field_data:
-            return QMessageBox.warning(self, "알림", "먼저 필드를 감지하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_detect_fields_first"))
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "filled_form.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "filled_form.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("fill_form", file_path=path, output_path=s, 
                           field_values=self._form_field_data)
@@ -974,9 +1020,9 @@ class MainWindowTabsAdvancedMixin:
         path2 = self.sel_compare2.get_path()
         
         if not path1 or not path2:
-            return QMessageBox.warning(self, "알림", "두 개의 PDF 파일을 모두 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_two_pdf"))
         
-        s, _ = QFileDialog.getSaveFileName(self, "비교 결과 저장", "comparison.txt", "텍스트 (*.txt)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("dlg_save_compare"), "comparison.txt", "Text (*.txt)")
         if s:
             self.run_worker("compare_pdfs", file_path1=path1, file_path2=path2, output_path=s)
 
@@ -986,8 +1032,8 @@ class MainWindowTabsAdvancedMixin:
         """PDF 정보 추출"""
         path = self.sel_info.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "pdf_info.txt", "텍스트 (*.txt)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "pdf_info.txt", "Text (*.txt)")
         if s:
             self.run_worker("get_pdf_info", file_path=path, output_path=s)
 
@@ -995,8 +1041,8 @@ class MainWindowTabsAdvancedMixin:
         """페이지 복제"""
         path = self.sel_dup.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "duplicated.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "duplicated.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("duplicate_page", file_path=path, output_path=s,
                           page_num=self.spn_dup_page.value() - 1,  # 0-indexed
@@ -1006,8 +1052,8 @@ class MainWindowTabsAdvancedMixin:
         """페이지 역순 정렬"""
         path = self.sel_rev.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "reversed.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "reversed.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("reverse_pages", file_path=path, output_path=s)
 
@@ -1015,8 +1061,8 @@ class MainWindowTabsAdvancedMixin:
         """페이지 크기 변경"""
         path = self.sel_resize.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "resized.pdf", "PDF (*.pdf)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "resized.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("resize_pages", file_path=path, output_path=s,
                           target_size=self.cmb_resize.currentData() or self.cmb_resize.currentText())
@@ -1025,8 +1071,8 @@ class MainWindowTabsAdvancedMixin:
         """이미지 추출"""
         path = self.sel_extract.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        out_dir = QFileDialog.getExistingDirectory(self, "저장 폴더 선택")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        out_dir = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
         if out_dir:
             self.run_worker("extract_images", file_path=path, output_dir=out_dir)
 
@@ -1036,16 +1082,46 @@ class MainWindowTabsAdvancedMixin:
         sig_path = self.sel_sig_img.get_path()
         
         if not pdf_path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not sig_path:
-            return QMessageBox.warning(self, "알림", "서명 이미지를 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_signature_image"))
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "signed.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "signed.pdf", "PDF (*.pdf)")
         if s:
+            raw_page = self.spn_sig_page.value()
+            page_num = self._normalize_page_input(raw_page, last_page_value=0)
             self.run_worker("insert_signature", file_path=pdf_path, output_path=s,
                           signature_path=sig_path,
-                          page_num=self.spn_sig_page.value(),
+                          page_num=page_num,
                           position=self.cmb_sig_pos.currentData() or "bottom_right")
+
+    def action_add_freehand_signature(self):
+        """프리핸드 서명 삽입"""
+        path = self.sel_freehand_pdf.get_path()
+        if not path:
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+
+        try:
+            strokes = self._parse_freehand_strokes(self.txt_freehand_strokes.text())
+        except ValueError as exc:
+            return QMessageBox.warning(self, tm.get("warning"), str(exc))
+
+        raw_page = self.spn_freehand_page.value()
+        page_num = self._normalize_page_input(raw_page, last_page_value=0)
+        width = self.spn_freehand_width.value()
+        color = self.cmb_freehand_color.currentData() or (0, 0, 0)
+
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_freehand_signature.pdf", "PDF (*.pdf)")
+        if s:
+            self.run_worker(
+                "add_freehand_signature",
+                file_path=path,
+                output_path=s,
+                page_num=page_num,
+                strokes=strokes,
+                color=color,
+                width=width,
+            )
 
     # ===================== v2.9 신규 기능 액션 =====================
 
@@ -1053,8 +1129,8 @@ class MainWindowTabsAdvancedMixin:
         """북마크 추출"""
         path = self.sel_bm.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "bookmarks.txt", "텍스트 (*.txt)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "bookmarks.txt", "Text (*.txt)")
         if s:
             self.run_worker("get_bookmarks", file_path=path, output_path=s)
 
@@ -1064,11 +1140,11 @@ class MainWindowTabsAdvancedMixin:
         term = self.inp_search.text().strip()
         
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not term:
-            return QMessageBox.warning(self, "알림", "검색어를 입력하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_keyword"))
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "search_results.txt", "텍스트 (*.txt)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "search_results.txt", "Text (*.txt)")
         if s:
             self.run_worker("search_text", file_path=path, output_path=s, search_term=term)
 
@@ -1078,11 +1154,11 @@ class MainWindowTabsAdvancedMixin:
         term = self.inp_search.text().strip()
         
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not term:
-            return QMessageBox.warning(self, "알림", "검색어를 입력하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_keyword"))
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "highlighted.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "highlighted.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("highlight_text", file_path=path, output_path=s, search_term=term)
 
@@ -1092,8 +1168,8 @@ class MainWindowTabsAdvancedMixin:
         """테이블 추출"""
         path = self.sel_table.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "tables.csv", "CSV (*.csv)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "tables.csv", "CSV (*.csv)")
         if s:
             self.run_worker("extract_tables", file_path=path, output_path=s)
 
@@ -1103,11 +1179,11 @@ class MainWindowTabsAdvancedMixin:
         password = self.inp_decrypt_pw.text()
         
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not password:
-            return QMessageBox.warning(self, "알림", "비밀번호를 입력하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_password"))
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "decrypted.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "decrypted.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("decrypt_pdf", file_path=path, output_path=s, password=password)
 
@@ -1115,8 +1191,8 @@ class MainWindowTabsAdvancedMixin:
         """주석 목록 추출"""
         path = self.sel_annot.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "annotations.txt", "텍스트 (*.txt)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "annotations.txt", "Text (*.txt)")
         if s:
             self.run_worker("list_annotations", file_path=path, output_path=s)
 
@@ -1124,15 +1200,15 @@ class MainWindowTabsAdvancedMixin:
         """모든 주석 삭제"""
         path = self.sel_annot.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         
-        reply = QMessageBox.question(self, "확인", 
-                                    "모든 주석을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.",
+        reply = QMessageBox.question(self, tm.get("confirm"), 
+                                    tm.get("msg_confirm_remove_annotations"),
                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply != QMessageBox.StandardButton.Yes:
             return
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "no_annotations.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "no_annotations.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("remove_annotations", file_path=path, output_path=s)
 
@@ -1140,41 +1216,20 @@ class MainWindowTabsAdvancedMixin:
         """첨부 파일 목록"""
         path = self.sel_attach.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        
-        doc = None
-        try:
-            import fitz
-            doc = fitz.open(path)
-            count = doc.embfile_count()
-            
-            if count == 0:
-                QMessageBox.information(self, "첨부 파일", "첨부 파일이 없습니다.")
-            else:
-                attachments = []
-                for i in range(count):
-                    info = doc.embfile_info(i)
-                    attachments.append(f"• {info.get('name', 'Unknown')} ({info.get('size', 0)} bytes)")
-                
-                QMessageBox.information(self, "첨부 파일 목록", 
-                                       f"{count}개 첨부 파일:\n\n" + "\n".join(attachments))
-        except Exception as e:
-            QMessageBox.warning(self, "오류", f"첨부 파일 목록 오류: {e}")
-        finally:
-            if doc:
-                doc.close()
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        self.run_worker("list_attachments", file_path=path)
 
     def action_add_attachment(self):
         """파일 첨부"""
         pdf_path = self.sel_attach.get_path()
         if not pdf_path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         
-        attach_path, _ = QFileDialog.getOpenFileName(self, "첨부할 파일 선택", "", "모든 파일 (*.*)")
+        attach_path, _ = QFileDialog.getOpenFileName(self, tm.get("dlg_select_attach_file"), "", tm.get("file_filter_all"))
         if not attach_path:
             return
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_attachment.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_attachment.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("add_attachment", file_path=pdf_path, output_path=s, attach_path=attach_path)
 
@@ -1182,9 +1237,9 @@ class MainWindowTabsAdvancedMixin:
         """첨부 파일 추출"""
         path = self.sel_attach.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         
-        out_dir = QFileDialog.getExistingDirectory(self, "첨부 파일 저장 폴더 선택")
+        out_dir = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_attachment_output_dir"))
         if out_dir:
             self.run_worker("extract_attachments", file_path=path, output_dir=out_dir)
 
@@ -1194,17 +1249,17 @@ class MainWindowTabsAdvancedMixin:
         term = self.inp_redact.text().strip()
         
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not term:
-            return QMessageBox.warning(self, "알림", "삭제할 텍스트를 입력하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_redact_text"))
         
-        reply = QMessageBox.warning(self, "경고", 
-                                   f"'{term}' 텍스트가 영구적으로 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.\n\n계속하시겠습니까?",
+        reply = QMessageBox.warning(self, tm.get("warning"), 
+                                   tm.get("msg_confirm_redact").format(term),
                                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         if reply != QMessageBox.StandardButton.Yes:
             return
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "redacted.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "redacted.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("redact_text", file_path=path, output_path=s, search_term=term)
 
@@ -1212,8 +1267,8 @@ class MainWindowTabsAdvancedMixin:
         """Markdown 추출"""
         path = self.sel_md.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "output.md", "Markdown (*.md)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "output.md", "Markdown (*.md)")
         if s:
             self.run_worker("extract_markdown", file_path=path, output_path=s)
 
@@ -1223,13 +1278,13 @@ class MainWindowTabsAdvancedMixin:
         term = self.inp_markup.text().strip()
         
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not term:
-            return QMessageBox.warning(self, "알림", "마크업할 텍스트를 입력하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_markup_text"))
         
         markup_type = self.cmb_markup.currentData() or "underline"
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "marked_up.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "marked_up.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("add_text_markup", file_path=path, output_path=s, 
                           search_term=term, markup_type=markup_type)
@@ -1238,11 +1293,11 @@ class MainWindowTabsAdvancedMixin:
         """배경색 추가"""
         path = self.sel_bg.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         
         color = self.cmb_bg_color.currentData() or [1, 1, 0.9]
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_background.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_background.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("add_background", file_path=path, output_path=s, color=color)
 
@@ -1254,16 +1309,16 @@ class MainWindowTabsAdvancedMixin:
         content = self.txt_sticky_content.text().strip()
         
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not content:
-            return QMessageBox.warning(self, "알림", "메모 내용을 입력하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_note_content"))
         
         x = self.spn_sticky_x.value()
         y = self.spn_sticky_y.value()
         page_num = self.spn_sticky_page.value() - 1
         icon = self.cmb_sticky_icon.currentText()
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_note.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_note.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("add_sticky_note", file_path=path, output_path=s,
                           page_num=page_num, x=x, y=y, content=content, icon=icon)
@@ -1274,9 +1329,9 @@ class MainWindowTabsAdvancedMixin:
         points_text = self.txt_ink_points.text().strip()
         
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not points_text:
-            return QMessageBox.warning(self, "알림", "좌표를 입력하세요. 형식: x1,y1;x2,y2;x3,y3")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_coords"))
         
         # 좌표 파싱
         try:
@@ -1287,16 +1342,16 @@ class MainWindowTabsAdvancedMixin:
                     points.append([float(coords[0]), float(coords[1])])
             
             if len(points) < 2:
-                return QMessageBox.warning(self, "알림", "최소 2개 이상의 좌표가 필요합니다.")
+                return QMessageBox.warning(self, tm.get("info"), tm.get("msg_min_two_points"))
         except Exception as e:
-            return QMessageBox.warning(self, "오류", f"좌표 형식 오류: {e}")
+            return QMessageBox.warning(self, tm.get("error"), tm.get("msg_coord_format_error", str(e)))
         
         page_num = self.spn_ink_page.value() - 1
         width = self.spn_ink_width.value()
         
         color = self.cmb_ink_color.currentData() or (0, 0, 1)
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_drawing.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_drawing.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("add_ink_annotation", file_path=path, output_path=s,
                           page_num=page_num, points=points, color=color, width=width)
@@ -1307,7 +1362,7 @@ class MainWindowTabsAdvancedMixin:
         """도형 그리기"""
         path = self.sel_shape.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         
         shape_type = self.cmb_shape_type.currentData() or "rect"
         
@@ -1321,7 +1376,7 @@ class MainWindowTabsAdvancedMixin:
         
         fill_color = self.cmb_shape_fill_color.currentData()
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_shape.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_shape.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("draw_shapes", file_path=path, output_path=s,
                           page_num=page_num, shape_type=shape_type,
@@ -1332,7 +1387,7 @@ class MainWindowTabsAdvancedMixin:
         """하이퍼링크 추가"""
         path = self.sel_link.get_path()
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         
         link_mode = self.cmb_link_type.currentData() or "url"
         is_url = link_mode == "url"
@@ -1341,7 +1396,7 @@ class MainWindowTabsAdvancedMixin:
         if is_url:
             url = self.txt_link_url.text().strip()
             if not url:
-                return QMessageBox.warning(self, "알림", "URL을 입력하세요.")
+                return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_url"))
             target = url
             link_type = "url"
         else:
@@ -1351,17 +1406,17 @@ class MainWindowTabsAdvancedMixin:
         
         area_text = self.txt_link_area.text().strip()
         if not area_text:
-            return QMessageBox.warning(self, "알림", "링크 영역을 입력하세요 (x1,y1,x2,y2)")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_link_area"))
         
         try:
             coords = [float(x.strip()) for x in area_text.split(",")]
             if len(coords) != 4:
-                raise ValueError("4개 좌표 필요")
+                raise ValueError(tm.get("msg_need_four_coords"))
             rect = coords
         except Exception as e:
-            return QMessageBox.warning(self, "오류", f"좌표 형식 오류: {e}")
+            return QMessageBox.warning(self, tm.get("error"), tm.get("msg_coord_format_error", str(e)))
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_link.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_link.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("add_link", file_path=path, output_path=s,
                           page_num=page_num, link_type=link_type,
@@ -1373,9 +1428,9 @@ class MainWindowTabsAdvancedMixin:
         text = self.txt_textbox_content.text().strip()
         
         if not path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not text:
-            return QMessageBox.warning(self, "알림", "텍스트를 입력하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_text"))
         
         page_num = self.spn_tb_page.value() - 1
         x = self.spn_tb_x.value()
@@ -1384,7 +1439,7 @@ class MainWindowTabsAdvancedMixin:
         
         color = self.cmb_tb_color.currentData() or (0, 0, 0)
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_textbox.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_textbox.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("insert_textbox", file_path=path, output_path=s,
                           page_num=page_num, x=x, y=y, text=text,
@@ -1397,15 +1452,15 @@ class MainWindowTabsAdvancedMixin:
         page_range = self.txt_copy_pages.text().strip()
         
         if not target_path:
-            return QMessageBox.warning(self, "알림", "대상 PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_target_pdf"))
         if not source_path:
-            return QMessageBox.warning(self, "알림", "소스 PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_source_pdf"))
         if not page_range:
-            return QMessageBox.warning(self, "알림", "복사할 페이지를 입력하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_copy_pages"))
         
         insert_pos = self.spn_copy_insert.value()
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "merged.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "merged.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("copy_page_between_docs", file_path=target_path, output_path=s,
                           source_path=source_path, page_range=page_range, insert_at=insert_pos)
@@ -1416,15 +1471,15 @@ class MainWindowTabsAdvancedMixin:
         img_path = self.sel_img_wm_img.get_path()
         
         if not pdf_path:
-            return QMessageBox.warning(self, "알림", "PDF 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
         if not img_path:
-            return QMessageBox.warning(self, "알림", "이미지 파일을 선택하세요.")
+            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_image_file"))
         
         position = self.cmb_img_wm_pos.currentData() or "center"
         scale = self.spn_img_wm_scale.value() / 100.0
         opacity = self.spn_img_wm_opacity.value() / 100.0
         
-        s, _ = QFileDialog.getSaveFileName(self, "저장", "with_image_watermark.pdf", "PDF (*.pdf)")
+        s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_image_watermark.pdf", "PDF (*.pdf)")
         if s:
             self.run_worker("image_watermark", file_path=pdf_path, output_path=s,
                           image_path=img_path, position=position,
