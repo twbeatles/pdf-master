@@ -79,10 +79,10 @@
 ### 📊 Data Extraction
 | Feature | Description | Output |
 |---------|-------------|--------|
-| **Extract Links** | List URLs inside document | List view |
+| **Extract Links** | List URLs inside document | Save as TXT |
 | **Extract Images** | Extract embedded images | Save as PNG/JPG |
 | **Extract Tables** | Extract table data | Save as CSV |
-| **Extract Bookmarks** | Extract outline structure | List view |
+| **Extract Bookmarks** | Extract outline structure | Save as TXT |
 | **Markdown Convert** | PDF → Markdown | Save as MD |
 | **Attachment Manager** | Add/Extract attachments | Various formats |
 
@@ -147,7 +147,7 @@ python main.py
 1. Select **Convert** tab
 2. Select PDF file
 3. Choose output format (PNG, JPG, WEBP, etc.)
-4. Set DPI (Default: 200)
+4. Set DPI (Default: 150)
 5. **Convert** → Select output folder
 
 ### 3. Page Operations (Extract/Delete/Rotate)
@@ -289,9 +289,24 @@ Location: `~/.pdf_master_settings.json`
 }
 ```
 
+API key storage policy:
+- `keyring` available: keyring-first save/load
+- `keyring` unavailable: settings-file fallback (`gemini_api_key`)
+- Legacy plain key is migrated/cleaned when keyring path is active
+
 ---
 
 ## 📝 Changelog
+
+### v4.5.2 (2026-02-25) - Implementation Risk Fix Pack
+- Strengthened `add_text_markup` input validation (`markup_type` whitelist + crash guard)
+- Switched form field / attachment listing to worker path (`get_form_fields`, `list_attachments`)
+- Expanded PDF→Image format options to `png/jpg/webp/bmp/tiff` with legacy preset fallback
+- Added Freehand Signature UI and connected worker mode (`add_freehand_signature`)
+- Unified AI key storage through `settings.get_api_key/set_api_key`
+- Unified page index policy (1-based UI, normalized before worker call)
+- Replaced major UI hardcoded strings with i18n keys and synced translation maps
+- Added regression tests for each risk area
 
 ### v4.5.1 (2026-02-19) - Stability/Compatibility
 - Added worker input preflight validation (existence/size checks before execution)
@@ -325,13 +340,20 @@ Location: `~/.pdf_master_settings.json`
 
 ---
 
-## 🧪 Test Status (v4.5.1)
+## 🧪 Test Status (v4.5.2)
 
 - Added:
   - `tests/test_worker_param_compat.py`
   - `tests/test_worker_preflight.py`
   - `tests/test_i18n.py`
-- Current baseline remains `pytest -q` pass for existing + new test suites.
+  - `tests/test_worker_markup_validation.py`
+  - `tests/test_worker_form_attachment_modes.py`
+  - `tests/test_convert_format_options.py`
+  - `tests/test_freehand_signature_ui_flow.py`
+  - `tests/test_ai_key_storage_path.py`
+  - `tests/test_page_index_policy.py`
+  - `tests/test_i18n_ui_hardcoded_smoke.py`
+- Current baseline: full `pytest -q` pass (37 tests).
 
 ---
 

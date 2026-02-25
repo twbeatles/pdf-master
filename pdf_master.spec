@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PDF Master v4.5 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
-# Python 3.10+ 호환, v4.5 코드 변경 사항 반영 (Verified 2026-02-05)
+# Python 3.10+ 호환, v4.5 코드 변경 사항 반영 (Verified 2026-02-25)
 
 import sys
 import os
@@ -215,7 +215,8 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=datas,
-    hiddenimports=list(set(hiddenimports)),
+    # Reproducible builds: deterministic ordering
+    hiddenimports=sorted(set(hiddenimports)),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

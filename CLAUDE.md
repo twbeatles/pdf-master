@@ -104,6 +104,9 @@ error_signal = pyqtSignal(str)         # 에러 메시지
 | `add_link` | 하이퍼링크 추가 (v4.5) | `add_link()` |
 | `insert_textbox` | 텍스트 상자 삽입 (v4.5) | `insert_textbox()` |
 | `copy_page_between_docs` | 페이지 복사 (v4.5) | `copy_page_between_docs()` |
+| `get_form_fields` | 양식 필드 감지 | `get_form_fields()` |
+| `list_attachments` | 첨부 파일 목록 조회 | `list_attachments()` |
+| `add_freehand_signature` | 프리핸드 서명 삽입 | `add_freehand_signature()` |
 
 #### v4.5.1 안정화 핵심 (2026-02-19)
 - `run()` 시작 시 `_preflight_inputs()`를 통해 입력 파일 존재/크기를 선검증합니다.
@@ -405,6 +408,22 @@ class ZoomablePreviewWidget(QWidget):
 - `tests/test_i18n.py`
   - 비권장 `locale.getdefaultlocale()` 미사용 경로 검증
 
+### v4.5.2 추가 테스트 (2026-02-25)
+- `tests/test_worker_markup_validation.py`
+  - `add_text_markup` 유효/무효 입력 처리 검증
+- `tests/test_worker_form_attachment_modes.py`
+  - `get_form_fields`/`list_attachments` payload 및 UI 소비 경로 검증
+- `tests/test_convert_format_options.py`
+  - PDF→이미지 포맷 노출(`png/jpg/webp/bmp/tiff`) 및 프리셋 fallback 검증
+- `tests/test_freehand_signature_ui_flow.py`
+  - 프리핸드 서명 stroke 파싱/Worker 연결 검증
+- `tests/test_ai_key_storage_path.py`
+  - keyring 우선/파일 폴백 저장 경로 정책 검증
+- `tests/test_page_index_policy.py`
+  - UI 1-based 입력 정규화 검증
+- `tests/test_i18n_ui_hardcoded_smoke.py`
+  - UI 하드코딩 문자열 및 i18n 키 누락 스모크 검증
+
 ---
 
 ## 🚀 빌드 가이드
@@ -481,4 +500,4 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5 기준으로 작성되었습니다. (2026-01-22)*
+*이 문서는 PDF Master v4.5.2 기준으로 작성되었습니다. (2026-02-25)*
