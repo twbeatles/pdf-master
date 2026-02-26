@@ -1,4 +1,4 @@
-# GEMINI.md - PDF Master v4.5 AI 가이드
+# GEMINI.md - PDF Master v4.5.3 AI 가이드
 
 이 문서는 AI 어시스턴트(Gemini)가 PDF Master 프로젝트를 이해하고 개발을 지원하기 위한 가이드입니다.
 
@@ -12,7 +12,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| **버전** | v4.5 |
+| **버전** | v4.5.3 |
 | **언어** | Python 3.10+ |
 | **UI 프레임워크** | PyQt6 6.5+ |
 | **PDF 엔진** | PyMuPDF (fitz) |
@@ -41,36 +41,46 @@
 ## 🗂️ 디렉토리 구조
 
 ```
-pdf-master-main/
-├── main.py                    # 애플리케이션 진입점
-├── pdf_master.spec            # PyInstaller 빌드 설정
-├── README.md                  # 프로젝트 문서
-├── CLAUDE.md                  # Claude AI 가이드
-├── GEMINI.md                  # Gemini AI 가이드 (이 파일)
+pdf-master/
+├── main.py
+├── pdf_master.spec
+├── README.md
+├── README_EN.md
+├── CLAUDE.md
+├── GEMINI.md
 └── src/
-    ├── __init__.py
-    ├── core/                  # 핵심 비즈니스 로직
-    │   ├── ai_service.py      # Gemini AI 서비스
-    │   ├── constants.py       # 전역 상수
-    │   ├── i18n.py            # 다국어 지원
-    │   ├── settings.py        # 설정 관리
-    │   ├── undo_manager.py    # Undo/Redo 관리
-    │   └── worker.py          # PDF 작업 워커 스레드
-    └── ui/                              # 사용자 인터페이스
-        ├── main_window.py               # 메인 윈도우 조립/수명주기
-        ├── main_window_config.py        # 앱 상수/AI 가용성
-        ├── main_window_core.py          # 메뉴/헤더/테마/단축키
-        ├── main_window_preview.py       # 미리보기/최근 파일
-        ├── main_window_worker.py        # Worker 연결/오버레이
-        ├── main_window_undo.py          # Undo/Redo/백업 정리
-        ├── main_window_tabs_basic.py    # 기본 탭 (병합/변환/페이지/보안/순서/배치)
-        ├── main_window_tabs_advanced.py # 고급 탭 (편집/추출/마크업/기타)
-        ├── main_window_tabs_ai.py       # AI 탭/채팅/키워드/그리드
-        ├── progress_overlay.py          # 진행률 오버레이
-        ├── styles.py                    # 테마/스타일
-        ├── thumbnail_grid.py            # 썸네일 그리드
-        ├── widgets.py                   # 커스텀 위젯
-        └── zoomable_preview.py          # 줌 가능 미리보기
+    ├── core/
+    │   ├── ai_service.py
+    │   ├── constants.py
+    │   ├── i18n.py
+    │   ├── settings.py
+    │   ├── undo_manager.py
+    │   ├── worker.py                # 호환 shim + 공통 로직
+    │   └── worker_ops/              # Worker 기능 분할 구현
+    │       ├── pdf_ops.py
+    │       └── ai_ops.py
+    └── ui/
+        ├── main_window.py
+        ├── main_window_config.py
+        ├── main_window_tabs_basic.py     # 호환 shim
+        ├── main_window_tabs_advanced.py  # 호환 shim
+        ├── main_window_tabs_ai.py        # 호환 shim
+        ├── main_window_core.py           # 호환 shim
+        ├── main_window_preview.py        # 호환 shim
+        ├── main_window_worker.py         # 호환 shim
+        ├── main_window_undo.py           # 호환 shim
+        ├── tabs_basic/
+        ├── tabs_advanced/
+        ├── tabs_ai/
+        ├── window_core/
+        ├── window_preview/
+        ├── window_worker/
+        ├── window_undo/
+        ├── progress_overlay.py
+        ├── styles.py
+        ├── thumbnail_grid.py
+        ├── widgets.py
+        └── zoomable_preview.py
 ```
 
 ---
@@ -123,7 +133,7 @@ error_signal = pyqtSignal(str)        # 에러 메시지
   - 단일 입력(`shape_type/x/y/width/height/line_color/fill_color`)도 내부 `shapes=[...]`로 정규화됨
 - `add_link`
   - `link_type`로 `url/page` 별칭 허용 (`uri/goto`로 매핑)
-  - `target`은 0-index/1-index 모두 허용 (범위 내에서 안전 변환)
+  - `target`은 Worker 경계에서 0-based만 허용 (UI에서 1-based 입력을 사전 정규화)
 - `insert_textbox`
   - `rect` 미지정 시 `x,y,width,height`로 자동 사각형 생성 (기본 200x50)
 - `copy_page_between_docs`
@@ -263,13 +273,9 @@ class TranslationManager:
 **믹스인 구성 (UI 분리 구조):**
 - `main_window.py`: QMainWindow 구성, `__init__`, `closeEvent`
 - `main_window_config.py`: 앱 상수/AI 가용성
-- `main_window_core.py`: 메뉴/헤더/테마/단축키
-- `main_window_preview.py`: 미리보기/최근 파일
-- `main_window_worker.py`: Worker 연결/오버레이/성공·실패 처리
-- `main_window_undo.py`: Undo/Redo, 백업 정리
-- `main_window_tabs_basic.py`: 기본 탭 UI/액션
-- `main_window_tabs_advanced.py`: 고급 탭 UI/액션
-- `main_window_tabs_ai.py`: AI 탭 UI/액션
+- `main_window_*.py`: 기존 import 경로 호환 shim
+- `tabs_basic`, `tabs_advanced`, `tabs_ai`: 탭 기능 실제 구현
+- `window_core`, `window_preview`, `window_worker`, `window_undo`: 공통 UI 동작 실제 구현
 
 **단축키:**
 | 단축키 | 기능 |
@@ -485,35 +491,33 @@ pyinstaller pdf_master.spec --clean
 
 ---
 
-## 📝 파일별 라인 수
+## 📝 모듈 매핑 (분할 구조)
 
-| 파일 | 라인 수 | 설명 |
-|------|--------|------|
-| `main.py` | 82 | 진입점 |
-| `src/core/worker.py` | 2342 | PDF 작업 워커 |
-| `src/core/ai_service.py` | 574 | AI 서비스 |
-| `src/core/settings.py` | 149 | 설정 관리 |
-| `src/core/constants.py` | 133 | 상수 |
-| `src/core/undo_manager.py` | 178 | Undo/Redo |
-| `src/core/i18n.py` | 1087 | 다국어 지원 |
-| `src/ui/main_window.py` | 205 | 메인 윈도우 조립 |
-| `src/ui/main_window_config.py` | 15 | 앱 상수 |
-| `src/ui/main_window_core.py` | 339 | 메뉴/헤더/테마/단축키 |
-| `src/ui/main_window_preview.py` | 285 | 미리보기/최근 파일 |
-| `src/ui/main_window_worker.py` | 260 | Worker 연결/오버레이 |
-| `src/ui/main_window_undo.py` | 234 | Undo/Redo/백업 정리 |
-| `src/ui/main_window_tabs_basic.py` | 828 | 기본 탭 |
-| `src/ui/main_window_tabs_advanced.py` | 1386 | 고급 탭 |
-| `src/ui/main_window_tabs_ai.py` | 526 | AI 탭 |
-| `src/ui/styles.py` | 846 | 테마/스타일 |
-| `src/ui/widgets.py` | 731 | 커스텀 위젯 |
-| `src/ui/progress_overlay.py` | 281 | 진행 오버레이 |
-| `src/ui/thumbnail_grid.py` | 397 | 썸네일 그리드 |
-| `src/ui/zoomable_preview.py` | 399 | 줌 미리보기 |
+| 경로 | 역할 |
+|------|------|
+| `src/core/worker.py` | Worker 공통 유틸/디스패치, 호환 경로 유지 |
+| `src/core/worker_ops/pdf_ops.py` | PDF 편집/추출/보안 작업 구현 |
+| `src/core/worker_ops/ai_ops.py` | AI 요약/질의/키워드 작업 구현 |
+| `src/ui/main_window_*.py` | UI 호환 shim |
+| `src/ui/tabs_basic/*` | 기본 탭(병합/변환/페이지/보안/순서/배치) |
+| `src/ui/tabs_advanced/*` | 고급 탭(편집/추출/마크업/기타) |
+| `src/ui/tabs_ai/*` | AI 탭/스토리지/액션 |
+| `src/ui/window_core/*` | 메뉴/테마/단축키/상태 |
+| `src/ui/window_preview/*` | 미리보기/문서/네비게이션 |
+| `src/ui/window_worker/*` | Worker UI 수명주기 |
+| `src/ui/window_undo/*` | Undo/Redo/백업 정리 |
 
 ---
 
 ## 🚀 버전 히스토리
+
+### v4.5.3 (2026-02-26)
+- 배치 워터마크 런타임 실패 수정 및 파일별 실패 원인 요약
+- 페이지 복사 strict range 정책 적용(무효 범위 hard-fail)
+- 첨부 추출 파일명 정규화/경로 탈출 차단 강화
+- Worker 링크 페이지 정책을 0-based 단일 정책으로 통일
+- `replace_page`/`set_bookmarks`/`add_annotation` UI 기본 노출
+- UI/Worker 대형 파일을 폴더 기반 모듈로 분할(`tabs_*`, `window_*`, `worker_ops`)
 
 ### v4.5 (현재)
 - 도형 그리기 UI (draw_shapes)
@@ -559,4 +563,4 @@ pyinstaller pdf_master.spec --clean
 
 ---
 
-*이 문서는 PDF Master v4.5 기준으로 작성되었습니다. (2026-01-22)*
+*이 문서는 PDF Master v4.5.3 기준으로 작성되었습니다. (2026-02-26)*

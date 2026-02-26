@@ -1,4 +1,4 @@
-# PDF Master v4.5
+# PDF Master v4.5.3
 
 📑 **All-in-One PDF Editor** - PyQt6 based Desktop Application
 
@@ -43,6 +43,7 @@
 | **Duplicate Page** | Copy selected page |
 | **Reverse Order** | Reverse page order |
 | **Resize Pages** | Resize to A4, A3, Letter, Legal, etc. |
+| **Replace Page** | Replace target page with a page from another PDF (v4.5.3) |
 
 ### 🔒 Security & Protection
 | Feature | Description |
@@ -61,12 +62,14 @@
 | **Crop PDF** | Trim margins |
 | **Edit Metadata** | Modify title, author, subject, keywords |
 | **Compare PDFs** | Analyze text differences between two PDFs |
+| **Set Bookmarks** | Save outline via `level|title|page` lines (v4.5.3) |
 
 ### 📝 Annotation & Markup
 | Feature | Description |
 |---------|-------------|
 | **Highlight Text** | Highlighter effect |
 | **Sticky Note** | Add memo notes |
+| **Basic Annotation** | Add text/freetext annotation (v4.5.3) |
 | **Underline/Strike** | Text markup |
 | **Draw Shapes** | Add rectangles, circles, lines (v4.5) |
 | **Add Hyperlinks** | URL or page navigation links (v4.5) |
@@ -229,49 +232,49 @@ pyinstaller pdf_master.spec --clean
 ## 📁 Project Structure
 
 ```
-pdf-master-main/
-├── main.py                    # Entry point
-├── pdf_master.spec            # PyInstaller spec
-├── README.md                  # Korean Documentation
-├── README_EN.md               # English Documentation
-├── CLAUDE.md                  # Claude AI Guide
-├── GEMINI.md                  # Gemini AI Guide
+pdf-master/
+├── main.py
+├── pdf_master.spec
+├── README.md
+├── README_EN.md
+├── CLAUDE.md
+├── GEMINI.md
 └── src/
-    ├── core/                  # Core Business Logic
-    │   ├── ai_service.py      # Gemini AI Service
-    │   ├── constants.py       # Global Constants
-    │   ├── i18n.py            # Internationalization (v4.4)
-    │   ├── settings.py        # Settings Management
-    │   ├── undo_manager.py    # Undo/Redo Manager
-    │   └── worker.py          # Worker Thread
-    └── ui/                    # UI Components
-        ├── main_window.py     # Main Window
-        ├── progress_overlay.py # Progress Overlay
-        ├── styles.py          # Theme/Styles
-        ├── thumbnail_grid.py  # Thumbnail Grid
-        ├── widgets.py         # Custom Widgets
-        └── zoomable_preview.py # Zoomable Preview
+    ├── core/
+    │   ├── ai_service.py
+    │   ├── constants.py
+    │   ├── i18n.py
+    │   ├── settings.py
+    │   ├── undo_manager.py
+    │   ├── worker.py                # compatibility shim + shared logic
+    │   └── worker_ops/              # split worker implementations
+    │       ├── pdf_ops.py
+    │       └── ai_ops.py
+    └── ui/
+        ├── main_window.py
+        ├── main_window_config.py
+        ├── main_window_tabs_basic.py     # compatibility shim
+        ├── main_window_tabs_advanced.py  # compatibility shim
+        ├── main_window_tabs_ai.py        # compatibility shim
+        ├── main_window_core.py           # compatibility shim
+        ├── main_window_preview.py        # compatibility shim
+        ├── main_window_worker.py         # compatibility shim
+        ├── main_window_undo.py           # compatibility shim
+        ├── tabs_basic/                   # split basic-tab modules
+        ├── tabs_advanced/                # split advanced-tab modules
+        ├── tabs_ai/                      # split AI-tab modules
+        ├── window_core/                  # split core-window modules
+        ├── window_preview/               # split preview modules
+        ├── window_worker/                # split worker-UI modules
+        ├── window_undo/                  # split undo modules
+        ├── progress_overlay.py
+        ├── styles.py
+        ├── thumbnail_grid.py
+        ├── widgets.py
+        └── zoomable_preview.py
 ```
 
-Detailed UI module split used by current codebase:
-
-```
-src/ui/
-├── main_window.py               # Main window assembly/lifecycle
-├── main_window_config.py        # App constants/AI availability
-├── main_window_core.py          # Menu/header/theme/shortcuts
-├── main_window_preview.py       # Preview/recent files
-├── main_window_worker.py        # Worker binding/overlay flow
-├── main_window_undo.py          # Undo/Redo + backup cleanup
-├── main_window_tabs_basic.py    # Basic tabs
-├── main_window_tabs_advanced.py # Advanced sub-tabs/actions
-├── main_window_tabs_ai.py       # AI tab/chat/keywords
-├── progress_overlay.py
-├── styles.py
-├── thumbnail_grid.py
-├── widgets.py
-└── zoomable_preview.py
-```
+Note: `main_window_*.py` and `worker.py` are retained as compatibility shims; runtime implementations live in folder modules.
 
 ---
 
@@ -297,6 +300,16 @@ API key storage policy:
 ---
 
 ## 📝 Changelog
+
+### v4.5.3 (2026-02-26) - PDF Editor Core Risk Fixes + Module Refactor
+- Fixed `batch(operation=watermark)` runtime failure (`insert_text` -> `insert_textbox`) and added per-file failure summaries.
+- Applied strict range policy to `copy_page_between_docs` (invalid/missing range now hard-fails).
+- Hardened `extract_attachments` (filename sanitization, path traversal guard, duplicate suffixing).
+- Unified `fitz.open()` cleanup (`try/finally`) for selected worker methods.
+- Unified `add_link(goto)` policy to 0-based target at worker boundary.
+- Exposed basic UI for `replace_page`, `set_bookmarks`, `add_annotation`.
+- Refactored large UI/worker files into folder-based modules (`tabs_*`, `window_*`, `worker_ops`) with compatibility shims.
+- Updated `pdf_master.spec` hiddenimports to include split packages.
 
 ### v4.5.2 (2026-02-25) - Implementation Risk Fix Pack
 - Strengthened `add_text_markup` input validation (`markup_type` whitelist + crash guard)
@@ -340,9 +353,15 @@ API key storage policy:
 
 ---
 
-## 🧪 Test Status (v4.5.2)
+## 🧪 Test Status (v4.5.3)
 
 - Added:
+  - `tests/test_worker_batch_watermark.py`
+  - `tests/test_worker_copy_page_range_strict.py`
+  - `tests/test_worker_attachment_extract_security.py`
+  - `tests/test_worker_resource_management_structure.py`
+  - `tests/test_link_index_policy.py`
+  - `tests/test_advanced_new_modes_ui_flow.py`
   - `tests/test_worker_param_compat.py`
   - `tests/test_worker_preflight.py`
   - `tests/test_i18n.py`
@@ -353,7 +372,7 @@ API key storage policy:
   - `tests/test_ai_key_storage_path.py`
   - `tests/test_page_index_policy.py`
   - `tests/test_i18n_ui_hardcoded_smoke.py`
-- Current baseline: full `pytest -q` pass (37 tests).
+- Current baseline: full `pytest -q` pass (50 tests).
 
 ---
 

@@ -1,3 +1,9 @@
+"""Compatibility shim for worker UI mixin.
+
+Keeps the original import path stable while delegating lifecycle helpers
+to the folder-based window_worker package.
+"""
+
 import logging
 import os
 
@@ -7,12 +13,12 @@ from PyQt6.QtWidgets import QMessageBox
 from ..core.i18n import tm
 from ..core.worker import WorkerThread
 from .widgets import ToastWidget
+from .window_worker import MainWindowWorkerMixin as _MainWindowWorkerMixin
 
 logger = logging.getLogger(__name__)
 
 
-class MainWindowWorkerMixin:
-
+class MainWindowWorkerMixin(_MainWindowWorkerMixin):
     def run_worker(self, mode, output_path=None, **kwargs):
         """작업 스레드 실행 (안전한 동시 작업 처리)"""
         # 이전 Worker가 실행 중인지 확인
@@ -43,7 +49,7 @@ class MainWindowWorkerMixin:
         self._pending_worker = None
         self._cancel_pending = False
         self._cancel_handled = False
-        
+
         # output_path 추적 (폴더 열기 기능용)
         if output_path:
             self._last_output_path = output_path
@@ -58,7 +64,7 @@ class MainWindowWorkerMixin:
         else:
             self._last_output_path = None
             self._has_output = False
-        
+
         # 작업 모드에 따른 설명 (Undo에서도 사용)
         mode_descriptions = {
             "merge": tm.get("action_merge"),
@@ -105,13 +111,16 @@ class MainWindowWorkerMixin:
             "highlight_text": tm.get("mode_highlight_text"),
             "get_pdf_info": tm.get("mode_get_pdf_info"),
             "get_bookmarks": tm.get("mode_get_bookmarks"),
+            "set_bookmarks": tm.get("mode_set_bookmarks"),
+            "replace_page": tm.get("mode_replace_page"),
+            "add_annotation": tm.get("mode_add_annotation"),
             "decrypt_pdf": tm.get("mode_decrypt_pdf"),
             "compare_pdfs": tm.get("mode_compare_pdfs"),
             "ai_summarize": tm.get("mode_ai_summarize"),
             "ai_ask_question": tm.get("mode_ai_ask"),
             "ai_extract_keywords": tm.get("mode_ai_keywords"),
         }
-        
+
         # v4.3: Undo 지원 작업 - 백업 생성
         self._pending_undo = None  # 초기화
         # v4.5: Undo 지원 모드 확장
@@ -134,9 +143,9 @@ class MainWindowWorkerMixin:
                         'source_path': source,
                         'output_path': output
                     }
-        
+
         description = mode_descriptions.get(mode, tm.get("processing_plain")) + "..."
-        
+
         self.worker = WorkerThread(mode, **kwargs)
         self.worker.progress_signal.connect(self._on_progress_update)
         self.worker.finished_signal.connect(self.on_success)
@@ -146,57 +155,11 @@ class MainWindowWorkerMixin:
         self.btn_open_folder.setVisible(False)
         self.status_label.setText(tm.get("processing_status"))
         self.set_ui_busy(True)
-        
+
         # 진행 오버레이 표시 (개선된 UX)
         self.progress_overlay.show_progress(tm.get("processing"), description)
-        
+
         self.worker.start()
-
-    def _on_progress_update(self, value: int):
-        """진행률 업데이트 (오버레이 + 상태바)"""
-        sender = self.sender()
-        if sender is not None and sender is not self.worker:
-            return  # stale signal
-        self.progress_bar.setValue(value)
-        self.progress_overlay.update_progress(value)
-
-    def _on_worker_cancelled(self):
-        """작업 취소 처리"""
-        if self.worker and self.worker.isRunning():
-            self._cancel_pending = True
-            if hasattr(self.worker, 'cancel'):
-                self.worker.cancel()
-            self.status_label.setText(tm.get("cancelling"))
-
-    def _cleanup_cancelled_worker(self):
-        """취소된 작업 정리 (임시 파일 포함)"""
-        if getattr(self, "_cancel_handled", False):
-            return
-        self.set_ui_busy(False)
-        self.progress_overlay.hide_progress()
-        self.status_label.setText(tm.get("cancelled"))
-        self.progress_bar.setValue(0)
-        self.btn_open_folder.setVisible(False)
-        self._has_output = False
-        self._cancel_pending = False
-        self._cancel_handled = True
-        
-        # v4.4: 취소된 작업의 미완성 출력 파일 정리
-        if hasattr(self, '_last_output_path') and self._last_output_path:
-            output_path = self._last_output_path
-            # 파일인 경우 삭제 시도
-            if os.path.isfile(output_path):
-                try:
-                    # 최근 생성된 파일만 삭제 (5초 이내)
-                    import time
-                    if time.time() - os.path.getmtime(output_path) < 5:
-                        os.remove(output_path)
-                        logger.info(f"Removed incomplete output file: {output_path}")
-                except Exception as e:
-                    logger.debug(f"Could not remove cancelled output: {e}")
-        
-        toast = ToastWidget(tm.get("msg_worker_cancelled"), toast_type='warning', duration=3000)
-        toast.show_toast(self)
 
     def on_cancelled(self, msg):
         sender = self.sender()
@@ -227,7 +190,7 @@ class MainWindowWorkerMixin:
         self.status_label.setText(tm.get("completed"))
         self.progress_bar.setValue(100)
         self.btn_open_folder.setVisible(bool(getattr(self, "_has_output", False) and self._last_output_path))
-        
+
         # v4.0: AI 요약 결과 처리
         if hasattr(self, '_ai_worker_mode') and self._ai_worker_mode:
             self._ai_worker_mode = False
@@ -235,7 +198,7 @@ class MainWindowWorkerMixin:
                 summary = self.worker.kwargs.get('summary_result', '')
                 if summary and hasattr(self, 'txt_summary_result'):
                     self.txt_summary_result.setPlainText(summary)
-        
+
         # v4.5: AI 채팅 답변 처리
         if hasattr(self, '_chat_worker_mode') and self._chat_worker_mode:
             self._chat_worker_mode = False
@@ -257,7 +220,7 @@ class MainWindowWorkerMixin:
                         self.txt_chat_history.append(f"<b>{tm.get('chat_assistant_prefix')}</b> {answer}")
                         self.txt_chat_history.append("<hr>")
                 self._chat_pending_path = None
-        
+
         # v4.5: 키워드 추출 결과 처리
         if hasattr(self, '_keyword_worker_mode') and self._keyword_worker_mode:
             self._keyword_worker_mode = False
@@ -269,12 +232,12 @@ class MainWindowWorkerMixin:
                     self.lbl_keywords_result.setText(keyword_tags)
                 else:
                     self.lbl_keywords_result.setText(tm.get("msg_no_keywords"))
-        
+
         # v4.3: Undo 등록 (파일 수정 작업)
         if hasattr(self, '_pending_undo') and self._pending_undo:
             undo_info = self._pending_undo
             self._pending_undo = None  # 소비
-            
+
             before_state = {
                 "backup_path": undo_info['backup_path'],
                 "target_path": undo_info['output_path']
@@ -283,7 +246,7 @@ class MainWindowWorkerMixin:
                 "output_path": undo_info['output_path'],
                 "target_path": undo_info['output_path']
             }
-            
+
             self.undo_manager.push(
                 action_type=undo_info['action_type'],
                 description=undo_info['description'],
@@ -293,7 +256,7 @@ class MainWindowWorkerMixin:
                 redo_callback=self._redo_from_output
             )
             logger.info(f"Registered undo for: {undo_info['action_type']}")
-        
+
         custom_dialog_shown = False
         if self.worker and hasattr(self.worker, "kwargs"):
             mode = getattr(self.worker, "mode", "")
@@ -359,7 +322,7 @@ class MainWindowWorkerMixin:
         self.status_label.setText(tm.get("error"))
         self.progress_bar.setValue(0)
         self.btn_open_folder.setVisible(False)
-        
+
         if hasattr(self, '_chat_worker_mode') and self._chat_worker_mode:
             self._chat_worker_mode = False
             pending_path = self._chat_pending_path
@@ -378,52 +341,11 @@ class MainWindowWorkerMixin:
                 cursor.removeSelectedText()
                 cursor.deletePreviousChar()
                 self.txt_chat_history.append(f"<span style='color:#ef4444'>❌ {msg}</span>")
-        
+
         # Toast 알림 표시
         toast = ToastWidget(tm.get("error"), toast_type='error', duration=5000)
         toast.show_toast(self)
-        
+
         QMessageBox.critical(self, tm.get("error"), tm.get("msg_worker_error", msg))
         self._finalize_worker()
         self._run_pending_worker()
-
-    def set_ui_busy(self, busy):
-        self.tabs.setEnabled(not busy)
-        self.btn_open_folder.setEnabled(not busy)
-
-    def _finalize_worker(self):
-        """현재 worker의 시그널 연결을 해제하고 Qt 메모리 정리를 예약합니다."""
-        if not self.worker:
-            return
-        try:
-            self.worker.progress_signal.disconnect()
-            self.worker.finished_signal.disconnect()
-            self.worker.error_signal.disconnect()
-            self.worker.cancelled_signal.disconnect()
-        except (TypeError, RuntimeError):
-            pass  # 이미 해제되었거나 연결이 없는 경우
-        self.worker.deleteLater()
-        self.worker = None
-
-    def _run_pending_worker(self):
-        """대기 중인 작업이 있으면 자동 실행"""
-        pending = getattr(self, "_pending_worker", None)
-        if not pending:
-            return
-        if self.worker and self.worker.isRunning():
-            QTimer.singleShot(200, self._run_pending_worker)
-            return
-        self._pending_worker = None
-        QTimer.singleShot(0, lambda: self.run_worker(
-            pending["mode"],
-            pending.get("output_path"),
-            **pending.get("kwargs", {})
-        ))
-
-    def _reset_progress_if_idle(self):
-        """작업이 없을 때만 진행률 초기화"""
-        if self.worker and self.worker.isRunning():
-            return
-        self.progress_bar.setValue(0)
-
-    # ===================== Undo/Redo 헬퍼 =====================

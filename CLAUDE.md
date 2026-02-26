@@ -6,7 +6,7 @@
 
 ## 📌 프로젝트 개요
 
-**PDF Master v4.5**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
+**PDF Master v4.5.3**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
 
 | 항목 | 내용 |
 |------|------|
@@ -21,36 +21,46 @@
 ## 📂 프로젝트 구조
 
 ```
-pdf-master-main/
-├── main.py                    # 애플리케이션 진입점
-├── pdf_master.spec            # PyInstaller 빌드 설정
-├── README.md                  # 프로젝트 설명서
+pdf-master/
+├── main.py
+├── pdf_master.spec
+├── README.md
+├── README_EN.md
+├── CLAUDE.md
+├── GEMINI.md
 └── src/
-    ├── __init__.py
-    ├── core/                  # 핵심 비즈니스 로직
-    │   ├── __init__.py
-    │   ├── ai_service.py      # Gemini AI 서비스
-    │   ├── constants.py       # 상수 정의
-    │   ├── i18n.py            # 다국어 지원 (v4.4)
-    │   ├── settings.py        # 설정 관리
-    │   ├── undo_manager.py    # Undo/Redo 관리
-    │   └── worker.py          # PDF 작업 스레드
-    └── ui/                              # UI 컴포넌트
-        ├── __init__.py
-        ├── main_window.py               # 메인 윈도우 조립/수명주기
-        ├── main_window_config.py        # 앱 상수/AI 가용성
-        ├── main_window_core.py          # 메뉴/헤더/테마/단축키
-        ├── main_window_preview.py       # 미리보기/최근 파일
-        ├── main_window_worker.py        # Worker 연결/오버레이
-        ├── main_window_undo.py          # Undo/Redo/백업 정리
-        ├── main_window_tabs_basic.py    # 기본 탭 (병합/변환/페이지/보안/순서/배치)
-        ├── main_window_tabs_advanced.py # 고급 탭 (편집/추출/마크업/기타)
-        ├── main_window_tabs_ai.py       # AI 탭/채팅/키워드/그리드
-        ├── progress_overlay.py          # 진행 오버레이
-        ├── styles.py                    # 테마 스타일시트
-        ├── thumbnail_grid.py            # 썸네일 그리드
-        ├── widgets.py                   # 커스텀 위젯
-        └── zoomable_preview.py          # 줌/패닝 미리보기
+    ├── core/
+    │   ├── ai_service.py
+    │   ├── constants.py
+    │   ├── i18n.py
+    │   ├── settings.py
+    │   ├── undo_manager.py
+    │   ├── worker.py                # 호환 shim + 공통 유틸/디스패치
+    │   └── worker_ops/              # 실제 Worker 기능 구현
+    │       ├── pdf_ops.py
+    │       └── ai_ops.py
+    └── ui/
+        ├── main_window.py
+        ├── main_window_config.py
+        ├── main_window_tabs_basic.py     # 호환 shim
+        ├── main_window_tabs_advanced.py  # 호환 shim
+        ├── main_window_tabs_ai.py        # 호환 shim
+        ├── main_window_core.py           # 호환 shim
+        ├── main_window_preview.py        # 호환 shim
+        ├── main_window_worker.py         # 호환 shim
+        ├── main_window_undo.py           # 호환 shim
+        ├── tabs_basic/
+        ├── tabs_advanced/
+        ├── tabs_ai/
+        ├── window_core/
+        ├── window_preview/
+        ├── window_worker/
+        ├── window_undo/
+        ├── progress_overlay.py
+        ├── styles.py
+        ├── thumbnail_grid.py
+        ├── widgets.py
+        └── zoomable_preview.py
 ```
 
 ---
@@ -71,9 +81,10 @@ pdf-master-main/
 
 ---
 
-### 2. `src/core/worker.py` - PDF 작업 스레드 (2342줄)
+### 2. `src/core/worker.py` + `src/core/worker_ops/*` - PDF 작업 스레드
 
 `WorkerThread` 클래스는 모든 PDF 작업을 백그라운드에서 처리합니다.
+현재 구조는 `worker.py`가 공통 로직/호환 경로를 유지하고, 실제 작업 구현은 `worker_ops/pdf_ops.py`, `worker_ops/ai_ops.py`로 분리됩니다.
 
 #### 주요 시그널
 ```python
@@ -104,8 +115,12 @@ error_signal = pyqtSignal(str)         # 에러 메시지
 | `add_link` | 하이퍼링크 추가 (v4.5) | `add_link()` |
 | `insert_textbox` | 텍스트 상자 삽입 (v4.5) | `insert_textbox()` |
 | `copy_page_between_docs` | 페이지 복사 (v4.5) | `copy_page_between_docs()` |
+| `replace_page` | 페이지 교체 (v4.5.3 UI 노출) | `replace_page()` |
+| `set_bookmarks` | 북마크 설정 (v4.5.3 UI 노출) | `set_bookmarks()` |
+| `add_annotation` | 주석 추가 (v4.5.3 UI 노출) | `add_annotation()` |
 | `get_form_fields` | 양식 필드 감지 | `get_form_fields()` |
 | `list_attachments` | 첨부 파일 목록 조회 | `list_attachments()` |
+| `extract_attachments` | 첨부 파일 추출 | `extract_attachments()` |
 | `add_freehand_signature` | 프리핸드 서명 삽입 | `add_freehand_signature()` |
 
 #### v4.5.1 안정화 핵심 (2026-02-19)
@@ -117,6 +132,13 @@ error_signal = pyqtSignal(str)         # 에러 메시지
   - `insert_textbox`
   - `copy_page_between_docs`
   - `image_watermark`
+
+#### v4.5.3 정책 업데이트 (2026-02-26)
+- `batch(operation=watermark)`는 `insert_textbox` 기반으로 동작하며 파일별 실패 원인을 완료 메시지에 요약합니다.
+- `copy_page_between_docs`는 무효/누락 `page_range`를 더 이상 묵시 폴백하지 않고 `error_signal`로 종료합니다.
+- `add_link(link_type=goto)`는 Worker 경계에서 0-based 페이지 인덱스만 허용합니다.
+- `extract_attachments`는 첨부 파일명을 정규화하고 출력 경로를 `output_dir` 하위로 강제합니다.
+- `get_pdf_info/get_bookmarks/set_bookmarks/search_text/extract_tables/decrypt_pdf/list_annotations/add_annotation/remove_annotations/add_attachment/extract_attachments`는 `fitz.open()` 자원 정리를 `try/finally` 패턴으로 통일합니다.
 
 #### 취소 처리
 ```python
@@ -256,13 +278,9 @@ class UndoManager:
 
 - `main_window.py`: QMainWindow 구성, `__init__`, `closeEvent`
 - `main_window_config.py`: `APP_NAME`, `VERSION`, `AI_AVAILABLE` 등 상수
-- `main_window_core.py`: 메뉴/헤더/테마/단축키
-- `main_window_preview.py`: 미리보기 렌더링/최근 파일
-- `main_window_worker.py`: Worker 연결, 진행 오버레이, 성공/실패 처리
-- `main_window_undo.py`: Undo/Redo, 백업 관리
-- `main_window_tabs_basic.py`: 기본 탭 구성 및 액션
-- `main_window_tabs_advanced.py`: 고급 탭/서브탭 및 액션
-- `main_window_tabs_ai.py`: AI 탭/채팅/키워드/썸네일 그리드
+- `main_window_*.py`: 기존 import 경로 호환을 위한 shim
+- `tabs_basic`, `tabs_advanced`, `tabs_ai`: 탭별 실제 구현 모듈
+- `window_core`, `window_preview`, `window_worker`, `window_undo`: UI 공통/수명주기 실제 구현 모듈
 
 ---
 
@@ -396,10 +414,12 @@ class ZoomablePreviewWidget(QWidget):
 2. **PDF 검증**: 파일 헤더 (`%PDF-`) 확인으로 유효성 검증
 3. **파일 크기 제한**: `MAX_FILE_SIZE = 2GB` (v4.5.1: Worker preflight에서 실행 전 검증)
 4. **입력 검증**: 페이지 범위 문자열 길이 제한 (`MAX_PAGE_RANGE_LENGTH = 1000`)
+5. **첨부 추출 경로 보호**: 파일명 정규화 + `output_dir` 하위 경로 강제
+6. **링크 인덱스 정책**: Worker `goto` 타겟은 0-based 단일 정책
 
 ---
 
-## 🧪 테스트 업데이트 (v4.5.1)
+## 🧪 테스트 업데이트 (v4.5.3)
 
 - `tests/test_worker_param_compat.py`
   - 고급 기능 kwargs 호환성 검증 (도형/링크/텍스트박스/페이지복사/이미지워터마크)
@@ -423,6 +443,21 @@ class ZoomablePreviewWidget(QWidget):
   - UI 1-based 입력 정규화 검증
 - `tests/test_i18n_ui_hardcoded_smoke.py`
   - UI 하드코딩 문자열 및 i18n 키 누락 스모크 검증
+
+### v4.5.3 추가 테스트 (2026-02-26)
+- `tests/test_worker_batch_watermark.py`
+  - 배치 워터마크 출력 생성 및 실패 파일 원인 요약 검증
+- `tests/test_worker_copy_page_range_strict.py`
+  - 페이지 복사 무효 범위 hard-fail 및 정상 범위 회귀 검증
+- `tests/test_worker_attachment_extract_security.py`
+  - 첨부 추출 파일명 정규화/중복 처리/출력 경로 고정 검증
+- `tests/test_worker_resource_management_structure.py`
+  - 대상 Worker 메서드의 `try/finally` 구조 검증
+- `tests/test_link_index_policy.py`
+  - 하이퍼링크 UI 1-based→Worker 0-based 변환 및 Worker strict 검증
+- `tests/test_advanced_new_modes_ui_flow.py`
+  - `replace_page`/`set_bookmarks`/`add_annotation` UI 액션 흐름 검증
+- 현재 기준 `pytest -q` 전체 통과: 50개
 
 ---
 
@@ -500,4 +535,4 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.2 기준으로 작성되었습니다. (2026-02-25)*
+*이 문서는 PDF Master v4.5.3 기준으로 작성되었습니다. (2026-02-26)*

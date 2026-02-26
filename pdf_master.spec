@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PDF Master v4.5 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
-# Python 3.10+ 호환, v4.5 코드 변경 사항 반영 (Verified 2026-02-25)
+# Python 3.10+ 호환, 폴더 기반 모듈 분할 반영 (Verified 2026-02-26)
 
 import sys
 import os
@@ -74,6 +74,23 @@ hiddenimports += [
     'src.core.i18n', # Explicitly include i18n for dynamic imports in widgets
 ]
 
+# v4.5.3+: 폴더 기반 모듈 분할(hidden import 보강)
+for package_name in [
+    'src.core.worker_ops',
+    'src.ui.tabs_basic',
+    'src.ui.tabs_advanced',
+    'src.ui.tabs_ai',
+    'src.ui.window_core',
+    'src.ui.window_preview',
+    'src.ui.window_worker',
+    'src.ui.window_undo',
+]:
+    try:
+        hiddenimports += collect_submodules(package_name)
+    except Exception:
+        # 패키지 수집 실패 시 최소 루트 모듈만 포함
+        hiddenimports += [package_name]
+
 # v4.5: keyring (보안 API 키 저장)
 try:
     import keyring
@@ -133,7 +150,7 @@ try:
     except Exception:
         pass
 
-    # v4.5.1: 테스트/미설치 모듈 정리
+    # v4.5.3: 테스트/미설치 모듈 정리
     ai_hiddenimports = _prune_hiddenimports(ai_hiddenimports)
     
     hiddenimports += ai_hiddenimports

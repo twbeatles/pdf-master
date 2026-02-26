@@ -1,4 +1,4 @@
-# PDF Master v4.5
+# PDF Master v4.5.3
 
 📑 **올인원 PDF 편집 프로그램** - PyQt6 기반 데스크톱 앱
 
@@ -45,6 +45,7 @@
 | **페이지 복제** | 선택한 페이지 복사 |
 | **페이지 역순 정렬** | 전체 페이지 순서 뒤집기 |
 | **페이지 크기 변경** | A4, A3, Letter, Legal 등 |
+| **페이지 교체** | 다른 PDF의 페이지로 대상 페이지 교체 (v4.5.3) |
 
 ### 🔒 보안 및 보호
 | 기능 | 설명 |
@@ -63,12 +64,14 @@
 | **PDF 크롭** | 여백 자르기 |
 | **메타데이터 편집** | 제목, 저자, 주제, 키워드 수정 |
 | **PDF 비교** | 두 PDF 차이점 분석 |
+| **북마크 설정** | 줄 포맷(`level|title|page`)으로 목차 저장 (v4.5.3) |
 
 ### 📝 주석 및 마크업
 | 기능 | 설명 |
 |------|------|
 | **텍스트 하이라이트** | 형광펜 효과 |
 | **스티키 노트** | 메모 추가 |
+| **기본 주석 추가** | 텍스트/자유 텍스트 주석 입력 (v4.5.3) |
 | **밑줄/취소선** | 텍스트 마크업 |
 | **도형 그리기** | 사각형, 원, 선 추가 (v4.5) |
 | **하이퍼링크 추가** | URL/페이지 이동 링크 (v4.5) |
@@ -243,36 +246,49 @@ pyinstaller pdf_master.spec --clean
 ## 📁 프로젝트 구조
 
 ```
-pdf-master-main/
+pdf-master/
 ├── main.py                    # 애플리케이션 진입점
 ├── pdf_master.spec            # PyInstaller 빌드 설정
 ├── README.md                  # 프로젝트 설명서
+├── README_EN.md               # 영문 문서
 ├── CLAUDE.md                  # Claude AI 가이드
 ├── GEMINI.md                  # Gemini AI 가이드
 └── src/
-    ├── core/                  # 핵심 비즈니스 로직
-    │   ├── ai_service.py      # Gemini AI 서비스
-    │   ├── constants.py       # 전역 상수
-    │   ├── i18n.py            # 다국어 지원 (v4.4)
-    │   ├── settings.py        # 설정 관리
-    │   ├── undo_manager.py    # Undo/Redo 관리
-    │   └── worker.py          # PDF 작업 스레드
-    └── ui/                              # UI 컴포넌트
-        ├── main_window.py               # 메인 윈도우 조립/수명주기
-        ├── main_window_config.py        # 앱 상수/AI 가용성
-        ├── main_window_core.py          # 메뉴/헤더/테마/단축키
-        ├── main_window_preview.py       # 미리보기/최근 파일
-        ├── main_window_worker.py        # Worker 연결/오버레이
-        ├── main_window_undo.py          # Undo/Redo/백업 정리
-        ├── main_window_tabs_basic.py    # 기본 탭 (병합/변환/페이지/보안/순서/배치)
-        ├── main_window_tabs_advanced.py # 고급 탭 (편집/추출/마크업/기타)
-        ├── main_window_tabs_ai.py       # AI 탭/채팅/키워드/그리드
-        ├── progress_overlay.py          # 진행 오버레이
-        ├── styles.py                    # 테마/스타일시트
-        ├── thumbnail_grid.py            # 썸네일 그리드
-        ├── widgets.py                   # 커스텀 위젯
-        └── zoomable_preview.py          # 줌/패닝 미리보기
+    ├── core/
+    │   ├── ai_service.py
+    │   ├── constants.py
+    │   ├── i18n.py
+    │   ├── settings.py
+    │   ├── undo_manager.py
+    │   ├── worker.py                # 호환 shim + 공통 로직
+    │   └── worker_ops/              # 실제 Worker 기능 분할
+    │       ├── pdf_ops.py
+    │       └── ai_ops.py
+    └── ui/
+        ├── main_window.py
+        ├── main_window_config.py
+        ├── main_window_tabs_basic.py     # 호환 shim
+        ├── main_window_tabs_advanced.py  # 호환 shim
+        ├── main_window_tabs_ai.py        # 호환 shim
+        ├── main_window_core.py           # 호환 shim
+        ├── main_window_preview.py        # 호환 shim
+        ├── main_window_worker.py         # 호환 shim
+        ├── main_window_undo.py           # 호환 shim
+        ├── tabs_basic/                   # 기본 탭 분할 구현
+        ├── tabs_advanced/                # 고급 탭 분할 구현
+        ├── tabs_ai/                      # AI 탭 분할 구현
+        ├── window_core/                  # 코어 UI 분할 구현
+        ├── window_preview/               # 미리보기 분할 구현
+        ├── window_worker/                # Worker UI 분할 구현
+        ├── window_undo/                  # Undo UI 분할 구현
+        ├── progress_overlay.py
+        ├── styles.py
+        ├── thumbnail_grid.py
+        ├── widgets.py
+        └── zoomable_preview.py
 ```
+
+참고: `main_window_*.py`, `worker.py`는 기존 import 경로 호환을 위한 shim이며, 실제 구현은 하위 폴더 모듈에 있습니다.
 
 ---
 
@@ -297,6 +313,18 @@ API 키 저장 정책:
 ---
 
 ## 📝 변경 이력
+
+### v4.5.3 (2026-02-26) - PDF 편집기 핵심 리스크(F-01~F-05, F-07) 반영
+- ✅ `batch(operation=watermark)` 런타임 실패 수정 (`insert_text`→`insert_textbox`), 파일별 실패 원인 요약 추가
+- ✅ `copy_page_between_docs` strict range 정책 적용 (무효/누락 범위 hard-fail, 묵시적 1페이지 폴백 제거)
+- ✅ `extract_attachments` 보안 강화 (파일명 정규화, 경로 탈출 차단, 중복명 suffix 처리)
+- ✅ `fitz.open()` 리소스 정리 패턴 통일 (`try/finally`) - 11개 대상 메서드 반영
+- ✅ `add_link(goto)` 정책 단일화 (Worker는 0-based 타겟만 허용, 경계 오류 메시지 명확화)
+- ✅ 고급 탭 UI 기본 노출 추가: `replace_page`, `set_bookmarks`, `add_annotation`
+- ✅ i18n 키/모드 설명 확장 및 문서(README/CLAUDE/AUDIT) 동기화
+- ✅ UI/Worker 코드 분할 리팩토링: 대형 단일 파일을 폴더 기반 모듈(`tabs_*`, `window_*`, `worker_ops`)로 분리
+- ✅ 호환성 유지: 기존 import 경로(`main_window_*.py`, `worker.py`)는 shim으로 유지
+- ✅ PyInstaller 정합성: `pdf_master.spec`에 분할 패키지 hiddenimports 수집 로직 추가
 
 ### v4.5.2 (2026-02-25) - 구현 리스크 개선 반영
 - ✅ `add_text_markup` 입력 검증 강화 (`markup_type` 화이트리스트, 예외 방어)
@@ -348,9 +376,15 @@ API 키 저장 정책:
 
 ---
 
-## 🧪 테스트 현황 (v4.5.2)
+## 🧪 테스트 현황 (v4.5.3)
 
 - 신규 테스트:
+  - `tests/test_worker_batch_watermark.py` (배치 워터마크 출력 생성/실패 원인 요약 검증)
+  - `tests/test_worker_copy_page_range_strict.py` (페이지 복사 무효 범위 hard-fail 정책 검증)
+  - `tests/test_worker_attachment_extract_security.py` (첨부 추출 파일명 정규화/경로 고정 검증)
+  - `tests/test_worker_resource_management_structure.py` (대상 메서드 `try/finally` 구조 검증)
+  - `tests/test_link_index_policy.py` (하이퍼링크 UI 1-based→Worker 0-based 정규화 + Worker strict 정책 검증)
+  - `tests/test_advanced_new_modes_ui_flow.py` (신규 UI 모드 3종 액션/파라미터 흐름 검증)
   - `tests/test_worker_param_compat.py` (고급 기능 kwargs 호환 검증)
   - `tests/test_worker_preflight.py` (실행 전 입력 검증 fail-fast 검증)
   - `tests/test_i18n.py` (시스템 언어 감지 경로 검증)
@@ -361,7 +395,7 @@ API 키 저장 정책:
   - `tests/test_ai_key_storage_path.py` (API 키 저장 경로, keyring/폴백 정책 검증)
   - `tests/test_page_index_policy.py` (1-based UI → 0-based Worker 정규화 검증)
   - `tests/test_i18n_ui_hardcoded_smoke.py` (UI 문자열 하드코딩 및 번역 키 누락 스모크)
-- 현재 기준 `pytest -q` 전체 통과(37개).
+- 현재 기준 `pytest -q` 전체 통과(50개).
 
 ---
 
