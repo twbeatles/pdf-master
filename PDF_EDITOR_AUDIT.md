@@ -1,10 +1,21 @@
-﻿# PDF 편집기 구현 리스크/개선 감사 보고서 (v4.5.3 반영본)
+# PDF 편집기 구현 리스크/개선 감사 보고서 (v4.5.4 유지보수 addendum 포함)
 
 - 작성일: 2026-02-26
 - 대상 저장소: `d:\twbeatles-repos\pdf-master`
 - 기준 문서: [README.md](README.md), [CLAUDE.md](CLAUDE.md)
 - 점검 범위: `F-01~F-07` (핵심 결함/정책/노출 항목)
 - 점검 기준: 사용자 데이터 신뢰성, 보안, 기능 실패 가능성 우선
+
+## 2026-03-09 유지보수 addendum
+
+- 범위: 정적 타입 정합성, 인코딩 점검, 문서/spec/.gitignore 동기화
+- 반영 결과:
+  1. `pyrightconfig.json` 추가 후 저장소 전체 `pyright .` → `0 errors`
+  2. `src/core/_typing.py`, `src/ui/_typing.py` 추가로 Worker/UI 믹스인 host 계약 명시
+  3. UTF-8 decode 실패 `0`, U+FFFD(`�`) 검색 결과 `0`
+  4. `pdf_master.spec`를 importlib 기반 optional Gemini SDK 로딩과 `_typing` 모듈 반영 상태로 갱신
+  5. `.gitignore`에 Python 검사/커버리지/패키징 산출물 패턴 보강
+  6. `pytest -q` 재검증 결과 `50 passed`
 
 ## 심각도 기준
 

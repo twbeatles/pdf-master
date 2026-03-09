@@ -1,4 +1,4 @@
-# PDF Master v4.5.3
+# PDF Master v4.5.4
 
 📑 **All-in-One PDF Editor** - PyQt6 based Desktop Application
 
@@ -16,6 +16,7 @@
 - [Usage](#-usage)
 - [Shortcuts](#-shortcuts)
 - [Build](#-build-pyinstaller)
+- [Development Validation](#-development-validation)
 - [Project Structure](#-project-structure)
 - [Changelog](#-changelog)
 
@@ -224,8 +225,16 @@ pyinstaller pdf_master.spec --clean
 ```
 
 ### Build Result
-- Output: `dist/PDF_Master_v4.5.exe`
+- Output: `dist/PDF_Master_v4.5.4.exe`
 - Size: ~30-40MB (UPX Compressed)
+
+---
+
+## ✅ Development Validation
+
+- Static analysis: `pyright .` -> `0 errors`
+- Regression tests: `pytest -q` -> `50 passed`
+- Encoding audit: UTF-8 decode failures `0`, U+FFFD (`�`) hits `0`
 
 ---
 
@@ -235,6 +244,7 @@ pyinstaller pdf_master.spec --clean
 pdf-master/
 ├── main.py
 ├── pdf_master.spec
+├── pyrightconfig.json
 ├── README.md
 ├── README_EN.md
 ├── CLAUDE.md
@@ -242,6 +252,7 @@ pdf-master/
 └── src/
     ├── core/
     │   ├── ai_service.py
+    │   ├── _typing.py              # worker mixin host contracts
     │   ├── constants.py
     │   ├── i18n.py
     │   ├── settings.py
@@ -252,6 +263,7 @@ pdf-master/
     │       └── ai_ops.py
     └── ui/
         ├── main_window.py
+        ├── _typing.py                   # UI mixin host contracts
         ├── main_window_config.py
         ├── main_window_tabs_basic.py     # compatibility shim
         ├── main_window_tabs_advanced.py  # compatibility shim
@@ -300,6 +312,14 @@ API key storage policy:
 ---
 
 ## 📝 Changelog
+
+### v4.5.4 (2026-03-09) - Typing, Encoding, and Build Consistency
+- Added `pyrightconfig.json` and reached `pyright .` -> `0 errors` across the repository.
+- Added `src/core/_typing.py` and `src/ui/_typing.py` to make worker/UI mixin host contracts explicit.
+- Hardened optional SDK loading in `ai_service`, worker layers, and Qt widgets to remove latent Pylance issues without changing user flows.
+- Completed UTF-8 text scan and mojibake check (decode failures `0`, U+FFFD hits `0`).
+- Synced `pdf_master.spec` with importlib-based optional Gemini SDK loading and the new `_typing` modules.
+- Expanded `.gitignore` for Python validation, coverage, and packaging artifacts.
 
 ### v4.5.3 (2026-02-26) - PDF Editor Core Risk Fixes + Module Refactor
 - Fixed `batch(operation=watermark)` runtime failure (`insert_text` -> `insert_textbox`) and added per-file failure summaries.
@@ -353,7 +373,11 @@ API key storage policy:
 
 ---
 
-## 🧪 Test Status (v4.5.3)
+## 🧪 Test and Consistency Status (v4.5.4)
+
+- Static analysis: `pyright .` -> `0 errors`
+- Regression tests: `pytest -q` -> `50 passed`
+- Text encoding audit: UTF-8 decode failures `0`, U+FFFD hits `0`
 
 - Added:
   - `tests/test_worker_batch_watermark.py`
@@ -372,7 +396,6 @@ API key storage policy:
   - `tests/test_ai_key_storage_path.py`
   - `tests/test_page_index_policy.py`
   - `tests/test_i18n_ui_hardcoded_smoke.py`
-- Current baseline: full `pytest -q` pass (50 tests).
 
 ---
 

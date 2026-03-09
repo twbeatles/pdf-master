@@ -74,7 +74,9 @@ def _toggle_theme(self):
 def _apply_theme(self):
     theme = self.settings.get("theme", "dark")
     is_dark = theme == "dark"
-    QApplication.instance().setStyleSheet(DARK_STYLESHEET if is_dark else LIGHT_STYLESHEET)
+    app = QApplication.instance()
+    if isinstance(app, QApplication):
+        app.setStyleSheet(DARK_STYLESHEET if is_dark else LIGHT_STYLESHEET)
 
     # 모든 DropZone 위젯 테마 동기화
     for widget in self.findChildren(DropZoneWidget):

@@ -21,9 +21,10 @@ from .navigation import (
 )
 from .panel import _create_preview_panel, _set_preview_navigation_enabled
 from .update import _add_to_recent_files, _update_preview
+from .._typing import MainWindowHost
 
 
-class MainWindowPreviewMixin:
+class MainWindowPreviewMixin(MainWindowHost):
     _create_preview_panel = _create_preview_panel
     _ensure_preview_cache = _ensure_preview_cache
     _make_preview_cache_key = _make_preview_cache_key

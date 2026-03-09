@@ -8,6 +8,7 @@ from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QMessageBox,

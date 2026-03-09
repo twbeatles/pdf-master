@@ -4,7 +4,7 @@ Undo/Redo Manager for PDF Master v4.0
 """
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional, Callable
+from typing import Any, Callable
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -16,10 +16,10 @@ class ActionRecord:
     action_type: str  # 작업 유형 (예: "merge", "delete_pages", "rotate")
     description: str  # 사용자에게 표시할 설명
     timestamp: datetime = field(default_factory=datetime.now)
-    before_state: dict = field(default_factory=dict)  # 작업 전 상태
-    after_state: dict = field(default_factory=dict)   # 작업 후 상태
-    undo_callback: Optional[Callable] = None  # 실행 취소 콜백
-    redo_callback: Optional[Callable] = None  # 다시 실행 콜백
+    before_state: dict[str, Any] = field(default_factory=dict)  # 작업 전 상태
+    after_state: dict[str, Any] = field(default_factory=dict)   # 작업 후 상태
+    undo_callback: Callable[[dict[str, Any]], Any] | None = None  # 실행 취소 콜백
+    redo_callback: Callable[[dict[str, Any]], Any] | None = None  # 다시 실행 콜백
 
 
 class UndoManager:
@@ -68,8 +68,9 @@ class UndoManager:
         return ""
     
     def push(self, action_type: str, description: str, 
-             before_state: dict = None, after_state: dict = None,
-             undo_callback: Callable = None, redo_callback: Callable = None) -> None:
+             before_state: dict[str, Any] | None = None, after_state: dict[str, Any] | None = None,
+             undo_callback: Callable[[dict[str, Any]], Any] | None = None,
+             redo_callback: Callable[[dict[str, Any]], Any] | None = None) -> None:
         """
         새 작업을 히스토리에 추가
         
@@ -104,7 +105,7 @@ class UndoManager:
             
         logger.debug(f"Pushed action: {action_type} - {description}")
     
-    def undo(self) -> Optional[ActionRecord]:
+    def undo(self) -> ActionRecord | None:
         """
         마지막 작업 실행 취소
         
@@ -131,7 +132,7 @@ class UndoManager:
         
         return record
     
-    def redo(self) -> Optional[ActionRecord]:
+    def redo(self) -> ActionRecord | None:
         """
         취소된 작업 다시 실행
         

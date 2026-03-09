@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PDF Master v4.5 - PyInstaller Spec File
+# PDF Master v4.5.4 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
-# Python 3.10+ 호환, 폴더 기반 모듈 분할 반영 (Verified 2026-02-26)
+# Python 3.10+ 호환, 폴더 기반 모듈 분할 반영 (Verified 2026-03-09)
 
 import sys
 import os
@@ -71,7 +71,9 @@ hiddenimports += [
     'locale',       # i18n 언어 감지
     'datetime',     # Undo 타임스탬프
     'dataclasses',  # UndoManager ActionRecord
-    'src.core.i18n', # Explicitly include i18n for dynamic imports in widgets
+    'src.core.i18n',  # Explicitly include i18n for dynamic imports in widgets
+    'src.core._typing',  # Pyright/Pylance host contracts imported by worker mixins
+    'src.ui._typing',  # Pyright/Pylance host contracts imported by UI mixins
 ]
 
 # v4.5.3+: 폴더 기반 모듈 분할(hidden import 보강)
@@ -92,15 +94,14 @@ for package_name in [
         hiddenimports += [package_name]
 
 # v4.5: keyring (보안 API 키 저장)
-try:
-    import keyring
+if _module_exists('keyring'):
     hiddenimports += ['keyring', 'keyring.backends']
     try:
         hiddenimports += collect_submodules('keyring')
     except Exception:
         pass
     print("[OK] keyring detected")
-except ImportError:
+else:
     print("[INFO] keyring not installed - API key will be stored in file")
 
 # 데이터 파일 수집
@@ -115,8 +116,7 @@ datas = []
 
 ai_hiddenimports = []
 
-try:
-    from google import genai
+if _module_exists('google.genai'):
     # google-genai 핵심 모듈
     ai_hiddenimports += [
         'google.genai',
@@ -155,11 +155,9 @@ try:
     
     hiddenimports += ai_hiddenimports
     print(f"[OK] google-genai SDK detected ({len(ai_hiddenimports)} imports)")
-    
-except ImportError:
+else:
     # deprecated SDK 폴백 (2025.11 이전 호환)
-    try:
-        import google.generativeai
+    if _module_exists('google.generativeai'):
         ai_hiddenimports += [
             'google.generativeai',
             'google.ai.generativelanguage',
@@ -172,7 +170,7 @@ except ImportError:
         ai_hiddenimports = _prune_hiddenimports(ai_hiddenimports)
         hiddenimports += ai_hiddenimports
         print(f"[WARN] Using deprecated google-generativeai SDK ({len(ai_hiddenimports)} imports)")
-    except ImportError:
+    else:
         print("[INFO] No Gemini SDK installed - AI features disabled")
 
 # =====================================================================
@@ -281,7 +279,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='PDF_Master_v4.5',
+    name='PDF_Master_v4.5.4',
     debug=False,
     bootloader_ignore_signals=False,
     # Windows에서 strip 실행 파일이 없는 환경이 많아 자동 비활성화
@@ -300,5 +298,5 @@ exe = EXE(
 
 # =====================================================================
 # 빌드: pyinstaller pdf_master.spec --clean
-# 예상 결과: dist/PDF_Master_v4.5.exe (~30-40MB)
+# 예상 결과: dist/PDF_Master_v4.5.4.exe (~30-40MB)
 # =====================================================================

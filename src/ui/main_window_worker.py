@@ -6,9 +6,10 @@ to the folder-based window_worker package.
 
 import logging
 import os
+from typing import cast
 
 from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QMessageBox, QWidget
 
 from ..core.i18n import tm
 from ..core.worker import WorkerThread
@@ -21,10 +22,11 @@ logger = logging.getLogger(__name__)
 class MainWindowWorkerMixin(_MainWindowWorkerMixin):
     def run_worker(self, mode, output_path=None, **kwargs):
         """작업 스레드 실행 (안전한 동시 작업 처리)"""
+        parent = cast(QWidget, self)
         # 이전 Worker가 실행 중인지 확인
         if self.worker and self.worker.isRunning():
             result = QMessageBox.question(
-                self, tm.get("task_in_progress"),
+                parent, tm.get("task_in_progress"),
                 tm.get("task_wait_or_cancel"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
@@ -181,6 +183,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         QTimer.singleShot(3000, self._reset_progress_if_idle)
 
     def on_success(self, msg):
+        parent = cast(QWidget, self)
         sender = self.sender()
         if sender is not None and sender is not self.worker:
             return  # stale signal
@@ -275,7 +278,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     self.form_fields_list.addItem(item)
                     self._form_field_data[name] = value
                 if not fields:
-                    QMessageBox.information(self, tm.get("info"), tm.get("msg_no_form_fields"))
+                    QMessageBox.information(parent, tm.get("info"), tm.get("msg_no_form_fields"))
                 else:
                     toast = ToastWidget(tm.get("msg_form_fields_detected", len(fields)), toast_type='success', duration=2000)
                     toast.show_toast(self)
@@ -283,14 +286,14 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             elif mode == "list_attachments":
                 attachments = self.worker.kwargs.get("result_attachments", []) or []
                 if not attachments:
-                    QMessageBox.information(self, tm.get("info"), tm.get("msg_no_attachments"))
+                    QMessageBox.information(parent, tm.get("info"), tm.get("msg_no_attachments"))
                 else:
                     rows = [
                         tm.get("msg_attachment_row", att.get("name", "Unknown"), att.get("size", 0))
                         for att in attachments
                     ]
                     QMessageBox.information(
-                        self,
+                        parent,
                         tm.get("title_attachment_list"),
                         tm.get("msg_attachment_list_body", len(attachments), "\n".join(rows)),
                     )
@@ -301,12 +304,13 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         toast.show_toast(self)
 
         if not custom_dialog_shown:
-            QMessageBox.information(self, tm.get("info"), msg)
+            QMessageBox.information(parent, tm.get("info"), msg)
         self._finalize_worker()
         self._run_pending_worker()
         QTimer.singleShot(3000, self._reset_progress_if_idle)
 
     def on_fail(self, msg):
+        parent = cast(QWidget, self)
         sender = self.sender()
         if sender is not None and sender is not self.worker:
             return  # stale signal
@@ -346,6 +350,6 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         toast = ToastWidget(tm.get("error"), toast_type='error', duration=5000)
         toast.show_toast(self)
 
-        QMessageBox.critical(self, tm.get("error"), tm.get("msg_worker_error", msg))
+        QMessageBox.critical(parent, tm.get("error"), tm.get("msg_worker_error", msg))
         self._finalize_worker()
         self._run_pending_worker()

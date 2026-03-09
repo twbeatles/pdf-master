@@ -6,7 +6,7 @@
 
 ## 📌 프로젝트 개요
 
-**PDF Master v4.5.3**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
+**PDF Master v4.5.4**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
 
 | 항목 | 내용 |
 |------|------|
@@ -24,6 +24,7 @@
 pdf-master/
 ├── main.py
 ├── pdf_master.spec
+├── pyrightconfig.json
 ├── README.md
 ├── README_EN.md
 ├── CLAUDE.md
@@ -31,6 +32,7 @@ pdf-master/
 └── src/
     ├── core/
     │   ├── ai_service.py
+    │   ├── _typing.py              # worker mixin host contracts
     │   ├── constants.py
     │   ├── i18n.py
     │   ├── settings.py
@@ -40,6 +42,7 @@ pdf-master/
     │       ├── pdf_ops.py
     │       └── ai_ops.py
     └── ui/
+        ├── _typing.py                   # UI mixin host contracts
         ├── main_window.py
         ├── main_window_config.py
         ├── main_window_tabs_basic.py     # 호환 shim
@@ -168,13 +171,7 @@ class AIService:
 ```python
 # 새 SDK (권장): google-genai
 # 기존 SDK (폴백): google-generativeai (2025.11 deprecated)
-try:
-    from google import genai
-except ImportError:
-    try:
-        import google.generativeai
-    except ImportError:
-        pass
+# v4.5.4: 런타임에서는 importlib 기반 선택적 로딩을 사용
 ```
 
 #### 예외 클래스
@@ -204,12 +201,23 @@ reset_settings() -> bool         # 설정 초기화
 ```python
 DEFAULT_SETTINGS = {
     "theme": "dark",
+    "language": "auto",
     "recent_files": [],
     "last_output_dir": "",
     "splitter_sizes": None,
     "window_geometry": None,
 }
 ```
+
+### 타입 계약 파일 (v4.5.4)
+
+- `src/core/_typing.py`
+  - Worker 믹스인이 기대하는 signal/helper surface를 정의합니다.
+- `src/ui/_typing.py`
+  - UI 믹스인이 접근하는 공통 위젯/헬퍼 surface를 정의합니다.
+- 규칙
+  - 믹스인에서 새 속성 접근을 추가하면 대응 `_typing.py`도 함께 갱신합니다.
+  - 변경 후 `pyright .`를 기본 검증으로 실행합니다.
 
 ---
 
@@ -419,7 +427,12 @@ class ZoomablePreviewWidget(QWidget):
 
 ---
 
-## 🧪 테스트 업데이트 (v4.5.3)
+## 🧪 테스트 업데이트 (v4.5.4)
+
+- `pyright .` -> `0 errors`
+- `pytest -q` -> `50 passed`
+- UTF-8 decode failures -> `0`
+- U+FFFD hits -> `0`
 
 - `tests/test_worker_param_compat.py`
   - 고급 기능 kwargs 호환성 검증 (도형/링크/텍스트박스/페이지복사/이미지워터마크)
@@ -468,7 +481,7 @@ class ZoomablePreviewWidget(QWidget):
 pyinstaller pdf_master.spec --clean
 
 # 결과물
-dist/PDF_Master_v4.5.exe (~30-40MB)
+dist/PDF_Master_v4.5.4.exe (~30-40MB)
 ```
 
 ### 경량화 최적화
@@ -535,4 +548,4 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.3 기준으로 작성되었습니다. (2026-02-26)*
+*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-09)*

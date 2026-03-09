@@ -1,4 +1,4 @@
-# PDF Master v4.5.3
+# PDF Master v4.5.4
 
 📑 **올인원 PDF 편집 프로그램** - PyQt6 기반 데스크톱 앱
 
@@ -18,6 +18,7 @@
 - [사용 방법](#-사용-방법)
 - [단축키](#️-단축키)
 - [빌드](#-빌드-pyinstaller)
+- [개발 검증](#-개발-검증)
 - [프로젝트 구조](#-프로젝트-구조)
 - [변경 이력](#-변경-이력)
 
@@ -233,7 +234,7 @@ pyinstaller pdf_master.spec --clean
 ```
 
 ### 빌드 결과
-- 출력: `dist/PDF_Master_v4.5.exe`
+- 출력: `dist/PDF_Master_v4.5.4.exe`
 - 크기: ~30-40MB (UPX 압축 적용)
 
 ### 빌드 최적화
@@ -243,12 +244,21 @@ pyinstaller pdf_master.spec --clean
 
 ---
 
+## ✅ 개발 검증
+
+- 정적 분석: `pyright .` → `0 errors`
+- 회귀 테스트: `pytest -q` → `50 passed`
+- 인코딩 점검: UTF-8 decode 실패 `0`, U+FFFD(`�`) 검색 결과 `0`
+
+---
+
 ## 📁 프로젝트 구조
 
 ```
 pdf-master/
 ├── main.py                    # 애플리케이션 진입점
 ├── pdf_master.spec            # PyInstaller 빌드 설정
+├── pyrightconfig.json         # Pyright/Pylance 분석 범위 설정
 ├── README.md                  # 프로젝트 설명서
 ├── README_EN.md               # 영문 문서
 ├── CLAUDE.md                  # Claude AI 가이드
@@ -256,6 +266,7 @@ pdf-master/
 └── src/
     ├── core/
     │   ├── ai_service.py
+    │   ├── _typing.py              # Worker 믹스인 host 계약
     │   ├── constants.py
     │   ├── i18n.py
     │   ├── settings.py
@@ -266,6 +277,7 @@ pdf-master/
     │       └── ai_ops.py
     └── ui/
         ├── main_window.py
+        ├── _typing.py                   # UI 믹스인 host 계약
         ├── main_window_config.py
         ├── main_window_tabs_basic.py     # 호환 shim
         ├── main_window_tabs_advanced.py  # 호환 shim
@@ -299,6 +311,7 @@ pdf-master/
 ```json
 {
   "theme": "dark",
+  "language": "auto",
   "recent_files": [],
   "last_output_dir": "",
   "window_geometry": "..."
@@ -313,6 +326,14 @@ API 키 저장 정책:
 ---
 
 ## 📝 변경 이력
+
+### v4.5.4 (2026-03-09) - 정적 타입/인코딩/빌드 정합성 업데이트
+- ✅ `pyrightconfig.json` 추가 및 저장소 전체 `pyright .` 기준 `0 error` 달성
+- ✅ `src/core/_typing.py`, `src/ui/_typing.py` 추가로 Worker/UI 믹스인 host 계약 명시
+- ✅ `ai_service`, Worker, Qt 위젯 계층의 optional/override/type narrowing 정리로 Pylance 잠재 오류 제거
+- ✅ UTF-8 텍스트 스캔 및 U+FFFD 점검 완료 (decode 실패 `0`, 깨진 문자 히트 `0`)
+- ✅ `pdf_master.spec`를 importlib 기반 optional Gemini SDK 로딩과 새 `_typing` 모듈에 맞게 동기화
+- ✅ `.gitignore`에 Python 검사/커버리지/패키징 산출물 패턴 보강
 
 ### v4.5.3 (2026-02-26) - PDF 편집기 핵심 리스크(F-01~F-05, F-07) 반영
 - ✅ `batch(operation=watermark)` 런타임 실패 수정 (`insert_text`→`insert_textbox`), 파일별 실패 원인 요약 추가
@@ -376,7 +397,11 @@ API 키 저장 정책:
 
 ---
 
-## 🧪 테스트 현황 (v4.5.3)
+## 🧪 테스트 및 정합성 현황 (v4.5.4)
+
+- 정적 분석: `pyright .` → `0 errors`
+- 회귀 테스트: `pytest -q` → `50 passed`
+- 텍스트 인코딩 점검: UTF-8 decode 실패 `0`, U+FFFD 검색 결과 `0`
 
 - 신규 테스트:
   - `tests/test_worker_batch_watermark.py` (배치 워터마크 출력 생성/실패 원인 요약 검증)
@@ -395,7 +420,6 @@ API 키 저장 정책:
   - `tests/test_ai_key_storage_path.py` (API 키 저장 경로, keyring/폴백 정책 검증)
   - `tests/test_page_index_policy.py` (1-based UI → 0-based Worker 정규화 검증)
   - `tests/test_i18n_ui_hardcoded_smoke.py` (UI 문자열 하드코딩 및 번역 키 누락 스모크)
-- 현재 기준 `pytest -q` 전체 통과(50개).
 
 ---
 

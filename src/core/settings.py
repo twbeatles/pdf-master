@@ -3,6 +3,7 @@ import json
 import logging
 import shutil
 import tempfile
+from typing import Any
 from datetime import datetime
 
 # 로깅 설정
@@ -13,10 +14,13 @@ SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".pdf_master_settings.json
 # keyring 가용성 체크 (보안 저장용)
 KEYRING_AVAILABLE = False
 try:
-    import keyring
+    import keyring as _keyring
     KEYRING_AVAILABLE = True
 except ImportError:
+    _keyring = None
     logger.info("keyring not available, API key will be stored in settings file")
+
+keyring: Any | None = _keyring
 
 KEYRING_SERVICE = "PDFMaster"
 KEYRING_USERNAME = "gemini_api_key"
@@ -46,7 +50,7 @@ def get_api_key() -> str:
     Returns:
         API 키 문자열 (없으면 빈 문자열)
     """
-    if KEYRING_AVAILABLE:
+    if KEYRING_AVAILABLE and keyring is not None:
         try:
             key = keyring.get_password(KEYRING_SERVICE, KEYRING_USERNAME)
             if key:
@@ -68,14 +72,14 @@ def set_api_key(api_key: str) -> bool:
     Returns:
         저장 성공 여부
     """
-    if KEYRING_AVAILABLE:
+    if KEYRING_AVAILABLE and keyring is not None:
         try:
             if api_key:
                 keyring.set_password(KEYRING_SERVICE, KEYRING_USERNAME, api_key)
             else:
                 try:
                     keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
-                except keyring.errors.PasswordDeleteError:
+                except Exception:
                     pass  # 삭제할 키가 없는 경우 무시
             
             # 파일에서 기존 키 제거 (보안)
@@ -171,7 +175,7 @@ def reset_settings():
             os.remove(SETTINGS_FILE)
         
         # keyring에서도 API 키 삭제
-        if KEYRING_AVAILABLE:
+        if KEYRING_AVAILABLE and keyring is not None:
             try:
                 keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
             except Exception:

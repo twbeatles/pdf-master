@@ -1,10 +1,13 @@
 import os
 import logging
+from typing import Any, cast
+
+from .._typing import WorkerHost
 
 logger = logging.getLogger(__name__)
 
 
-class WorkerAiOpsMixin:
+class WorkerAiOpsMixin(WorkerHost):
 
     def ai_summarize(self):
         """AI 기반 PDF 요약"""
@@ -13,7 +16,7 @@ class WorkerAiOpsMixin:
         api_key = self.kwargs.get('api_key', '')
         language = self.kwargs.get('language', 'ko')
         style = self.kwargs.get('style', 'concise')
-        max_pages = self.kwargs.get('max_pages', None)
+        max_pages = self.kwargs.get('max_pages')
 
         try:
             from ..ai_service import AIService
@@ -49,7 +52,7 @@ class WorkerAiOpsMixin:
                 pdf_path=file_path,
                 language=language,
                 style=style,
-                max_pages=max_pages
+                max_pages=int(max_pages) if isinstance(max_pages, (int, float)) else 0
             )
 
             self._emit_progress_if_due(80)
@@ -115,7 +118,7 @@ class WorkerAiOpsMixin:
             answer = ai_service.ask_about_pdf(
                 pdf_path=file_path,
                 question=question,
-                conversation_history=conversation_history
+                conversation_history=cast(list[dict[str, Any]], conversation_history or [])
             )
 
             # 결과를 kwargs에 저장

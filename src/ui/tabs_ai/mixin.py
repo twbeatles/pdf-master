@@ -16,9 +16,10 @@ from .storage import (
     _save_chat_histories,
     _trim_chat_histories,
 )
+from .._typing import MainWindowHost
 
 
-class MainWindowTabsAiMixin:
+class MainWindowTabsAiMixin(MainWindowHost):
     _load_chat_histories = _load_chat_histories
     _trim_chat_histories = _trim_chat_histories
     _save_chat_histories = _save_chat_histories

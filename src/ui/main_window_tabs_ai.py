@@ -6,6 +6,7 @@ implementation to the folder-based tabs_ai package.
 
 import logging
 import os
+from typing import cast
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
@@ -52,6 +53,7 @@ class MainWindowTabsAiMixin(_MainWindowTabsAiMixin):
 
     def _save_api_key(self):
         """API 키 저장"""
+        parent = cast(QWidget, self)
         key = self.txt_api_key.text().strip()
         if set_api_key(key):
             # keyring 사용 시에만 레거시 평문 키 제거
@@ -61,4 +63,4 @@ class MainWindowTabsAiMixin(_MainWindowTabsAiMixin):
             toast = ToastWidget(tm.get("msg_key_saved"), toast_type='success', duration=2000)
             toast.show_toast(self)
         else:
-            QMessageBox.warning(self, tm.get("error"), tm.get("msg_key_save_failed"))
+            QMessageBox.warning(parent, tm.get("error"), tm.get("msg_key_save_failed"))

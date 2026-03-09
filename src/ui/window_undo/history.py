@@ -6,6 +6,7 @@ import time
 from PyQt6.QtWidgets import QMessageBox
 
 from ...core.i18n import tm
+from ..widgets import ToastWidget
 
 logger = logging.getLogger(__name__)
 

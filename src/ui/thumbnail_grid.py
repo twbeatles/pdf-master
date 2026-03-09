@@ -7,7 +7,7 @@ import logging
 
 import fitz
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, pyqtSlot
-from PyQt6.QtGui import QPixmap, QImage, QCursor
+from PyQt6.QtGui import QPixmap, QImage, QCursor, QMouseEvent, QCloseEvent
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -145,10 +145,10 @@ class ThumbnailLabel(QFrame):
             )
             self.page_label.setStyleSheet("color: #888; font-size: 11px;")
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
+    def mousePressEvent(self, a0: QMouseEvent | None):
+        if a0 is not None and a0.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self.page_index)
-        super().mousePressEvent(event)
+        super().mousePressEvent(a0)
 
 
 class ThumbnailGridWidget(QWidget):
@@ -209,7 +209,9 @@ class ThumbnailGridWidget(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.scroll_area.verticalScrollBar().valueChanged.connect(self._on_scroll_changed)
+        scrollbar = self.scroll_area.verticalScrollBar()
+        if scrollbar is not None:
+            scrollbar.valueChanged.connect(self._on_scroll_changed)
 
         self.grid_container = QWidget()
         self.grid_layout = QGridLayout(self.grid_container)
@@ -288,8 +290,11 @@ class ThumbnailGridWidget(QWidget):
 
         while self.grid_layout.count():
             item = self.grid_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item is None:
+                continue
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
 
     def _arrange_grid(self):
         for i in reversed(range(self.grid_layout.count())):
@@ -309,8 +314,9 @@ class ThumbnailGridWidget(QWidget):
         if not self._thumbnails:
             return 0, -1
         scrollbar = self.scroll_area.verticalScrollBar()
-        viewport_h = max(1, self.scroll_area.viewport().height())
-        top = scrollbar.value()
+        viewport = self.scroll_area.viewport()
+        viewport_h = max(1, viewport.height()) if viewport is not None else self._ROW_HEIGHT
+        top = scrollbar.value() if scrollbar is not None else 0
         bottom = top + viewport_h
         start_row = max(0, (top // self._ROW_HEIGHT) - self._PREFETCH_ROWS)
         end_row = (bottom // self._ROW_HEIGHT) + self._PREFETCH_ROWS
@@ -437,6 +443,6 @@ class ThumbnailGridWidget(QWidget):
             self.info_label.setStyleSheet("color: #666;")
             self.loading_label.setStyleSheet("color: #888; font-size: 14px; padding: 40px;")
 
-    def closeEvent(self, event):
+    def closeEvent(self, a0: QCloseEvent | None):
         self._cleanup_loader_thread()
-        super().closeEvent(event)
+        super().closeEvent(a0)

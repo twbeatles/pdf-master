@@ -56,8 +56,10 @@ def setup_merge_tab(self):
     layout.addLayout(merge_info_layout)
 
     # 파일 추가/삭제 시 카운트 업데이트
-    self.merge_list.model().rowsInserted.connect(self._update_merge_count)
-    self.merge_list.model().rowsRemoved.connect(self._update_merge_count)
+    model = self.merge_list.model()
+    if model is not None:
+        model.rowsInserted.connect(self._update_merge_count)
+        model.rowsRemoved.connect(self._update_merge_count)
 
     btn_box = QHBoxLayout()
     b_add = QPushButton(tm.get("btn_add_files_merge"))

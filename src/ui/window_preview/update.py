@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ...core.i18n import tm
+from ...core.constants import RECENT_FILES_MAX
 from ...core.settings import save_settings
 from ..widgets import FileSelectorWidget
 from ..zoomable_preview import ZoomablePreviewWidget

@@ -5,6 +5,7 @@ import traceback
 import logging
 import time
 import re
+from typing import Any, cast
 from PyQt6.QtCore import QThread, pyqtSignal
 
 # 상수 임포트
@@ -33,18 +34,46 @@ except ImportError:
     MIN_PDF_SIZE = 100
     tm = None  # 폴백: i18n 없음
 
+class _PerfTimerFallback:
+    def __init__(self, *_args: object, **_kwargs: object):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _exc_type: object, _exc_val: object, _exc_tb: object):
+        return False
+
+
 try:
     from .perf import PerfTimer
 except ImportError:
-    class PerfTimer:  # type: ignore[override]
-        def __init__(self, *_args, **_kwargs):
-            pass
+    PerfTimer = cast(Any, _PerfTimerFallback)
 
-        def __enter__(self):
-            return self
+FITZ_PDF_PERM_ACCESSIBILITY = int(getattr(fitz, "PDF_PERM_ACCESSIBILITY", 0))
+FITZ_PDF_PERM_PRINT = int(getattr(fitz, "PDF_PERM_PRINT", 0))
+FITZ_PDF_PERM_COPY = int(getattr(fitz, "PDF_PERM_COPY", 0))
+FITZ_PDF_ENCRYPT_AES_256 = int(getattr(fitz, "PDF_ENCRYPT_AES_256", 0))
 
-        def __exit__(self, _exc_type, _exc_val, _exc_tb):
-            return False
+
+def _as_str(value: Any | None, default: str = "") -> str:
+    return value if isinstance(value, str) else default
+
+
+def _as_int(value: Any | None, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    return default
+
+
+def _as_list(value: Any | None) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _as_dict(value: Any | None) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
 
 logger = logging.getLogger(__name__)
 
@@ -61,12 +90,12 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
     cancelled_signal = pyqtSignal(str)
 
 
-    def __init__(self, mode, **kwargs):
+    def __init__(self, mode: str, **kwargs: Any):
         super().__init__()
         self.mode = mode
         self.kwargs = kwargs
         self._cancel_requested = False
-        self._last_progress_value = None
+        self._last_progress_value: int | None = None
         self._last_progress_emit_ts_ms = 0.0
         logger.debug(f"WorkerThread initialized: mode={mode}")
 
@@ -143,7 +172,7 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
         if self._cancel_requested or self.isInterruptionRequested():
             raise CancelledError("작업이 사용자에 의해 취소되었습니다.")
 
-    def _emit_progress_if_due(self, value, min_step: int = 1, min_interval_ms: int = 50):
+    def _emit_progress_if_due(self, value: int | float | str, min_step: int = 1, min_interval_ms: int = 50):
         """진행률 신호를 단계/시간 기준으로 스로틀링하여 emit."""
         try:
             value = int(value)
@@ -207,7 +236,7 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
         used_names.add(lowered)
         return out_path, candidate
 
-    def _atomic_pdf_save(self, doc: fitz.Document, output_path: str, **save_kwargs):
+    def _atomic_pdf_save(self, doc: fitz.Document, output_path: str, **save_kwargs: Any):
         """
         원자적 PDF 저장.
 
@@ -235,7 +264,7 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
         try:
             self._check_cancelled()
-            doc.save(tmp_path, **save_kwargs)
+            doc.save(tmp_path, **cast(Any, save_kwargs))
             self._check_cancelled()
             try:
                 os.replace(tmp_path, output_path)
@@ -467,14 +496,16 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
         # 단일 PDF 입력
         for key in ("file_path", "file_path1", "file_path2", "source_path", "target_path", "replace_path"):
-            if key in kwargs and kwargs.get(key) is not None:
-                if not _validate_pdf_path(kwargs.get(key)):
+            path = kwargs.get(key)
+            if isinstance(path, str):
+                if not _validate_pdf_path(path):
                     return False
 
         # 단일 비-PDF 입력
         for key in ("image_path", "signature_path", "attach_path"):
-            if key in kwargs and kwargs.get(key) is not None:
-                if not self._validate_non_pdf_size(kwargs.get(key), emit_error=True):
+            path = kwargs.get(key)
+            if isinstance(path, str):
+                if not self._validate_non_pdf_size(path, emit_error=True):
                     return False
 
         # 목록 입력 검증
@@ -565,10 +596,10 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def batch(self):
         """일괄 처리"""
-        files = self.kwargs.get('files')
-        output_dir = self.kwargs.get('output_dir')
-        operation = self.kwargs.get('operation')
-        option = self.kwargs.get('option', '')
+        files = [path for path in _as_list(self.kwargs.get('files')) if isinstance(path, str)]
+        output_dir = _as_str(self.kwargs.get('output_dir'))
+        operation = _as_str(self.kwargs.get('operation'))
+        option = _as_str(self.kwargs.get('option'))
         failed_files = []
 
         success_count = 0
@@ -604,8 +635,15 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
                         )
                     self._atomic_pdf_save(doc, out_path)
                 elif operation == "encrypt" and option:
-                    perm = int(fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_PRINT | fitz.PDF_PERM_COPY)
-                    self._atomic_pdf_save(doc, out_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=option, user_pw=option, permissions=perm)
+                    perm = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
+                    self._atomic_pdf_save(
+                        doc,
+                        out_path,
+                        encryption=FITZ_PDF_ENCRYPT_AES_256,
+                        owner_pw=option,
+                        user_pw=option,
+                        permissions=perm,
+                    )
                 elif operation == "rotate":
                     for page in doc:
                         page.set_rotation(page.rotation + 90)
@@ -647,11 +685,14 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
         total_images = 0
         fonts_used = set()
         page_count = 0
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         try:
             doc = fitz.open(file_path)
             page_count = len(doc)
 
-            for i, page in enumerate(doc):
+            for i in range(page_count):
+                page = doc[i]
                 # 텍스트 통계
                 text = page.get_text()
                 total_chars += len(text)
@@ -667,7 +708,7 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
                 self._emit_progress_if_due(int((i + 1) / max(1, page_count) * 100))
 
             # 결과 저장
-            meta = doc.metadata
+            meta = cast(dict[str, Any], doc.metadata or {})
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(f"# PDF 정보: {os.path.basename(file_path)}\n\n")
                 f.write(f"## 기본 정보\n")
@@ -688,13 +729,13 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def get_bookmarks(self):
         """PDF 북마크(목차) 추출"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         doc = None
-        toc = []
+        toc: list[list[Any]] = []
         try:
             doc = fitz.open(file_path)
-            toc = doc.get_toc()  # [[level, title, page], ...]
+            toc = cast(list[list[Any]], doc.get_toc() or [])  # [[level, title, page], ...]
 
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(f"# 북마크: {os.path.basename(file_path)}\n\n")
@@ -713,9 +754,9 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def set_bookmarks(self):
         """PDF 북마크(목차) 설정"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        bookmarks = self.kwargs.get('bookmarks', [])  # [[level, title, page], ...]
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        bookmarks = cast(list[list[Any]], self.kwargs.get('bookmarks') or [])  # [[level, title, page], ...]
         doc = None
         try:
             doc = fitz.open(file_path)
@@ -730,15 +771,16 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def search_text(self):
         """PDF 내 텍스트 검색"""
-        file_path = self.kwargs.get('file_path')
-        search_term = self.kwargs.get('search_term', '')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        search_term = _as_str(self.kwargs.get('search_term'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         results = []
         doc = None
         try:
             doc = fitz.open(file_path)
             total_pages = max(1, len(doc))
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 text_instances = page.search_for(search_term)
                 if text_instances:
                     results.append({
@@ -768,16 +810,18 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
     def extract_tables(self):
         """PDF에서 테이블 데이터 추출"""
         import csv
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         all_tables = []
         doc = None
         try:
             doc = fitz.open(file_path)
             total_pages = max(1, len(doc))
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 try:
-                    tables = page.find_tables()
+                    find_tables = getattr(page, "find_tables", None)
+                    tables = _as_list(find_tables() if callable(find_tables) else [])
                     for idx, table in enumerate(tables):
                         table_data = table.extract()
                         all_tables.append({
@@ -805,9 +849,9 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def decrypt_pdf(self):
         """암호화된 PDF 복호화"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        password = self.kwargs.get('password', '')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        password = _as_str(self.kwargs.get('password'))
         doc = None
         try:
             doc = fitz.open(file_path)
@@ -826,24 +870,25 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def list_annotations(self):
         """PDF 주석 목록 추출"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         all_annots = []
         doc = None
         try:
             doc = fitz.open(file_path)
             total_pages = max(1, len(doc))
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 annots = page.annots()
                 if annots:
                     for annot in annots:
-                        annot_info = annot.info
+                        annot_info = cast(dict[str, Any], annot.info or {})
                         all_annots.append({
                             'page': page_num + 1,
                             'type': annot.type[1] if annot.type else 'Unknown',
-                            'content': annot_info.get('content', '') if annot_info else '',
-                            'title': annot_info.get('title', '') if annot_info else '',
-                            'rect': list(annot.rect)
+                            'content': annot_info.get('content', ''),
+                            'title': annot_info.get('title', ''),
+                            'rect': [annot.rect.x0, annot.rect.y0, annot.rect.x1, annot.rect.y1],
                         })
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
 
@@ -866,13 +911,13 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def add_annotation(self):
         """PDF에 주석 추가"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        page_num = self.kwargs.get('page_num', 0)
-        annot_type = self.kwargs.get('annot_type', 'text')  # text, sticky, freetext
-        text = self.kwargs.get('text', '')
-        point = self.kwargs.get('point', [100, 100])  # [x, y]
-        rect = self.kwargs.get('rect', [100, 100, 300, 150])  # [x0, y0, x1, y1]
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        page_num = _as_int(self.kwargs.get('page_num'), 0)
+        annot_type = _as_str(self.kwargs.get('annot_type'), 'text')  # text, sticky, freetext
+        text = _as_str(self.kwargs.get('text'))
+        point = cast(list[float], self.kwargs.get('point') or [100, 100])  # [x, y]
+        rect = cast(list[float], self.kwargs.get('rect') or [100, 100, 300, 150])  # [x0, y0, x1, y1]
         doc = None
         try:
             doc = fitz.open(file_path)
@@ -902,8 +947,8 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def remove_annotations(self):
         """PDF에서 모든 주석 제거"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         count = 0
         doc = None
         try:
@@ -925,9 +970,9 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def add_attachment(self):
         """PDF에 파일 첨부"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        attach_path = self.kwargs.get('attach_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        attach_path = _as_str(self.kwargs.get('attach_path'))
         doc = None
         try:
             doc = fitz.open(file_path)
@@ -945,8 +990,8 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
 
     def extract_attachments(self):
         """PDF 첨부 파일 추출"""
-        file_path = self.kwargs.get('file_path')
-        output_dir = self.kwargs.get('output_dir')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_dir = _as_str(self.kwargs.get('output_dir'))
         doc = None
         count = 0
         used_names = set()
@@ -961,7 +1006,7 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
                 return
 
             for i in range(total):
-                info = doc.embfile_info(i)
+                info = _as_dict(doc.embfile_info(i))
                 data = doc.embfile_get(i)
                 raw_name = info.get('name', f'attachment_{i + 1}')
                 out_path, _saved_name = self._build_safe_attachment_output_path(output_dir, raw_name, i, used_names)

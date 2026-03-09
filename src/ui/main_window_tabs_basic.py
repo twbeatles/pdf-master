@@ -6,6 +6,7 @@ implementation to the folder-based tabs_basic package.
 
 import logging
 import os
+from typing import cast
 
 import fitz
 from PyQt6.QtCore import Qt
@@ -41,7 +42,8 @@ logger = logging.getLogger(__name__)
 class MainWindowTabsBasicMixin(_MainWindowTabsBasicMixin):
     def _save_convert_preset(self):
         """변환 설정 프리셋 저장"""
-        name, ok = QInputDialog.getText(self, tm.get("dlg_save_preset"), tm.get("lbl_preset_name"))
+        parent = cast(QWidget, self)
+        name, ok = QInputDialog.getText(parent, tm.get("dlg_save_preset"), tm.get("lbl_preset_name"))
         if ok and name:
             presets = self.settings.get("convert_presets", {})
             presets[name] = {
@@ -55,13 +57,14 @@ class MainWindowTabsBasicMixin(_MainWindowTabsBasicMixin):
 
     def _load_convert_preset(self):
         """변환 설정 프리셋 불러오기"""
+        parent = cast(QWidget, self)
         presets = self.settings.get("convert_presets", {})
         if not presets:
-            QMessageBox.information(self, tm.get("dlg_preset"), tm.get("msg_no_presets"))
+            QMessageBox.information(parent, tm.get("dlg_preset"), tm.get("msg_no_presets"))
             return
 
         # 프리셋 선택 다이얼로그
-        name, ok = QInputDialog.getItem(self, tm.get("dlg_load_preset"), tm.get("lbl_select_preset"), 
+        name, ok = QInputDialog.getItem(parent, tm.get("dlg_load_preset"), tm.get("lbl_select_preset"), 
                                         list(presets.keys()), 0, False)
         if ok and name:
             preset = presets[name]

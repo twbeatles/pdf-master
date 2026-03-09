@@ -168,7 +168,8 @@ def _load_metadata(self, path):
     doc = None
     try:
         doc = fitz.open(path)
-        m = doc.metadata
+        metadata = doc.metadata
+        m = metadata if isinstance(metadata, dict) else {}
         self.inp_title.setText(m.get('title', '') or '')
         self.inp_author.setText(m.get('author', '') or '')
         self.inp_subj.setText(m.get('subject', '') or '')

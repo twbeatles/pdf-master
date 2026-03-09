@@ -1,0 +1,10 @@
+{
+  "include": [
+    "main.py",
+    "src",
+    "tests"
+  ],
+  "exclude": [
+    ".pytest_cache"
+  ]
+}

@@ -8,8 +8,8 @@ from PyQt6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QWidget,
     QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QSlider
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QPointF, QRectF
-from PyQt6.QtGui import QPixmap, QImage, QWheelEvent, QMouseEvent, QPainter
+from PyQt6.QtCore import Qt, pyqtSignal, QPointF, QRectF, QEvent
+from PyQt6.QtGui import QPixmap, QImage, QWheelEvent, QMouseEvent, QPainter, QEnterEvent, QCloseEvent
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +50,12 @@ class ZoomableGraphicsView(QGraphicsView):
             }
         """)
         
-        self._pixmap_item: QGraphicsPixmapItem = None
+        self._pixmap_item: QGraphicsPixmapItem | None = None
     
     def set_pixmap(self, pixmap: QPixmap):
         """이미지 설정"""
         self._scene.clear()
+        self._pixmap_item = None
         if pixmap and not pixmap.isNull():
             self._pixmap_item = self._scene.addPixmap(pixmap)
             self._scene.setSceneRect(QRectF(pixmap.rect()))
@@ -97,8 +98,10 @@ class ZoomableGraphicsView(QGraphicsView):
     def zoom_level(self) -> float:
         return self._zoom
     
-    def wheelEvent(self, event: QWheelEvent):
+    def wheelEvent(self, event: QWheelEvent | None):
         """마우스 휠로 줌"""
+        if event is None:
+            return
         delta = event.angleDelta().y()
         if delta > 0:
             self.zoom_in()
@@ -106,8 +109,10 @@ class ZoomableGraphicsView(QGraphicsView):
             self.zoom_out()
         event.accept()
     
-    def mousePressEvent(self, event: QMouseEvent):
+    def mousePressEvent(self, event: QMouseEvent | None):
         """마우스 드래그 시작 (패닝)"""
+        if event is None:
+            return
         if event.button() == Qt.MouseButton.LeftButton:
             self._panning = True
             self._pan_start = event.position()
@@ -116,8 +121,10 @@ class ZoomableGraphicsView(QGraphicsView):
         else:
             super().mousePressEvent(event)
     
-    def mouseMoveEvent(self, event: QMouseEvent):
+    def mouseMoveEvent(self, event: QMouseEvent | None):
         """마우스 드래그 (패닝)"""
+        if event is None:
+            return
         if self._panning:
             delta = event.position() - self._pan_start
             self._pan_start = event.position()
@@ -125,14 +132,18 @@ class ZoomableGraphicsView(QGraphicsView):
             # 스크롤바를 이용한 패닝
             h_bar = self.horizontalScrollBar()
             v_bar = self.verticalScrollBar()
-            h_bar.setValue(int(h_bar.value() - delta.x()))
-            v_bar.setValue(int(v_bar.value() - delta.y()))
+            if h_bar is not None:
+                h_bar.setValue(int(h_bar.value() - delta.x()))
+            if v_bar is not None:
+                v_bar.setValue(int(v_bar.value() - delta.y()))
             event.accept()
         else:
             super().mouseMoveEvent(event)
-    
-    def mouseReleaseEvent(self, event: QMouseEvent):
+
+    def mouseReleaseEvent(self, event: QMouseEvent | None):
         """마우스 드래그 종료"""
+        if event is None:
+            return
         if event.button() == Qt.MouseButton.LeftButton:
             self._panning = False
             self.setCursor(Qt.CursorShape.OpenHandCursor)
@@ -140,15 +151,15 @@ class ZoomableGraphicsView(QGraphicsView):
         else:
             super().mouseReleaseEvent(event)
     
-    def enterEvent(self, event):
+    def enterEvent(self, event: QEnterEvent | None):
         """마우스 진입 시 커서 변경"""
         self.setCursor(Qt.CursorShape.OpenHandCursor)
         super().enterEvent(event)
-    
-    def leaveEvent(self, event):
+
+    def leaveEvent(self, a0: QEvent | None):
         """마우스 이탈 시 커서 복원"""
         self.unsetCursor()
-        super().leaveEvent(event)
+        super().leaveEvent(a0)
 
 
 class ZoomablePreviewWidget(QWidget):
@@ -392,7 +403,7 @@ class ZoomablePreviewWidget(QWidget):
             """)
             self.page_label.setStyleSheet("font-weight: bold; min-width: 60px; color: #333;")
     
-    def closeEvent(self, event):
+    def closeEvent(self, a0: QCloseEvent | None):
         """정리"""
         self._close_doc()
-        super().closeEvent(event)
+        super().closeEvent(a0)

@@ -113,11 +113,19 @@ def test_insert_textbox_uses_xy_when_rect_missing(tmp_path):
     doc = fitz.open(str(out))
     words = doc[0].get_text("words")
     doc.close()
-    hit = [w for w in words if "HELLO_BOX" in w[4]]
+    hit = [
+        w for w in words
+        if isinstance(w, (list, tuple)) and len(w) >= 5 and isinstance(w[4], str) and "HELLO_BOX" in w[4]
+    ]
     assert hit
+    first_word = hit[0]
+    x0 = first_word[0]
+    y0 = first_word[1]
+    assert isinstance(x0, (int, float))
+    assert isinstance(y0, (int, float))
     # x/y 전달값이 반영되었는지 확인 (기본 rect(100,100,...)를 벗어나야 함)
-    assert hit[0][0] >= 400
-    assert hit[0][1] >= 620
+    assert x0 >= 400
+    assert y0 >= 620
 
 
 def test_copy_page_between_docs_accepts_file_path_and_page_range(tmp_path):
@@ -142,7 +150,10 @@ def test_copy_page_between_docs_accepts_file_path_and_page_range(tmp_path):
     worker.copy_page_between_docs()
 
     doc = fitz.open(str(out))
-    texts = [doc[i].get_text().strip() for i in range(len(doc))]
+    texts = []
+    for i in range(len(doc)):
+        raw_text = doc[i].get_text()
+        texts.append(raw_text.strip() if isinstance(raw_text, str) else "")
     doc.close()
 
     assert len(texts) == 3

@@ -170,7 +170,7 @@ class PDFMasterApp(
         self.progress_overlay.cancelled.connect(self._on_worker_cancelled)
         self.progress_overlay.hide()
 
-    def closeEvent(self, event):
+    def closeEvent(self, a0):
         """앱 종료 시 리소스 정리 및 설정 저장"""
         logger.info("Application closing...")
 
@@ -205,7 +205,7 @@ class PDFMasterApp(
         self._save_settings_on_exit()
 
         logger.info("Application cleanup complete")
-        super().closeEvent(event)
+        super().closeEvent(a0)
 
     def _schedule_settings_save(self, delay_ms: int = 400):
         """Debounced settings save for high-frequency UI updates."""

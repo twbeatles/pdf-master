@@ -71,7 +71,10 @@ def test_copy_page_valid_range_still_succeeds(tmp_path):
 
     assert out.exists()
     doc = fitz.open(str(out))
-    texts = [doc[i].get_text().strip() for i in range(len(doc))]
+    texts = []
+    for i in range(len(doc)):
+        raw_text = doc[i].get_text()
+        texts.append(raw_text.strip() if isinstance(raw_text, str) else "")
     doc.close()
 
     assert len(texts) == 2

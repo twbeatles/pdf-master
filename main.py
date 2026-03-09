@@ -32,7 +32,7 @@ logger = setup_logging()
 
 # PyInstaller 환경에서의 경로 설정 (Import 전에 실행되어야 함)
 if getattr(sys, 'frozen', False):
-    base_path = sys._MEIPASS
+    base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 else:
     base_path = os.path.dirname(os.path.abspath(__file__))
 

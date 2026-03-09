@@ -7,9 +7,10 @@ from .lifecycle import (
     _run_pending_worker,
     set_ui_busy,
 )
+from .._typing import MainWindowHost
 
 
-class MainWindowWorkerMixin:
+class MainWindowWorkerMixin(MainWindowHost):
     _on_progress_update = _on_progress_update
     _on_worker_cancelled = _on_worker_cancelled
     _cleanup_cancelled_worker = _cleanup_cancelled_worker

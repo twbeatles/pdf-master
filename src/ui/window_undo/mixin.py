@@ -5,9 +5,10 @@ from .cleanup import (
     _cleanup_unused_undo_backups,
 )
 from .history import _redo_action, _register_undo_action, _undo_action
+from .._typing import MainWindowHost
 
 
-class MainWindowUndoMixin:
+class MainWindowUndoMixin(MainWindowHost):
     _undo_action = _undo_action
     _redo_action = _redo_action
     _create_backup_for_undo = _create_backup_for_undo

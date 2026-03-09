@@ -58,9 +58,10 @@ from .helpers import (
     _parse_freehand_strokes,
     _parse_bookmark_lines,
 )
+from .._typing import MainWindowHost
 
 
-class MainWindowTabsAdvancedMixin:
+class MainWindowTabsAdvancedMixin(MainWindowHost):
     _normalize_page_input = _normalize_page_input
     _parse_freehand_strokes = _parse_freehand_strokes
     _parse_bookmark_lines = _parse_bookmark_lines

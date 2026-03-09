@@ -2,6 +2,9 @@ import os
 import fitz
 import tempfile
 import logging
+from typing import Any, cast
+
+from .._typing import WorkerHost
 
 try:
     from ..constants import (
@@ -22,12 +25,47 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+FITZ_PDF_PERM_ACCESSIBILITY = int(getattr(fitz, "PDF_PERM_ACCESSIBILITY", 0))
+FITZ_PDF_PERM_PRINT = int(getattr(fitz, "PDF_PERM_PRINT", 0))
+FITZ_PDF_PERM_COPY = int(getattr(fitz, "PDF_PERM_COPY", 0))
+FITZ_PDF_ENCRYPT_AES_256 = int(getattr(fitz, "PDF_ENCRYPT_AES_256", 0))
 
-class WorkerPdfOpsMixin:
+
+def _as_str(value: Any | None, default: str = "") -> str:
+    return value if isinstance(value, str) else default
+
+
+def _as_int(value: Any | None, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, (int, float)):
+        return int(value)
+    return default
+
+
+def _as_float(value: Any | None, default: float = 0.0) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    return default
+
+
+def _as_bool(value: Any | None, default: bool = False) -> bool:
+    return value if isinstance(value, bool) else default
+
+
+def _as_list(value: Any | None) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _as_dict(value: Any | None) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+class WorkerPdfOpsMixin(WorkerHost):
 
     def merge(self):
-        files = self.kwargs.get('files', [])
-        output_path = self.kwargs.get('output_path')
+        files = [path for path in _as_list(self.kwargs.get('files')) if isinstance(path, str)]
+        output_path = _as_str(self.kwargs.get('output_path'))
 
         # 입력 유효성 검사
         if not files:
@@ -74,10 +112,10 @@ class WorkerPdfOpsMixin:
 
     def convert_to_img(self):
         # 다중 파일 지원
-        file_paths = self.kwargs.get('file_paths') or [self.kwargs.get('file_path')]
-        output_dir = self.kwargs.get('output_dir')
-        fmt = self.kwargs.get('fmt', 'png')
-        dpi = self.kwargs.get('dpi', 200)
+        file_paths = [path for path in (_as_list(self.kwargs.get('file_paths')) or [_as_str(self.kwargs.get('file_path'))]) if isinstance(path, str) and path]
+        output_dir = _as_str(self.kwargs.get('output_dir'))
+        fmt = _as_str(self.kwargs.get('fmt'), 'png')
+        dpi = _as_int(self.kwargs.get('dpi'), 200)
         zoom = dpi / 72
         mat = fitz.Matrix(zoom, zoom)
 
@@ -91,7 +129,8 @@ class WorkerPdfOpsMixin:
             try:
                 doc = fitz.open(file_path)
                 base = os.path.splitext(os.path.basename(file_path))[0]
-                for i, page in enumerate(doc):
+                for i in range(len(doc)):
+                    page = doc[i]
                     self._check_cancelled()  # 취소 체크포인트
                     pix = page.get_pixmap(matrix=mat)
                     save_path = os.path.join(output_dir, f"{base}_p{i+1:03d}.{fmt}")
@@ -106,10 +145,10 @@ class WorkerPdfOpsMixin:
 
     def extract_text(self):
         # 다중 파일 지원
-        file_paths = self.kwargs.get('file_paths') or [self.kwargs.get('file_path')]
-        output_path = self.kwargs.get('output_path')
-        output_dir = self.kwargs.get('output_dir')
-        include_details = self.kwargs.get('include_details', False)  # v3.2: 상세 정보 포함 옵션
+        file_paths = [path for path in (_as_list(self.kwargs.get('file_paths')) or [_as_str(self.kwargs.get('file_path'))]) if isinstance(path, str) and path]
+        output_path = _as_str(self.kwargs.get('output_path'))
+        output_dir = _as_str(self.kwargs.get('output_dir'))
+        include_details = _as_bool(self.kwargs.get('include_details'), False)  # v3.2: 상세 정보 포함 옵션
 
         total_files = len(file_paths)
 
@@ -121,17 +160,19 @@ class WorkerPdfOpsMixin:
                 doc = fitz.open(file_path)
                 text_chunks = []
 
-                for i, page in enumerate(doc):
+                for i in range(len(doc)):
+                    page = doc[i]
                     self._check_cancelled()  # 취소 체크포인트
                     text_chunks.append(f"\n--- Page {i+1} ---\n")
 
                     if include_details:
                         # v3.2: 상세 정보 추출 (폰트, 크기, 색상)
-                        blocks = page.get_text("dict")["blocks"]
+                        text_dict = _as_dict(page.get_text("dict"))
+                        blocks = cast(list[dict[str, Any]], text_dict.get("blocks", []))
                         for block in blocks:
                             if block.get("type") == 0:  # 텍스트 블록
-                                for line in block.get("lines", []):
-                                    for span in line.get("spans", []):
+                                for line in cast(list[dict[str, Any]], block.get("lines", [])):
+                                    for span in cast(list[dict[str, Any]], line.get("spans", [])):
                                         text = span.get("text", "")
                                         font = span.get("font", "unknown")
                                         size = span.get("size", 0)
@@ -166,9 +207,9 @@ class WorkerPdfOpsMixin:
         self.finished_signal.emit(f"✅ 텍스트 추출 완료!{detail_msg}\n{total_files}개 파일")
 
     def split(self):
-        file_path = self.kwargs.get('file_path')
-        output_dir = self.kwargs.get('output_dir')
-        page_range = self.kwargs.get('page_range')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_dir = _as_str(self.kwargs.get('output_dir'))
+        page_range = _as_str(self.kwargs.get('page_range'))
 
         doc_src = fitz.open(file_path)
         doc_final = fitz.open()
@@ -198,9 +239,9 @@ class WorkerPdfOpsMixin:
             doc_final.close()
 
     def delete_pages(self):
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        page_range = self.kwargs.get('page_range')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        page_range = _as_str(self.kwargs.get('page_range'))
         doc = None
         try:
             doc = fitz.open(file_path)
@@ -226,14 +267,15 @@ class WorkerPdfOpsMixin:
                 doc.close()
 
     def rotate(self):
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        angle = self.kwargs.get('angle')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        angle = _as_int(self.kwargs.get('angle'))
 
         doc = fitz.open(file_path)
         try:
             total_pages = max(1, len(doc))  # Division by zero 방지
-            for i, page in enumerate(doc):
+            for i in range(len(doc)):
+                page = doc[i]
                 self._check_cancelled()  # 취소 체크포인트
                 page.set_rotation(page.rotation + angle)
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))
@@ -243,17 +285,17 @@ class WorkerPdfOpsMixin:
             doc.close()
 
     def watermark(self):
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        text = self.kwargs.get('text')
-        opacity = self.kwargs.get('opacity', 0.3)
-        color = self.kwargs.get('color', (0.5, 0.5, 0.5))
-        fontsize = self.kwargs.get('fontsize', 40)
-        rotation = self.kwargs.get('rotation', 45)
-        fontname = self.kwargs.get('fontname', 'helv')
-        position = self.kwargs.get('position', 'center')
-        layer = self.kwargs.get('layer', 'foreground')
-        scale_percent = self.kwargs.get('scale_percent', 100)
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        text = _as_str(self.kwargs.get('text'))
+        opacity = _as_float(self.kwargs.get('opacity'), 0.3)
+        color = tuple(self.kwargs.get('color', (0.5, 0.5, 0.5)))
+        fontsize = _as_int(self.kwargs.get('fontsize'), 40)
+        rotation = _as_int(self.kwargs.get('rotation'), 45)
+        fontname = _as_str(self.kwargs.get('fontname'), 'helv')
+        position = _as_str(self.kwargs.get('position'), 'center')
+        layer = _as_str(self.kwargs.get('layer'), 'foreground')
+        scale_percent = _as_int(self.kwargs.get('scale_percent'), 100)
 
         # v4.5: 입력 검증 강화
         valid_positions = ['center', 'tile', 'top', 'bottom', 'top-left', 'top-right', 'bottom-left', 'bottom-right']
@@ -276,7 +318,8 @@ class WorkerPdfOpsMixin:
             total_pages = max(1, len(doc))
             margin = 50  # 가장자리 여백
 
-            for i, page in enumerate(doc):
+            for i in range(len(doc)):
+                page = doc[i]
                 self._check_cancelled()
                 rect = page.rect
 
@@ -333,13 +376,13 @@ class WorkerPdfOpsMixin:
             doc.close()
 
     def metadata_update(self):
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        new_meta = self.kwargs.get('metadata')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        new_meta = _as_dict(self.kwargs.get('metadata'))
 
         doc = fitz.open(file_path)
         try:
-            meta = doc.metadata
+            meta = cast(dict[str, Any], doc.metadata or {})
             for k, v in new_meta.items():
                 if v:
                     meta[k] = v
@@ -351,9 +394,9 @@ class WorkerPdfOpsMixin:
             doc.close()
 
     def protect(self):
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        pw = self.kwargs.get('password')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        pw = _as_str(self.kwargs.get('password'))
         doc = None
         try:
             if not pw:
@@ -361,8 +404,15 @@ class WorkerPdfOpsMixin:
                 return
 
             doc = fitz.open(file_path)
-            perm = int(fitz.PDF_PERM_ACCESSIBILITY | fitz.PDF_PERM_PRINT | fitz.PDF_PERM_COPY)
-            self._atomic_pdf_save(doc, output_path, encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw=pw, user_pw=pw, permissions=perm)
+            perm = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
+            self._atomic_pdf_save(
+                doc,
+                output_path,
+                encryption=FITZ_PDF_ENCRYPT_AES_256,
+                owner_pw=pw,
+                user_pw=pw,
+                permissions=perm,
+            )
             self._emit_progress_if_due(100)
             self.finished_signal.emit(f"✅ 암호화 완료!")
         finally:
@@ -370,9 +420,9 @@ class WorkerPdfOpsMixin:
                 doc.close()
 
     def compress(self):
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        quality = self.kwargs.get('quality', 'high')  # low, medium, high
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        quality = _as_str(self.kwargs.get('quality'), 'high')  # low, medium, high
 
         # 입력 유효성 검사
         if not file_path or not os.path.exists(file_path):
@@ -404,8 +454,8 @@ class WorkerPdfOpsMixin:
         self.finished_signal.emit(f"✅ 압축 완료! ({quality_name})\n{original_size//1024}KB → {new_size//1024}KB ({ratio:.1f}% 감소)")
 
     def images_to_pdf(self):
-        files = self.kwargs.get('files')
-        output_path = self.kwargs.get('output_path')
+        files = [path for path in _as_list(self.kwargs.get('files')) if isinstance(path, str)]
+        output_path = _as_str(self.kwargs.get('output_path'))
         doc = None
         try:
             doc = fitz.open()
@@ -430,9 +480,9 @@ class WorkerPdfOpsMixin:
 
     def reorder(self):
         """페이지 순서 변경"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        page_order = self.kwargs.get('page_order')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        page_order = [_as_int(page_num) for page_num in _as_list(self.kwargs.get('page_order'))]
 
         doc_src = None
         doc_out = None
@@ -455,10 +505,10 @@ class WorkerPdfOpsMixin:
 
     def split_by_pages(self):
         """PDF 분할 - 각 페이지를 개별 파일로"""
-        file_path = self.kwargs.get('file_path')
-        output_dir = self.kwargs.get('output_dir')
-        split_mode = self.kwargs.get('split_mode', 'each')
-        ranges = self.kwargs.get('ranges', '')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_dir = _as_str(self.kwargs.get('output_dir'))
+        split_mode = _as_str(self.kwargs.get('split_mode'), 'each')
+        ranges = _as_str(self.kwargs.get('ranges'))
 
         doc = None
         try:
@@ -533,17 +583,17 @@ class WorkerPdfOpsMixin:
 
     def add_page_numbers(self):
         """페이지 번호 삽입"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        position = self.kwargs.get('position', 'bottom')  # bottom, top, bottom-left, bottom-right, top-left, top-right
-        format_str = self.kwargs.get('format', '{n} / {total}')
-        fontsize = self.kwargs.get('fontsize', 10)
-        fontname = self.kwargs.get('fontname', 'helv')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        position = _as_str(self.kwargs.get('position'), 'bottom')  # bottom, top, bottom-left, bottom-right, top-left, top-right
+        format_str = _as_str(self.kwargs.get('format'), '{n} / {total}')
+        fontsize = _as_int(self.kwargs.get('fontsize'), 10)
+        fontname = _as_str(self.kwargs.get('fontname'), 'helv')
         color = self.kwargs.get('color', (0, 0, 0))
-        margin = self.kwargs.get('margin', 30)
-        start_number = self.kwargs.get('start_number', 1)  # 시작 번호
-        skip_first = self.kwargs.get('skip_first', False)  # 첫 페이지 건너뛰기
-        use_roman = self.kwargs.get('use_roman', False)  # v3.2: 로마 숫자 형식
+        margin = _as_int(self.kwargs.get('margin'), 30)
+        start_number = _as_int(self.kwargs.get('start_number'), 1)  # 시작 번호
+        skip_first = _as_bool(self.kwargs.get('skip_first'), False)  # 첫 페이지 건너뛰기
+        use_roman = _as_bool(self.kwargs.get('use_roman'), False)  # v3.2: 로마 숫자 형식
 
         def to_roman(num):
             """숫자를 로마 숫자로 변환"""
@@ -561,7 +611,8 @@ class WorkerPdfOpsMixin:
         try:
             total = len(doc)
 
-            for i, page in enumerate(doc):
+            for i in range(total):
+                page = doc[i]
                 self._check_cancelled()  # 취소 체크포인트
                 if skip_first and i == 0:
                     continue
@@ -613,9 +664,9 @@ class WorkerPdfOpsMixin:
 
     def insert_blank_page(self):
         """빈 페이지 삽입"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        position = self.kwargs.get('position', 0)
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        position = _as_int(self.kwargs.get('position'), 0)
 
         doc = fitz.open(file_path)
         try:
@@ -629,11 +680,11 @@ class WorkerPdfOpsMixin:
 
     def replace_page(self):
         """특정 페이지 교체"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        replace_path = self.kwargs.get('replace_path')
-        target_page = self.kwargs.get('target_page', 1) - 1
-        source_page = self.kwargs.get('source_page', 1) - 1
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        replace_path = _as_str(self.kwargs.get('replace_path'))
+        target_page = _as_int(self.kwargs.get('target_page'), 1) - 1
+        source_page = _as_int(self.kwargs.get('source_page'), 1) - 1
 
         doc = fitz.open(file_path)
         replace_doc = fitz.open(replace_path)
@@ -659,19 +710,20 @@ class WorkerPdfOpsMixin:
     def image_watermark(self):
         """이미지 워터마크"""
         self._normalize_mode_kwargs()
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        image_path = self.kwargs.get('image_path')
-        position = self.kwargs.get('position', 'center')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        image_path = _as_str(self.kwargs.get('image_path'))
+        position = _as_str(self.kwargs.get('position'), 'center')
         # v4.5: 크기/투명도 파라미터 지원
-        img_width = self.kwargs.get('width', 150)
-        img_height = self.kwargs.get('height', 150)
-        opacity = self.kwargs.get('opacity', 1.0)  # 0.0 ~ 1.0
+        img_width = _as_int(self.kwargs.get('width'), 150)
+        img_height = _as_int(self.kwargs.get('height'), 150)
+        opacity = _as_float(self.kwargs.get('opacity'), 1.0)  # 0.0 ~ 1.0
 
         doc = fitz.open(file_path)
         try:
             total_pages = len(doc)
-            for i, page in enumerate(doc):
+            for i in range(total_pages):
+                page = doc[i]
                 self._check_cancelled()  # 취소 체크포인트
                 rect = page.rect
                 if position == 'center':
@@ -703,14 +755,15 @@ class WorkerPdfOpsMixin:
 
     def crop_pdf(self):
         """PDF 자르기"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        margins = self.kwargs.get('margins', {'left': 0, 'top': 0, 'right': 0, 'bottom': 0})
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        margins = _as_dict(self.kwargs.get('margins') or {'left': 0, 'top': 0, 'right': 0, 'bottom': 0})
 
         doc = fitz.open(file_path)
         try:
             total_pages = len(doc)
-            for i, page in enumerate(doc):
+            for i in range(total_pages):
+                page = doc[i]
                 self._check_cancelled()  # 취소 체크포인트
                 rect = page.rect
                 new_rect = fitz.Rect(
@@ -727,16 +780,17 @@ class WorkerPdfOpsMixin:
 
     def add_stamp(self):
         """PDF 스탬프 추가"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        stamp_text = self.kwargs.get('stamp_text', '기밀')
-        position = self.kwargs.get('position', 'top-right')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        stamp_text = _as_str(self.kwargs.get('stamp_text'), '기밀')
+        position = _as_str(self.kwargs.get('position'), 'top-right')
         color = self.kwargs.get('color', (1, 0, 0))  # 빨강
 
         doc = fitz.open(file_path)
         try:
             total_pages = len(doc)
-            for i, page in enumerate(doc):
+            for i in range(total_pages):
+                page = doc[i]
                 self._check_cancelled()  # 취소 체크포인트
                 rect = page.rect
                 if position == 'top-right':
@@ -761,14 +815,15 @@ class WorkerPdfOpsMixin:
 
     def extract_links(self):
         """PDF에서 모든 링크 추출"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
 
         doc = fitz.open(file_path)
         all_links = []
         try:
             total_pages = len(doc)
-            for i, page in enumerate(doc):
+            for i in range(total_pages):
+                page = doc[i]
                 self._check_cancelled()  # 취소 체크포인트
                 links = page.get_links()
                 for link in links:
@@ -791,22 +846,24 @@ class WorkerPdfOpsMixin:
 
     def get_form_fields(self):
         """PDF 양식 필드 목록 반환"""
-        file_path = self.kwargs.get('file_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
 
         doc = fitz.open(file_path)
         fields = []
 
         try:
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 widgets = page.widgets()
                 if widgets:
                     for widget in widgets:
+                        rect = widget.rect or fitz.Rect(0, 0, 0, 0)
                         fields.append({
                             'page': page_num + 1,
                             'name': widget.field_name or f"field_{len(fields)}",
                             'type': widget.field_type_string,
                             'value': widget.field_value or "",
-                            'rect': list(widget.rect)
+                            'rect': [rect.x0, rect.y0, rect.x1, rect.y1],
                         })
 
             # 결과를 kwargs에 저장 (메인 스레드에서 접근)
@@ -817,9 +874,9 @@ class WorkerPdfOpsMixin:
 
     def fill_form(self):
         """PDF 양식 필드에 값 채우기"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        field_values = self.kwargs.get('field_values', {})
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        field_values = _as_dict(self.kwargs.get('field_values'))
 
         doc = fitz.open(file_path)
         filled_count = 0
@@ -843,10 +900,10 @@ class WorkerPdfOpsMixin:
 
     def compare_pdfs(self):
         """두 PDF 비교"""
-        file_path1 = self.kwargs.get('file_path1')
-        file_path2 = self.kwargs.get('file_path2')
-        output_path = self.kwargs.get('output_path')
-        generate_visual_diff = self.kwargs.get('generate_visual_diff', False)  # v3.2: 시각적 diff PDF 생성
+        file_path1 = _as_str(self.kwargs.get('file_path1'))
+        file_path2 = _as_str(self.kwargs.get('file_path2'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        generate_visual_diff = _as_bool(self.kwargs.get('generate_visual_diff'), False)  # v3.2: 시각적 diff PDF 생성
 
         doc1 = None
         doc2 = None
@@ -878,8 +935,8 @@ class WorkerPdfOpsMixin:
                     results.append(f"페이지 {i+1}: 파일2에 없음")
                     continue
 
-                text1 = doc1[i].get_text()
-                text2 = doc2[i].get_text()
+                text1 = _as_str(doc1[i].get_text())
+                text2 = _as_str(doc2[i].get_text())
 
                 if text1 != text2:
                     # 간단한 차이 분석
@@ -959,10 +1016,10 @@ class WorkerPdfOpsMixin:
 
     def duplicate_page(self):
         """페이지 복제"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        page_num = self.kwargs.get('page_num', 0)  # 0-indexed
-        count = self.kwargs.get('count', 1)
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        page_num = _as_int(self.kwargs.get('page_num'), 0)  # 0-indexed
+        count = _as_int(self.kwargs.get('count'), 1)
 
         doc = fitz.open(file_path)
         try:
@@ -978,8 +1035,8 @@ class WorkerPdfOpsMixin:
 
     def reverse_pages(self):
         """페이지 역순 정렬"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
 
         doc = fitz.open(file_path)
         try:
@@ -1005,16 +1062,17 @@ class WorkerPdfOpsMixin:
 
     def resize_pages(self):
         """페이지 크기 변경"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        target_size = self.kwargs.get('target_size', 'A4')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        target_size = _as_str(self.kwargs.get('target_size'), 'A4')
 
         target_w, target_h = PAGE_SIZES.get(target_size, DEFAULT_PAGE_SIZE)
 
         doc = fitz.open(file_path)
         try:
             total_pages = len(doc)
-            for i, page in enumerate(doc):
+            for i in range(total_pages):
+                page = doc[i]
                 self._check_cancelled()  # 취소 체크포인트
                 # 새 크기로 페이지 설정
                 page.set_mediabox(fitz.Rect(0, 0, target_w, target_h))
@@ -1028,10 +1086,10 @@ class WorkerPdfOpsMixin:
     def extract_images(self):
         """PDF에서 모든 이미지 추출"""
         import json
-        file_path = self.kwargs.get('file_path')
-        output_dir = self.kwargs.get('output_dir')
-        include_info = self.kwargs.get('include_info', True)  # v3.2: 상세 정보 포함
-        deduplicate = self.kwargs.get('deduplicate', True)  # v3.2: 중복 제거
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_dir = _as_str(self.kwargs.get('output_dir'))
+        include_info = _as_bool(self.kwargs.get('include_info'), True)  # v3.2: 상세 정보 포함
+        deduplicate = _as_bool(self.kwargs.get('deduplicate'), True)  # v3.2: 중복 제거
 
         doc = fitz.open(file_path)
         image_count = 0
@@ -1040,7 +1098,8 @@ class WorkerPdfOpsMixin:
 
         try:
             total_pages = len(doc)
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 self._check_cancelled()  # 취소 체크포인트
                 images = page.get_images()
                 for img_idx, img in enumerate(images):
@@ -1095,13 +1154,13 @@ class WorkerPdfOpsMixin:
     def insert_signature(self):
         """전자 서명 이미지 삽입"""
         from datetime import datetime
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        signature_path = self.kwargs.get('signature_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        signature_path = _as_str(self.kwargs.get('signature_path'))
         page_num = self.kwargs.get('page_num', -1)  # -1 = 마지막 페이지
-        position = self.kwargs.get('position', 'bottom_right')
-        signer_name = self.kwargs.get('signer_name', '')  # v3.2: 서명자 이름
-        add_timestamp = self.kwargs.get('add_timestamp', False)  # v3.2: 타임스탬프
+        position = _as_str(self.kwargs.get('position'), 'bottom_right')
+        signer_name = _as_str(self.kwargs.get('signer_name'))  # v3.2: 서명자 이름
+        add_timestamp = _as_bool(self.kwargs.get('add_timestamp'), False)  # v3.2: 타임스탬프
 
         doc = fitz.open(file_path)
         try:
@@ -1166,7 +1225,7 @@ class WorkerPdfOpsMixin:
 
             # v3.2: 메타데이터에 서명 정보 기록
             if signer_name:
-                meta = doc.metadata
+                meta = cast(dict[str, Any], doc.metadata or {})
                 existing_keywords = meta.get('keywords', '') or ''
                 new_keywords = f"{existing_keywords}; Signed by: {signer_name}" if existing_keywords else f"Signed by: {signer_name}"
                 meta['keywords'] = new_keywords
@@ -1186,16 +1245,17 @@ class WorkerPdfOpsMixin:
 
     def highlight_text(self):
         """PDF 내 텍스트 하이라이트"""
-        file_path = self.kwargs.get('file_path')
-        search_term = self.kwargs.get('search_term', '')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        search_term = _as_str(self.kwargs.get('search_term'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         color = self.kwargs.get('color', (1, 1, 0))  # 기본 노란색
 
         doc = fitz.open(file_path)
         highlight_count = 0
         try:
             total_pages = len(doc)
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 self._check_cancelled()  # 취소 체크포인트
                 text_instances = page.search_for(search_term)
                 for inst in text_instances:
@@ -1213,10 +1273,10 @@ class WorkerPdfOpsMixin:
     def draw_shapes(self):
         """PDF에 도형 그리기"""
         self._normalize_mode_kwargs()
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        page_num = self.kwargs.get('page_num', 0)
-        shapes = self.kwargs.get('shapes', [])  # [{type, params, color, width}]
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        page_num = _as_int(self.kwargs.get('page_num'), 0)
+        shapes = cast(list[dict[str, Any]], self.kwargs.get('shapes') or [])  # [{type, params, color, width}]
 
         doc = fitz.open(file_path)
         try:
@@ -1264,11 +1324,11 @@ class WorkerPdfOpsMixin:
     def add_link(self):
         """PDF에 하이퍼링크 추가"""
         self._normalize_mode_kwargs()
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        page_num = self.kwargs.get('page_num', 0)
-        link_type = self.kwargs.get('link_type', 'uri')  # uri, goto
-        rect = self.kwargs.get('rect', [100, 100, 200, 120])  # [x0, y0, x1, y1]
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        page_num = _as_int(self.kwargs.get('page_num'), 0)
+        link_type = _as_str(self.kwargs.get('link_type'), 'uri')  # uri, goto
+        rect = cast(list[float], self.kwargs.get('rect') or [100, 100, 200, 120])  # [x0, y0, x1, y1]
         target = self.kwargs.get('target')  # URL 또는 페이지 번호
 
         # v4.5: link_type 유효성 검사
@@ -1354,9 +1414,9 @@ class WorkerPdfOpsMixin:
 
     def redact_text(self):
         """PDF에서 텍스트 영구 삭제 (교정)"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        search_term = self.kwargs.get('search_term', '')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        search_term = _as_str(self.kwargs.get('search_term'))
         fill_color = self.kwargs.get('fill_color', (0, 0, 0))  # 검정색 기본
 
         if not search_term:
@@ -1368,7 +1428,8 @@ class WorkerPdfOpsMixin:
             redact_count = 0
             total_pages = len(doc)
 
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 self._check_cancelled()  # 취소 체크포인트
                 text_instances = page.search_for(search_term)
                 for inst in text_instances:
@@ -1384,8 +1445,8 @@ class WorkerPdfOpsMixin:
 
     def extract_markdown(self):
         """PDF를 Markdown으로 추출"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
 
         doc = fitz.open(file_path)
         markdown_chunks = [f"# {os.path.basename(file_path)}\n\n"]
@@ -1393,9 +1454,10 @@ class WorkerPdfOpsMixin:
 
         try:
             total_pages = len(doc)
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 self._check_cancelled()  # 취소 체크포인트
-                text = page.get_text("text")
+                text = _as_str(page.get_text("text"))
                 markdown_chunks.append(f"\n---\n\n## Page {page_num + 1}\n\n")
                 # 기본 텍스트 변환 (단순 줄바꿈 정리)
                 lines = text.split('\n')
@@ -1416,9 +1478,9 @@ class WorkerPdfOpsMixin:
     def copy_page_between_docs(self):
         """다른 PDF에서 페이지 복사"""
         self._normalize_mode_kwargs()
-        source_path = self.kwargs.get('source_path')
-        target_path = self.kwargs.get('target_path')
-        output_path = self.kwargs.get('output_path')
+        source_path = _as_str(self.kwargs.get('source_path'))
+        target_path = _as_str(self.kwargs.get('target_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         source_pages = self.kwargs.get('source_pages')  # 복사할 페이지 번호들 (0-indexed)
         page_range = self.kwargs.get('page_range', '')
         insert_at = self.kwargs.get('insert_at', -1)  # 삽입 위치 (-1 = 끝)
@@ -1484,8 +1546,8 @@ class WorkerPdfOpsMixin:
 
     def add_background(self):
         """PDF 페이지에 배경색 추가"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         color = self.kwargs.get('color', [1, 1, 0.9])  # 연한 노란색 기본
 
         # v4.5: 색상 값 범위 검증 (0.0-1.0)
@@ -1498,7 +1560,8 @@ class WorkerPdfOpsMixin:
         doc = fitz.open(file_path)
         try:
             total_pages = len(doc)
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 self._check_cancelled()  # 취소 체크포인트
                 rect = page.rect
                 shape = page.new_shape()
@@ -1514,10 +1577,10 @@ class WorkerPdfOpsMixin:
 
     def add_text_markup(self):
         """검색어에 밑줄 또는 취소선 추가"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        search_term = self.kwargs.get('search_term', '')
-        markup_type = self.kwargs.get('markup_type', 'underline')  # underline, strikeout, squiggly
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        search_term = _as_str(self.kwargs.get('search_term'))
+        markup_type = _as_str(self.kwargs.get('markup_type'), 'underline')  # underline, strikeout, squiggly
         valid_markup_types = {'underline', 'strikeout', 'squiggly'}
 
         if markup_type not in valid_markup_types:
@@ -1528,7 +1591,8 @@ class WorkerPdfOpsMixin:
         count = 0
         try:
             total_pages = len(doc)
-            for page_num, page in enumerate(doc):
+            for page_num in range(len(doc)):
+                page = doc[page_num]
                 self._check_cancelled()  # 취소 체크포인트
                 instances = page.search_for(search_term)
                 for inst in instances:
@@ -1553,14 +1617,14 @@ class WorkerPdfOpsMixin:
     def insert_textbox(self):
         """PDF에 텍스트 상자 삽입"""
         self._normalize_mode_kwargs()
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        page_num = self.kwargs.get('page_num', 0)
-        rect = self.kwargs.get('rect', [100, 100, 300, 150])  # [x0, y0, x1, y1]
-        text = self.kwargs.get('text', '')
-        fontsize = self.kwargs.get('fontsize', 12)
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        page_num = _as_int(self.kwargs.get('page_num'), 0)
+        rect = cast(list[float], self.kwargs.get('rect') or [100, 100, 300, 150])  # [x0, y0, x1, y1]
+        text = _as_str(self.kwargs.get('text'))
+        fontsize = _as_int(self.kwargs.get('fontsize'), 12)
         color = tuple(self.kwargs.get('color', [0, 0, 0]))
-        align = self.kwargs.get('align', 0)  # 0=left, 1=center, 2=right
+        align = _as_int(self.kwargs.get('align'), 0)  # 0=left, 1=center, 2=right
 
         doc = fitz.open(file_path)
         try:
@@ -1582,14 +1646,14 @@ class WorkerPdfOpsMixin:
 
     def add_sticky_note(self):
         """PDF에 스티키 노트(텍스트 주석) 추가"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        page_num = self.kwargs.get('page_num', 0)
-        x = self.kwargs.get('x', 100)  # 노트 위치 X
-        y = self.kwargs.get('y', 100)  # 노트 위치 Y
-        content = self.kwargs.get('content', '')  # 노트 내용
-        title = self.kwargs.get('title', '메모')  # 노트 제목
-        icon = self.kwargs.get('icon', 'Note')  # Note, Comment, Key, Help, Insert, Paragraph
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        page_num = _as_int(self.kwargs.get('page_num'), 0)
+        x = _as_int(self.kwargs.get('x'), 100)  # 노트 위치 X
+        y = _as_int(self.kwargs.get('y'), 100)  # 노트 위치 Y
+        content = _as_str(self.kwargs.get('content'))  # 노트 내용
+        title = _as_str(self.kwargs.get('title'), '메모')  # 노트 제목
+        icon = _as_str(self.kwargs.get('icon'), 'Note')  # Note, Comment, Key, Help, Insert, Paragraph
 
         doc = fitz.open(file_path)
         try:
@@ -1613,12 +1677,12 @@ class WorkerPdfOpsMixin:
 
     def add_ink_annotation(self):
         """PDF에 프리핸드 드로잉(잉크 주석) 추가"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
-        page_num = self.kwargs.get('page_num', 0)
-        points = self.kwargs.get('points', [])  # [[x1,y1], [x2,y2], ...] 좌표 목록
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        page_num = _as_int(self.kwargs.get('page_num'), 0)
+        points = cast(list[list[float]], self.kwargs.get('points') or [])  # [[x1,y1], [x2,y2], ...] 좌표 목록
         color = self.kwargs.get('color', (0, 0, 1))  # 기본 파란색
-        width = self.kwargs.get('width', 2)  # 선 두께
+        width = _as_int(self.kwargs.get('width'), 2)  # 선 두께
 
         doc = fitz.open(file_path)
         try:
@@ -1648,12 +1712,12 @@ class WorkerPdfOpsMixin:
 
     def add_freehand_signature(self):
         """PDF에 프리핸드 서명 (여러 획) 추가"""
-        file_path = self.kwargs.get('file_path')
-        output_path = self.kwargs.get('output_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
         page_num = self.kwargs.get('page_num', -1)  # -1 = 마지막 페이지
-        strokes = self.kwargs.get('strokes', [])  # [[[x1,y1], [x2,y2]], [[x3,y3], [x4,y4]]] 다중 획
+        strokes = cast(list[list[list[float]]], self.kwargs.get('strokes') or [])  # [[[x1,y1], [x2,y2]], [[x3,y3], [x4,y4]]] 다중 획
         color = self.kwargs.get('color', (0, 0, 0))  # 기본 검정
-        width = self.kwargs.get('width', 2)
+        width = _as_int(self.kwargs.get('width'), 2)
 
         doc = fitz.open(file_path)
         try:

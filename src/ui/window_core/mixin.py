@@ -14,9 +14,10 @@ from .state import (
     _save_splitter_state,
 )
 from .theme import _apply_theme, _create_header, _toggle_theme
+from .._typing import MainWindowHost
 
 
-class MainWindowCoreMixin:
+class MainWindowCoreMixin(MainWindowHost):
     _install_wheel_filters = _install_wheel_filters
     _setup_shortcuts = _setup_shortcuts
     _shortcut_open_file = _shortcut_open_file

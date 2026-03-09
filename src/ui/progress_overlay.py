@@ -3,11 +3,11 @@ Progress Overlay Widget for PDF Master
 작업 진행 중 표시되는 세련된 오버레이 다이얼로그
 """
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QProgressBar, QGraphicsDropShadowEffect, QFrame
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QResizeEvent
 
 
 class ProgressOverlayWidget(QFrame):
@@ -196,6 +196,11 @@ class ProgressOverlayWidget(QFrame):
         else:
             self.setStyleSheet("background: rgba(0, 0, 0, 0.5);")
         self._apply_card_style()
+
+    def _sync_to_parent_geometry(self):
+        parent = self.parent()
+        if isinstance(parent, QWidget):
+            self.setGeometry(parent.rect())
     
     def show_progress(self, title: str = "작업 처리 중...", description: str = ""):
         """오버레이 표시"""
@@ -208,13 +213,12 @@ class ProgressOverlayWidget(QFrame):
         self.cancel_btn.setText("✕ 취소")
         
         # 부모 크기에 맞게 조절
-        if self.parent():
-            self.setGeometry(self.parent().rect())
+        self._sync_to_parent_geometry()
         
         self.show()
         self.raise_()
     
-    def update_progress(self, value: int, description: str = None):
+    def update_progress(self, value: int, description: str | None = None):
         """진행률 업데이트"""
         self.progress_bar.setValue(value)
         self.progress_text.setText(f"{value}%")
@@ -239,11 +243,10 @@ class ProgressOverlayWidget(QFrame):
         self.desc_label.setText("작업을 취소하는 중입니다...")
         self.cancelled.emit()
     
-    def resizeEvent(self, event):
+    def resizeEvent(self, a0: QResizeEvent | None):
         """부모 크기 변경 시 오버레이도 조절"""
-        super().resizeEvent(event)
-        if self.parent():
-            self.setGeometry(self.parent().rect())
+        super().resizeEvent(a0)
+        self._sync_to_parent_geometry()
 
 
 class LoadingSpinner(QLabel):

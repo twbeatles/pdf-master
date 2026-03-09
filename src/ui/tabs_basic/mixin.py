@@ -42,9 +42,10 @@ from .security import (
     action_watermark,
     setup_edit_sec_tab,
 )
+from .._typing import MainWindowHost
 
 
-class MainWindowTabsBasicMixin:
+class MainWindowTabsBasicMixin(MainWindowHost):
     setup_merge_tab = setup_merge_tab
     _merge_add_files = _merge_add_files
     _update_merge_count = _update_merge_count

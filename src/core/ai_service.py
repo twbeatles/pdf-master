@@ -10,9 +10,10 @@ import threading
 import fitz
 import time
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from functools import wraps
-from typing import Optional
+from importlib import import_module
+from typing import Any, Callable, Optional, ParamSpec, TypeVar, cast
 
 # AI 관련 상수 import
 try:
@@ -25,20 +26,37 @@ except ImportError:
     AI_BASE_DELAY = 1.0
     AI_MAX_DELAY = 30.0
 
+class _PerfTimerFallback:
+    def __init__(self, *_args: object, **_kwargs: object):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _exc_type: object, _exc_val: object, _exc_tb: object):
+        return False
+
+
 try:
     from .perf import PerfTimer
 except ImportError:
-    class PerfTimer:  # type: ignore[override]
-        def __init__(self, *_args, **_kwargs):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, _exc_type, _exc_val, _exc_tb):
-            return False
+    PerfTimer = cast(Any, _PerfTimerFallback)
 
 logger = logging.getLogger(__name__)
+P = ParamSpec("P")
+T = TypeVar("T")
+
+
+def _import_optional_module(module_name: str) -> Any | None:
+    try:
+        return import_module(module_name)
+    except ImportError:
+        return None
+
+
+def _response_text(response: object) -> str:
+    text = getattr(response, "text", "")
+    return text if isinstance(text, str) else ""
 
 # =====================================================================
 # Gemini API SDK 가용성 체크
@@ -47,32 +65,25 @@ logger = logging.getLogger(__name__)
 # Import 방식: from google import genai
 # 참고: google-generativeai는 2025년 11월 30일 deprecated됨
 
-GENAI_AVAILABLE = False
-LEGACY_SDK = False
-GENAI_CLIENT = None  # SDK 클라이언트 참조
+_GENAI_MODULE = _import_optional_module("google.genai")
+_GENAI_LEGACY_MODULE = _import_optional_module("google.generativeai")
 
-try:
-    from google import genai
-    GENAI_AVAILABLE = True
-    GENAI_CLIENT = genai
+GENAI_AVAILABLE = _GENAI_MODULE is not None or _GENAI_LEGACY_MODULE is not None
+LEGACY_SDK = _GENAI_MODULE is None and _GENAI_LEGACY_MODULE is not None
+GENAI_CLIENT: Any | None = _GENAI_MODULE if _GENAI_MODULE is not None else _GENAI_LEGACY_MODULE
+
+if _GENAI_MODULE is not None:
     logger.info("google-genai SDK loaded successfully")
-except ImportError:
-    try:
-        # deprecated SDK 폴백 (호환성 유지)
-        import google.generativeai as genai_legacy
-        GENAI_AVAILABLE = True
-        LEGACY_SDK = True
-        GENAI_CLIENT = genai_legacy
-        logger.warning(
-            "Using deprecated google-generativeai SDK. "
-            "Please upgrade: pip install google-genai"
-        )
-    except ImportError:
-        GENAI_AVAILABLE = False
-        logger.warning(
-            "No Gemini SDK installed. AI features disabled. "
-            "Install with: pip install google-genai"
-        )
+elif _GENAI_LEGACY_MODULE is not None:
+    logger.warning(
+        "Using deprecated google-generativeai SDK. "
+        "Please upgrade: pip install google-genai"
+    )
+else:
+    logger.warning(
+        "No Gemini SDK installed. AI features disabled. "
+        "Install with: pip install google-genai"
+    )
 
 
 class AIServiceError(Exception):
@@ -95,7 +106,11 @@ class APIRateLimitError(AIServiceError):
     pass
 
 
-def retry_with_backoff(max_retries: int = 3, base_delay: float = 1.0, max_delay: float = 30.0):
+def retry_with_backoff(
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 30.0,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """
     지수 백오프를 사용한 재시도 데코레이터
     
@@ -106,10 +121,10 @@ def retry_with_backoff(max_retries: int = 3, base_delay: float = 1.0, max_delay:
     """
     import random  # v4.5: jitter를 위한 import
     
-    def decorator(func):
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            last_exception = None
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            last_exception: Exception | None = None
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
@@ -132,7 +147,9 @@ def retry_with_backoff(max_retries: int = 3, base_delay: float = 1.0, max_delay:
                     elif 'api key' in error_str or 'invalid' in error_str or 'authentication' in error_str:
                         raise APIKeyError(f"API 키가 유효하지 않습니다: {e}")
                     raise
-            raise last_exception
+            if last_exception is not None:
+                raise last_exception
+            raise RuntimeError("Retry loop exited without returning a result")
         return wrapper
     return decorator
 
@@ -157,7 +174,7 @@ class AIService:
     _shared_executor: Optional[ThreadPoolExecutor] = None
     _executor_lock = threading.Lock()
     
-    def __init__(self, api_key: str = "", model: str = None, timeout: int = None):
+    def __init__(self, api_key: str = "", model: str | None = None, timeout: int | None = None):
         """
         Args:
             api_key: Gemini API 키
@@ -168,7 +185,7 @@ class AIService:
         self._model = model or self.DEFAULT_MODEL
         self._timeout = timeout or self.DEFAULT_TIMEOUT
         self._configured = False
-        self._client = None  # 새 SDK용 클라이언트
+        self._client: Any | None = None  # 새 SDK용 클라이언트
         
         if api_key:
             self._configure_api()
@@ -191,12 +208,19 @@ class AIService:
         try:
             if LEGACY_SDK:
                 # 기존 SDK 방식 (deprecated)
-                import google.generativeai as genai_legacy
+                genai_legacy = _GENAI_LEGACY_MODULE
+                if genai_legacy is None:
+                    logger.error("Legacy Gemini SDK is not available")
+                    return False
                 genai_legacy.configure(api_key=self._api_key)
             else:
                 # 새 SDK 방식 (권장)
-                from google import genai
-                self._client = genai.Client(api_key=self._api_key)
+                genai = _GENAI_MODULE
+                client_class = getattr(genai, "Client", None) if genai is not None else None
+                if client_class is None:
+                    logger.error("google-genai SDK is not available")
+                    return False
+                self._client = client_class(api_key=self._api_key)
             
             self._configured = True
             logger.info(f"Gemini API configured with model: {self._model}")
@@ -248,13 +272,18 @@ class AIService:
             # 간단한 테스트 요청으로 API 키 확인
             test_prompt = "Hi"
             if LEGACY_SDK:
-                import google.generativeai as genai_legacy
+                genai_legacy = _GENAI_LEGACY_MODULE
+                if genai_legacy is None:
+                    return False, "Gemini SDK를 초기화할 수 없습니다."
                 genai_legacy.configure(api_key=self._api_key)
                 model = genai_legacy.GenerativeModel(self._model)
                 response = model.generate_content(test_prompt)
             else:
-                from google import genai
-                client = genai.Client(api_key=self._api_key)
+                genai = _GENAI_MODULE
+                client_class = getattr(genai, "Client", None) if genai is not None else None
+                if client_class is None:
+                    return False, "Gemini SDK를 초기화할 수 없습니다."
+                client = client_class(api_key=self._api_key)
                 response = client.models.generate_content(
                     model=self._model,
                     contents=test_prompt
@@ -347,7 +376,7 @@ class AIService:
             except TypeError:
                 executor.shutdown(wait=False)
     
-    def extract_text_from_pdf(self, pdf_path: str, max_pages: int = None) -> str:
+    def extract_text_from_pdf(self, pdf_path: str, max_pages: int | None = None) -> str:
         """
         PDF에서 텍스트 추출
         
@@ -372,13 +401,14 @@ class AIService:
             doc = None
             try:
                 doc = fitz.open(pdf_path)
-                text_parts = []
+                text_parts: list[str] = []
                 page_count = len(doc) if max_pages is None else min(len(doc), max_pages)
                 current_length = 0  # v4.5: 메모리 최적화 - 누적 길이 추적
 
                 for i in range(page_count):
                     page = doc[i]
-                    text = page.get_text()
+                    raw_text = page.get_text()
+                    text = raw_text if isinstance(raw_text, str) else ""
                     if text.strip():
                         text_parts.append(f"[Page {i+1}]\n{text}")
                         current_length += len(text_parts[-1])
@@ -404,7 +434,7 @@ class AIService:
                 if doc:
                     doc.close()
     
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    @retry_with_backoff(max_retries=AI_MAX_RETRIES, base_delay=AI_BASE_DELAY, max_delay=AI_MAX_DELAY)
     def _generate_content(self, prompt: str) -> str:
         """
         API를 통해 콘텐츠 생성 (SDK 버전에 따라 분기)
@@ -420,26 +450,33 @@ class AIService:
             APIKeyError: API 키 오류 시
             APIRateLimitError: Rate limit 초과 시
         """
-        def api_call():
+        def api_call() -> str:
             if LEGACY_SDK:
                 # 기존 SDK 방식
-                import google.generativeai as genai_legacy
+                genai_legacy = _GENAI_LEGACY_MODULE
+                if genai_legacy is None:
+                    raise RuntimeError("Legacy Gemini SDK is not available")
                 model = genai_legacy.GenerativeModel(self._model)
                 response = model.generate_content(prompt)
-                if response and hasattr(response, 'text') and response.text:
-                    return response.text
+                return _response_text(response)
             else:
                 # 새 SDK 방식
-                response = self._client.models.generate_content(
+                client = self._client
+                if client is None:
+                    raise RuntimeError("Gemini client is not configured")
+                models = getattr(client, "models", None)
+                if models is None:
+                    raise RuntimeError("Gemini client does not expose models")
+                response = models.generate_content(
                     model=self._model,
                     contents=prompt
                 )
-                if response and hasattr(response, 'text') and response.text:
-                    return response.text
+                return _response_text(response)
             return ""
 
         with PerfTimer("core.ai.generate_content", logger=logger, extra={"model": self._model}):
             executor = self._get_shared_executor()
+            future: Future[str] | None = None
             try:
                 try:
                     future = executor.submit(api_call)
@@ -456,11 +493,12 @@ class AIService:
             except FutureTimeoutError:
                 logger.error(f"API call timed out after {self._timeout} seconds")
                 # 타임아웃 시 future 취소 시도
-                future.cancel()
+                if future is not None:
+                    future.cancel()
                 raise APITimeoutError(f"API 호출이 {self._timeout}초 후 타임아웃되었습니다.")
             except Exception as e:
                 logger.error(f"API call error: {e}")
-                raise e
+                raise
     
     def summarize_text(self, text: str, language: str = "ko", 
                        style: str = "concise") -> str:
@@ -518,7 +556,7 @@ class AIService:
             raise RuntimeError(f"요약 생성 실패: {e}")
     
     def summarize_pdf(self, pdf_path: str, language: str = "ko",
-                      style: str = "concise", max_pages: int = None) -> str:
+                      style: str = "concise", max_pages: int | None = None) -> str:
         """
         PDF 파일 요약
         
@@ -543,7 +581,7 @@ class AIService:
         return self.summarize_text(text, language, style)
     
     def ask_about_pdf(self, pdf_path: str, question: str,
-                      conversation_history: list = None) -> str:
+                      conversation_history: list[dict[str, str]] | None = None) -> str:
         """
         PDF 내용에 대해 질문 (v4.5: 대화 맥락 지원)
         
@@ -592,8 +630,8 @@ class AIService:
             logger.error(f"Q&A failed: {e}")
             raise RuntimeError(f"답변 생성 실패: {e}")
     
-    def extract_keywords(self, pdf_path: str, max_keywords: int = 10, 
-                         language: str = "ko") -> list:
+    def extract_keywords(self, pdf_path: str, max_keywords: int = 10,
+                         language: str = "ko") -> list[str]:
         """
         PDF에서 핵심 키워드 추출
         

@@ -1,9 +1,11 @@
 import logging
 import os
+import subprocess
+import sys
 
 import fitz
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QPixmap
+from PyQt6.QtGui import QAction, QImage, QPixmap
 from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt6.QtWidgets import (
     QFrame,
@@ -17,8 +19,9 @@ from PyQt6.QtWidgets import (
 )
 
 from ...core.i18n import tm
+from ...core.perf import PerfTimer
 from ...core.settings import save_settings
-from ..widgets import FileSelectorWidget
+from ..widgets import FileSelectorWidget, ToastWidget
 from ..zoomable_preview import ZoomablePreviewWidget
 
 logger = logging.getLogger(__name__)

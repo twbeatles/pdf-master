@@ -1,4 +1,4 @@
-# GEMINI.md - PDF Master v4.5.3 AI 가이드
+# GEMINI.md - PDF Master v4.5.4 AI 가이드
 
 이 문서는 AI 어시스턴트(Gemini)가 PDF Master 프로젝트를 이해하고 개발을 지원하기 위한 가이드입니다.
 
@@ -12,7 +12,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| **버전** | v4.5.3 |
+| **버전** | v4.5.4 |
 | **언어** | Python 3.10+ |
 | **UI 프레임워크** | PyQt6 6.5+ |
 | **PDF 엔진** | PyMuPDF (fitz) |
@@ -44,6 +44,7 @@
 pdf-master/
 ├── main.py
 ├── pdf_master.spec
+├── pyrightconfig.json
 ├── README.md
 ├── README_EN.md
 ├── CLAUDE.md
@@ -51,6 +52,7 @@ pdf-master/
 └── src/
     ├── core/
     │   ├── ai_service.py
+    │   ├── _typing.py
     │   ├── constants.py
     │   ├── i18n.py
     │   ├── settings.py
@@ -60,6 +62,7 @@ pdf-master/
     │       ├── pdf_ops.py
     │       └── ai_ops.py
     └── ui/
+        ├── _typing.py
         ├── main_window.py
         ├── main_window_config.py
         ├── main_window_tabs_basic.py     # 호환 shim
@@ -166,6 +169,7 @@ class AIService:
 **SDK 호환성:**
 - 공식: `google-genai` (추천)
 - 레거시: `google-generativeai` (Deprecated, 2025.11 중단)
+- v4.5.4: 런타임에서는 `importlib.import_module()` 기반 선택적 로딩을 사용하므로, 문서/빌드 설정도 hiddenimports 기준으로 동기화해야 합니다.
 
 **예외 클래스:**
 - `AIServiceError` - 기본 예외
@@ -193,6 +197,18 @@ def get_api_key() -> str     # keyring 우선, 파일 폴백
 def set_api_key(api_key: str) -> bool
 def reset_settings() -> bool
 ```
+
+### 타입 계약 파일 (v4.5.4)
+
+- `src/core/_typing.py`
+  - `WorkerHost` 계약 정의
+  - `WorkerPdfOpsMixin`, `WorkerAiOpsMixin`이 기대하는 signal/helper 속성 명시
+- `src/ui/_typing.py`
+  - `MainWindowHost` 계약 정의
+  - 분리된 UI 믹스인이 접근하는 공통 위젯/헬퍼 속성 명시
+- 변경 규칙
+  - 믹스인에서 `self.<attr>`를 새로 사용하면 대응 `_typing.py` 계약도 같이 갱신
+  - 수정 후 `pyright .`를 반드시 다시 실행
 
 ### 4. `src/core/constants.py` - 상수
 
@@ -486,8 +502,20 @@ pip install google-genai  # AI 기능 (선택)
 ### 프로덕션 빌드
 ```bash
 pyinstaller pdf_master.spec --clean
-# 결과: dist/PDF_Master_v4.5.exe (~30-40MB)
+# 결과: dist/PDF_Master_v4.5.4.exe (~30-40MB)
 ```
+
+### 정합성 검증 (v4.5.4)
+```bash
+pyright .
+pytest -q
+```
+
+- 기준 결과:
+  - `pyright .` -> `0 errors`
+  - `pytest -q` -> `50 passed`
+  - UTF-8 decode failures -> `0`
+  - U+FFFD hits -> `0`
 
 ---
 
@@ -510,6 +538,13 @@ pyinstaller pdf_master.spec --clean
 ---
 
 ## 🚀 버전 히스토리
+
+### v4.5.4 (2026-03-09)
+- `pyrightconfig.json` 추가 및 저장소 전체 `pyright .` 통과
+- `src/core/_typing.py`, `src/ui/_typing.py` 추가로 믹스인 host 계약 문서화
+- `ai_service`의 optional Gemini SDK 로딩을 importlib 기반 런타임/빌드 계약으로 정리
+- Qt 위젯/Worker 계층 optional narrowing 정리 및 UTF-8 인코딩 점검 완료
+- `.gitignore`, `pdf_master.spec`, README 계열 문서 동기화
 
 ### v4.5.3 (2026-02-26)
 - 배치 워터마크 런타임 실패 수정 및 파일별 실패 원인 요약
@@ -563,4 +598,4 @@ pyinstaller pdf_master.spec --clean
 
 ---
 
-*이 문서는 PDF Master v4.5.3 기준으로 작성되었습니다. (2026-02-26)*
+*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-09)*

@@ -1,15 +1,27 @@
 import os
 import logging
+from typing import Any
 from PyQt6.QtWidgets import (
-    QWidget, QLabel, QVBoxLayout, QPushButton, QFileDialog, 
-    QListWidget, QListWidgetItem, QAbstractItemView, QMenu, 
+    QWidget, QLabel, QVBoxLayout, QPushButton, QFileDialog,
+    QListWidget, QListWidgetItem, QAbstractItemView, QMenu,
     QToolButton, QHBoxLayout, QFrame
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QObject, QEvent
-from PyQt6.QtGui import QDragEnterEvent, QDropEvent
+from PyQt6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
 from ..core.settings import load_settings
 
 logger = logging.getLogger(__name__)
+
+
+def _item_user_data(item: QListWidgetItem | None) -> Any | None:
+    if item is None:
+        return None
+    return item.data(Qt.ItemDataRole.UserRole)
+
+
+def _item_user_path(item: QListWidgetItem | None) -> str | None:
+    data = _item_user_data(item)
+    return data if isinstance(data, str) else None
 
 
 def is_valid_pdf(file_path: str) -> bool:
@@ -79,10 +91,10 @@ def is_pdf_encrypted(file_path: str) -> bool:
 
 class WheelEventFilter(QObject):
     """QSpinBox, QComboBox 등에서 스크롤 휠로 값이 변경되는 것을 방지"""
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.Type.Wheel:
+    def eventFilter(self, a0: QObject | None, a1: QEvent | None) -> bool:
+        if a1 is not None and a1.type() == QEvent.Type.Wheel:
             return True  # 휠 이벤트 차단
-        return super().eventFilter(obj, event)
+        return super().eventFilter(a0, a1)
 
 
 class EmptyStateWidget(QFrame):
@@ -93,9 +105,9 @@ class EmptyStateWidget(QFrame):
     """
     actionClicked = pyqtSignal()
     
-    def __init__(self, icon: str = "📄", title: str = None, 
-                 description: str = None,
-                 action_text: str = None, parent=None):
+    def __init__(self, icon: str = "📄", title: str | None = None,
+                 description: str | None = None,
+                 action_text: str | None = None, parent=None):
         super().__init__(parent)
         from ..core.i18n import tm
         
@@ -119,13 +131,13 @@ class EmptyStateWidget(QFrame):
         layout.addWidget(self.icon_label)
         
         # 제목
-        self.title_label = QLabel(title)
+        self.title_label = QLabel(title or "")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title_label.setWordWrap(True)
         layout.addWidget(self.title_label)
         
         # 설명
-        self.desc_label = QLabel(description)
+        self.desc_label = QLabel(description or "")
         self.desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.desc_label.setWordWrap(True)
         layout.addWidget(self.desc_label)
@@ -185,7 +197,7 @@ class EmptyStateWidget(QFrame):
         self._is_dark_theme = is_dark
         self._apply_theme_style()
     
-    def set_content(self, icon: str = None, title: str = None, description: str = None):
+    def set_content(self, icon: str | None = None, title: str | None = None, description: str | None = None):
         """내용 업데이트"""
         if icon:
             self.icon_label.setText(icon)
@@ -197,10 +209,10 @@ class EmptyStateWidget(QFrame):
 class DropZoneWidget(QFrame):
     """시각적 드래그 앤 드롭 영역 (테마 대응)"""
     fileDropped = pyqtSignal(str)
-    
-    def __init__(self, accept_extensions=['.pdf'], parent=None):
+
+    def __init__(self, accept_extensions: list[str] | tuple[str, ...] | None = None, parent=None):
         super().__init__(parent)
-        self.accept_extensions = accept_extensions
+        self.accept_extensions = list(accept_extensions or ['.pdf'])
         self.setAcceptDrops(True)
         self.setMinimumHeight(100)
         self._current_path = ""
@@ -233,7 +245,7 @@ class DropZoneWidget(QFrame):
         
         self._apply_theme_style()
     
-    def set_theme(self, is_dark):
+    def set_theme(self, is_dark: bool):
         self._is_dark_theme = is_dark
         self._apply_theme_style()
     
@@ -269,10 +281,11 @@ class DropZoneWidget(QFrame):
             self.hint_label.setStyleSheet("color: #8c959f; font-size: 11px; background: transparent; border: none;")
             self.path_label.setStyleSheet("color: #00a080; font-size: 12px; font-weight: bold; background: transparent; border: none;")
         
-    def dragEnterEvent(self, event: QDragEnterEvent):
+    def dragEnterEvent(self, a0: QDragEnterEvent | None):
         from ..core.i18n import tm
-        if event.mimeData().hasUrls():
-            for url in event.mimeData().urls():
+        mime_data = a0.mimeData() if a0 is not None else None
+        if mime_data is not None and mime_data.hasUrls():
+            for url in mime_data.urls():
                 path = url.toLocalFile().lower()
                 if any(path.endswith(ext) for ext in self.accept_extensions):
                     self._is_dragging = True
@@ -285,20 +298,25 @@ class DropZoneWidget(QFrame):
                     """)
                     self.text_label.setText(tm.get("drop_success"))
                     self.text_label.setStyleSheet("color: #4f8cff; font-size: 15px; font-weight: bold; background: transparent; border: none;")
-                    event.acceptProposedAction()
+                    if a0 is not None:
+                        a0.acceptProposedAction()
                     return
-        event.ignore()
-    
-    def dragLeaveEvent(self, event):
+        if a0 is not None:
+            a0.ignore()
+
+    def dragLeaveEvent(self, a0: QDragLeaveEvent | None):
         self._is_dragging = False
         self._apply_theme_style()
         from ..core.i18n import tm
         self.text_label.setText(tm.get("drop_title"))
-        
-    def dropEvent(self, event: QDropEvent):
+        if a0 is not None:
+            super().dragLeaveEvent(a0)
+
+    def dropEvent(self, a0: QDropEvent | None):
         self._is_dragging = False
-        if event.mimeData().hasUrls():
-            for url in event.mimeData().urls():
+        mime_data = a0.mimeData() if a0 is not None else None
+        if mime_data is not None and mime_data.hasUrls():
+            for url in mime_data.urls():
                 path = url.toLocalFile()
                 if any(path.lower().endswith(ext) for ext in self.accept_extensions):
                     self._current_path = path
@@ -308,13 +326,17 @@ class DropZoneWidget(QFrame):
                     self.path_label.setText(f"✓ {os.path.basename(path)}")
                     self.icon_label.setText("✅")
                     self.fileDropped.emit(path)
-                    event.acceptProposedAction()
+                    if a0 is not None:
+                        a0.acceptProposedAction()
                     return
-        event.ignore()
+        if a0 is not None:
+            a0.ignore()
         self._apply_theme_style()
-    
-    def get_path(self): return self._current_path
-    def set_path(self, path):
+
+    def get_path(self) -> str:
+        return self._current_path
+
+    def set_path(self, path: str):
         self._current_path = path
         if path:
             self.path_label.setText(f"✓ {os.path.basename(path)}")
@@ -326,10 +348,10 @@ class DropZoneWidget(QFrame):
 class FileSelectorWidget(QWidget):
     """파일 선택 위젯 (드롭존 + 버튼)"""
     pathChanged = pyqtSignal(str)
-    
-    def __init__(self, placeholder="PDF 파일 선택", extensions=['.pdf'], parent=None):
+
+    def __init__(self, placeholder: str = "PDF 파일 선택", extensions: list[str] | tuple[str, ...] | None = None, parent=None):
         super().__init__(parent)
-        self.extensions = extensions
+        self.extensions = list(extensions or ['.pdf'])
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
@@ -353,7 +375,6 @@ class FileSelectorWidget(QWidget):
         self.btn_recent.setFixedWidth(35)
         self.recent_menu = QMenu(self)
         self.btn_recent.setMenu(self.recent_menu)
-        self.btn_recent.aboutToShowMenu = self._update_recent_menu
         self.recent_menu.aboutToShow.connect(self._update_recent_menu)
         
         self.btn_clear = QPushButton(tm.get("btn_clear"))
@@ -383,29 +404,32 @@ class FileSelectorWidget(QWidget):
         """최근 파일 메뉴 업데이트"""
         self.recent_menu.clear()
         settings = self._get_settings_snapshot()
-        recent = settings.get("recent_files", [])
+        recent_value = settings.get("recent_files", [])
+        recent = recent_value if isinstance(recent_value, list) else []
         if not recent:
             from ..core.i18n import tm
             action = self.recent_menu.addAction(tm.get("no_recent_files"))
-            action.setEnabled(False)
+            if action is not None:
+                action.setEnabled(False)
         else:
             for path in recent[:10]:
-                if os.path.exists(path):
+                if isinstance(path, str) and os.path.exists(path):
                     action = self.recent_menu.addAction(f"📄 {os.path.basename(path)}")
-                    action.setToolTip(path)
-                    action.triggered.connect(lambda checked, p=path: self._load_recent(p))
-    
-    def _get_settings_snapshot(self) -> dict:
+                    if action is not None:
+                        action.setToolTip(path)
+                        action.triggered.connect(lambda checked=False, p=path: self._load_recent(p))
+
+    def _get_settings_snapshot(self) -> dict[str, Any]:
         """Prefer shared in-memory settings to avoid repeated disk reads."""
-        parent = self.parent()
-        while parent is not None:
-            settings = getattr(parent, "settings", None)
+        current: QObject | None = self.parent()
+        while current is not None:
+            settings = getattr(current, "settings", None)
             if isinstance(settings, dict):
                 return settings
-            parent = parent.parent()
+            current = current.parent()
         return load_settings()
 
-    def _load_recent(self, path):
+    def _load_recent(self, path: str):
         """최근 파일 로드"""
         self.drop_zone.set_path(path)
         self.pathChanged.emit(path)
@@ -418,16 +442,20 @@ class FileSelectorWidget(QWidget):
             self.drop_zone.set_path(f)
             self.pathChanged.emit(f)
     
-    def _on_file_dropped(self, path):
+    def _on_file_dropped(self, path: str):
         self.pathChanged.emit(path)
-        
-    def get_path(self): return self.drop_zone.get_path()
-    def set_path(self, path): self.drop_zone.set_path(path)
+
+    def get_path(self) -> str:
+        return self.drop_zone.get_path()
+
+    def set_path(self, path: str):
+        self.drop_zone.set_path(path)
+
     def clear_path(self):
         self.drop_zone.set_path("")
         self.pathChanged.emit("")
-    
-    def set_theme(self, is_dark):
+
+    def set_theme(self, is_dark: bool):
         """테마 변경 시 위젯 스타일 동기화"""
         self.drop_zone.set_theme(is_dark)
         if is_dark:
@@ -469,34 +497,39 @@ class FileListWidget(QListWidget):
         self.setMinimumHeight(140)
         self.setToolTip("PDF 파일들을 여기에 드래그하세요. 순서 변경도 가능합니다.")
 
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
+    def dragEnterEvent(self, e: QDragEnterEvent | None):
+        mime_data = e.mimeData() if e is not None else None
+        if mime_data is not None and mime_data.hasUrls():
+            if e is not None:
+                e.acceptProposedAction()
             self.setStyleSheet("QListWidget { border: 2px solid #4f8cff; background: rgba(79, 140, 255, 0.05); }")
         else:
-            super().dragEnterEvent(event)
-    
-    def dragLeaveEvent(self, event):
-        self.setStyleSheet("")
-        super().dragLeaveEvent(event)
+            super().dragEnterEvent(e)
 
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.setDropAction(Qt.DropAction.CopyAction)
-            event.accept()
+    def dragLeaveEvent(self, e: QDragLeaveEvent | None):
+        self.setStyleSheet("")
+        super().dragLeaveEvent(e)
+
+    def dragMoveEvent(self, e: QDragMoveEvent | None):
+        mime_data = e.mimeData() if e is not None else None
+        if mime_data is not None and mime_data.hasUrls():
+            if e is not None:
+                e.setDropAction(Qt.DropAction.CopyAction)
+                e.accept()
         else:
-            super().dragMoveEvent(event)
+            super().dragMoveEvent(e)
 
-    def dropEvent(self, event: QDropEvent):
+    def dropEvent(self, event: QDropEvent | None):
         self.setStyleSheet("")
-        if event.mimeData().hasUrls():
-            event.setDropAction(Qt.DropAction.CopyAction)
-            event.accept()
-            last_path = None
-            added_count = 0
-            for url in event.mimeData().urls():
+        mime_data = event.mimeData() if event is not None else None
+        if mime_data is not None and mime_data.hasUrls():
+            if event is not None:
+                event.setDropAction(Qt.DropAction.CopyAction)
+                event.accept()
+            last_path: str | None = None
+            for url in mime_data.urls():
                 path = str(url.toLocalFile())
-                
+
                 # 폴더인 경우 내부 PDF 모두 추가
                 if os.path.isdir(path):
                     for filename in os.listdir(path):
@@ -504,26 +537,24 @@ class FileListWidget(QListWidget):
                             file_path = os.path.join(path, filename)
                             if self._add_pdf_item(file_path):
                                 last_path = file_path
-                                added_count += 1
                 # PDF 파일인 경우
                 elif path.lower().endswith('.pdf'):
                     if self._add_pdf_item(path):
                         last_path = path
-                        added_count += 1
-            
-            if last_path:
+
+            if last_path is not None:
                 self.fileAdded.emit(last_path)
         else:
             super().dropEvent(event)
-    
-    def _add_pdf_item(self, path):
+
+    def _add_pdf_item(self, path: str) -> bool:
         """PDF 항목 추가 (중복 체크 및 유효성 검사 포함), 성공 시 True 반환"""
         # 유효성 검사
         if not is_valid_pdf(path):
             return False
-        
+
         # 중복 체크
-        exists = any(self.item(i).data(Qt.ItemDataRole.UserRole) == path for i in range(self.count()))
+        exists = any(_item_user_path(self.item(i)) == path for i in range(self.count()))
         if not exists:
             item = QListWidgetItem(f"📄 {os.path.basename(path)}")
             item.setData(Qt.ItemDataRole.UserRole, path)
@@ -532,10 +563,10 @@ class FileListWidget(QListWidget):
             return True
         return False
 
-    def get_all_paths(self):
-        return [self.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.count())]
+    def get_all_paths(self) -> list[str]:
+        return [path for i in range(self.count()) if (path := _item_user_path(self.item(i))) is not None]
 
-    def add_file(self, path):
+    def add_file(self, path: str):
         """파일 추가 (중복 체크 포함)"""
         path = str(path)
         if not path.lower().endswith('.pdf'):
@@ -555,33 +586,39 @@ class ImageListWidget(QListWidget):
         self.setMinimumHeight(100)
         self.setToolTip("이미지 파일들을 여기에 드래그하세요 (PNG, JPG 등)")
 
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
+    def dragEnterEvent(self, e: QDragEnterEvent | None):
+        mime_data = e.mimeData() if e is not None else None
+        if mime_data is not None and mime_data.hasUrls():
+            if e is not None:
+                e.acceptProposedAction()
             self.setStyleSheet("QListWidget { border: 2px solid #00d9a0; }")
         else:
-            super().dragEnterEvent(event)
-    
-    def dragLeaveEvent(self, event):
-        self.setStyleSheet("")
-        super().dragLeaveEvent(event)
+            super().dragEnterEvent(e)
 
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.setDropAction(Qt.DropAction.CopyAction)
-            event.accept()
+    def dragLeaveEvent(self, e: QDragLeaveEvent | None):
+        self.setStyleSheet("")
+        super().dragLeaveEvent(e)
+
+    def dragMoveEvent(self, e: QDragMoveEvent | None):
+        mime_data = e.mimeData() if e is not None else None
+        if mime_data is not None and mime_data.hasUrls():
+            if e is not None:
+                e.setDropAction(Qt.DropAction.CopyAction)
+                e.accept()
         else:
-            super().dragMoveEvent(event)
+            super().dragMoveEvent(e)
 
-    def dropEvent(self, event: QDropEvent):
+    def dropEvent(self, event: QDropEvent | None):
         self.setStyleSheet("")
-        if event.mimeData().hasUrls():
-            event.setDropAction(Qt.DropAction.CopyAction)
-            event.accept()
-            for url in event.mimeData().urls():
+        mime_data = event.mimeData() if event is not None else None
+        if mime_data is not None and mime_data.hasUrls():
+            if event is not None:
+                event.setDropAction(Qt.DropAction.CopyAction)
+                event.accept()
+            for url in mime_data.urls():
                 path = str(url.toLocalFile())
                 if path.lower().endswith(self.IMAGE_EXTENSIONS):
-                    exists = any(self.item(i).data(Qt.ItemDataRole.UserRole) == path for i in range(self.count()))
+                    exists = any(_item_user_path(self.item(i)) == path for i in range(self.count()))
                     if not exists:
                         item = QListWidgetItem(f"🖼️ {os.path.basename(path)}")
                         item.setData(Qt.ItemDataRole.UserRole, path)
@@ -590,8 +627,8 @@ class ImageListWidget(QListWidget):
         else:
             super().dropEvent(event)
 
-    def get_all_paths(self):
-        return [self.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.count())]
+    def get_all_paths(self) -> list[str]:
+        return [path for i in range(self.count()) if (path := _item_user_path(self.item(i))) is not None]
 
 
 class DraggableListWidget(QListWidget):
@@ -607,18 +644,20 @@ class DraggableListWidget(QListWidget):
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
         self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.model().rowsMoved.connect(self._on_rows_moved)
-    
-    def _on_rows_moved(self, *args):
+        model = self.model()
+        if model is not None:
+            model.rowsMoved.connect(self._on_rows_moved)
+
+    def _on_rows_moved(self, *_args: object):
         """행 이동 시 시그널 발생"""
         items = self.get_all_items()
         self.itemsReordered.emit(items)
-    
-    def get_all_items(self) -> list:
+
+    def get_all_items(self) -> list[Any]:
         """모든 항목의 데이터 반환"""
-        return [self.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.count())]
-    
-    def add_item(self, text: str, data=None):
+        return [_item_user_data(self.item(i)) for i in range(self.count())]
+
+    def add_item(self, text: str, data: Any = None):
         """항목 추가"""
         item = QListWidgetItem(text)
         if data is not None:
