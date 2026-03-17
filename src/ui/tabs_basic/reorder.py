@@ -1,7 +1,6 @@
 import logging
 import os
 
-import fitz
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -23,6 +22,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ...core.optional_deps import fitz
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
 from ...core.settings import save_settings

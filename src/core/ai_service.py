@@ -7,13 +7,14 @@ import atexit
 import logging
 import os
 import threading
-import fitz
 import time
 from collections import OrderedDict
 from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from functools import wraps
 from importlib import import_module
 from typing import Any, Callable, Optional, ParamSpec, TypeVar, cast
+
+from .optional_deps import fitz
 
 # AI 관련 상수 import
 try:

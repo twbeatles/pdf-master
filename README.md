@@ -246,9 +246,9 @@ pyinstaller pdf_master.spec --clean
 
 ## ✅ 개발 검증
 
-- 정적 분석: `pyright .` → `0 errors`
-- 회귀 테스트: `pytest -q` → `50 passed`
-- 인코딩 점검: UTF-8 decode 실패 `0`, U+FFFD(`�`) 검색 결과 `0`
+- 정적 분석: `pyright` → `0 errors`
+- 회귀 테스트: `python -m pytest -q`
+- 인코딩 점검: 추적 텍스트 파일 UTF-8 decode/BOM/U+FFFD audit 통과
 
 ---
 
@@ -256,6 +256,7 @@ pyinstaller pdf_master.spec --clean
 
 ```
 pdf-master/
+├── .editorconfig              # UTF-8/개행 규칙
 ├── main.py                    # 애플리케이션 진입점
 ├── pdf_master.spec            # PyInstaller 빌드 설정
 ├── pyrightconfig.json         # Pyright/Pylance 분석 범위 설정
@@ -269,6 +270,7 @@ pdf-master/
     │   ├── _typing.py              # Worker 믹스인 host 계약
     │   ├── constants.py
     │   ├── i18n.py
+    │   ├── optional_deps.py        # fitz/keyring optional dependency 경계
     │   ├── settings.py
     │   ├── undo_manager.py
     │   ├── worker.py                # 호환 shim + 공통 로직
@@ -301,6 +303,8 @@ pdf-master/
 ```
 
 참고: `main_window_*.py`, `worker.py`는 기존 import 경로 호환을 위한 shim이며, 실제 구현은 하위 폴더 모듈에 있습니다.
+참고: `src/core/optional_deps.py`가 `fitz`/`keyring` optional import를 중앙화하여, 의존성이 없는 IDE에서도 `Pylance`/`Pyright` 진단이 깨지지 않도록 유지합니다.
+참고: `PyMuPDF` 미설치 환경에서는 해당 엔진이 필요한 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행됩니다.
 
 ---
 
@@ -399,9 +403,9 @@ API 키 저장 정책:
 
 ## 🧪 테스트 및 정합성 현황 (v4.5.4)
 
-- 정적 분석: `pyright .` → `0 errors`
-- 회귀 테스트: `pytest -q` → `50 passed`
-- 텍스트 인코딩 점검: UTF-8 decode 실패 `0`, U+FFFD 검색 결과 `0`
+- 정적 분석: `pyright` → `0 errors`
+- 회귀 테스트: `python -m pytest -q`
+- 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD 회귀 방지
 
 - 신규 테스트:
   - `tests/test_worker_batch_watermark.py` (배치 워터마크 출력 생성/실패 원인 요약 검증)

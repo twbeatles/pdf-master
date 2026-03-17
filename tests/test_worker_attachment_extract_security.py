@@ -2,18 +2,11 @@ import os
 
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6_and_pymupdf
+from src.core.optional_deps import fitz
 
 
 def _make_pdf_with_attachments(path):
-    import fitz
-
     doc = fitz.open()
     doc.new_page(width=400, height=400)
     doc.embfile_add("../evil.txt", b"one")
@@ -25,7 +18,7 @@ def _make_pdf_with_attachments(path):
 
 
 def test_extract_attachments_sanitizes_name_and_stays_in_output_dir(tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "with_attach.pdf"

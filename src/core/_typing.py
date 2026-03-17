@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import fitz
+from .optional_deps import fitz
 
 
 class SignalLike:
@@ -21,7 +21,7 @@ class WorkerHost:
     error_signal: Any
     cancelled_signal: Any
 
-    def _atomic_pdf_save(self, doc: fitz.Document, output_path: str, **save_kwargs: Any) -> None:
+    def _atomic_pdf_save(self, doc: Any, output_path: str, **save_kwargs: Any) -> None:
         ...
 
     def _check_cancelled(self) -> None:

@@ -1,12 +1,6 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6
 
 
 class _DummyDoc:
@@ -21,7 +15,7 @@ class _DummyDoc:
 
 
 def test_preview_doc_reuse_same_path():
-    _skip_if_missing_deps()
+    require_pyqt6()
     from src.ui.main_window_preview import MainWindowPreviewMixin
 
     class Dummy(MainWindowPreviewMixin):
@@ -49,7 +43,7 @@ def test_preview_doc_reuse_same_path():
 
 
 def test_preview_doc_reopen_on_path_change():
-    _skip_if_missing_deps()
+    require_pyqt6()
     from src.ui.main_window_preview import MainWindowPreviewMixin
 
     class Dummy(MainWindowPreviewMixin):

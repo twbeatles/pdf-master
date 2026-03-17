@@ -1,17 +1,10 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6_and_pymupdf
+from src.core.optional_deps import fitz
 
 
 def _make_pdf(path, texts):
-    import fitz
-
     doc = fitz.open()
     for text in texts:
         page = doc.new_page(width=600, height=800)
@@ -21,7 +14,7 @@ def _make_pdf(path, texts):
 
 
 def test_copy_page_invalid_range_hard_fails_and_no_output(tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     target = tmp_path / "target.pdf"
@@ -49,8 +42,7 @@ def test_copy_page_invalid_range_hard_fails_and_no_output(tmp_path):
 
 
 def test_copy_page_valid_range_still_succeeds(tmp_path):
-    _skip_if_missing_deps()
-    import fitz
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     target = tmp_path / "target.pdf"

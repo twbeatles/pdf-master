@@ -1,17 +1,10 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6_and_pymupdf
+from src.core.optional_deps import fitz
 
 
 def _make_pdf(path, text="BASE"):
-    import fitz
-
     doc = fitz.open()
     page = doc.new_page(width=500, height=700)
     page.insert_text((72, 72), text)
@@ -20,8 +13,7 @@ def _make_pdf(path, text="BASE"):
 
 
 def test_batch_watermark_generates_output(tmp_path):
-    _skip_if_missing_deps()
-    import fitz
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -55,7 +47,7 @@ def test_batch_watermark_generates_output(tmp_path):
 
 
 def test_batch_reports_failed_file_reasons(tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "ok.pdf"

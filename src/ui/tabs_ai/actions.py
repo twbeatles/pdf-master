@@ -22,7 +22,6 @@ from PyQt6.QtWidgets import (
 from ...core.i18n import tm
 from ...core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
 from ..main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
-from ..thumbnail_grid import ThumbnailGridWidget
 from ..widgets import FileSelectorWidget, ToastWidget, is_pdf_encrypted
 
 logger = logging.getLogger(__name__)
@@ -181,6 +180,8 @@ def _show_thumbnail_grid(self):
     path = self.sel_thumb_pdf.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+
+    from ..thumbnail_grid import ThumbnailGridWidget
 
     # 다이얼로그 생성
     dialog = QDialog(self)

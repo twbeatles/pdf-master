@@ -1,16 +1,10 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6
 
 
 def test_cancel_sets_cancelled_error():
-    _skip_if_missing_deps()
+    require_pyqt6()
     from src.core.worker import WorkerThread, CancelledError
 
     w = WorkerThread("merge")

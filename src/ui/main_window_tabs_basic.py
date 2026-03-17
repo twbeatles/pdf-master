@@ -8,7 +8,6 @@ import logging
 import os
 from typing import cast
 
-import fitz
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,

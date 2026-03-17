@@ -232,9 +232,9 @@ pyinstaller pdf_master.spec --clean
 
 ## ✅ Development Validation
 
-- Static analysis: `pyright .` -> `0 errors`
-- Regression tests: `pytest -q` -> `50 passed`
-- Encoding audit: UTF-8 decode failures `0`, U+FFFD (`�`) hits `0`
+- Static analysis: `pyright` -> `0 errors`
+- Regression tests: `python -m pytest -q`
+- Encoding audit: tracked text files pass UTF-8 decode/BOM/U+FFFD checks
 
 ---
 
@@ -242,6 +242,7 @@ pyinstaller pdf_master.spec --clean
 
 ```
 pdf-master/
+├── .editorconfig
 ├── main.py
 ├── pdf_master.spec
 ├── pyrightconfig.json
@@ -255,6 +256,7 @@ pdf-master/
     │   ├── _typing.py              # worker mixin host contracts
     │   ├── constants.py
     │   ├── i18n.py
+    │   ├── optional_deps.py        # fitz/keyring optional dependency boundary
     │   ├── settings.py
     │   ├── undo_manager.py
     │   ├── worker.py                # compatibility shim + shared logic
@@ -287,6 +289,8 @@ pdf-master/
 ```
 
 Note: `main_window_*.py` and `worker.py` are retained as compatibility shims; runtime implementations live in folder modules.
+Note: `src/core/optional_deps.py` centralizes `fitz`/`keyring` optional imports so `Pylance`/`Pyright` stays clean even when those packages are absent.
+Note: when `PyMuPDF` is missing, only PDF-engine-dependent tests are skipped; the remaining regression tests still run.
 
 ---
 
@@ -375,9 +379,9 @@ API key storage policy:
 
 ## 🧪 Test and Consistency Status (v4.5.4)
 
-- Static analysis: `pyright .` -> `0 errors`
-- Regression tests: `pytest -q` -> `50 passed`
-- Text encoding audit: UTF-8 decode failures `0`, U+FFFD hits `0`
+- Static analysis: `pyright` -> `0 errors`
+- Regression tests: `python -m pytest -q`
+- Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD regressions
 
 - Added:
   - `tests/test_worker_batch_watermark.py`

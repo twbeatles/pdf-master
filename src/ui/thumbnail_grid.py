@@ -5,7 +5,6 @@ PDF all pages shown as a grid with lazy loading.
 
 import logging
 
-import fitz
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, pyqtSlot
 from PyQt6.QtGui import QPixmap, QImage, QCursor, QMouseEvent, QCloseEvent
 from PyQt6.QtWidgets import (
@@ -19,6 +18,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
 )
 
+from ..core.optional_deps import fitz
 from ..core.perf import PerfTimer
 
 logger = logging.getLogger(__name__)

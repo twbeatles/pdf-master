@@ -1,5 +1,4 @@
 import os
-import fitz
 import tempfile
 import traceback
 import logging
@@ -7,6 +6,8 @@ import time
 import re
 from typing import Any, cast
 from PyQt6.QtCore import QThread, pyqtSignal
+
+from .optional_deps import fitz
 
 # 상수 임포트
 try:
@@ -236,7 +237,7 @@ class WorkerThread(QThread, WorkerPdfOpsMixin, WorkerAiOpsMixin):
         used_names.add(lowered)
         return out_path, candidate
 
-    def _atomic_pdf_save(self, doc: fitz.Document, output_path: str, **save_kwargs: Any):
+    def _atomic_pdf_save(self, doc: Any, output_path: str, **save_kwargs: Any):
         """
         원자적 PDF 저장.
 

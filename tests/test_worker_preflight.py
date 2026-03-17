@@ -1,18 +1,11 @@
 import os
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6_and_pymupdf
+from src.core.optional_deps import fitz
 
 
 def _make_pdf(path):
-    import fitz
-
     doc = fitz.open()
     doc.new_page()
     doc.save(str(path))
@@ -20,8 +13,6 @@ def _make_pdf(path):
 
 
 def _make_png(path):
-    import fitz
-
     doc = fitz.open()
     doc.new_page(width=20, height=20)
     pix = doc[0].get_pixmap()
@@ -30,7 +21,7 @@ def _make_png(path):
 
 
 def test_preflight_rejects_missing_pdf_before_run(tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     out = tmp_path / "out.pdf"
@@ -51,7 +42,7 @@ def test_preflight_rejects_missing_pdf_before_run(tmp_path):
 
 
 def test_preflight_rejects_oversized_non_pdf_input(tmp_path, monkeypatch):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.core.constants import MAX_FILE_SIZE
     from src.core.worker import WorkerThread
 
@@ -87,7 +78,7 @@ def test_preflight_rejects_oversized_non_pdf_input(tmp_path, monkeypatch):
 
 
 def test_preflight_rejects_too_small_pdf(tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     tiny_pdf = tmp_path / "tiny.pdf"

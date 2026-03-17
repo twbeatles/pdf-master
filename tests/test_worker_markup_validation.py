@@ -1,17 +1,10 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6_and_pymupdf
+from src.core.optional_deps import fitz
 
 
 def _make_pdf(path):
-    import fitz
-
     doc = fitz.open()
     page = doc.new_page(width=600, height=800)
     page.insert_text((72, 72), "hello markup")
@@ -20,7 +13,7 @@ def _make_pdf(path):
 
 
 def test_add_text_markup_invalid_type_emits_friendly_error(tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -45,8 +38,7 @@ def test_add_text_markup_invalid_type_emits_friendly_error(tmp_path):
 
 
 def test_add_text_markup_valid_type_still_works(tmp_path):
-    _skip_if_missing_deps()
-    import fitz
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

@@ -1,11 +1,6 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 not available")
+from _deps import require_pyqt6
 
 
 class _PathStub:
@@ -50,7 +45,7 @@ def _dummy_adv(pdf_path, sig_path, page_value):
 
 
 def test_normalize_page_input_helper():
-    _skip_if_missing_deps()
+    require_pyqt6()
     dummy = _dummy_adv("a.pdf", "b.png", 1)
 
     assert dummy._normalize_page_input(0, last_page_value=0) == -1
@@ -59,7 +54,7 @@ def test_normalize_page_input_helper():
 
 
 def test_insert_signature_action_uses_1_based_ui_and_0_based_worker(monkeypatch, tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6()
     import src.ui.main_window_tabs_advanced as adv_module
 
     pdf = tmp_path / "a.pdf"

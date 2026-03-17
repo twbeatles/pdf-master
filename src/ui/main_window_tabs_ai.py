@@ -30,7 +30,6 @@ from ..core.i18n import tm
 from ..core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
 from .main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
 from .tabs_ai import MainWindowTabsAiMixin as _MainWindowTabsAiMixin
-from .thumbnail_grid import ThumbnailGridWidget
 from .widgets import FileSelectorWidget, ToastWidget, is_pdf_encrypted
 
 logger = logging.getLogger(__name__)

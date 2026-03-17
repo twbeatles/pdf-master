@@ -1,10 +1,10 @@
 import os
-import fitz
 import tempfile
 import logging
 from typing import Any, cast
 
 from .._typing import WorkerHost
+from ..optional_deps import fitz
 
 try:
     from ..constants import (

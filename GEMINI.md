@@ -43,6 +43,7 @@
 ```
 pdf-master/
 ├── main.py
+├── .editorconfig
 ├── pdf_master.spec
 ├── pyrightconfig.json
 ├── README.md
@@ -52,6 +53,7 @@ pdf-master/
 └── src/
     ├── core/
     │   ├── ai_service.py
+    │   ├── optional_deps.py
     │   ├── _typing.py
     │   ├── constants.py
     │   ├── i18n.py
@@ -203,12 +205,16 @@ def reset_settings() -> bool
 - `src/core/_typing.py`
   - `WorkerHost` 계약 정의
   - `WorkerPdfOpsMixin`, `WorkerAiOpsMixin`이 기대하는 signal/helper 속성 명시
+- `src/core/optional_deps.py`
+  - `fitz`, `keyring` optional import 경계
+  - 미설치 환경에서는 proxy/fallback으로 import-time 오류를 막고, 실제 사용 시점에만 실패하게 함
 - `src/ui/_typing.py`
   - `MainWindowHost` 계약 정의
   - 분리된 UI 믹스인이 접근하는 공통 위젯/헬퍼 속성 명시
 - 변경 규칙
   - 믹스인에서 `self.<attr>`를 새로 사용하면 대응 `_typing.py` 계약도 같이 갱신
-  - 수정 후 `pyright .`를 반드시 다시 실행
+  - 수정 후 `pyright`를 반드시 다시 실행
+  - `fitz`/`keyring` 직접 import 대신 `src/core/optional_deps.py`를 우선 사용
 
 ### 4. `src/core/constants.py` - 상수
 
@@ -507,15 +513,15 @@ pyinstaller pdf_master.spec --clean
 
 ### 정합성 검증 (v4.5.4)
 ```bash
-pyright .
-pytest -q
+pyright
+python -m pytest -ra
 ```
 
 - 기준 결과:
-  - `pyright .` -> `0 errors`
-  - `pytest -q` -> `50 passed`
-  - UTF-8 decode failures -> `0`
-  - U+FFFD hits -> `0`
+  - `pyright` -> `0 errors`
+  - 현재 환경 `python -m pytest -ra` -> `31 passed, 20 skipped`
+  - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD 회귀 방지
+  - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip
 
 ---
 

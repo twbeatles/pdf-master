@@ -1,11 +1,6 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 not available")
+from _deps import require_pyqt6
 
 
 class _ValueStub:
@@ -59,7 +54,7 @@ def _build_dummy(path, strokes, page_value=0):
 
 
 def test_parse_freehand_strokes_valid():
-    _skip_if_missing_deps()
+    require_pyqt6()
     dummy = _build_dummy("x.pdf", "10,10;20,20|30,30;40,40", page_value=0)
 
     parsed = dummy._parse_freehand_strokes("10,10;20,20|30,30;40,40")
@@ -70,7 +65,7 @@ def test_parse_freehand_strokes_valid():
 
 
 def test_parse_freehand_strokes_invalid_raises():
-    _skip_if_missing_deps()
+    require_pyqt6()
     dummy = _build_dummy("x.pdf", "10,10", page_value=0)
 
     with pytest.raises(ValueError):
@@ -78,7 +73,7 @@ def test_parse_freehand_strokes_invalid_raises():
 
 
 def test_action_add_freehand_signature_calls_worker_with_normalized_page(monkeypatch, tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6()
     import src.ui.main_window_tabs_advanced as adv_module
 
     src_pdf = tmp_path / "src.pdf"

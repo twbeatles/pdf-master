@@ -1,11 +1,6 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 not available")
+from _deps import require_pyqt6
 
 
 class _TextStub:
@@ -28,7 +23,7 @@ def _dummy_ai():
 
 
 def test_load_api_key_no_keyring_keeps_legacy_key(monkeypatch):
-    _skip_if_missing_deps()
+    require_pyqt6()
     import src.ui.main_window_tabs_ai as ai_module
 
     dummy = _dummy_ai()
@@ -48,7 +43,7 @@ def test_load_api_key_no_keyring_keeps_legacy_key(monkeypatch):
 
 
 def test_load_api_key_keyring_mode_migrates_and_cleans_legacy(monkeypatch):
-    _skip_if_missing_deps()
+    require_pyqt6()
     import src.ui.main_window_tabs_ai as ai_module
 
     dummy = _dummy_ai()
@@ -68,7 +63,7 @@ def test_load_api_key_keyring_mode_migrates_and_cleans_legacy(monkeypatch):
 
 
 def test_save_api_key_uses_settings_api(monkeypatch):
-    _skip_if_missing_deps()
+    require_pyqt6()
     import src.ui.main_window_tabs_ai as ai_module
 
     dummy = _dummy_ai()

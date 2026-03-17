@@ -2,7 +2,6 @@
 Zoomable Preview Widget for PDF Master v4.0
 마우스 휠로 줌, 드래그로 패닝이 가능한 미리보기 위젯입니다.
 """
-import fitz
 import logging
 from PyQt6.QtWidgets import (
     QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QWidget,
@@ -10,6 +9,8 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPointF, QRectF, QEvent
 from PyQt6.QtGui import QPixmap, QImage, QWheelEvent, QMouseEvent, QPainter, QEnterEvent, QCloseEvent
+
+from ..core.optional_deps import fitz
 
 logger = logging.getLogger(__name__)
 

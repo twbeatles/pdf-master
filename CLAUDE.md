@@ -23,6 +23,7 @@
 ```
 pdf-master/
 ├── main.py
+├── .editorconfig
 ├── pdf_master.spec
 ├── pyrightconfig.json
 ├── README.md
@@ -32,6 +33,7 @@ pdf-master/
 └── src/
     ├── core/
     │   ├── ai_service.py
+    │   ├── optional_deps.py        # fitz/keyring optional dependency boundary
     │   ├── _typing.py              # worker mixin host contracts
     │   ├── constants.py
     │   ├── i18n.py
@@ -213,11 +215,14 @@ DEFAULT_SETTINGS = {
 
 - `src/core/_typing.py`
   - Worker 믹스인이 기대하는 signal/helper surface를 정의합니다.
+- `src/core/optional_deps.py`
+  - `fitz`, `keyring` optional import를 중앙화하고, 미설치 환경에서는 proxy/fallback으로 import-time 실패를 막습니다.
 - `src/ui/_typing.py`
   - UI 믹스인이 접근하는 공통 위젯/헬퍼 surface를 정의합니다.
 - 규칙
   - 믹스인에서 새 속성 접근을 추가하면 대응 `_typing.py`도 함께 갱신합니다.
-  - 변경 후 `pyright .`를 기본 검증으로 실행합니다.
+  - 변경 후 `pyright`를 기본 검증으로 실행합니다.
+  - `fitz`/`keyring`는 직접 import하지 말고 `src/core/optional_deps.py` 경계를 우선 사용합니다.
 
 ---
 
@@ -429,10 +434,10 @@ class ZoomablePreviewWidget(QWidget):
 
 ## 🧪 테스트 업데이트 (v4.5.4)
 
-- `pyright .` -> `0 errors`
-- `pytest -q` -> `50 passed`
-- UTF-8 decode failures -> `0`
-- U+FFFD hits -> `0`
+- `pyright` -> `0 errors`
+- `python -m pytest -ra` -> 현재 환경 `31 passed, 20 skipped`
+- UTF-8/BOM/U+FFFD 회귀는 `tests/test_encoding_audit.py`가 검사
+- `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행
 
 - `tests/test_worker_param_compat.py`
   - 고급 기능 kwargs 호환성 검증 (도형/링크/텍스트박스/페이지복사/이미지워터마크)
@@ -470,7 +475,9 @@ class ZoomablePreviewWidget(QWidget):
   - 하이퍼링크 UI 1-based→Worker 0-based 변환 및 Worker strict 검증
 - `tests/test_advanced_new_modes_ui_flow.py`
   - `replace_page`/`set_bookmarks`/`add_annotation` UI 액션 흐름 검증
-- 현재 기준 `pytest -q` 전체 통과: 50개
+- `tests/_deps.py`
+  - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
+- 현재 워크트리 기준 `PyMuPDF` 미설치 환경: `31 passed, 20 skipped`
 
 ---
 

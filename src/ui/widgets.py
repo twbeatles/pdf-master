@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QObject, QEvent
 from PyQt6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
+from ..core.optional_deps import FITZ_AVAILABLE, fitz
 from ..core.settings import load_settings
 
 logger = logging.getLogger(__name__)
@@ -77,9 +78,12 @@ def is_pdf_encrypted(file_path: str) -> bool:
     """
     if not file_path or not os.path.exists(file_path):
         return False
-    
+
+    if not FITZ_AVAILABLE:
+        logger.debug("PyMuPDF not available; skipping encrypted PDF check for %s", file_path)
+        return False
+
     try:
-        import fitz
         doc = fitz.open(file_path)
         try:
             return bool(doc.is_encrypted)

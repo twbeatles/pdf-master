@@ -2,7 +2,6 @@ import logging
 import os
 from collections import OrderedDict
 
-import fitz
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QPixmap
 from PyQt6.QtPrintSupport import QPrintDialog, QPrinter

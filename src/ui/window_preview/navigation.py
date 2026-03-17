@@ -3,7 +3,6 @@ import os
 import subprocess
 import sys
 
-import fitz
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QImage, QPixmap
 from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
@@ -18,6 +17,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ...core.optional_deps import fitz
 from ...core.i18n import tm
 from ...core.perf import PerfTimer
 from ...core.settings import save_settings

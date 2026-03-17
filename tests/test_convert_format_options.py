@@ -1,11 +1,6 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 not available")
+from _deps import require_pyqt6
 
 
 def _build_window():
@@ -31,7 +26,7 @@ def _build_window():
 
 
 def test_convert_format_combo_exposes_expected_formats():
-    _skip_if_missing_deps()
+    require_pyqt6()
     from PyQt6.QtWidgets import QApplication
 
     app = QApplication.instance() or QApplication([])
@@ -44,7 +39,7 @@ def test_convert_format_combo_exposes_expected_formats():
 
 
 def test_convert_preset_falls_back_when_old_format_not_supported(monkeypatch):
-    _skip_if_missing_deps()
+    require_pyqt6()
     from PyQt6.QtWidgets import QApplication
     import src.ui.main_window_tabs_basic as tabs_basic_module
 

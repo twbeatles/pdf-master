@@ -1,11 +1,6 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 not available")
+from _deps import require_pyqt6
 
 
 class _PathStub:
@@ -100,7 +95,7 @@ def _dummy_for_add_annotation(pdf_path, annot_type, text, page, point_text, rect
 
 
 def test_parse_bookmark_lines_accepts_level_title_page_and_rejects_invalid():
-    _skip_if_missing_deps()
+    require_pyqt6()
     dummy = _dummy_for_set_bookmarks("x.pdf", "1|Intro|1")
 
     assert dummy._parse_bookmark_lines("1|Intro|1\n2|Background|3") == [
@@ -112,7 +107,7 @@ def test_parse_bookmark_lines_accepts_level_title_page_and_rejects_invalid():
 
 
 def test_action_replace_page_calls_worker_with_expected_payload(monkeypatch, tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6()
     import src.ui.main_window_tabs_advanced as adv_module
 
     target = tmp_path / "target.pdf"
@@ -145,7 +140,7 @@ def test_action_replace_page_calls_worker_with_expected_payload(monkeypatch, tmp
 
 
 def test_action_set_bookmarks_calls_worker_with_parsed_bookmarks(monkeypatch, tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6()
     import src.ui.main_window_tabs_advanced as adv_module
 
     pdf = tmp_path / "src.pdf"
@@ -173,7 +168,7 @@ def test_action_set_bookmarks_calls_worker_with_parsed_bookmarks(monkeypatch, tm
 
 
 def test_action_add_annotation_basic_text_mode_payload(monkeypatch, tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6()
     import src.ui.main_window_tabs_advanced as adv_module
 
     pdf = tmp_path / "src.pdf"
@@ -210,7 +205,7 @@ def test_action_add_annotation_basic_text_mode_payload(monkeypatch, tmp_path):
 
 
 def test_action_add_annotation_basic_freetext_mode_payload(monkeypatch, tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6()
     import src.ui.main_window_tabs_advanced as adv_module
 
     pdf = tmp_path / "src.pdf"

@@ -3,24 +3,17 @@ import json
 import logging
 import shutil
 import tempfile
-from typing import Any
 from datetime import datetime
+
+from .optional_deps import KEYRING_AVAILABLE, keyring
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
 
 SETTINGS_FILE = os.path.join(os.path.expanduser("~"), ".pdf_master_settings.json")
 
-# keyring 가용성 체크 (보안 저장용)
-KEYRING_AVAILABLE = False
-try:
-    import keyring as _keyring
-    KEYRING_AVAILABLE = True
-except ImportError:
-    _keyring = None
+if not KEYRING_AVAILABLE:
     logger.info("keyring not available, API key will be stored in settings file")
-
-keyring: Any | None = _keyring
 
 KEYRING_SERVICE = "PDFMaster"
 KEYRING_USERNAME = "gemini_api_key"

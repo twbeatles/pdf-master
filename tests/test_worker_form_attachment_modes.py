@@ -1,17 +1,10 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6_and_pymupdf
+from src.core.optional_deps import fitz
 
 
 def _make_pdf(path):
-    import fitz
-
     doc = fitz.open()
     doc.new_page(width=400, height=400)
     doc.save(str(path))
@@ -19,8 +12,6 @@ def _make_pdf(path):
 
 
 def _make_pdf_with_attachment(path):
-    import fitz
-
     doc = fitz.open()
     doc.new_page(width=400, height=400)
     doc.embfile_add("sample.txt", b"hello-attachment")
@@ -29,7 +20,7 @@ def _make_pdf_with_attachment(path):
 
 
 def test_get_form_fields_sets_result_payload(tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "plain.pdf"
@@ -43,7 +34,7 @@ def test_get_form_fields_sets_result_payload(tmp_path):
 
 
 def test_list_attachments_sets_result_payload(tmp_path):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "with_attach.pdf"
@@ -59,7 +50,7 @@ def test_list_attachments_sets_result_payload(tmp_path):
 
 
 def test_worker_on_success_consumes_form_fields_payload(monkeypatch):
-    _skip_if_missing_deps()
+    require_pyqt6_and_pymupdf()
     from src.ui.main_window_worker import MainWindowWorkerMixin
     import src.ui.main_window_worker as worker_ui_module
 

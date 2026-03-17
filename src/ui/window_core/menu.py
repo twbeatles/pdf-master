@@ -19,7 +19,6 @@ from ...core.i18n import tm
 from ...core.settings import save_settings
 from ..main_window_config import APP_NAME, VERSION
 from ..styles import DARK_STYLESHEET, LIGHT_STYLESHEET
-from ..thumbnail_grid import ThumbnailGridWidget
 from ..widgets import DropZoneWidget, EmptyStateWidget, FileSelectorWidget
 from ..zoomable_preview import ZoomablePreviewWidget
 

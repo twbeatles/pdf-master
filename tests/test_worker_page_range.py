@@ -1,16 +1,10 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6
 
 
 def test_parse_page_range_forward_and_reverse():
-    _skip_if_missing_deps()
+    require_pyqt6()
     from src.core.worker import WorkerThread
 
     w = WorkerThread("merge")
@@ -20,7 +14,7 @@ def test_parse_page_range_forward_and_reverse():
 
 
 def test_parse_page_range_dedup_and_limit():
-    _skip_if_missing_deps()
+    require_pyqt6()
     from src.core.worker import WorkerThread
 
     w = WorkerThread("merge")

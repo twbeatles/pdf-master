@@ -1,17 +1,10 @@
 import pytest
 
-
-def _skip_if_missing_deps():
-    try:
-        import PyQt6  # noqa: F401
-        import fitz  # noqa: F401
-    except Exception:
-        pytest.skip("PyQt6 or PyMuPDF not available")
+from _deps import require_pyqt6_and_pymupdf
+from src.core.optional_deps import fitz
 
 
 def _make_pdf(path, texts):
-    import fitz
-
     doc = fitz.open()
     for text in texts:
         page = doc.new_page(width=600, height=800)
@@ -21,8 +14,6 @@ def _make_pdf(path, texts):
 
 
 def _make_png(path):
-    import fitz
-
     doc = fitz.open()
     doc.new_page(width=40, height=20)
     pix = doc[0].get_pixmap()
@@ -31,8 +22,7 @@ def _make_png(path):
 
 
 def test_draw_shapes_accepts_ui_style_params(tmp_path):
-    _skip_if_missing_deps()
-    import fitz
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -60,8 +50,7 @@ def test_draw_shapes_accepts_ui_style_params(tmp_path):
 
 
 def test_add_link_accepts_page_alias_and_zero_based_target(tmp_path):
-    _skip_if_missing_deps()
-    import fitz
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -89,8 +78,7 @@ def test_add_link_accepts_page_alias_and_zero_based_target(tmp_path):
 
 
 def test_insert_textbox_uses_xy_when_rect_missing(tmp_path):
-    _skip_if_missing_deps()
-    import fitz
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -129,8 +117,7 @@ def test_insert_textbox_uses_xy_when_rect_missing(tmp_path):
 
 
 def test_copy_page_between_docs_accepts_file_path_and_page_range(tmp_path):
-    _skip_if_missing_deps()
-    import fitz
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     target = tmp_path / "target.pdf"
@@ -163,8 +150,7 @@ def test_copy_page_between_docs_accepts_file_path_and_page_range(tmp_path):
 
 
 def test_image_watermark_accepts_scale_and_top_center_alias(tmp_path):
-    _skip_if_missing_deps()
-    import fitz
+    require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
