@@ -109,6 +109,8 @@ def _render_preview_page(self):
 
         self.preview_image.setPixmap(pixmap)
         self.page_counter.setText(f"{self._current_preview_page + 1} / {self._preview_total_pages}")
+        if hasattr(self, "_sync_rotate_thumbnail_with_preview"):
+            self._sync_rotate_thumbnail_with_preview()
 
 def _on_list_item_clicked(self, item):
     path = item.data(Qt.ItemDataRole.UserRole)

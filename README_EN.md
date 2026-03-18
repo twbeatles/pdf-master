@@ -37,7 +37,7 @@
 |---------|-------------|
 | **Extract Pages** | Extract specific pages (e.g., 1-3, 5, 7-10) |
 | **Delete Pages** | Remove selected pages |
-| **Rotate Pages** | Rotate 90°, 180°, 270° |
+| **Rotate Pages** | Rotate 90°, 180°, 270° or only the selected pages |
 | **Reorder Pages** | Rearrange pages via drag & drop |
 | **Page Numbers** | Custom position/format/font (Page 1 of N, 1/N, etc.) |
 | **Insert Blank Page** | Add blank page at desired position |
@@ -109,6 +109,7 @@
 - **Drag & Drop** - Add files, reorder pages
 - **Zoom/Pan Preview** - Mouse wheel zoom, drag move
 - **Thumbnail Grid** - View all pages at a glance
+- **Rotate-tab Page Sync** - Clicking a thumbnail jumps the right preview to the same page
 - **Undo/Redo** - Undo/Redo for page delete, rotate, compress, etc.
 - **Preview Print** - Print directly from preview panel (v4.5)
 
@@ -157,9 +158,12 @@ python main.py
 ### 3. Page Operations (Extract/Delete/Rotate)
 1. Select **Page** tab
 2. Select PDF file
-3. Enter page range (e.g., `1-3, 5, 7-10`)
-4. Select operation (Extract/Delete/Rotate)
-5. **Execute** → Select save location
+3. For extract/delete, enter a page range (e.g., `1-3, 5, 7-10`)
+4. For rotate, choose an angle and then choose the target scope:
+   - `All pages`: rotate the whole document
+   - `Selected pages`: rotate only pages chosen in the rotate-section thumbnails with `Ctrl`/`Shift`
+5. A normal thumbnail click moves the right preview to the same page immediately
+6. **Execute** → Select save location
 
 ### 4. Add Watermark
 1. Select **Edit/Sec** tab
@@ -317,6 +321,13 @@ API key storage policy:
 
 ## 📝 Changelog
 
+### v4.5.4 (2026-03-18 addendum) - Rotate UX Upgrade
+- Added a dedicated thumbnail list inside the Page tab rotate section.
+- Added explicit `All pages` / `Selected pages` rotate scope toggle.
+- Added partial rotation for Ctrl/Shift-selected pages only.
+- Synced rotate thumbnails with the right-side preview navigation without clearing the selected rotate targets.
+- Added focused regression tests for rotate selection and thumbnail state behavior.
+
 ### v4.5.4 (2026-03-09) - Typing, Encoding, and Build Consistency
 - Added `pyrightconfig.json` and reached `pyright .` -> `0 errors` across the repository.
 - Added `src/core/_typing.py` and `src/ui/_typing.py` to make worker/UI mixin host contracts explicit.
@@ -380,7 +391,7 @@ API key storage policy:
 ## 🧪 Test and Consistency Status (v4.5.4)
 
 - Static analysis: `pyright` -> `0 errors`
-- Regression tests: `python -m pytest -q`
+- Regression tests: `python -m pytest` -> `60 passed, 1 warning`
 - Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD regressions
 
 - Added:
@@ -400,6 +411,9 @@ API key storage policy:
   - `tests/test_ai_key_storage_path.py`
   - `tests/test_page_index_policy.py`
   - `tests/test_i18n_ui_hardcoded_smoke.py`
+  - `tests/test_worker_rotate_selection.py`
+  - `tests/test_rotate_selection_ui_flow.py`
+  - `tests/test_thumbnail_grid_selection.py`
 
 ---
 

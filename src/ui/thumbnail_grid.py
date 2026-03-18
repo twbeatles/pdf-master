@@ -4,6 +4,7 @@ PDF all pages shown as a grid with lazy loading.
 """
 
 import logging
+from typing import Iterable
 
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, pyqtSlot
 from PyQt6.QtGui import QPixmap, QImage, QCursor, QMouseEvent, QCloseEvent
@@ -83,11 +84,13 @@ class ThumbnailLabel(QFrame):
     """Clickable thumbnail item."""
 
     clicked = pyqtSignal(int)
+    clickedWithModifiers = pyqtSignal(int, object)
 
     def __init__(self, page_index: int, parent=None):
         super().__init__(parent)
         self.page_index = page_index
         self._selected = False
+        self._active = False
 
         self.setFixedSize(160, 200)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -117,18 +120,50 @@ class ThumbnailLabel(QFrame):
         self._selected = selected
         self._update_style()
 
+    def set_active(self, active: bool):
+        self._active = active
+        self._update_style()
+
     def _update_style(self):
-        if self._selected:
+        if self._active and self._selected:
             self.setStyleSheet(
                 """
                 ThumbnailLabel {
-                    background: rgba(79, 140, 255, 0.2);
+                    background: rgba(79, 140, 255, 0.22);
                     border: 2px solid #4f8cff;
                     border-radius: 8px;
                 }
                 """
             )
             self.page_label.setStyleSheet("color: #4f8cff; font-size: 11px; font-weight: bold;")
+        elif self._active:
+            self.setStyleSheet(
+                """
+                ThumbnailLabel {
+                    background: rgba(79, 140, 255, 0.12);
+                    border: 2px solid #4f8cff;
+                    border-radius: 8px;
+                }
+                ThumbnailLabel:hover {
+                    background: rgba(79, 140, 255, 0.16);
+                }
+                """
+            )
+            self.page_label.setStyleSheet("color: #4f8cff; font-size: 11px; font-weight: bold;")
+        elif self._selected:
+            self.setStyleSheet(
+                """
+                ThumbnailLabel {
+                    background: rgba(0, 217, 160, 0.12);
+                    border: 2px solid #00d9a0;
+                    border-radius: 8px;
+                }
+                ThumbnailLabel:hover {
+                    background: rgba(0, 217, 160, 0.16);
+                }
+                """
+            )
+            self.page_label.setStyleSheet("color: #00d9a0; font-size: 11px; font-weight: bold;")
         else:
             self.setStyleSheet(
                 """
@@ -148,6 +183,7 @@ class ThumbnailLabel(QFrame):
     def mousePressEvent(self, a0: QMouseEvent | None):
         if a0 is not None and a0.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(self.page_index)
+            self.clickedWithModifiers.emit(self.page_index, a0.modifiers())
         super().mousePressEvent(a0)
 
 
@@ -163,16 +199,20 @@ class ThumbnailGridWidget(QWidget):
     pageSelected = pyqtSignal(int)
     pageDoubleClicked = pyqtSignal(int)
     loadingProgress = pyqtSignal(int)
+    selectedPagesChanged = pyqtSignal(list)
 
     _ROW_HEIGHT = 210
     _PREFETCH_ROWS = 2
     _MAX_BATCH_SIZE = 64
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, selection_mode: str = "single"):
         super().__init__(parent)
         self._pdf_path = ""
         self._thumbnails: list[ThumbnailLabel] = []
-        self._selected_index = -1
+        self._active_index = -1
+        self._selected_indices: set[int] = set()
+        self._selection_anchor_index = -1
+        self._selection_mode = selection_mode if selection_mode in {"single", "extended"} else "single"
         self._columns = 4
         self._loader_thread: ThumbnailLoaderThread | None = None
         self._is_dark_theme = True
@@ -228,6 +268,7 @@ class ThumbnailGridWidget(QWidget):
 
     def load_pdf(self, pdf_path: str):
         if not pdf_path:
+            self.clear()
             return
 
         self._cleanup_loader_thread()
@@ -241,7 +282,7 @@ class ThumbnailGridWidget(QWidget):
             self.info_label.setText(f"페이지: {self._total_pages}")
             for i in range(self._total_pages):
                 thumb = ThumbnailLabel(i)
-                thumb.clicked.connect(self._on_thumbnail_clicked)
+                thumb.clickedWithModifiers.connect(self._on_thumbnail_clicked)
                 self._thumbnails.append(thumb)
             self._arrange_grid()
             self._request_visible_thumbnails()
@@ -281,7 +322,9 @@ class ThumbnailGridWidget(QWidget):
         for thumb in self._thumbnails:
             thumb.deleteLater()
         self._thumbnails.clear()
-        self._selected_index = -1
+        self._active_index = -1
+        self._selected_indices.clear()
+        self._selection_anchor_index = -1
         self._loaded_indices.clear()
         self._requested_indices.clear()
         self._pending_indices.clear()
@@ -295,6 +338,14 @@ class ThumbnailGridWidget(QWidget):
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
+
+    def clear(self):
+        self._cleanup_loader_thread()
+        self._pdf_path = ""
+        self._clear_thumbnails()
+        self.info_label.setText("페이지: 0")
+        self.loading_label.setText("PDF 파일을 선택하세요")
+        self.loading_label.show()
 
     def _arrange_grid(self):
         for i in reversed(range(self.grid_layout.count())):
@@ -384,19 +435,114 @@ class ThumbnailGridWidget(QWidget):
     def _on_scroll_changed(self, _value: int):
         self._request_visible_thumbnails()
 
-    def _on_thumbnail_clicked(self, page_index: int):
-        if 0 <= self._selected_index < len(self._thumbnails):
-            self._thumbnails[self._selected_index].set_selected(False)
-        self._selected_index = page_index
-        if 0 <= page_index < len(self._thumbnails):
-            self._thumbnails[page_index].set_selected(True)
+    def _refresh_thumbnail_states(self):
+        for index, thumb in enumerate(self._thumbnails):
+            thumb.set_active(index == self._active_index)
+            thumb.set_selected(index in self._selected_indices)
+
+    def _emit_selected_pages_changed(self):
+        self.selectedPagesChanged.emit(self.get_selected_pages())
+
+    def _set_selected_indices(self, indices: Iterable[int]):
+        normalized = {
+            index
+            for index in indices
+            if isinstance(index, int) and 0 <= index < len(self._thumbnails)
+        }
+        if normalized == self._selected_indices:
+            return
+        self._selected_indices = normalized
+        self._refresh_thumbnail_states()
+        self._emit_selected_pages_changed()
+
+    def set_selection_mode(self, selection_mode: str):
+        if selection_mode not in {"single", "extended"}:
+            selection_mode = "single"
+        if selection_mode == self._selection_mode:
+            return
+        self._selection_mode = selection_mode
+        if selection_mode == "single":
+            self._set_selected_indices([self._active_index] if self._active_index >= 0 else [])
+        self._refresh_thumbnail_states()
+
+    def set_active_page(self, index: int, emit_signal: bool = False):
+        if index < 0 or index >= len(self._thumbnails):
+            return
+        if self._active_index != index:
+            self._active_index = index
+            self._refresh_thumbnail_states()
+        if emit_signal:
+            self.pageSelected.emit(index)
+
+    def _apply_single_selection(self, page_index: int):
+        if page_index < 0 or page_index >= len(self._thumbnails):
+            return
+        self._selection_anchor_index = page_index
+        self._active_index = page_index
+        self._set_selected_indices([page_index])
         self.pageSelected.emit(page_index)
 
+    @pyqtSlot(int, object)
+    def _on_thumbnail_clicked(self, page_index: int, modifiers: object):
+        if page_index < 0 or page_index >= len(self._thumbnails):
+            return
+
+        if self._selection_mode == "single":
+            self._apply_single_selection(page_index)
+            return
+
+        raw_modifier_value = getattr(modifiers, "value", None)
+        if isinstance(raw_modifier_value, int):
+            modifier_value = Qt.KeyboardModifier(raw_modifier_value)
+        elif isinstance(modifiers, int):
+            modifier_value = Qt.KeyboardModifier(modifiers)
+        else:
+            modifier_value = Qt.KeyboardModifier.NoModifier
+        self.set_active_page(page_index, emit_signal=True)
+
+        if modifier_value & Qt.KeyboardModifier.ShiftModifier:
+            anchor = self._selection_anchor_index if self._selection_anchor_index >= 0 else page_index
+            start = min(anchor, page_index)
+            end = max(anchor, page_index)
+            self._set_selected_indices(range(start, end + 1))
+            return
+
+        if modifier_value & Qt.KeyboardModifier.ControlModifier:
+            self._selection_anchor_index = page_index
+            updated = set(self._selected_indices)
+            if page_index in updated:
+                updated.remove(page_index)
+            else:
+                updated.add(page_index)
+            self._set_selected_indices(updated)
+            return
+
+        self._selection_anchor_index = page_index
+
     def get_selected_page(self) -> int:
-        return self._selected_index
+        if self._selection_mode == "single":
+            return self._active_index
+        return self._active_index
+
+    @property
+    def selection_mode(self) -> str:
+        return self._selection_mode
+
+    def get_selected_pages(self) -> list[int]:
+        if self._selection_mode == "single":
+            return [self._active_index] if self._active_index >= 0 else []
+        return sorted(self._selected_indices)
+
+    def get_active_page(self) -> int:
+        return self._active_index
 
     def select_page(self, index: int):
-        self._on_thumbnail_clicked(index)
+        if index < 0 or index >= len(self._thumbnails):
+            return
+        if self._selection_mode == "single":
+            self._apply_single_selection(index)
+        else:
+            self.set_active_page(index, emit_signal=True)
         if 0 <= index < len(self._thumbnails):
             self.scroll_area.ensureWidgetVisible(self._thumbnails[index])
 

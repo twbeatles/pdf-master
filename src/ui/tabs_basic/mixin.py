@@ -21,6 +21,9 @@ from .merge import (
     setup_merge_tab,
 )
 from .page import (
+    _on_rotate_pdf_changed,
+    _on_rotate_thumbnail_page_selected,
+    _sync_rotate_thumbnail_with_preview,
     action_delete_pages,
     action_page_numbers,
     action_rotate,
@@ -61,6 +64,9 @@ class MainWindowTabsBasicMixin(MainWindowHost):
     action_txt = action_txt
 
     setup_page_tab = setup_page_tab
+    _on_rotate_pdf_changed = _on_rotate_pdf_changed
+    _on_rotate_thumbnail_page_selected = _on_rotate_thumbnail_page_selected
+    _sync_rotate_thumbnail_with_preview = _sync_rotate_thumbnail_with_preview
     action_split = action_split
     action_delete_pages = action_delete_pages
     action_rotate = action_rotate

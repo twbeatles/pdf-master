@@ -380,7 +380,7 @@ class LoadingSpinner(QLabel):
 
 ---
 
-### 12. `src/ui/thumbnail_grid.py` - 썸네일 그리드 (397줄)
+### 12. `src/ui/thumbnail_grid.py` - 썸네일 그리드 (592줄)
 
 ```python
 class ThumbnailLoaderThread(QThread):
@@ -388,16 +388,20 @@ class ThumbnailLoaderThread(QThread):
     thumbnail_ready = pyqtSignal(int, QPixmap)
     loading_complete = pyqtSignal()
     
-class ThumbnailLabel(QLabel):
+class ThumbnailLabel(QFrame):
     """클릭 가능한 썸네일"""
     clicked = pyqtSignal(int)
+    clickedWithModifiers = pyqtSignal(int, object)
     
 class ThumbnailGridWidget(QWidget):
     """PDF 페이지 그리드 표시"""
     pageSelected = pyqtSignal(int)
+    selectedPagesChanged = pyqtSignal(list)
     
     def load_pdf(pdf_path: str)
     def select_page(index: int)
+    def set_active_page(index: int, emit_signal: bool = False)
+    def get_selected_pages() -> list[int]
 ```
 
 ---
@@ -435,7 +439,7 @@ class ZoomablePreviewWidget(QWidget):
 ## 🧪 테스트 업데이트 (v4.5.4)
 
 - `pyright` -> `0 errors`
-- `python -m pytest -ra` -> 현재 환경 `31 passed, 20 skipped`
+- `python -m pytest` -> 현재 환경 `60 passed, 1 warning`
 - UTF-8/BOM/U+FFFD 회귀는 `tests/test_encoding_audit.py`가 검사
 - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행
 
@@ -475,9 +479,15 @@ class ZoomablePreviewWidget(QWidget):
   - 하이퍼링크 UI 1-based→Worker 0-based 변환 및 Worker strict 검증
 - `tests/test_advanced_new_modes_ui_flow.py`
   - `replace_page`/`set_bookmarks`/`add_annotation` UI 액션 흐름 검증
+- `tests/test_worker_rotate_selection.py`
+  - 선택 페이지 회전과 전체 회전 회귀 검증
+- `tests/test_rotate_selection_ui_flow.py`
+  - 회전 탭 action payload/경고/미리보기 동기화 검증
+- `tests/test_thumbnail_grid_selection.py`
+  - 썸네일 `active page` / `selected pages` 분리 및 미리보기 연동 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `PyMuPDF` 미설치 환경: `31 passed, 20 skipped`
+- 현재 워크트리 기준 `python -m pytest`: `60 passed, 1 warning`
 
 ---
 
@@ -555,4 +565,4 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-09)*
+*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-18)*

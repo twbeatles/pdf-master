@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PDF Master v4.5.4 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
-# Python 3.10+ 호환, 폴더 기반 모듈 분할 및 optional dependency 경계 반영 (Verified 2026-03-17)
+# Python 3.10+ 호환, 폴더 기반 모듈 분할 및 optional dependency 경계 반영 (Verified 2026-03-18)
 
 import sys
 import os

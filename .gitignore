@@ -14,6 +14,7 @@ htmlcov/
 build/
 dist/
 backup/
+.pdf_master_*.tmp.pdf
 .venv/
 venv/
 .idea/

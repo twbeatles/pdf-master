@@ -63,6 +63,8 @@ def _update_preview(self, path):
         self._current_preview_page = 0
         self.page_counter.setText(f"1 / {len(doc)}")
         self._set_preview_navigation_enabled(True)
+        if hasattr(self, "_sync_rotate_thumbnail_with_preview"):
+            self._sync_rotate_thumbnail_with_preview()
         if len(doc) > 0:
             self._render_preview_page()
     except Exception as e:

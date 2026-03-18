@@ -113,7 +113,7 @@ error_signal = pyqtSignal(str)        # 에러 메시지
 | `split` | PDF 분할 (범위) | `pdf_path`, `page_range`, `output_path` |
 | `split_by_pages` | 페이지별 분할 | `pdf_path`, `output_dir` |
 | `delete_pages` | 페이지 삭제 | `pdf_path`, `page_range`, `output_path` |
-| `rotate` | 페이지 회전 | `pdf_path`, `angle`, `page_range` |
+| `rotate` | 페이지 회전 | `pdf_path`, `angle`, `output_path`, `page_indices?` |
 | `watermark` | 텍스트 워터마크 | `pdf_path`, `text`, `options` |
 | `image_watermark` | 이미지 워터마크 | `pdf_path`, `image_path` |
 | `add_page_numbers` | 페이지 번호 | `pdf_path`, `position`, `format` |
@@ -384,9 +384,12 @@ class ThumbnailLoaderThread(QThread):
 
 class ThumbnailGridWidget(QWidget):
     pageSelected = pyqtSignal(int)
+    selectedPagesChanged = pyqtSignal(list)
     
     def load_pdf(pdf_path: str)
     def select_page(index: int)
+    def set_active_page(index: int, emit_signal: bool = False)
+    def get_selected_pages() -> list[int]
 ```
 
 ### 12. `src/ui/zoomable_preview.py` - 줌 미리보기
@@ -514,12 +517,12 @@ pyinstaller pdf_master.spec --clean
 ### 정합성 검증 (v4.5.4)
 ```bash
 pyright
-python -m pytest -ra
+python -m pytest
 ```
 
 - 기준 결과:
   - `pyright` -> `0 errors`
-  - 현재 환경 `python -m pytest -ra` -> `31 passed, 20 skipped`
+  - 현재 환경 `python -m pytest` -> `60 passed, 1 warning`
   - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD 회귀 방지
   - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip
 
@@ -551,6 +554,12 @@ python -m pytest -ra
 - `ai_service`의 optional Gemini SDK 로딩을 importlib 기반 런타임/빌드 계약으로 정리
 - Qt 위젯/Worker 계층 optional narrowing 정리 및 UTF-8 인코딩 점검 완료
 - `.gitignore`, `pdf_master.spec`, README 계열 문서 동기화
+
+### v4.5.4 (2026-03-18 addendum)
+- 페이지 탭 회전 섹션에 전용 썸네일 목록 추가
+- `rotate`가 선택적 `page_indices`를 받아 선택 페이지 부분 회전을 지원
+- `ThumbnailGridWidget`이 `active page`와 `selected pages`를 분리 지원
+- 오른쪽 미리보기 이동 시 회전 섹션 활성 페이지를 동기화
 
 ### v4.5.3 (2026-02-26)
 - 배치 워터마크 런타임 실패 수정 및 파일별 실패 원인 요약
@@ -604,4 +613,4 @@ python -m pytest -ra
 
 ---
 
-*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-09)*
+*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-18)*
