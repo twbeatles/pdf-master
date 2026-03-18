@@ -54,7 +54,7 @@ def _ensure_preview_document(self, path: str):
     return new_doc, locked_state
 
 def _reset_preview_state(self, close_doc: bool = True):
-    self.preview_image.clear()
+    self.preview_image.clear_display()
     if close_doc:
         self._close_preview_document()
     self._current_preview_path = ""

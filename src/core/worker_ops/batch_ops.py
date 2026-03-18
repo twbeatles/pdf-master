@@ -83,13 +83,13 @@ class WorkerBatchOpsMixin(WorkerHost):
 
             self._emit_progress_if_due(int((idx + 1) / len(files) * 100))
 
-        result_msg = f"✅ 일괄 처리 완료!\n{success_count}/{len(files)}개 파일 처리됨"
+        result_msg = self._get_msg("msg_batch_done", success_count, len(files))
         if skipped_count > 0:
-            result_msg += f"\n⚠️ {skipped_count}개 파일 건너뜀"
+            result_msg += self._get_msg("msg_batch_skipped", skipped_count)
             if failed_files:
-                result_msg += "\n실패 파일:"
+                result_msg += self._get_msg("msg_batch_failed_header")
                 for name, reason in failed_files[:3]:
                     result_msg += f"\n- {name}: {reason}"
                 if len(failed_files) > 3:
-                    result_msg += f"\n- 외 {len(failed_files) - 3}개"
+                    result_msg += self._get_msg("msg_batch_failed_more", len(failed_files) - 3)
         self.finished_signal.emit(result_msg)

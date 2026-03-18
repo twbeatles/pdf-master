@@ -1,7 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PDF Master v4.5.4 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
-# Python 3.10+ 호환, 폴더 기반 모듈 분할 및 optional dependency 경계 반영 (Verified 2026-03-18)
+# Python 3.10+ 호환, 폴더 기반 모듈 분할 및 optional dependency 경계 반영
+# Verified 2026-03-18 after zoomable preview/i18n/compare follow-up
 
 import sys
 import os
@@ -75,6 +76,7 @@ hiddenimports += [
     'src.core.optional_deps',  # Centralized optional fitz/keyring boundary
     'src.core._typing',  # Pyright/Pylance host contracts imported by worker mixins
     'src.ui._typing',  # Pyright/Pylance host contracts imported by UI mixins
+    'src.ui.zoomable_preview',  # Runtime-critical preview widget path (main preview panel)
 ]
 
 # v4.5.3+: 폴더 기반 모듈 분할(hidden import 보강)

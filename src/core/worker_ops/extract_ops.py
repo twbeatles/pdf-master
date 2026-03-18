@@ -58,7 +58,9 @@ class WorkerExtractOpsMixin(WorkerHost):
             if doc:
                 doc.close()
 
-        self.finished_signal.emit(f"✅ PDF 정보 추출 완료!\n{page_count}페이지, {total_chars:,}자, {total_images}개 이미지")
+        self.finished_signal.emit(
+            self._get_msg("msg_pdf_info_done", page_count, total_chars, total_images)
+        )
 
     def get_bookmarks(self):
         """PDF 북마크(목차) 추출"""
@@ -83,7 +85,7 @@ class WorkerExtractOpsMixin(WorkerHost):
             if doc:
                 doc.close()
         self._emit_progress_if_due(100)
-        self.finished_signal.emit(f"✅ 북마크 추출 완료!\n{len(toc)}개 항목")
+        self.finished_signal.emit(self._get_msg("msg_bookmarks_extracted", len(toc)))
 
     def set_bookmarks(self):
         """PDF 북마크(목차) 설정"""
@@ -100,7 +102,7 @@ class WorkerExtractOpsMixin(WorkerHost):
                 doc.close()
 
         self._emit_progress_if_due(100)
-        self.finished_signal.emit(f"✅ 북마크 설정 완료!\n{len(bookmarks)}개 항목")
+        self.finished_signal.emit(self._get_msg("msg_bookmarks_set", len(bookmarks)))
 
     def search_text(self):
         """PDF 내 텍스트 검색"""
@@ -139,7 +141,9 @@ class WorkerExtractOpsMixin(WorkerHost):
             if doc:
                 doc.close()
         total_found = sum(r["count"] for r in results) if results else 0
-        self.finished_signal.emit(f"✅ 검색 완료!\n'{search_term}': {total_found}개 발견")
+        self.finished_signal.emit(
+            self._get_msg("msg_search_text_done", search_term, total_found)
+        )
 
     def extract_tables(self):
         """PDF에서 테이블 데이터 추출"""
@@ -177,7 +181,7 @@ class WorkerExtractOpsMixin(WorkerHost):
         finally:
             if doc:
                 doc.close()
-        self.finished_signal.emit(f"✅ 테이블 추출 완료!\n{len(all_tables)}개 테이블 발견")
+        self.finished_signal.emit(self._get_msg("msg_tables_extracted", len(all_tables)))
 
     def list_annotations(self):
         """PDF 주석 목록 추출"""
@@ -219,7 +223,9 @@ class WorkerExtractOpsMixin(WorkerHost):
             if doc:
                 doc.close()
         self.kwargs["result_annotations"] = all_annots
-        self.finished_signal.emit(f"✅ 주석 추출 완료!\n{len(all_annots)}개 주석 발견")
+        self.finished_signal.emit(
+            self._get_msg("msg_annotations_extracted", len(all_annots))
+        )
 
     def add_attachment(self):
         """PDF에 파일 첨부"""
@@ -238,7 +244,9 @@ class WorkerExtractOpsMixin(WorkerHost):
             if doc:
                 doc.close()
         self._emit_progress_if_due(100)
-        self.finished_signal.emit(f"✅ 파일 첨부 완료!\n{os.path.basename(attach_path)}")
+        self.finished_signal.emit(
+            self._get_msg("msg_attachment_added", os.path.basename(attach_path))
+        )
 
     def extract_attachments(self):
         """PDF 첨부 파일 추출"""
@@ -254,7 +262,7 @@ class WorkerExtractOpsMixin(WorkerHost):
 
             if total == 0:
                 self._emit_progress_if_due(100)
-                self.finished_signal.emit("✅ 첨부 파일이 없습니다.")
+                self.finished_signal.emit(self._get_msg("msg_no_attachments_found"))
                 return
 
             for i in range(total):
@@ -269,4 +277,4 @@ class WorkerExtractOpsMixin(WorkerHost):
         finally:
             if doc:
                 doc.close()
-        self.finished_signal.emit(f"✅ {count}개 첨부 파일 추출 완료!")
+        self.finished_signal.emit(self._get_msg("msg_attachments_extracted", count))

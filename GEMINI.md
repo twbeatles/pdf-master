@@ -4,6 +4,16 @@
 
 ---
 
+## Current Behavior Notes
+
+- The main right-side preview now runs through `src/ui/zoomable_preview.py` in real usage, including wheel zoom, drag pan, page navigation, preview print, and resize-triggered rerender.
+- `convert_to_img` and `extract_text` use collision-safe auto output naming (`name`, `name__2`, `name__3`, ...).
+- `resize_pages` preserves aspect ratio and fit-centers the source page on the requested paper size instead of changing only the mediabox.
+- `compare_pdfs` uses sequence-based line diffing and can optionally emit a visual diff PDF from the Advanced tab UI.
+- Updated AI/batch/annotation/extract worker completion and error messages are expected to come from the i18n catalogs.
+
+---
+
 ## 📋 프로젝트 개요
 
 **PDF Master**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
@@ -394,11 +404,12 @@ class ThumbnailGridWidget(QWidget):
     def get_selected_pages() -> list[int]
 ```
 
-### 12. `src/ui/zoomable_preview.py` - 줌 미리보기
+### 12. `src/ui/zoomable_preview.py` - 줌/패닝 미리보기
 
 ```python
 class ZoomableGraphicsView(QGraphicsView):
     zoomChanged = pyqtSignal(float)
+    viewportResized = pyqtSignal()
     
     def set_zoom(zoom: float)
     def zoom_in() / zoom_out()
@@ -407,7 +418,20 @@ class ZoomableGraphicsView(QGraphicsView):
 class ZoomablePreviewWidget(QWidget):
     def load_pdf(pdf_path: str)
     def go_to_page(page_index: int)
+    def set_controlled_mode(enabled: bool = True)
+    def set_preview_pixmap(pixmap, current_page: int | None = None, total_pages: int | None = None)
+    def set_page_state(current_page: int, total_pages: int)
+    def display_size()
 ```
+
+- 메인 미리보기 패널에서 직접 사용하는 실제 런타임 위젯입니다.
+- controlled mode에서는 메인 창이 렌더한 pixmap을 주입하고, 위젯은 zoom/pan/page UI와 resize debounce를 담당합니다.
+- `renderRequested` 시그널은 splitter 이동/패널 리사이즈 이후 선명한 재렌더를 요청할 때 사용됩니다.
+
+### Packaging note
+
+- `pdf_master.spec` should explicitly keep `src.ui.zoomable_preview` importable because the widget is now part of the main preview runtime path.
+- `src/core/i18n_catalogs/*` are packaged as Python modules, so worker/UI message changes should stay aligned with hiddenimport coverage.
 
 ---
 

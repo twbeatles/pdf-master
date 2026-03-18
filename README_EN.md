@@ -7,6 +7,15 @@
 ![PyMuPDF](https://img.shields.io/badge/PyMuPDF-fitz-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
+## Current Behavior Notes
+
+- The right preview panel now uses `src/ui/zoomable_preview.py` directly for wheel zoom, drag pan, page navigation, and preview print.
+- Preview rendering is refreshed after splitter moves and panel resize events to avoid stale low-resolution previews.
+- `Resize Pages` keeps the original page aspect ratio and places the source page fit-centered on the target paper size.
+- Auto-generated outputs from `PDF -> Image` and `Extract Text` avoid filename collisions with `__2`, `__3`, and later suffixes.
+- `Compare PDFs` now detects line-order changes and duplicate-count differences, and visual diff PDF generation is optional from the Advanced tab UI.
+- Updated worker result/status messages in the touched flows are synchronized through the KO/EN i18n catalogs.
+
 ---
 
 ## 📋 Table of Contents
@@ -28,9 +37,9 @@
 | Feature | Description | Supported Formats |
 |---------|-------------|-------------------|
 | **PDF Merge** | Merge multiple PDFs into one | Drag & Drop supported |
-| **PDF → Image** | Convert pages to images | PNG, JPG, WEBP, BMP, TIFF |
+| **PDF → Image** | Convert pages to images with collision-safe auto filenames | PNG, JPG, WEBP, BMP, TIFF |
 | **Image → PDF** | Combine images into PDF | PNG, JPG, BMP, GIF, WEBP |
-| **Extract Text** | Extract text from PDF | Save as TXT |
+| **Extract Text** | Extract text from PDF with collision-safe TXT output naming | Save as TXT |
 
 ### ✂️ Page Editing
 | Feature | Description |
@@ -43,7 +52,7 @@
 | **Insert Blank Page** | Add blank page at desired position |
 | **Duplicate Page** | Copy selected page |
 | **Reverse Order** | Reverse page order |
-| **Resize Pages** | Resize to A4, A3, Letter, Legal, etc. |
+| **Resize Pages** | Fit-center into A4, A3, Letter, Legal, etc. while preserving aspect ratio |
 | **Replace Page** | Replace target page with a page from another PDF (v4.5.3) |
 
 ### 🔒 Security & Protection
@@ -62,7 +71,7 @@
 | **Compress PDF** | High/Medium/Low compression levels |
 | **Crop PDF** | Trim margins |
 | **Edit Metadata** | Modify title, author, subject, keywords |
-| **Compare PDFs** | Analyze text differences between two PDFs |
+| **Compare PDFs** | Analyze text differences including line order/duplicate changes, with optional visual diff PDF |
 | **Set Bookmarks** | Save outline via `level|title|page` lines (v4.5.3) |
 
 ### 📝 Annotation & Markup
@@ -107,7 +116,7 @@
 - **Progress Overlay** - Full-screen dialog with cancellation
 - **Toast Notifications** - Non-intrusive notifications
 - **Drag & Drop** - Add files, reorder pages
-- **Zoom/Pan Preview** - Mouse wheel zoom, drag move
+- **Zoom/Pan Preview** - Mouse wheel zoom, drag move, page navigation, print, and resize-aware rerender
 - **Thumbnail Grid** - View all pages at a glance
 - **Rotate-tab Page Sync** - Clicking a thumbnail jumps the right preview to the same page
 - **Undo/Redo** - Undo/Redo for page delete, rotate, compress, etc.

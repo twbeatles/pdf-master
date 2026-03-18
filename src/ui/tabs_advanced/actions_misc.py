@@ -41,13 +41,20 @@ def action_compare_pdfs(self):
     """PDF 비교"""
     path1 = self.sel_compare1.get_path()
     path2 = self.sel_compare2.get_path()
+    generate_visual_diff = self.chk_compare_visual.isChecked() if hasattr(self, "chk_compare_visual") else False
 
     if not path1 or not path2:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_two_pdf"))
 
     s, _ = QFileDialog.getSaveFileName(self, tm.get("dlg_save_compare"), "comparison.txt", "Text (*.txt)")
     if s:
-        self.run_worker("compare_pdfs", file_path1=path1, file_path2=path2, output_path=s)
+        self.run_worker(
+            "compare_pdfs",
+            file_path1=path1,
+            file_path2=path2,
+            output_path=s,
+            generate_visual_diff=generate_visual_diff,
+        )
 
 def action_decrypt_pdf(self):
     """PDF 복호화"""

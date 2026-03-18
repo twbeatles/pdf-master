@@ -39,6 +39,15 @@ class WorkerHost:
     ) -> tuple[str, str]:
         ...
 
+    def _build_unique_output_stem(
+        self,
+        output_dir: str,
+        preferred_stem: str,
+        reserved_suffix: str,
+        used_stems: set[str],
+    ) -> str:
+        ...
+
     def _check_cancelled(self) -> None:
         ...
 

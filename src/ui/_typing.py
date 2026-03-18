@@ -21,6 +21,11 @@ class MainWindowHost:
     cmb_fmt: Any
     spn_dpi: Any
     txt_api_key: Any
+    preview_image: Any
+    preview_label: Any
+    page_counter: Any
+    btn_prev_page: Any
+    btn_next_page: Any
 
     _ai_worker_mode: bool
     _chat_worker_mode: bool
@@ -66,4 +71,10 @@ class MainWindowHost:
         ...
 
     def _save_chat_histories(self) -> None:
+        ...
+
+    def _on_preview_page_requested(self, page_index: int) -> None:
+        ...
+
+    def _schedule_preview_rerender(self) -> None:
         ...

@@ -56,7 +56,7 @@ class WorkerAnnotationOpsMixin(WorkerHost):
             if doc:
                 doc.close()
         self._emit_progress_if_due(100)
-        self.finished_signal.emit(f"✅ 주석 추가 완료!\n페이지 {page_num + 1}")
+        self.finished_signal.emit(self._get_msg("msg_annotation_added", page_num + 1))
 
     def remove_annotations(self):
         """PDF에서 모든 주석 제거"""
@@ -79,4 +79,4 @@ class WorkerAnnotationOpsMixin(WorkerHost):
             if doc:
                 doc.close()
         self._emit_progress_if_due(100)
-        self.finished_signal.emit(f"✅ {count}개 주석 삭제 완료!")
+        self.finished_signal.emit(self._get_msg("msg_annotations_removed", count))

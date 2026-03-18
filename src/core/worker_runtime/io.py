@@ -55,6 +55,33 @@ def build_safe_attachment_output_path(
     return out_path, candidate
 
 
+def build_unique_output_stem(
+    output_dir: str,
+    preferred_stem: str,
+    reserved_suffix: str,
+    used_stems: set[str],
+) -> str:
+    """자동 생성 출력 파일용 stem을 충돌 없이 만든다."""
+    output_dir_abs = os.path.abspath(output_dir or ".")
+    safe_name = sanitize_attachment_filename(preferred_stem, "output")
+    safe_stem, _ = os.path.splitext(safe_name)
+    if not safe_stem:
+        safe_stem = "output"
+
+    candidate = safe_stem
+    suffix = 2
+    lowered = candidate.lower()
+    while lowered in used_stems or os.path.exists(
+        os.path.join(output_dir_abs, f"{candidate}{reserved_suffix}")
+    ):
+        candidate = f"{safe_stem}__{suffix}"
+        lowered = candidate.lower()
+        suffix += 1
+
+    used_stems.add(lowered)
+    return candidate
+
+
 def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -> None:
     """
     원자적 PDF 저장.

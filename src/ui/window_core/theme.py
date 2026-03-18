@@ -104,19 +104,8 @@ def _apply_theme(self):
 
     # 미리보기 패널 테마 동기화
     if hasattr(self, 'preview_image'):
+        self.preview_image.set_theme(is_dark)
         if is_dark:
-            self.preview_image.setStyleSheet("""
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #141922, stop:1 #0f1318);
-                border-radius: 12px;
-                border: 1px solid #2d3748;
-            """)
             self.preview_label.setStyleSheet("color: #94a3b8; padding: 12px; font-size: 13px; background: transparent;")
-            self.page_counter.setStyleSheet("font-weight: 700; min-width: 60px; color: #f0f4f8;")
         else:
-            self.preview_image.setStyleSheet("""
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #f8fafc);
-                border-radius: 12px;
-                border: 1px solid #e2e8f0;
-            """)
             self.preview_label.setStyleSheet("color: #64748b; padding: 12px; font-size: 13px; background: transparent;")
-            self.page_counter.setStyleSheet("font-weight: 700; min-width: 60px; color: #1e293b;")

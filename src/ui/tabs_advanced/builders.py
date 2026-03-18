@@ -1,4 +1,5 @@
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QGroupBox,
     QHBoxLayout,
@@ -722,6 +723,9 @@ def _create_misc_subtab(self):
     l_compare.addWidget(QLabel(tm.get("lbl_file_2")))
     self.sel_compare2 = FileSelectorWidget()
     l_compare.addWidget(self.sel_compare2)
+    self.chk_compare_visual = QCheckBox(tm.get("chk_compare_visual_diff"))
+    self.chk_compare_visual.setChecked(False)
+    l_compare.addWidget(self.chk_compare_visual)
     b_compare = QPushButton(tm.get("btn_compare_pdf"))
     b_compare.setToolTip(tm.get("tooltip_compare"))
     b_compare.clicked.connect(self.action_compare_pdfs)

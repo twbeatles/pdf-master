@@ -8,7 +8,12 @@ from typing import Any, cast
 from .._typing import WorkerHost
 from ..optional_deps import fitz
 from .dispatch import get_handler_method_name
-from .io import atomic_pdf_save, build_safe_attachment_output_path, sanitize_attachment_filename
+from .io import (
+    atomic_pdf_save,
+    build_safe_attachment_output_path,
+    build_unique_output_stem,
+    sanitize_attachment_filename,
+)
 from .messages import get_message
 from .normalize import normalize_mode_kwargs
 from .preflight import is_pdf_encrypted, parse_page_range, preflight_inputs, validate_file_size, validate_non_pdf_size
@@ -84,6 +89,15 @@ class WorkerRuntimeMixin(WorkerHost):
         used_names: set[str],
     ) -> tuple[str, str]:
         return build_safe_attachment_output_path(self, output_dir, raw_name, index, used_names)
+
+    def _build_unique_output_stem(
+        self,
+        output_dir: str,
+        preferred_stem: str,
+        reserved_suffix: str,
+        used_stems: set[str],
+    ) -> str:
+        return build_unique_output_stem(output_dir, preferred_stem, reserved_suffix, used_stems)
 
     def _atomic_pdf_save(self, doc: Any, output_path: str, **save_kwargs: Any) -> None:
         atomic_pdf_save(self, doc, output_path, **save_kwargs)

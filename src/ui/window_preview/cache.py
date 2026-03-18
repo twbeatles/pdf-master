@@ -27,6 +27,9 @@ def _ensure_preview_cache(self):
     if not hasattr(self, "_preview_pixmap_cache"):
         self._preview_pixmap_cache = OrderedDict()
         self._preview_pixmap_cache_bytes = 0
+    if not hasattr(self, "_PREVIEW_CACHE_MAX_BYTES"):
+        # Keep the preview cache bounded even if the host did not preconfigure it.
+        self._PREVIEW_CACHE_MAX_BYTES = 64 * 1024 * 1024
 
 def _make_preview_cache_key(self, path: str, page_index: int, target_w: int, target_h: int, zoom_bucket: int) -> tuple:
     abs_path = os.path.abspath(path)

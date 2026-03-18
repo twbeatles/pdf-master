@@ -13,11 +13,13 @@ from .document import (
 )
 from .navigation import (
     _next_preview_page,
+    _on_preview_page_requested,
     _on_list_item_clicked,
     _prev_preview_page,
     _print_current_preview,
     _print_pdf,
     _render_preview_page,
+    _schedule_preview_rerender,
 )
 from .panel import _create_preview_panel, _set_preview_navigation_enabled
 from .update import _add_to_recent_files, _update_preview
@@ -35,6 +37,8 @@ class MainWindowPreviewMixin(MainWindowHost):
     _print_pdf = _print_pdf
     _prev_preview_page = _prev_preview_page
     _next_preview_page = _next_preview_page
+    _on_preview_page_requested = _on_preview_page_requested
+    _schedule_preview_rerender = _schedule_preview_rerender
     _ensure_preview_document = _ensure_preview_document
     _render_preview_page = _render_preview_page
     _on_list_item_clicked = _on_list_item_clicked

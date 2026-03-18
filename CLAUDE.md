@@ -4,6 +4,17 @@
 
 ---
 
+## Current Behavior Notes
+
+- The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
+- Preview rerendering is resize-aware: splitter moves and panel resizes request a fresh render instead of leaving a stale scaled pixmap.
+- `resize_pages` preserves aspect ratio and fit-centers the original page content on the destination paper size.
+- Auto-generated outputs for `convert_to_img` and `extract_text` use collision-safe stems (`name`, `name__2`, `name__3`, ...).
+- `compare_pdfs` uses sequence-based line diffing and the Advanced tab can optionally generate a visual diff PDF.
+- Updated worker completion/error messages in the AI/batch/annotation/extract flows are keyed through the i18n catalogs.
+
+---
+
 ## 📌 프로젝트 개요
 
 **PDF Master v4.5.4**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.

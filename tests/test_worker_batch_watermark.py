@@ -49,6 +49,7 @@ def test_batch_watermark_generates_output(tmp_path):
 def test_batch_reports_failed_file_reasons(tmp_path):
     require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
+    from src.core.i18n import tm
 
     src = tmp_path / "ok.pdf"
     _make_pdf(src, "OK")
@@ -69,6 +70,6 @@ def test_batch_reports_failed_file_reasons(tmp_path):
     assert messages
     result = messages[-1]
     assert "1/2" in result
-    assert "실패 파일" in result
+    assert tm.get("msg_batch_failed_header").strip() in result
     assert "missing.pdf" in result
 

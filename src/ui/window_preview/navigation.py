@@ -4,25 +4,13 @@ import subprocess
 import sys
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QImage, QPixmap
-from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
-from PyQt6.QtWidgets import (
-    QFrame,
-    QGraphicsOpacityEffect,
-    QHBoxLayout,
-    QLabel,
-    QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtWidgets import QMessageBox
 
 from ...core.optional_deps import fitz
 from ...core.i18n import tm
 from ...core.perf import PerfTimer
-from ...core.settings import save_settings
-from ..widgets import FileSelectorWidget, ToastWidget
-from ..zoomable_preview import ZoomablePreviewWidget
+from ..widgets import ToastWidget
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +51,21 @@ def _next_preview_page(self):
         self._current_preview_page += 1
         self._render_preview_page()
 
+def _on_preview_page_requested(self, page_index: int):
+    if page_index == getattr(self, "_current_preview_page", -1):
+        return
+    if page_index < 0 or page_index >= getattr(self, "_preview_total_pages", 0):
+        return
+    self._current_preview_page = page_index
+    self._render_preview_page()
+
+def _schedule_preview_rerender(self):
+    if not getattr(self, "_current_preview_path", ""):
+        return
+    if getattr(self, "_preview_total_pages", 0) <= 0:
+        return
+    self._render_preview_page()
+
 def _render_preview_page(self):
     if not hasattr(self, "_current_preview_path") or not self._current_preview_path:
         return
@@ -79,10 +82,11 @@ def _render_preview_page(self):
         if self._current_preview_page < 0 or self._current_preview_page >= len(doc):
             return
 
-        preview_size = self.preview_image.size()
+        preview_size = self.preview_image.display_size()
         target_w = max(280, preview_size.width() - 20)
         target_h = max(400, preview_size.height() - 20)
-        zoom_bucket = int(self._PREVIEW_RENDER_ZOOM * 100)
+        render_zoom = float(getattr(self, "_PREVIEW_RENDER_ZOOM", 2.0))
+        zoom_bucket = int(render_zoom * 100)
         key = self._make_preview_cache_key(
             self._current_preview_path,
             self._current_preview_page,
@@ -94,7 +98,7 @@ def _render_preview_page(self):
         pixmap = self._get_cached_preview_pixmap(key)
         if pixmap is None:
             page = doc[self._current_preview_page]
-            pix = page.get_pixmap(matrix=fitz.Matrix(self._PREVIEW_RENDER_ZOOM, self._PREVIEW_RENDER_ZOOM))
+            pix = page.get_pixmap(matrix=fitz.Matrix(render_zoom, render_zoom))
             img_data = bytes(pix.samples)
             fmt = QImage.Format.Format_RGBA8888 if pix.alpha else QImage.Format.Format_RGB888
             img = QImage(img_data, pix.width, pix.height, pix.stride, fmt)
@@ -107,8 +111,12 @@ def _render_preview_page(self):
             )
             self._put_cached_preview_pixmap(key, pixmap)
 
-        self.preview_image.setPixmap(pixmap)
-        self.page_counter.setText(f"{self._current_preview_page + 1} / {self._preview_total_pages}")
+        self.preview_image.set_preview_pixmap(
+            pixmap,
+            current_page=self._current_preview_page,
+            total_pages=self._preview_total_pages,
+            preserve_view=True,
+        )
         if hasattr(self, "_sync_rotate_thumbnail_with_preview"):
             self._sync_rotate_thumbnail_with_preview()
 

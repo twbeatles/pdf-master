@@ -69,11 +69,11 @@ class WorkerAiOpsMixin(WorkerHost):
             self.kwargs['summary_result'] = summary
 
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ AI 요약 완료!\n{len(summary)} 글자")
+            self.finished_signal.emit(self._get_msg("msg_ai_summary_done", len(summary)))
 
         except Exception as e:
             logger.error(f"AI summarization failed: {e}")
-            self.error_signal.emit(f"AI 요약 실패: {str(e)}")
+            self.error_signal.emit(self._get_msg("err_ai_summary_failed", str(e)))
 
     def ai_ask_question(self):
         """AI 기반 PDF 질의응답 (채팅)"""
@@ -109,7 +109,7 @@ class WorkerAiOpsMixin(WorkerHost):
             ai_service = AIService(api_key=api_key)
 
             if not ai_service.is_available:
-                self.error_signal.emit("AI 서비스를 사용할 수 없습니다.")
+                self.error_signal.emit(self._get_msg("err_ai_unavailable"))
                 return
 
             self._emit_progress_if_due(40)
@@ -125,11 +125,11 @@ class WorkerAiOpsMixin(WorkerHost):
             self.kwargs['answer_result'] = answer
 
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 답변 생성 완료!")
+            self.finished_signal.emit(self._get_msg("msg_ai_answer_done"))
 
         except Exception as e:
             logger.error(f"AI Q&A failed: {e}")
-            self.error_signal.emit(f"답변 생성 실패: {str(e)}")
+            self.error_signal.emit(self._get_msg("err_ai_answer_failed", str(e)))
 
     def ai_extract_keywords(self):
         """AI 기반 키워드 추출"""
@@ -161,7 +161,7 @@ class WorkerAiOpsMixin(WorkerHost):
             ai_service = AIService(api_key=api_key)
 
             if not ai_service.is_available:
-                self.error_signal.emit("AI 서비스를 사용할 수 없습니다.")
+                self.error_signal.emit(self._get_msg("err_ai_unavailable"))
                 return
 
             self._emit_progress_if_due(40)
@@ -179,11 +179,11 @@ class WorkerAiOpsMixin(WorkerHost):
             self._emit_progress_if_due(100)
 
             if keywords:
-                self.finished_signal.emit(f"✅ 키워드 추출 완료!\n{len(keywords)}개 키워드")
+                self.finished_signal.emit(self._get_msg("msg_ai_keywords_done", len(keywords)))
             else:
-                self.finished_signal.emit("키워드를 추출할 수 없습니다.")
+                self.finished_signal.emit(self._get_msg("msg_ai_keywords_empty"))
 
         except Exception as e:
             logger.error(f"Keyword extraction failed: {e}")
-            self.error_signal.emit(f"키워드 추출 실패: {str(e)}")
+            self.error_signal.emit(self._get_msg("err_ai_keywords_failed", str(e)))
 

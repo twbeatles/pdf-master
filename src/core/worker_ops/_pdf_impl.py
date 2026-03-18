@@ -79,7 +79,8 @@ class WorkerPdfOpsMixin(WorkerHost):
         mat = fitz.Matrix(zoom, zoom)
 
         total_files = len(file_paths)
-        total_pages_done = 0
+        used_output_stems: set[str] = set()
+        os.makedirs(output_dir, exist_ok=True)
 
         for file_idx, file_path in enumerate(file_paths):
             if not file_path or not os.path.exists(file_path):
@@ -88,19 +89,26 @@ class WorkerPdfOpsMixin(WorkerHost):
             try:
                 doc = fitz.open(file_path)
                 base = os.path.splitext(os.path.basename(file_path))[0]
+                unique_stem = self._build_unique_output_stem(
+                    output_dir,
+                    base,
+                    f"_p001.{fmt}",
+                    used_output_stems,
+                )
                 for i in range(len(doc)):
                     page = doc[i]
                     self._check_cancelled()  # 취소 체크포인트
                     pix = page.get_pixmap(matrix=mat)
-                    save_path = os.path.join(output_dir, f"{base}_p{i+1:03d}.{fmt}")
+                    save_path = os.path.join(output_dir, f"{unique_stem}_p{i+1:03d}.{fmt}")
                     pix.save(save_path)
-                    total_pages_done += 1
             finally:
                 if doc:
                     doc.close()
-            self._emit_progress_if_due(int((file_idx + 1) / total_files * 100))
+            self._emit_progress_if_due(int((file_idx + 1) / max(1, total_files) * 100))
 
-        self.finished_signal.emit(f"✅ 변환 완료!\n{total_files}개 파일 → {fmt.upper()} 이미지")
+        self.finished_signal.emit(
+            self._get_msg("msg_convert_to_img_done", total_files, fmt.upper())
+        )
 
     def extract_text(self):
         # 다중 파일 지원
@@ -110,6 +118,10 @@ class WorkerPdfOpsMixin(WorkerHost):
         include_details = _as_bool(self.kwargs.get('include_details'), False)  # v3.2: 상세 정보 포함 옵션
 
         total_files = len(file_paths)
+        used_output_stems: set[str] = set()
+
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
 
         for file_idx, file_path in enumerate(file_paths):
             if not file_path or not os.path.exists(file_path):
@@ -152,7 +164,13 @@ class WorkerPdfOpsMixin(WorkerHost):
             # 출력 경로 결정
             if output_dir:
                 base = os.path.splitext(os.path.basename(file_path))[0]
-                out_path = os.path.join(output_dir, f"{base}.txt")
+                unique_stem = self._build_unique_output_stem(
+                    output_dir,
+                    base,
+                    ".txt",
+                    used_output_stems,
+                )
+                out_path = os.path.join(output_dir, f"{unique_stem}.txt")
             else:
                 out_path = output_path
 
@@ -160,10 +178,15 @@ class WorkerPdfOpsMixin(WorkerHost):
             with open(out_path, "w", encoding="utf-8") as f:
                 f.write(full_text)
 
-            self._emit_progress_if_due(int((file_idx + 1) / total_files * 100))
+            self._emit_progress_if_due(int((file_idx + 1) / max(1, total_files) * 100))
 
-        detail_msg = " (상세 정보 포함)" if include_details else ""
-        self.finished_signal.emit(f"✅ 텍스트 추출 완료!{detail_msg}\n{total_files}개 파일")
+        self.finished_signal.emit(
+            self._get_msg(
+                "msg_extract_text_done",
+                total_files,
+                self._get_msg("msg_extract_text_detail_suffix") if include_details else "",
+            )
+        )
 
     def split(self):
         file_path = _as_str(self.kwargs.get('file_path'))
@@ -894,6 +917,8 @@ class WorkerPdfOpsMixin(WorkerHost):
 
     def compare_pdfs(self):
         """두 PDF 비교"""
+        import difflib
+
         file_path1 = _as_str(self.kwargs.get('file_path1'))
         file_path2 = _as_str(self.kwargs.get('file_path2'))
         output_path = _as_str(self.kwargs.get('output_path'))
@@ -908,13 +933,17 @@ class WorkerPdfOpsMixin(WorkerHost):
 
             # v4.5: 암호화된 PDF 체크
             if doc1.is_encrypted:
-                self.error_signal.emit(f"파일1이 암호화되어 있습니다: {os.path.basename(file_path1)}")
+                self.error_signal.emit(
+                    self._get_msg("err_compare_pdf1_encrypted", os.path.basename(file_path1))
+                )
                 return
             if doc2.is_encrypted:
-                self.error_signal.emit(f"파일2가 암호화되어 있습니다: {os.path.basename(file_path2)}")
+                self.error_signal.emit(
+                    self._get_msg("err_compare_pdf2_encrypted", os.path.basename(file_path2))
+                )
                 return
 
-            results = []
+            results: list[dict[str, Any]] = []
             diff_pages = []  # v3.2: 차이가 발견된 페이지 정보
             max_pages = max(len(doc1), len(doc2))
 
@@ -923,34 +952,60 @@ class WorkerPdfOpsMixin(WorkerHost):
                 self._emit_progress_if_due(int((i + 1) / max_pages * 100))
 
                 if i >= len(doc1):
-                    results.append(f"페이지 {i+1}: 파일1에 없음")
+                    results.append({"page": i + 1, "status": "missing_file1"})
                     continue
                 if i >= len(doc2):
-                    results.append(f"페이지 {i+1}: 파일2에 없음")
+                    results.append({"page": i + 1, "status": "missing_file2"})
                     continue
 
                 text1 = _as_str(doc1[i].get_text())
                 text2 = _as_str(doc2[i].get_text())
 
                 if text1 != text2:
-                    # 간단한 차이 분석
-                    lines1 = set(text1.split('\n'))
-                    lines2 = set(text2.split('\n'))
-                    only_in_1 = lines1 - lines2
-                    only_in_2 = lines2 - lines1
+                    lines1 = text1.splitlines()
+                    lines2 = text2.splitlines()
+                    matcher = difflib.SequenceMatcher(a=lines1, b=lines2)
+                    added = 0
+                    deleted = 0
+                    modified = 0
+                    samples = []
 
-                    if only_in_1 or only_in_2:
-                        results.append(f"페이지 {i+1}: 차이 발견")
+                    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                        if tag == "equal":
+                            continue
+                        if tag == "insert":
+                            added += j2 - j1
+                            if len(samples) < 3 and lines2[j1:j2]:
+                                samples.append(f"+ {' | '.join(lines2[j1:j2][:2])}")
+                        elif tag == "delete":
+                            deleted += i2 - i1
+                            if len(samples) < 3 and lines1[i1:i2]:
+                                samples.append(f"- {' | '.join(lines1[i1:i2][:2])}")
+                        elif tag == "replace":
+                            modified += max(i2 - i1, j2 - j1)
+                            if len(samples) < 3:
+                                before = " | ".join(lines1[i1:i2][:1]) or "∅"
+                                after = " | ".join(lines2[j1:j2][:1]) or "∅"
+                                samples.append(f"~ {before} -> {after}")
+
+                    if added or deleted or modified:
+                        results.append(
+                            {
+                                "page": i + 1,
+                                "status": "diff",
+                                "added": added,
+                                "deleted": deleted,
+                                "modified": modified,
+                                "samples": samples,
+                            }
+                        )
                         diff_pages.append(i)
-                        if only_in_1:
-                            results.append(f"  - 파일1에만: {len(only_in_1)}줄")
-                        if only_in_2:
-                            results.append(f"  - 파일2에만: {len(only_in_2)}줄")
 
             # v3.2: 시각적 diff PDF 생성
             visual_diff_path = None
             if generate_visual_diff and diff_pages:
-                visual_diff_path = output_path.replace('.txt', '_visual_diff.pdf')
+                base_output_path, _ = os.path.splitext(output_path)
+                visual_diff_path = f"{base_output_path}_visual_diff.pdf"
                 diff_doc = fitz.open()
 
                 for page_idx in diff_pages:
@@ -991,16 +1046,36 @@ class WorkerPdfOpsMixin(WorkerHost):
                 f.write(f"파일1: {os.path.basename(file_path1)}\n")
                 f.write(f"파일2: {os.path.basename(file_path2)}\n\n")
                 if results:
-                    for r in results:
-                        f.write(r + "\n")
+                    for result in results:
+                        page = result["page"]
+                        status = result["status"]
+                        if status == "missing_file1":
+                            f.write(f"## 페이지 {page}\n")
+                            f.write("- 파일1에 페이지가 없습니다.\n\n")
+                        elif status == "missing_file2":
+                            f.write(f"## 페이지 {page}\n")
+                            f.write("- 파일2에 페이지가 없습니다.\n\n")
+                        else:
+                            f.write(f"## 페이지 {page}\n")
+                            f.write(f"- 추가: {result['added']}줄\n")
+                            f.write(f"- 삭제: {result['deleted']}줄\n")
+                            f.write(f"- 변경: {result['modified']}줄\n")
+                            for sample in result.get("samples", []):
+                                f.write(f"- 예시: {sample}\n")
+                            f.write("\n")
                 else:
                     f.write("두 파일의 텍스트 내용이 동일합니다.\n")
                 if visual_diff_path:
                     f.write(f"\n📊 시각적 비교 PDF: {os.path.basename(visual_diff_path)}\n")
 
-            diff_count = len([r for r in results if "차이 발견" in r])
-            visual_msg = " +시각적 비교 PDF" if visual_diff_path else ""
-            self.finished_signal.emit(f"✅ PDF 비교 완료!{visual_msg}\n{diff_count}개 페이지에서 차이 발견")
+            diff_count = sum(1 for result in results if result["status"] != "same")
+            self.finished_signal.emit(
+                self._get_msg(
+                    "msg_compare_pdfs_done",
+                    diff_count,
+                    self._get_msg("msg_compare_pdfs_visual_diff_suffix") if visual_diff_path else "",
+                )
+            )
 
         finally:
             if doc1:
@@ -1061,20 +1136,39 @@ class WorkerPdfOpsMixin(WorkerHost):
         target_size = _as_str(self.kwargs.get('target_size'), 'A4')
 
         target_w, target_h = PAGE_SIZES.get(target_size, DEFAULT_PAGE_SIZE)
-
         doc = fitz.open(file_path)
+        resized_doc = fitz.open()
         try:
+            metadata = cast(dict[str, Any], doc.metadata or {})
+            if metadata:
+                resized_doc.set_metadata(metadata)
             total_pages = len(doc)
             for i in range(total_pages):
                 page = doc[i]
                 self._check_cancelled()  # 취소 체크포인트
-                # 새 크기로 페이지 설정
-                page.set_mediabox(fitz.Rect(0, 0, target_w, target_h))
+                src_rect = page.rect
+                scale = min(target_w / max(src_rect.width, 1), target_h / max(src_rect.height, 1))
+                render_w = src_rect.width * scale
+                render_h = src_rect.height * scale
+                offset_x = (target_w - render_w) / 2
+                offset_y = (target_h - render_h) / 2
+
+                new_page = resized_doc.new_page(width=target_w, height=target_h)
+                target_rect = fitz.Rect(
+                    offset_x,
+                    offset_y,
+                    offset_x + render_w,
+                    offset_y + render_h,
+                )
+                new_page.show_pdf_page(target_rect, doc, i)
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))
 
-            self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 페이지 크기 변경 완료!\n{len(doc)}페이지 → {target_size}")
+            self._atomic_pdf_save(resized_doc, output_path)
+            self.finished_signal.emit(
+                self._get_msg("msg_resize_pages_done", len(doc), target_size)
+            )
         finally:
+            resized_doc.close()
             doc.close()
 
     def extract_images(self):
