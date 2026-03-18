@@ -56,12 +56,14 @@ pdf-master/
     │   ├── optional_deps.py
     │   ├── _typing.py
     │   ├── constants.py
-    │   ├── i18n.py
+    │   ├── i18n.py                 # TranslationManager facade
+    │   ├── i18n_catalogs/          # 번역 카탈로그 저장소
     │   ├── settings.py
     │   ├── undo_manager.py
-    │   ├── worker.py                # 호환 shim + 공통 로직
-    │   └── worker_ops/              # Worker 기능 분할 구현
-    │       ├── pdf_ops.py
+    │   ├── worker.py               # QThread facade
+    │   ├── worker_runtime/         # 공통 runtime/dispatch/preflight
+    │   └── worker_ops/             # Worker 기능 분할 구현
+    │       ├── pdf_ops.py          # compatibility shim
     │       └── ai_ops.py
     └── ui/
         ├── _typing.py
@@ -107,27 +109,27 @@ error_signal = pyqtSignal(str)        # 에러 메시지
 
 | 모드 | 설명 | 필수 파라미터 |
 |------|------|--------------|
-| `merge` | PDF 병합 | `pdf_list`, `output_path` |
-| `convert_to_img` | PDF → 이미지 | `pdf_path`, `output_dir`, `format`, `dpi` |
-| `extract_text` | 텍스트 추출 | `pdf_path` |
-| `split` | PDF 분할 (범위) | `pdf_path`, `page_range`, `output_path` |
-| `split_by_pages` | 페이지별 분할 | `pdf_path`, `output_dir` |
-| `delete_pages` | 페이지 삭제 | `pdf_path`, `page_range`, `output_path` |
-| `rotate` | 페이지 회전 | `pdf_path`, `angle`, `output_path`, `page_indices?` |
-| `watermark` | 텍스트 워터마크 | `pdf_path`, `text`, `options` |
-| `image_watermark` | 이미지 워터마크 | `pdf_path`, `image_path` |
-| `add_page_numbers` | 페이지 번호 | `pdf_path`, `position`, `format` |
-| `compress` | PDF 압축 | `pdf_path`, `level` |
-| `protect` | PDF 암호화 | `pdf_path`, `password` |
-| `images_to_pdf` | 이미지 → PDF | `image_list`, `output_path` |
-| `reorder` | 페이지 순서변경 | `pdf_path`, `new_order` |
-| `add_stamp` | 스탬프 추가 | `pdf_path`, `stamp_text`, `position` |
-| `ai_summarize` | AI 요약 | `pdf_path`, `api_key` |
-| `ai_ask_question` | AI PDF 채팅 (v4.5) | `pdf_path`, `api_key`, `question` |
-| `ai_extract_keywords` | AI 키워드 추출 (v4.5) | `pdf_path`, `api_key`, `max_keywords` |
-| `draw_shapes` | 도형 그리기 (v4.5) | `pdf_path`, `shape_type`, `x`, `y` |
-| `add_link` | 하이퍼링크 추가 (v4.5) | `pdf_path`, `link_type`, `target`, `rect` |
-| `insert_textbox` | 텍스트 상자 (v4.5) | `pdf_path`, `text`, `x`, `y` |
+| `merge` | PDF 병합 | `files`, `output_path` |
+| `convert_to_img` | PDF → 이미지 | `file_path` 또는 `file_paths`, `output_dir`, `fmt`, `dpi` |
+| `extract_text` | 텍스트 추출 | `file_path` 또는 `file_paths`, `output_path` 또는 `output_dir` |
+| `split` | PDF 분할 (범위) | `file_path`, `page_range`, `output_dir` |
+| `split_by_pages` | 페이지별 분할 | `file_path`, `output_dir` |
+| `delete_pages` | 페이지 삭제 | `file_path`, `page_range`, `output_path` |
+| `rotate` | 페이지 회전 | `file_path`, `angle`, `output_path`, `page_indices?` |
+| `watermark` | 텍스트 워터마크 | `file_path`, `text`, `output_path` |
+| `image_watermark` | 이미지 워터마크 | `file_path`, `image_path`, `output_path` |
+| `add_page_numbers` | 페이지 번호 | `file_path`, `position`, `format`, `output_path` |
+| `compress` | PDF 압축 | `file_path`, `quality`, `output_path` |
+| `protect` | PDF 암호화 | `file_path`, `password`, `output_path` |
+| `images_to_pdf` | 이미지 → PDF | `files`, `output_path` |
+| `reorder` | 페이지 순서변경 | `file_path`, `page_order`, `output_path` |
+| `add_stamp` | 스탬프 추가 | `file_path`, `stamp_text`, `position`, `output_path` |
+| `ai_summarize` | AI 요약 | `file_path`, `api_key` |
+| `ai_ask_question` | AI PDF 채팅 (v4.5) | `file_path`, `api_key`, `question` |
+| `ai_extract_keywords` | AI 키워드 추출 (v4.5) | `file_path`, `api_key`, `max_keywords` |
+| `draw_shapes` | 도형 그리기 (v4.5) | `file_path`, `shape_type` 또는 `shapes`, `output_path` |
+| `add_link` | 하이퍼링크 추가 (v4.5) | `file_path`, `link_type`, `target`, `rect`, `output_path` |
+| `insert_textbox` | 텍스트 상자 (v4.5) | `file_path`, `text`, `rect` 또는 `x/y`, `output_path` |
 | `copy_page_between_docs` | 페이지 복사 (v4.5) | `file_path`, `source_path`, `page_range` |
 
 > 참고 (v4.5.1): `WorkerThread`는 `_normalize_mode_kwargs()`를 통해 UI/레거시 kwargs를 정규화하여 양방향 호환을 보장합니다.
@@ -413,22 +415,23 @@ class ZoomablePreviewWidget(QWidget):
 
 ### PDF 작업 추가하기
 
-1. `WorkerThread.run()`에 모드 분기 추가
+1. `src/core/worker_runtime/dispatch.py`의 `MODE_TO_HANDLER`에 모드 추가
 2. 새 메서드 구현:
 
 ```python
 def new_operation(self):
     try:
-        pdf_path = self.kwargs['pdf_path']
-        doc = fitz.open(pdf_path)
+        file_path = self.kwargs["file_path"]
+        output_path = self.kwargs["output_path"]
+        doc = fitz.open(file_path)
         
         try:
             for i, page in enumerate(doc):
                 self._check_cancelled()
                 # 작업 수행...
-                self.progress_signal.emit(int((i + 1) / len(doc) * 100))
+                self._emit_progress_if_due(int((i + 1) / len(doc) * 100))
             
-            doc.save(output_path, garbage=4, deflate=True)
+            self._atomic_pdf_save(doc, output_path, garbage=4, deflate=True)
             self.finished_signal.emit(f"완료: {output_path}")
         finally:
             doc.close()  # 중요: 반드시 리소스 해제
@@ -522,7 +525,7 @@ python -m pytest
 
 - 기준 결과:
   - `pyright` -> `0 errors`
-  - 현재 환경 `python -m pytest` -> `60 passed, 1 warning`
+  - 현재 환경 `python -m pytest` -> `63 passed, 1 warning`
   - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD 회귀 방지
   - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip
 
@@ -532,8 +535,9 @@ python -m pytest
 
 | 경로 | 역할 |
 |------|------|
-| `src/core/worker.py` | Worker 공통 유틸/디스패치, 호환 경로 유지 |
-| `src/core/worker_ops/pdf_ops.py` | PDF 편집/추출/보안 작업 구현 |
+| `src/core/worker.py` | Worker QThread facade 및 공개 진입점 |
+| `src/core/worker_runtime/*` | dispatch/preflight/i18n message/atomic save 공통 로직 |
+| `src/core/worker_ops/pdf_ops.py` | PDF worker mixin compatibility shim |
 | `src/core/worker_ops/ai_ops.py` | AI 요약/질의/키워드 작업 구현 |
 | `src/ui/main_window_*.py` | UI 호환 shim |
 | `src/ui/tabs_basic/*` | 기본 탭(병합/변환/페이지/보안/순서/배치) |
@@ -560,6 +564,13 @@ python -m pytest
 - `rotate`가 선택적 `page_indices`를 받아 선택 페이지 부분 회전을 지원
 - `ThumbnailGridWidget`이 `active page`와 `selected pages`를 분리 지원
 - 오른쪽 미리보기 이동 시 회전 섹션 활성 페이지를 동기화
+
+### v4.5.4 (2026-03-18 core refactor)
+- `src/core/worker.py`를 공개 facade로 축소하고 공통 실행 로직을 `src/core/worker_runtime/*`로 분리
+- `src/core/worker_ops`를 책임별 mixin 구조로 재편
+- `src/core/worker_ops/pdf_ops.py`는 compatibility shim으로 유지
+- `src/core/i18n.py`는 런타임 API만 유지하고 번역 카탈로그는 `src/core/i18n_catalogs/*`로 분리
+- Worker dispatch registry / i18n catalog facade / resource cleanup 구조 테스트 추가
 
 ### v4.5.3 (2026-02-26)
 - 배치 워터마크 런타임 실패 수정 및 파일별 실패 원인 요약

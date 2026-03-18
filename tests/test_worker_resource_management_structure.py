@@ -18,18 +18,24 @@ TARGET_METHODS = [
 
 
 def test_target_worker_methods_have_try_finally_for_resource_cleanup():
-    source = Path("src/core/worker.py").read_text(encoding="utf-8-sig")
-    tree = ast.parse(source, filename="src/core/worker.py")
-    methods = {node.name: node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+    methods = {}
+    for path in Path("src/core/worker_ops").glob("*.py"):
+        source = path.read_text(encoding="utf-8-sig")
+        tree = ast.parse(source, filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
+                methods.setdefault(node.name, []).append(node)
 
     missing = []
     for method in TARGET_METHODS:
-        node = methods.get(method)
-        if node is None:
+        nodes = methods.get(method)
+        if not nodes:
             missing.append(method)
             continue
         has_try_finally = any(
-            isinstance(child, ast.Try) and bool(child.finalbody) for child in ast.walk(node)
+            isinstance(child, ast.Try) and bool(child.finalbody)
+            for node in nodes
+            for child in ast.walk(node)
         )
         if not has_try_finally:
             missing.append(method)

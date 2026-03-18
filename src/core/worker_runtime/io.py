@@ -1,0 +1,102 @@
+from __future__ import annotations
+
+import logging
+import os
+import re
+import tempfile
+from typing import Any, cast
+
+logger = logging.getLogger(__name__)
+
+
+def sanitize_attachment_filename(raw_name: str, fallback: str) -> str:
+    """첨부 파일명을 파일시스템 안전한 형태로 정규화."""
+    base_name = os.path.basename(str(raw_name or "").strip())
+    if not base_name or base_name in {".", ".."}:
+        base_name = fallback
+
+    safe_name = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", base_name)
+    safe_name = safe_name.strip(" .")
+    if not safe_name:
+        safe_name = fallback
+    return safe_name
+
+
+def build_safe_attachment_output_path(
+    host: Any,
+    output_dir: str,
+    raw_name: str,
+    index: int,
+    used_names: set[str],
+) -> tuple[str, str]:
+    """첨부 추출 경로를 output_dir 하위로 강제하고 중복명을 자동 회피."""
+    output_dir_abs = os.path.abspath(output_dir or ".")
+    fallback = f"attachment_{index + 1}"
+    safe_name = sanitize_attachment_filename(raw_name, fallback)
+    root, ext = os.path.splitext(safe_name)
+
+    candidate = safe_name
+    suffix = 1
+    lowered = candidate.lower()
+    while lowered in used_names:
+        candidate = f"{root}_{suffix}{ext}"
+        lowered = candidate.lower()
+        suffix += 1
+
+    out_path = os.path.abspath(os.path.join(output_dir_abs, candidate))
+    try:
+        common = os.path.commonpath([output_dir_abs, out_path])
+    except ValueError as exc:
+        raise ValueError(host._get_msg("err_attachment_path_invalid", raw_name)) from exc
+    if common != output_dir_abs:
+        raise ValueError(host._get_msg("err_attachment_path_invalid", raw_name))
+
+    used_names.add(lowered)
+    return out_path, candidate
+
+
+def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -> None:
+    """
+    원자적 PDF 저장.
+
+    - 같은 디렉터리에 임시 파일로 먼저 저장한 뒤 os.replace로 교체합니다.
+    - 저장/교체 사이에 취소가 들어오면 최종 파일을 만들지 않고 취소 처리합니다.
+    """
+    if not output_path:
+        raise ValueError("output_path is required")
+
+    out_dir = os.path.dirname(os.path.abspath(output_path)) or "."
+    os.makedirs(out_dir, exist_ok=True)
+
+    fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=".tmp.pdf", dir=out_dir)
+    os.close(fd)
+
+    same_target = False
+    try:
+        doc_name = getattr(doc, "name", "") or ""
+        if doc_name:
+            same_target = os.path.abspath(doc_name) == os.path.abspath(output_path)
+    except Exception:
+        same_target = False
+
+    try:
+        host._check_cancelled()
+        doc.save(tmp_path, **cast(Any, save_kwargs))
+        host._check_cancelled()
+        try:
+            os.replace(tmp_path, output_path)
+        except PermissionError:
+            if same_target:
+                try:
+                    doc.close()
+                except Exception:
+                    logger.debug("Failed to close document before replace", exc_info=True)
+                os.replace(tmp_path, output_path)
+            else:
+                raise
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                logger.debug("Failed to remove temporary PDF file", exc_info=True)

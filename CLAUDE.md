@@ -36,12 +36,14 @@ pdf-master/
     │   ├── optional_deps.py        # fitz/keyring optional dependency boundary
     │   ├── _typing.py              # worker mixin host contracts
     │   ├── constants.py
-    │   ├── i18n.py
+    │   ├── i18n.py                 # TranslationManager facade
+    │   ├── i18n_catalogs/          # 번역 카탈로그 저장소
     │   ├── settings.py
     │   ├── undo_manager.py
-    │   ├── worker.py                # 호환 shim + 공통 유틸/디스패치
-    │   └── worker_ops/              # 실제 Worker 기능 구현
-    │       ├── pdf_ops.py
+    │   ├── worker.py               # QThread facade
+    │   ├── worker_runtime/         # 공통 runtime/dispatch/preflight
+    │   └── worker_ops/             # 실제 Worker 기능 구현
+    │       ├── pdf_ops.py          # compatibility shim
     │       └── ai_ops.py
     └── ui/
         ├── _typing.py                   # UI mixin host contracts
@@ -89,7 +91,7 @@ pdf-master/
 ### 2. `src/core/worker.py` + `src/core/worker_ops/*` - PDF 작업 스레드
 
 `WorkerThread` 클래스는 모든 PDF 작업을 백그라운드에서 처리합니다.
-현재 구조는 `worker.py`가 공통 로직/호환 경로를 유지하고, 실제 작업 구현은 `worker_ops/pdf_ops.py`, `worker_ops/ai_ops.py`로 분리됩니다.
+현재 구조는 `worker.py`가 QThread facade를 유지하고, 공통 실행 로직은 `worker_runtime/*`, 실제 작업 구현은 `worker_ops/*`로 분리됩니다.
 
 #### 주요 시그널
 ```python
@@ -157,7 +159,7 @@ def _check_cancelled(self):
 
 ---
 
-### 3. `src/core/ai_service.py` - Gemini AI 서비스 (574줄)
+### 3. `src/core/ai_service.py` - Gemini AI 서비스
 
 #### 주요 클래스
 ```python
@@ -184,7 +186,7 @@ class AIService:
 
 ---
 
-### 4. `src/core/settings.py` - 설정 관리 (149줄)
+### 4. `src/core/settings.py` - 설정 관리
 
 #### 저장 위치
 - 설정 파일: `~/.pdf_master_settings.json`
@@ -226,7 +228,7 @@ DEFAULT_SETTINGS = {
 
 ---
 
-### 5. `src/core/constants.py` - 상수 정의 (133줄)
+### 5. `src/core/constants.py` - 상수 정의
 
 ```python
 # 페이지 크기
@@ -253,7 +255,7 @@ AI_MAX_RETRIES = 3
 
 ---
 
-### 6. `src/core/undo_manager.py` - Undo/Redo 관리 (178줄)
+### 6. `src/core/undo_manager.py` - Undo/Redo 관리
 
 ```python
 class ActionRecord:
@@ -274,14 +276,14 @@ class UndoManager:
 
 ---
 
-### 7. `src/core/i18n.py` - 다국어 지원 (v4.4, 1087줄)
+### 7. `src/core/i18n.py` - 다국어 지원
 
 - **TranslationManager**: 싱글톤 번역 관리자
 - **기능**:
   - `tm.get(key)`: 키 기반 번역 문자열 반환
   - `locale` 자동 감지 (KO/EN, v4.5.1: `getlocale + env fallback`)
   - 언어 설정 관리 (`language` setting)
-- **리소스**: `TRANSLATIONS` 딕셔너리에 언어별(ko, en) 문자열 정의
+- **리소스**: `TRANSLATIONS` 딕셔너리는 `i18n_catalogs/*`에서 로드됩니다.
 
 ---
 
@@ -297,7 +299,7 @@ class UndoManager:
 
 ---
 
-### 9. `src/ui/styles.py` - 테마 스타일시트 (846줄)
+### 9. `src/ui/styles.py` - 테마 스타일시트
 
 #### 색상 팔레트
 ```python
@@ -329,7 +331,7 @@ class ThemeColors:
 
 ---
 
-### 10. `src/ui/widgets.py` - 커스텀 위젯 (731줄)
+### 10. `src/ui/widgets.py` - 커스텀 위젯
 
 #### 주요 위젯
 ```python
@@ -361,7 +363,7 @@ def is_valid_pdf(file_path: str) -> bool:
 
 ---
 
-### 11. `src/ui/progress_overlay.py` - 진행 오버레이 (281줄)
+### 11. `src/ui/progress_overlay.py` - 진행 오버레이
 
 ```python
 class ProgressOverlayWidget(QWidget):
@@ -380,7 +382,7 @@ class LoadingSpinner(QLabel):
 
 ---
 
-### 12. `src/ui/thumbnail_grid.py` - 썸네일 그리드 (592줄)
+### 12. `src/ui/thumbnail_grid.py` - 썸네일 그리드
 
 ```python
 class ThumbnailLoaderThread(QThread):
@@ -406,7 +408,7 @@ class ThumbnailGridWidget(QWidget):
 
 ---
 
-### 13. `src/ui/zoomable_preview.py` - 줌/패닝 미리보기 (399줄)
+### 13. `src/ui/zoomable_preview.py` - 줌/패닝 미리보기
 
 ```python
 class ZoomableGraphicsView(QGraphicsView):
@@ -439,7 +441,7 @@ class ZoomablePreviewWidget(QWidget):
 ## 🧪 테스트 업데이트 (v4.5.4)
 
 - `pyright` -> `0 errors`
-- `python -m pytest` -> 현재 환경 `60 passed, 1 warning`
+- `python -m pytest` -> 현재 환경 `63 passed, 1 warning`
 - UTF-8/BOM/U+FFFD 회귀는 `tests/test_encoding_audit.py`가 검사
 - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행
 
@@ -487,7 +489,7 @@ class ZoomablePreviewWidget(QWidget):
   - 썸네일 `active page` / `selected pages` 분리 및 미리보기 연동 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest`: `60 passed, 1 warning`
+- 현재 워크트리 기준 `python -m pytest`: `63 passed, 1 warning`
 
 ---
 

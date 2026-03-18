@@ -259,13 +259,15 @@ pdf-master/
     │   ├── ai_service.py
     │   ├── _typing.py              # worker mixin host contracts
     │   ├── constants.py
-    │   ├── i18n.py
+    │   ├── i18n.py                 # TranslationManager facade
+    │   ├── i18n_catalogs/          # translation catalog storage
     │   ├── optional_deps.py        # fitz/keyring optional dependency boundary
     │   ├── settings.py
     │   ├── undo_manager.py
-    │   ├── worker.py                # compatibility shim + shared logic
-    │   └── worker_ops/              # split worker implementations
-    │       ├── pdf_ops.py
+    │   ├── worker.py               # QThread facade
+    │   ├── worker_runtime/         # shared runtime/dispatch/preflight
+    │   └── worker_ops/             # split worker implementations
+    │       ├── pdf_ops.py          # compatibility shim
     │       └── ai_ops.py
     └── ui/
         ├── main_window.py
@@ -292,7 +294,7 @@ pdf-master/
         └── zoomable_preview.py
 ```
 
-Note: `main_window_*.py` and `worker.py` are retained as compatibility shims; runtime implementations live in folder modules.
+Note: `main_window_*.py` remains a compatibility shim layer, while `worker.py` is the public `QThread` facade. Runtime worker flow and implementations now live in the folder modules.
 Note: `src/core/optional_deps.py` centralizes `fitz`/`keyring` optional imports so `Pylance`/`Pyright` stays clean even when those packages are absent.
 Note: when `PyMuPDF` is missing, only PDF-engine-dependent tests are skipped; the remaining regression tests still run.
 
@@ -327,6 +329,14 @@ API key storage policy:
 - Added partial rotation for Ctrl/Shift-selected pages only.
 - Synced rotate thumbnails with the right-side preview navigation without clearing the selected rotate targets.
 - Added focused regression tests for rotate selection and thumbnail state behavior.
+
+### v4.5.4 (2026-03-18 core refactor) - Core Module Split Consistency
+- Reduced `src/core/worker.py` to the public facade and moved shared execution flow into `src/core/worker_runtime/*`.
+- Reorganized `src/core/worker_ops` into responsibility-based mixins (`compose/transform/annotation/extract/security/batch`).
+- Kept `src/core/worker_ops/pdf_ops.py` as a compatibility shim so old imports continue to work.
+- Kept runtime i18n APIs in `src/core/i18n.py` and moved translation catalogs into `src/core/i18n_catalogs/*`.
+- Added regression coverage for worker dispatch registry, i18n catalog facade, and resource-cleanup structure checks.
+- Synced `pdf_master.spec`, `.gitignore`, and repository docs with the new core layout.
 
 ### v4.5.4 (2026-03-09) - Typing, Encoding, and Build Consistency
 - Added `pyrightconfig.json` and reached `pyright .` -> `0 errors` across the repository.
@@ -391,7 +401,7 @@ API key storage policy:
 ## 🧪 Test and Consistency Status (v4.5.4)
 
 - Static analysis: `pyright` -> `0 errors`
-- Regression tests: `python -m pytest` -> `60 passed, 1 warning`
+- Regression tests: `python -m pytest` -> `63 passed, 1 warning`
 - Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD regressions
 
 - Added:
@@ -399,11 +409,13 @@ API key storage policy:
   - `tests/test_worker_copy_page_range_strict.py`
   - `tests/test_worker_attachment_extract_security.py`
   - `tests/test_worker_resource_management_structure.py`
+  - `tests/test_worker_dispatch_registry.py`
   - `tests/test_link_index_policy.py`
   - `tests/test_advanced_new_modes_ui_flow.py`
   - `tests/test_worker_param_compat.py`
   - `tests/test_worker_preflight.py`
   - `tests/test_i18n.py`
+  - `tests/test_i18n_catalogs.py`
   - `tests/test_worker_markup_validation.py`
   - `tests/test_worker_form_attachment_modes.py`
   - `tests/test_convert_format_options.py`

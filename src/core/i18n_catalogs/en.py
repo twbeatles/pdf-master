@@ -1,0 +1,5 @@
+from .shared import TRANSLATIONS as _TRANSLATIONS
+
+TRANSLATIONS = _TRANSLATIONS["en"]
+
+__all__ = ["TRANSLATIONS"]

@@ -273,13 +273,15 @@ pdf-master/
     │   ├── ai_service.py
     │   ├── _typing.py              # Worker 믹스인 host 계약
     │   ├── constants.py
-    │   ├── i18n.py
+    │   ├── i18n.py                 # TranslationManager facade
+    │   ├── i18n_catalogs/          # 번역 카탈로그 저장소
     │   ├── optional_deps.py        # fitz/keyring optional dependency 경계
     │   ├── settings.py
     │   ├── undo_manager.py
-    │   ├── worker.py                # 호환 shim + 공통 로직
-    │   └── worker_ops/              # 실제 Worker 기능 분할
-    │       ├── pdf_ops.py
+    │   ├── worker.py               # QThread facade
+    │   ├── worker_runtime/         # 공통 runtime/dispatch/preflight
+    │   └── worker_ops/             # 실제 Worker 기능 분할
+    │       ├── pdf_ops.py          # compatibility shim
     │       └── ai_ops.py
     └── ui/
         ├── main_window.py
@@ -306,7 +308,7 @@ pdf-master/
         └── zoomable_preview.py
 ```
 
-참고: `main_window_*.py`, `worker.py`는 기존 import 경로 호환을 위한 shim이며, 실제 구현은 하위 폴더 모듈에 있습니다.
+참고: `main_window_*.py`는 기존 import 경로 호환을 위한 shim이며, `worker.py`는 공개 `QThread` facade입니다. 실제 Worker runtime/작업 구현은 하위 폴더 모듈에 있습니다.
 참고: `src/core/optional_deps.py`가 `fitz`/`keyring` optional import를 중앙화하여, 의존성이 없는 IDE에서도 `Pylance`/`Pyright` 진단이 깨지지 않도록 유지합니다.
 참고: `PyMuPDF` 미설치 환경에서는 해당 엔진이 필요한 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행됩니다.
 
@@ -343,6 +345,14 @@ API 키 저장 정책:
 - ✅ 미리보기 이전/다음 이동 시 회전 섹션의 활성 페이지만 동기화하고 선택된 회전 대상은 유지
 - ✅ 회전 선택/미리보기 연동 회귀 테스트 3종 추가
 
+### v4.5.4 (2026-03-18 core refactor) - 코어 구조 분할 정합성 보강
+- ✅ `src/core/worker.py`를 공개 facade로 축소하고 공통 실행 로직을 `src/core/worker_runtime/*`로 분리
+- ✅ `src/core/worker_ops`를 책임별 mixin(`compose/transform/annotation/extract/security/batch`)으로 재구성
+- ✅ `src/core/worker_ops/pdf_ops.py`를 compatibility shim으로 유지하고 기존 import 경로 보존
+- ✅ `src/core/i18n.py`는 런타임 API만 유지하고 번역 데이터는 `src/core/i18n_catalogs/*`로 분리
+- ✅ Worker dispatch registry, i18n catalog facade, 리소스 정리 구조 테스트 추가
+- ✅ `pdf_master.spec`, `.gitignore`, README/가이드 문서 정합성 동기화
+
 ### v4.5.4 (2026-03-09) - 정적 타입/인코딩/빌드 정합성 업데이트
 - ✅ `pyrightconfig.json` 추가 및 저장소 전체 `pyright .` 기준 `0 error` 달성
 - ✅ `src/core/_typing.py`, `src/ui/_typing.py` 추가로 Worker/UI 믹스인 host 계약 명시
@@ -360,7 +370,7 @@ API 키 저장 정책:
 - ✅ 고급 탭 UI 기본 노출 추가: `replace_page`, `set_bookmarks`, `add_annotation`
 - ✅ i18n 키/모드 설명 확장 및 문서(README/CLAUDE/AUDIT) 동기화
 - ✅ UI/Worker 코드 분할 리팩토링: 대형 단일 파일을 폴더 기반 모듈(`tabs_*`, `window_*`, `worker_ops`)로 분리
-- ✅ 호환성 유지: 기존 import 경로(`main_window_*.py`, `worker.py`)는 shim으로 유지
+- ✅ 호환성 유지: 기존 UI import 경로(`main_window_*.py`)는 shim으로 유지하고, `worker.py`는 공개 facade로 유지
 - ✅ PyInstaller 정합성: `pdf_master.spec`에 분할 패키지 hiddenimports 수집 로직 추가
 
 ### v4.5.2 (2026-02-25) - 구현 리스크 개선 반영
@@ -416,7 +426,7 @@ API 키 저장 정책:
 ## 🧪 테스트 및 정합성 현황 (v4.5.4)
 
 - 정적 분석: `pyright` → `0 errors`
-- 회귀 테스트: `python -m pytest` → `60 passed, 1 warning`
+- 회귀 테스트: `python -m pytest` → `63 passed, 1 warning`
 - 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD 회귀 방지
 
 - 신규 테스트:
@@ -424,11 +434,13 @@ API 키 저장 정책:
   - `tests/test_worker_copy_page_range_strict.py` (페이지 복사 무효 범위 hard-fail 정책 검증)
   - `tests/test_worker_attachment_extract_security.py` (첨부 추출 파일명 정규화/경로 고정 검증)
   - `tests/test_worker_resource_management_structure.py` (대상 메서드 `try/finally` 구조 검증)
+  - `tests/test_worker_dispatch_registry.py` (Worker mode registry와 공개 handler 정합성 검증)
   - `tests/test_link_index_policy.py` (하이퍼링크 UI 1-based→Worker 0-based 정규화 + Worker strict 정책 검증)
   - `tests/test_advanced_new_modes_ui_flow.py` (신규 UI 모드 3종 액션/파라미터 흐름 검증)
   - `tests/test_worker_param_compat.py` (고급 기능 kwargs 호환 검증)
   - `tests/test_worker_preflight.py` (실행 전 입력 검증 fail-fast 검증)
   - `tests/test_i18n.py` (시스템 언어 감지 경로 검증)
+  - `tests/test_i18n_catalogs.py` (`i18n_catalogs` 키 집합 및 facade re-export 검증)
   - `tests/test_worker_markup_validation.py` (`add_text_markup` 유효/무효 입력 검증)
   - `tests/test_worker_form_attachment_modes.py` (폼/첨부 결과 payload 및 UI 소비 경로 검증)
   - `tests/test_convert_format_options.py` (변환 포맷 노출 및 프리셋 fallback 검증)

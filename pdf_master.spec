@@ -80,6 +80,8 @@ hiddenimports += [
 # v4.5.3+: 폴더 기반 모듈 분할(hidden import 보강)
 for package_name in [
     'src.core.worker_ops',
+    'src.core.worker_runtime',
+    'src.core.i18n_catalogs',
     'src.ui.tabs_basic',
     'src.ui.tabs_advanced',
     'src.ui.tabs_ai',

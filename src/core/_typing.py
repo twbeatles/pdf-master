@@ -16,12 +16,27 @@ class SignalLike:
 class WorkerHost:
     mode: str
     kwargs: dict[str, Any]
+    _cancel_requested: bool
+    _last_progress_value: int | None
+    _last_progress_emit_ts_ms: float
     progress_signal: Any
     finished_signal: Any
     error_signal: Any
     cancelled_signal: Any
 
+    def isInterruptionRequested(self) -> bool:
+        ...
+
     def _atomic_pdf_save(self, doc: Any, output_path: str, **save_kwargs: Any) -> None:
+        ...
+
+    def _build_safe_attachment_output_path(
+        self,
+        output_dir: str,
+        raw_name: str,
+        index: int,
+        used_names: set[str],
+    ) -> tuple[str, str]:
         ...
 
     def _check_cancelled(self) -> None:
