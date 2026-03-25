@@ -22,6 +22,9 @@ class WorkerThread(QThread, WorkerRuntimeMixin, WorkerPdfOpsMixin, WorkerAiOpsMi
     def __init__(self, mode: str, **kwargs: Any):
         super().__init__()
         self.mode = mode
+        created_output_paths = kwargs.get("created_output_paths")
+        if not isinstance(created_output_paths, list):
+            kwargs["created_output_paths"] = []
         self.kwargs = kwargs
         self._cancel_requested = False
         self._last_progress_value: int | None = None

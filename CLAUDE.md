@@ -11,6 +11,8 @@
 - `resize_pages` preserves aspect ratio and fit-centers the original page content on the destination paper size.
 - Auto-generated outputs for `convert_to_img` and `extract_text` use collision-safe stems (`name`, `name__2`, `name__3`, ...).
 - `compare_pdfs` uses sequence-based line diffing and the Advanced tab can optionally generate a visual diff PDF.
+- Page-targeted worker modes share a strict page resolver; `-1` last-page sentinel is reserved for signature insertion flows.
+- Directory-output cancellations roll back only files tracked in `kwargs["created_output_paths"]`, not the whole output folder.
 - Updated worker completion/error messages in the AI/batch/annotation/extract flows are keyed through the i18n catalogs.
 
 ---
@@ -37,6 +39,8 @@ pdf-master/
 ├── .editorconfig
 ├── pdf_master.spec
 ├── pyrightconfig.json
+├── requirements-dev.txt
+├── typings/
 ├── README.md
 ├── README_EN.md
 ├── CLAUDE.md
@@ -228,13 +232,14 @@ DEFAULT_SETTINGS = {
 
 - `src/core/_typing.py`
   - Worker 믹스인이 기대하는 signal/helper surface를 정의합니다.
+  - v4.5.4 validation follow-up: `_resolve_page_index()` / `_record_created_output_path()` 계약이 포함됩니다.
 - `src/core/optional_deps.py`
   - `fitz`, `keyring` optional import를 중앙화하고, 미설치 환경에서는 proxy/fallback으로 import-time 실패를 막습니다.
 - `src/ui/_typing.py`
   - UI 믹스인이 접근하는 공통 위젯/헬퍼 surface를 정의합니다.
 - 규칙
   - 믹스인에서 새 속성 접근을 추가하면 대응 `_typing.py`도 함께 갱신합니다.
-  - 변경 후 `pyright`를 기본 검증으로 실행합니다.
+  - 변경 후 `python -m pyright`를 기본 검증으로 실행합니다.
   - `fitz`/`keyring`는 직접 import하지 말고 `src/core/optional_deps.py` 경계를 우선 사용합니다.
 
 ---
@@ -451,8 +456,9 @@ class ZoomablePreviewWidget(QWidget):
 
 ## 🧪 테스트 업데이트 (v4.5.4)
 
-- `pyright` -> `0 errors`
-- `python -m pytest` -> 현재 환경 `63 passed, 1 warning`
+- 검증 환경 준비: `pip install -r requirements-dev.txt`
+- `python -m pyright` -> `0 errors`
+- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용
 - UTF-8/BOM/U+FFFD 회귀는 `tests/test_encoding_audit.py`가 검사
 - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행
 
@@ -498,17 +504,28 @@ class ZoomablePreviewWidget(QWidget):
   - 회전 탭 action payload/경고/미리보기 동기화 검증
 - `tests/test_thumbnail_grid_selection.py`
   - 썸네일 `active page` / `selected pages` 분리 및 미리보기 연동 검증
+- `tests/test_worker_ink_signature_runtime.py`
+  - 잉크/프리핸드 서명 실제 annot 저장 및 마지막 페이지 sentinel 유지 검증
+- `tests/test_worker_page_validation.py`
+  - sticky note / blank page / duplicate strict page validation 검증
+- `tests/test_worker_cancel_cleanup.py`
+  - 디렉터리 출력 취소 시 생성 파일만 rollback 되는지 검증
+- `tests/test_validation_docs_config.py`
+  - README/가이드/spec/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest`: `63 passed, 1 warning`
+- 현재 워크트리 기준 `python -m pytest`: `85 passed, 1 warning`
 
 ---
 
 ## 🚀 빌드 가이드
 
 ```bash
+# 빌드 의존성
+pip install PyInstaller
+
 # 빌드 실행
-pyinstaller pdf_master.spec --clean
+python -m PyInstaller pdf_master.spec --clean
 
 # 결과물
 dist/PDF_Master_v4.5.4.exe (~30-40MB)
@@ -578,4 +595,4 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-18)*
+*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-25)*

@@ -270,8 +270,11 @@ class WorkerExtractOpsMixin(WorkerHost):
                 data = doc.embfile_get(i)
                 raw_name = info.get("name", f"attachment_{i + 1}")
                 out_path, _saved_name = self._build_safe_attachment_output_path(output_dir, raw_name, i, used_names)
+                out_path_exists = os.path.exists(out_path)
                 with open(out_path, "wb") as handle:
                     handle.write(data)
+                if not out_path_exists:
+                    self._record_created_output_path(out_path)
                 count += 1
                 self._emit_progress_if_due(int((i + 1) / total * 100))
         finally:

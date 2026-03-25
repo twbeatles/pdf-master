@@ -135,6 +135,12 @@
 # 필수 패키지
 pip install PyQt6 PyMuPDF
 
+# 개발 검증용 의존성
+pip install -r requirements-dev.txt
+
+# 빌드 시
+pip install PyInstaller
+
 # AI 기능 사용 시 (선택)
 pip install google-genai
 
@@ -243,7 +249,7 @@ python main.py
 
 ### 빌드 실행
 ```bash
-pyinstaller pdf_master.spec --clean
+python -m PyInstaller pdf_master.spec --clean
 ```
 
 ### 빌드 결과
@@ -259,7 +265,8 @@ pyinstaller pdf_master.spec --clean
 
 ## ✅ 개발 검증
 
-- 정적 분석: `pyright` → `0 errors`
+- 검증 환경 준비: `pip install -r requirements-dev.txt`
+- 정적 분석: `python -m pyright` → `0 errors`
 - 회귀 테스트: `python -m pytest -q`
 - 인코딩 점검: 추적 텍스트 파일 UTF-8 decode/BOM/U+FFFD audit 통과
 
@@ -273,6 +280,8 @@ pdf-master/
 ├── main.py                    # 애플리케이션 진입점
 ├── pdf_master.spec            # PyInstaller 빌드 설정
 ├── pyrightconfig.json         # Pyright/Pylance 분석 범위 설정
+├── requirements-dev.txt       # 개발 검증용 의존성
+├── typings/                   # Pyright용 최소 외부 stub
 ├── README.md                  # 프로젝트 설명서
 ├── README_EN.md               # 영문 문서
 ├── CLAUDE.md                  # Claude AI 가이드
@@ -354,6 +363,13 @@ API 키 저장 정책:
 - ✅ 미리보기 이전/다음 이동 시 회전 섹션의 활성 페이지만 동기화하고 선택된 회전 대상은 유지
 - ✅ 회전 선택/미리보기 연동 회귀 테스트 3종 추가
 
+### v4.5.4 (2026-03-25 validation follow-up) - Worker/문서/빌드 정합성 보강
+- ✅ `add_ink_annotation` / `add_freehand_signature` 저장 실패 수정
+- ✅ 페이지 대상 Worker 모드 strict page validation 공통화 (`-1` sentinel은 서명 계열만 허용)
+- ✅ 디렉터리 출력 작업 취소 시 이번 실행에서 만든 파일만 rollback
+- ✅ `compare_pdfs` 리포트 샘플을 paired diff 중심으로 개선
+- ✅ `requirements-dev.txt`, `typings/`, repo-local `.pytest_tmp` 기준 검증 문서화
+
 ### v4.5.4 (2026-03-18 core refactor) - 코어 구조 분할 정합성 보강
 - ✅ `src/core/worker.py`를 공개 facade로 축소하고 공통 실행 로직을 `src/core/worker_runtime/*`로 분리
 - ✅ `src/core/worker_ops`를 책임별 mixin(`compose/transform/annotation/extract/security/batch`)으로 재구성
@@ -363,7 +379,7 @@ API 키 저장 정책:
 - ✅ `pdf_master.spec`, `.gitignore`, README/가이드 문서 정합성 동기화
 
 ### v4.5.4 (2026-03-09) - 정적 타입/인코딩/빌드 정합성 업데이트
-- ✅ `pyrightconfig.json` 추가 및 저장소 전체 `pyright .` 기준 `0 error` 달성
+- ✅ `pyrightconfig.json` 추가 및 저장소 전체 `python -m pyright` 기준 `0 error` 달성
 - ✅ `src/core/_typing.py`, `src/ui/_typing.py` 추가로 Worker/UI 믹스인 host 계약 명시
 - ✅ `ai_service`, Worker, Qt 위젯 계층의 optional/override/type narrowing 정리로 Pylance 잠재 오류 제거
 - ✅ UTF-8 텍스트 스캔 및 U+FFFD 점검 완료 (decode 실패 `0`, 깨진 문자 히트 `0`)
@@ -434,8 +450,8 @@ API 키 저장 정책:
 
 ## 🧪 테스트 및 정합성 현황 (v4.5.4)
 
-- 정적 분석: `pyright` → `0 errors`
-- 회귀 테스트: `python -m pytest` → `63 passed, 1 warning`
+- 정적 분석: `python -m pyright` → `0 errors`
+- 회귀 테스트: `python -m pytest` → `85 passed, 1 warning`
 - 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD 회귀 방지
 
 - 신규 테스트:
@@ -460,6 +476,10 @@ API 키 저장 정책:
   - `tests/test_worker_rotate_selection.py` (선택 페이지 회전/전체 회전 회귀 검증)
   - `tests/test_rotate_selection_ui_flow.py` (회전 탭 액션/경고/미리보기 연동 검증)
   - `tests/test_thumbnail_grid_selection.py` (썸네일 active page / selected pages 분리 검증)
+  - `tests/test_worker_ink_signature_runtime.py` (잉크/프리핸드 서명 실제 저장 및 sentinel 정책 검증)
+  - `tests/test_worker_page_validation.py` (sticky note/blank page/duplicate strict page validation 검증)
+  - `tests/test_worker_cancel_cleanup.py` (디렉터리 출력 취소 rollback이 생성 파일만 삭제하는지 검증)
+  - `tests/test_validation_docs_config.py` (README/가이드/spec/검증 설정 정합성 검증)
 
 ---
 

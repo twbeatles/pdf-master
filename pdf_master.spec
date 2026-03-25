@@ -2,7 +2,7 @@
 # PDF Master v4.5.4 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
 # Python 3.10+ 호환, 폴더 기반 모듈 분할 및 optional dependency 경계 반영
-# Verified 2026-03-18 after zoomable preview/i18n/compare follow-up
+# Verified 2026-03-25 after validation/docs/build consistency follow-up
 
 import sys
 import os
@@ -302,6 +302,6 @@ exe = EXE(
 )
 
 # =====================================================================
-# 빌드: pyinstaller pdf_master.spec --clean
+# 빌드: python -m PyInstaller pdf_master.spec --clean
 # 예상 결과: dist/PDF_Master_v4.5.4.exe (~30-40MB)
 # =====================================================================

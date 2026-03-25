@@ -82,6 +82,21 @@ def build_unique_output_stem(
     return candidate
 
 
+def record_created_output_path(host: Any, path: str) -> None:
+    """취소 rollback 대상이 되는 이번 실행 생성 파일을 추적한다."""
+    if not path:
+        return
+
+    abs_path = os.path.abspath(path)
+    created_paths = host.kwargs.get("created_output_paths")
+    if not isinstance(created_paths, list):
+        created_paths = []
+        host.kwargs["created_output_paths"] = created_paths
+
+    if abs_path not in created_paths:
+        created_paths.append(abs_path)
+
+
 def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -> None:
     """
     원자적 PDF 저장.

@@ -41,8 +41,23 @@ def _cleanup_cancelled_worker(self):
     # v4.4: 취소된 작업의 미완성 출력 파일 정리
     if hasattr(self, '_last_output_path') and self._last_output_path:
         output_path = self._last_output_path
-        # 파일인 경우 삭제 시도
-        if os.path.isfile(output_path):
+        if os.path.isdir(output_path) and getattr(self, "worker", None):
+            created_paths = getattr(self.worker, "kwargs", {}).get("created_output_paths", [])
+            if isinstance(created_paths, list):
+                output_dir_abs = os.path.abspath(output_path)
+                for created_path in created_paths:
+                    try:
+                        created_path_abs = os.path.abspath(str(created_path))
+                        if not os.path.isfile(created_path_abs):
+                            continue
+                        if os.path.commonpath([output_dir_abs, created_path_abs]) != output_dir_abs:
+                            continue
+                        os.remove(created_path_abs)
+                        logger.info("Removed cancelled output file: %s", created_path_abs)
+                    except Exception as e:
+                        logger.debug(f"Could not remove cancelled output: {e}")
+        elif os.path.isfile(output_path):
+            # 파일인 경우 삭제 시도
             try:
                 # 최근 생성된 파일만 삭제 (5초 이내)
                 import time

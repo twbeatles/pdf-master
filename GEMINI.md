@@ -10,6 +10,8 @@
 - `convert_to_img` and `extract_text` use collision-safe auto output naming (`name`, `name__2`, `name__3`, ...).
 - `resize_pages` preserves aspect ratio and fit-centers the source page on the requested paper size instead of changing only the mediabox.
 - `compare_pdfs` uses sequence-based line diffing and can optionally emit a visual diff PDF from the Advanced tab UI.
+- Page-targeted worker modes share a strict page resolver; `-1` last-page sentinel remains only for signature insertion flows.
+- Directory-output cancellation uses `kwargs["created_output_paths"]` so only newly created files are rolled back.
 - Updated AI/batch/annotation/extract worker completion and error messages are expected to come from the i18n catalogs.
 
 ---
@@ -56,6 +58,8 @@ pdf-master/
 ├── .editorconfig
 ├── pdf_master.spec
 ├── pyrightconfig.json
+├── requirements-dev.txt
+├── typings/
 ├── README.md
 ├── README_EN.md
 ├── CLAUDE.md
@@ -217,6 +221,7 @@ def reset_settings() -> bool
 - `src/core/_typing.py`
   - `WorkerHost` 계약 정의
   - `WorkerPdfOpsMixin`, `WorkerAiOpsMixin`이 기대하는 signal/helper 속성 명시
+  - v4.5.4 validation follow-up: `_resolve_page_index()` / `_record_created_output_path()` helper 계약 포함
 - `src/core/optional_deps.py`
   - `fitz`, `keyring` optional import 경계
   - 미설치 환경에서는 proxy/fallback으로 import-time 오류를 막고, 실제 사용 시점에만 실패하게 함
@@ -225,7 +230,7 @@ def reset_settings() -> bool
   - 분리된 UI 믹스인이 접근하는 공통 위젯/헬퍼 속성 명시
 - 변경 규칙
   - 믹스인에서 `self.<attr>`를 새로 사용하면 대응 `_typing.py` 계약도 같이 갱신
-  - 수정 후 `pyright`를 반드시 다시 실행
+  - 수정 후 `python -m pyright`를 반드시 다시 실행
   - `fitz`/`keyring` 직접 import 대신 `src/core/optional_deps.py`를 우선 사용
 
 ### 4. `src/core/constants.py` - 상수
@@ -532,24 +537,27 @@ python main.py
 ### 의존성 설치
 ```bash
 pip install PyQt6 PyMuPDF
+pip install -r requirements-dev.txt
+pip install PyInstaller
 pip install google-genai  # AI 기능 (선택)
 ```
 
 ### 프로덕션 빌드
 ```bash
-pyinstaller pdf_master.spec --clean
+python -m PyInstaller pdf_master.spec --clean
 # 결과: dist/PDF_Master_v4.5.4.exe (~30-40MB)
 ```
 
 ### 정합성 검증 (v4.5.4)
 ```bash
-pyright
-python -m pytest
+python -m pyright
+python -m pytest -q
 ```
 
 - 기준 결과:
-  - `pyright` -> `0 errors`
-  - 현재 환경 `python -m pytest` -> `63 passed, 1 warning`
+  - `python -m pyright` -> `0 errors`
+  - 현재 환경 `python -m pytest` -> `85 passed, 1 warning`
+  - `pytest` 임시 디렉터리 -> repo-local `.pytest_tmp`
   - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD 회귀 방지
   - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip
 
@@ -577,11 +585,17 @@ python -m pytest
 ## 🚀 버전 히스토리
 
 ### v4.5.4 (2026-03-09)
-- `pyrightconfig.json` 추가 및 저장소 전체 `pyright .` 통과
+- `pyrightconfig.json` 추가 및 저장소 전체 `python -m pyright` 통과
 - `src/core/_typing.py`, `src/ui/_typing.py` 추가로 믹스인 host 계약 문서화
 - `ai_service`의 optional Gemini SDK 로딩을 importlib 기반 런타임/빌드 계약으로 정리
 - Qt 위젯/Worker 계층 optional narrowing 정리 및 UTF-8 인코딩 점검 완료
 - `.gitignore`, `pdf_master.spec`, README 계열 문서 동기화
+
+### v4.5.4 (2026-03-25 validation follow-up)
+- strict page validation helper와 `created_output_paths` 기반 cancel rollback 계약을 Worker 공통 helper로 정리
+- `add_ink_annotation` / `add_freehand_signature` stroke 저장 형식을 PyMuPDF 런타임 요구사항에 맞게 수정
+- `compare_pdfs` 결과 샘플을 paired diff 형태로 보강
+- `requirements-dev.txt`, `typings/`, repo-local `.pytest_tmp` 기준 검증/문서/빌드 명령 동기화
 
 ### v4.5.4 (2026-03-18 addendum)
 - 페이지 탭 회전 섹션에 전용 썸네일 목록 추가
@@ -648,4 +662,4 @@ python -m pytest
 
 ---
 
-*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-18)*
+*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-25)*

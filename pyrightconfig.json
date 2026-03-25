@@ -1,10 +1,13 @@
 {
+  "stubPath": "typings",
+  "reportMissingModuleSource": "none",
   "include": [
     "main.py",
     "src",
     "tests"
   ],
   "exclude": [
-    ".pytest_cache"
+    ".pytest_cache",
+    ".pytest_tmp"
   ]
 }

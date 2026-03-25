@@ -20,6 +20,29 @@ FITZ_PDF_PERM_ACCESSIBILITY = int(getattr(fitz, "PDF_PERM_ACCESSIBILITY", 0))
 FITZ_PDF_PERM_PRINT = int(getattr(fitz, "PDF_PERM_PRINT", 0))
 FITZ_PDF_PERM_COPY = int(getattr(fitz, "PDF_PERM_COPY", 0))
 FITZ_PDF_ENCRYPT_AES_256 = int(getattr(fitz, "PDF_ENCRYPT_AES_256", 0))
+
+
+def _sample_diff_text(lines: list[str], max_items: int = 2) -> str:
+    visible = [line.strip() for line in lines if isinstance(line, str) and line.strip()]
+    return " | ".join(visible[:max_items]) if visible else "∅"
+
+
+def _normalize_stroke_points(raw_points: Any) -> list[list[float]]:
+    if not isinstance(raw_points, (list, tuple)):
+        raise ValueError("points must be a sequence")
+
+    normalized_points: list[list[float]] = []
+    for raw_point in raw_points:
+        if not isinstance(raw_point, (list, tuple)) or len(raw_point) < 2:
+            raise ValueError("invalid stroke point")
+        normalized_points.append([float(raw_point[0]), float(raw_point[1])])
+
+    if len(normalized_points) < 2:
+        raise ValueError("stroke requires at least two points")
+
+    return normalized_points
+
+
 class WorkerPdfOpsMixin(WorkerHost):
 
     def merge(self):
@@ -100,7 +123,10 @@ class WorkerPdfOpsMixin(WorkerHost):
                     self._check_cancelled()  # 취소 체크포인트
                     pix = page.get_pixmap(matrix=mat)
                     save_path = os.path.join(output_dir, f"{unique_stem}_p{i+1:03d}.{fmt}")
+                    save_path_exists = os.path.exists(save_path)
                     pix.save(save_path)
+                    if not save_path_exists:
+                        self._record_created_output_path(save_path)
             finally:
                 if doc:
                     doc.close()
@@ -175,8 +201,11 @@ class WorkerPdfOpsMixin(WorkerHost):
                 out_path = output_path
 
             full_text = "".join(text_chunks)
+            out_path_exists = os.path.exists(out_path)
             with open(out_path, "w", encoding="utf-8") as f:
                 f.write(full_text)
+            if output_dir and not out_path_exists:
+                self._record_created_output_path(out_path)
 
             self._emit_progress_if_due(int((file_idx + 1) / max(1, total_files) * 100))
 
@@ -540,7 +569,10 @@ class WorkerPdfOpsMixin(WorkerHost):
                     try:
                         new_doc.insert_pdf(doc, from_page=i, to_page=i)
                         out_path = os.path.join(output_dir, f"{base_name}_page_{i+1}.pdf")
+                        out_path_exists = os.path.exists(out_path)
                         self._atomic_pdf_save(new_doc, out_path)
+                        if not out_path_exists:
+                            self._record_created_output_path(out_path)
                     finally:
                         new_doc.close()
                     self._emit_progress_if_due(int((i + 1) / page_count * 100))
@@ -581,7 +613,10 @@ class WorkerPdfOpsMixin(WorkerHost):
                         try:
                             new_doc.insert_pdf(doc, from_page=start-1, to_page=end-1)
                             out_path = os.path.join(output_dir, f"{base_name}_part_{part_idx+1}.pdf")
+                            out_path_exists = os.path.exists(out_path)
                             self._atomic_pdf_save(new_doc, out_path)
+                            if not out_path_exists:
+                                self._record_created_output_path(out_path)
                         finally:
                             new_doc.close()
                         count += 1
@@ -687,6 +722,11 @@ class WorkerPdfOpsMixin(WorkerHost):
 
         doc = fitz.open(file_path)
         try:
+            if position < 0 or position > len(doc):
+                self.error_signal.emit(
+                    self._get_msg("err_page_out_of_range", str(position + 1), str(len(doc) + 1))
+                )
+                return
             width, height = DEFAULT_PAGE_SIZE  # A4
             doc.insert_page(position, width=width, height=height)
             self._atomic_pdf_save(doc, output_path)
@@ -968,25 +1008,43 @@ class WorkerPdfOpsMixin(WorkerHost):
                     added = 0
                     deleted = 0
                     modified = 0
-                    samples = []
+                    first_added_text = ""
+                    first_deleted_text = ""
+                    samples: list[str] = []
 
                     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
                         if tag == "equal":
                             continue
                         if tag == "insert":
                             added += j2 - j1
-                            if len(samples) < 3 and lines2[j1:j2]:
-                                samples.append(f"+ {' | '.join(lines2[j1:j2][:2])}")
+                            if not first_added_text:
+                                first_added_text = _sample_diff_text(lines2[j1:j2])
                         elif tag == "delete":
                             deleted += i2 - i1
-                            if len(samples) < 3 and lines1[i1:i2]:
-                                samples.append(f"- {' | '.join(lines1[i1:i2][:2])}")
+                            if not first_deleted_text:
+                                first_deleted_text = _sample_diff_text(lines1[i1:i2])
                         elif tag == "replace":
                             modified += max(i2 - i1, j2 - j1)
                             if len(samples) < 3:
-                                before = " | ".join(lines1[i1:i2][:1]) or "∅"
-                                after = " | ".join(lines2[j1:j2][:1]) or "∅"
-                                samples.append(f"~ {before} -> {after}")
+                                before = _sample_diff_text(lines1[i1:i2], 2)
+                                after = _sample_diff_text(lines2[j1:j2], 2)
+                                paired_sample = f"~ {before} -> {after}"
+                                if paired_sample not in samples:
+                                    samples.append(paired_sample)
+
+                    if added and deleted and modified == 0 and len(samples) < 3:
+                        paired_sample = f"~ {_sample_diff_text(lines1, 2)} -> {_sample_diff_text(lines2, 2)}"
+                        if paired_sample not in samples:
+                            samples.append(paired_sample)
+
+                    if first_added_text and len(samples) < 3:
+                        added_sample = f"+ {first_added_text}"
+                        if added_sample not in samples:
+                            samples.append(added_sample)
+                    if first_deleted_text and len(samples) < 3:
+                        deleted_sample = f"- {first_deleted_text}"
+                        if deleted_sample not in samples:
+                            samples.append(deleted_sample)
 
                     if added or deleted or modified:
                         results.append(
@@ -1092,13 +1150,16 @@ class WorkerPdfOpsMixin(WorkerHost):
 
         doc = fitz.open(file_path)
         try:
+            resolved_page_num = self._resolve_page_index(page_num, len(doc))
+            if resolved_page_num is None:
+                return
             for i in range(count):
                 self._check_cancelled()  # 취소 체크포인트
-                doc.fullcopy_page(page_num, page_num + 1 + i)
+                doc.fullcopy_page(resolved_page_num, resolved_page_num + 1 + i)
                 self._emit_progress_if_due(int((i + 1) / count * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 페이지 복제 완료!\n{page_num + 1}페이지를 {count}번 복제")
+            self.finished_signal.emit(f"✅ 페이지 복제 완료!\n{resolved_page_num + 1}페이지를 {count}번 복제")
         finally:
             doc.close()
 
@@ -1204,8 +1265,11 @@ class WorkerPdfOpsMixin(WorkerHost):
                         image_ext = base_image["ext"]
 
                         image_path = os.path.join(output_dir, f"page{page_num + 1}_img{img_idx + 1}.{image_ext}")
+                        image_path_exists = os.path.exists(image_path)
                         with open(image_path, "wb") as f:
                             f.write(image_bytes)
+                        if not image_path_exists:
+                            self._record_created_output_path(image_path)
 
                         # v3.2: 상세 정보 수집
                         if include_info:
@@ -1231,8 +1295,11 @@ class WorkerPdfOpsMixin(WorkerHost):
             # v3.2: 정보 파일 저장
             if include_info and image_info_list:
                 info_path = os.path.join(output_dir, "_images_info.json")
+                info_path_exists = os.path.exists(info_path)
                 with open(info_path, "w", encoding="utf-8") as f:
                     json.dump(image_info_list, f, indent=2, ensure_ascii=False)
+                if not info_path_exists:
+                    self._record_created_output_path(info_path)
 
         finally:
             doc.close()
@@ -1253,23 +1320,15 @@ class WorkerPdfOpsMixin(WorkerHost):
         doc = fitz.open(file_path)
         try:
             total_pages = len(doc)
-            if total_pages == 0:
-                self.error_signal.emit(self._get_msg("err_pdf_has_no_pages"))
+            resolved_page_num = self._resolve_page_index(
+                page_num,
+                total_pages,
+                allow_last_page_sentinel=True,
+            )
+            if resolved_page_num is None:
                 return
 
-            try:
-                page_num = int(page_num)
-            except (TypeError, ValueError):
-                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num), str(total_pages)))
-                return
-
-            if page_num == -1:
-                page_num = total_pages - 1
-            elif page_num < 0 or page_num >= total_pages:
-                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(total_pages)))
-                return
-
-            page = doc[page_num]
+            page = doc[resolved_page_num]
             page_rect = page.rect
 
             # 서명 이미지 크기 (가로 150pt)
@@ -1327,7 +1386,7 @@ class WorkerPdfOpsMixin(WorkerHost):
                 extra_info += f" (서명자: {signer_name})"
             if add_timestamp:
                 extra_info += " +타임스탬프"
-            self.finished_signal.emit(f"✅ 전자 서명 삽입 완료!{extra_info}\n{page_num + 1}페이지")
+            self.finished_signal.emit(f"✅ 전자 서명 삽입 완료!{extra_info}\n{resolved_page_num + 1}페이지")
         finally:
             doc.close()
 
@@ -1745,10 +1804,11 @@ class WorkerPdfOpsMixin(WorkerHost):
 
         doc = fitz.open(file_path)
         try:
-            if page_num >= len(doc):
-                page_num = len(doc) - 1
+            resolved_page_num = self._resolve_page_index(page_num, len(doc))
+            if resolved_page_num is None:
+                return
 
-            page = doc[page_num]
+            page = doc[resolved_page_num]
             point = fitz.Point(x, y)
 
             # 스티키 노트 주석 추가
@@ -1759,7 +1819,7 @@ class WorkerPdfOpsMixin(WorkerHost):
 
             self._emit_progress_if_due(100)
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 스티키 노트 추가 완료!\n페이지 {page_num + 1}, 아이콘: {icon}")
+            self.finished_signal.emit(f"✅ 스티키 노트 추가 완료!\n페이지 {resolved_page_num + 1}, 아이콘: {icon}")
         finally:
             doc.close()
 
@@ -1774,27 +1834,38 @@ class WorkerPdfOpsMixin(WorkerHost):
 
         doc = fitz.open(file_path)
         try:
-            if page_num >= len(doc):
-                page_num = len(doc) - 1
+            resolved_page_num = self._resolve_page_index(page_num, len(doc))
+            if resolved_page_num is None:
+                return
 
-            page = doc[page_num]
+            page = doc[resolved_page_num]
 
-            if points and len(points) >= 2:
-                # 포인트를 fitz.Point 객체 리스트로 변환
-                fitz_points = [fitz.Point(p[0], p[1]) for p in points]
-
-                # 잉크 주석 추가 (자유형 선)
-                annot = page.add_ink_annot([fitz_points])
-                if annot:
-                    annot.set_colors(stroke=color)
-                    annot.set_border(width=width)
-                    annot.update()
-
-                self._emit_progress_if_due(100)
-                self._atomic_pdf_save(doc, output_path)
-                self.finished_signal.emit(f"✅ 프리핸드 드로잉 추가 완료!\n페이지 {page_num + 1}, {len(points)}개 포인트")
-            else:
+            if not points:
                 self.error_signal.emit("좌표 포인트가 2개 이상 필요합니다.")
+                return
+
+            try:
+                normalized_points = _normalize_stroke_points(points)
+            except (TypeError, ValueError):
+                self.error_signal.emit(self._get_msg("msg_invalid_stroke_format"))
+                return
+
+            try:
+                annot = page.add_ink_annot([normalized_points])
+            except (TypeError, ValueError):
+                self.error_signal.emit(self._get_msg("msg_invalid_stroke_format"))
+                return
+
+            if annot:
+                annot.set_colors(stroke=color)
+                annot.set_border(width=width)
+                annot.update()
+
+            self._emit_progress_if_due(100)
+            self._atomic_pdf_save(doc, output_path)
+            self.finished_signal.emit(
+                f"✅ 프리핸드 드로잉 추가 완료!\n페이지 {resolved_page_num + 1}, {len(normalized_points)}개 포인트"
+            )
         finally:
             doc.close()
 
@@ -1810,40 +1881,37 @@ class WorkerPdfOpsMixin(WorkerHost):
         doc = fitz.open(file_path)
         try:
             total_pages = len(doc)
-            if total_pages == 0:
-                self.error_signal.emit(self._get_msg("err_pdf_has_no_pages"))
+            resolved_page_num = self._resolve_page_index(
+                page_num,
+                total_pages,
+                allow_last_page_sentinel=True,
+            )
+            if resolved_page_num is None:
                 return
 
-            try:
-                page_num = int(page_num)
-            except (TypeError, ValueError):
-                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num), str(total_pages)))
-                return
-
-            if page_num == -1:
-                page_num = total_pages - 1
-            elif page_num < 0 or page_num >= total_pages:
-                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(total_pages)))
-                return
-
-            page = doc[page_num]
+            page = doc[resolved_page_num]
 
             if not strokes:
                 self.error_signal.emit("드로잉 데이터가 없습니다.")
                 return
 
-            # 각 획을 fitz.Point 리스트로 변환
-            all_strokes = []
+            all_strokes: list[list[list[float]]] = []
             for stroke in strokes:
-                fitz_stroke = [fitz.Point(p[0], p[1]) for p in stroke if len(p) >= 2]
-                if len(fitz_stroke) >= 2:
-                    all_strokes.append(fitz_stroke)
+                try:
+                    all_strokes.append(_normalize_stroke_points(stroke))
+                except (TypeError, ValueError):
+                    self.error_signal.emit(self._get_msg("msg_invalid_stroke_format"))
+                    return
 
             if not all_strokes:
                 self.error_signal.emit("유효한 획이 없습니다.")
                 return
 
-            annot = page.add_ink_annot(all_strokes)
+            try:
+                annot = page.add_ink_annot(all_strokes)
+            except (TypeError, ValueError):
+                self.error_signal.emit(self._get_msg("msg_invalid_stroke_format"))
+                return
             if annot:
                 annot.set_colors(stroke=color)
                 annot.set_border(width=width)
@@ -1851,7 +1919,7 @@ class WorkerPdfOpsMixin(WorkerHost):
 
             self._emit_progress_if_due(100)
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 프리핸드 서명 추가 완료!\n페이지 {page_num + 1}, {len(all_strokes)}개 획")
+            self.finished_signal.emit(f"✅ 프리핸드 서명 추가 완료!\n페이지 {resolved_page_num + 1}, {len(all_strokes)}개 획")
         finally:
             doc.close()
 

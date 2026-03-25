@@ -135,6 +135,12 @@
 # Core packages
 pip install PyQt6 PyMuPDF
 
+# Validation toolchain
+pip install -r requirements-dev.txt
+
+# For builds
+pip install PyInstaller
+
 # For AI features (optional)
 pip install google-genai
 
@@ -234,7 +240,7 @@ python main.py
 
 ### Run Build
 ```bash
-pyinstaller pdf_master.spec --clean
+python -m PyInstaller pdf_master.spec --clean
 ```
 
 ### Build Result
@@ -245,8 +251,10 @@ pyinstaller pdf_master.spec --clean
 
 ## ✅ Development Validation
 
-- Static analysis: `pyright` -> `0 errors`
+- Prepare validation environment: `pip install -r requirements-dev.txt`
+- Static analysis: `python -m pyright` -> `0 errors`
 - Regression tests: `python -m pytest -q`
+- `pytest` temp files stay inside repo-local `.pytest_tmp`
 - Encoding audit: tracked text files pass UTF-8 decode/BOM/U+FFFD checks
 
 ---
@@ -259,6 +267,8 @@ pdf-master/
 ├── main.py
 ├── pdf_master.spec
 ├── pyrightconfig.json
+├── requirements-dev.txt
+├── typings/
 ├── README.md
 ├── README_EN.md
 ├── CLAUDE.md
@@ -305,6 +315,7 @@ pdf-master/
 
 Note: `main_window_*.py` remains a compatibility shim layer, while `worker.py` is the public `QThread` facade. Runtime worker flow and implementations now live in the folder modules.
 Note: `src/core/optional_deps.py` centralizes `fitz`/`keyring` optional imports so `Pylance`/`Pyright` stays clean even when those packages are absent.
+Note: `typings/` provides the minimal external stubs used by `pyrightconfig.json` so repository-level `python -m pyright` stays reproducible.
 Note: when `PyMuPDF` is missing, only PDF-engine-dependent tests are skipped; the remaining regression tests still run.
 
 ---
@@ -339,6 +350,13 @@ API key storage policy:
 - Synced rotate thumbnails with the right-side preview navigation without clearing the selected rotate targets.
 - Added focused regression tests for rotate selection and thumbnail state behavior.
 
+### v4.5.4 (2026-03-25 validation follow-up) - Worker, Docs, and Build Consistency
+- Fixed `add_ink_annotation` / `add_freehand_signature` persistence failures.
+- Centralized strict page validation for page-targeted worker modes; only signature flows keep `-1` last-page sentinel support.
+- Cancelled directory-output jobs now roll back only files created by the current run.
+- Improved `compare_pdfs` sample output with paired before/after diff lines.
+- Added `requirements-dev.txt`, `typings/`, and repo-local `.pytest_tmp` validation guidance.
+
 ### v4.5.4 (2026-03-18 core refactor) - Core Module Split Consistency
 - Reduced `src/core/worker.py` to the public facade and moved shared execution flow into `src/core/worker_runtime/*`.
 - Reorganized `src/core/worker_ops` into responsibility-based mixins (`compose/transform/annotation/extract/security/batch`).
@@ -348,7 +366,7 @@ API key storage policy:
 - Synced `pdf_master.spec`, `.gitignore`, and repository docs with the new core layout.
 
 ### v4.5.4 (2026-03-09) - Typing, Encoding, and Build Consistency
-- Added `pyrightconfig.json` and reached `pyright .` -> `0 errors` across the repository.
+- Added `pyrightconfig.json` and reached `python -m pyright` -> `0 errors` across the repository.
 - Added `src/core/_typing.py` and `src/ui/_typing.py` to make worker/UI mixin host contracts explicit.
 - Hardened optional SDK loading in `ai_service`, worker layers, and Qt widgets to remove latent Pylance issues without changing user flows.
 - Completed UTF-8 text scan and mojibake check (decode failures `0`, U+FFFD hits `0`).
@@ -409,8 +427,8 @@ API key storage policy:
 
 ## 🧪 Test and Consistency Status (v4.5.4)
 
-- Static analysis: `pyright` -> `0 errors`
-- Regression tests: `python -m pytest` -> `63 passed, 1 warning`
+- Static analysis: `python -m pyright` -> `0 errors`
+- Regression tests: `python -m pytest` -> `85 passed, 1 warning`
 - Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD regressions
 
 - Added:
@@ -430,6 +448,10 @@ API key storage policy:
   - `tests/test_convert_format_options.py`
   - `tests/test_freehand_signature_ui_flow.py`
   - `tests/test_ai_key_storage_path.py`
+  - `tests/test_worker_ink_signature_runtime.py`
+  - `tests/test_worker_page_validation.py`
+  - `tests/test_worker_cancel_cleanup.py`
+  - `tests/test_validation_docs_config.py`
   - `tests/test_page_index_policy.py`
   - `tests/test_i18n_ui_hardcoded_smoke.py`
   - `tests/test_worker_rotate_selection.py`

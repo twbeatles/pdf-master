@@ -12,6 +12,7 @@ from .io import (
     atomic_pdf_save,
     build_safe_attachment_output_path,
     build_unique_output_stem,
+    record_created_output_path,
     sanitize_attachment_filename,
 )
 from .messages import get_message
@@ -78,6 +79,34 @@ class WorkerRuntimeMixin(WorkerHost):
             self._last_progress_value = value
             self._last_progress_emit_ts_ms = now_ms
 
+    def _resolve_page_index(
+        self,
+        raw_page_index: object,
+        total_pages: int,
+        allow_last_page_sentinel: bool = False,
+    ) -> int | None:
+        if total_pages <= 0:
+            self.error_signal.emit(self._get_msg("err_pdf_has_no_pages"))
+            return None
+
+        try:
+            page_index = int(cast(Any, raw_page_index))
+        except (TypeError, ValueError):
+            self.error_signal.emit(self._get_msg("err_page_number_numeric", str(raw_page_index)))
+            return None
+
+        if allow_last_page_sentinel and page_index == -1:
+            return total_pages - 1
+
+        if page_index < 0 or page_index >= total_pages:
+            display_page = page_index + 1 if page_index >= 0 else page_index
+            self.error_signal.emit(
+                self._get_msg("err_page_out_of_range", str(display_page), str(total_pages))
+            )
+            return None
+
+        return page_index
+
     def _sanitize_attachment_filename(self, raw_name: str, fallback: str) -> str:
         return sanitize_attachment_filename(raw_name, fallback)
 
@@ -104,6 +133,9 @@ class WorkerRuntimeMixin(WorkerHost):
 
     def _get_msg(self, key: str, *args: object) -> str:
         return get_message(key, *args)
+
+    def _record_created_output_path(self, path: str) -> None:
+        record_created_output_path(self, path)
 
     def _init_ai_service(self, require_api_key: bool = True):
         """v4.5: AI 서비스 초기화 헬퍼 - 코드 중복 제거."""

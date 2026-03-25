@@ -51,6 +51,14 @@ class WorkerHost:
     def _check_cancelled(self) -> None:
         ...
 
+    def _resolve_page_index(
+        self,
+        raw_page_index: object,
+        total_pages: int,
+        allow_last_page_sentinel: bool = False,
+    ) -> int | None:
+        ...
+
     def _emit_progress_if_due(
         self,
         value: int | float | str,
@@ -60,6 +68,9 @@ class WorkerHost:
         ...
 
     def _get_msg(self, key: str, *args: object) -> str:
+        ...
+
+    def _record_created_output_path(self, path: str) -> None:
         ...
 
     def _is_pdf_encrypted(self, file_path: str) -> bool:
