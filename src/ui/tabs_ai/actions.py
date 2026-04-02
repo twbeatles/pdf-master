@@ -26,6 +26,21 @@ from ..widgets import FileSelectorWidget, ToastWidget, is_pdf_encrypted
 
 logger = logging.getLogger(__name__)
 
+
+def _ensure_preview_ready(self, path):
+    ensure_preview_access = getattr(self, "_ensure_preview_access", None)
+    if callable(ensure_preview_access):
+        result = ensure_preview_access(path)
+        if result is None:
+            self._update_preview(path)
+            return True, None
+        if isinstance(result, tuple):
+            return bool(result[0]), result[1] if len(result) > 1 else None
+        return bool(result), None
+
+    self._update_preview(path)
+    return True, None
+
 def _save_summary_result(self):
     """요약 결과 저장"""
     text = self.txt_summary_result.toPlainText()
@@ -192,7 +207,7 @@ def _show_thumbnail_grid(self):
 
     # 썸네일 그리드 위젯
     thumbnail_grid = ThumbnailGridWidget()
-    thumbnail_grid.pageSelected.connect(lambda pg: self._on_grid_page_selected(pg, dialog))
+    thumbnail_grid.pageSelected.connect(lambda pg, current_path=path: self._on_grid_page_selected(pg, current_path, dialog))
     layout.addWidget(thumbnail_grid)
 
     # 닫기 버튼
@@ -201,12 +216,21 @@ def _show_thumbnail_grid(self):
     layout.addWidget(btn_close)
 
     # PDF 로드
-    thumbnail_grid.load_pdf(path)
+    ready, password = _ensure_preview_ready(self, path)
+    if ready:
+        thumbnail_grid.load_pdf(path, password=password)
+        if getattr(self, "_current_preview_path", "") and os.path.abspath(self._current_preview_path) == os.path.abspath(path):
+            thumbnail_grid.set_active_page(getattr(self, "_current_preview_page", 0), emit_signal=False)
+    else:
+        thumbnail_grid.show_status_message(self.preview_label.text())
 
     dialog.exec()
 
-def _on_grid_page_selected(self, page_index: int, dialog: QDialog):
+def _on_grid_page_selected(self, page_index: int, path: str, dialog: QDialog):
     """그리드에서 페이지 선택 시"""
+    ready, _password = _ensure_preview_ready(self, path)
+    if not ready:
+        return
     self._current_preview_page = page_index
     self._render_preview_page()
     self.status_label.setText(tm.get("status_page_sel").format(page_index + 1))

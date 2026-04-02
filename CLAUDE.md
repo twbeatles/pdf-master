@@ -7,6 +7,8 @@
 ## Current Behavior Notes
 
 - The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
+- Preview print now renders through the Qt print pipeline; it no longer delegates to `os.startfile(..., "print")` or `lpr`.
+- Thumbnail entry points in the AI and rotate flows are preview-synchronized: if they target a different PDF, preview is switched first and encrypted PDFs reuse the preview password session.
 - Preview rerendering is resize-aware: splitter moves and panel resizes request a fresh render instead of leaving a stale scaled pixmap.
 - `resize_pages` preserves aspect ratio and fit-centers the original page content on the destination paper size.
 - Auto-generated outputs for `convert_to_img` and `extract_text` use collision-safe stems (`name`, `name__2`, `name__3`, ...).
@@ -19,7 +21,7 @@
 
 ## 📌 프로젝트 개요
 
-**PDF Master v4.5.4**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
+**PDF Master v4.5.5**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
 
 | 항목 | 내용 |
 |------|------|
@@ -416,11 +418,13 @@ class ThumbnailGridWidget(QWidget):
     pageSelected = pyqtSignal(int)
     selectedPagesChanged = pyqtSignal(list)
     
-    def load_pdf(pdf_path: str)
+    def load_pdf(pdf_path: str, password: str | None = None)
     def select_page(index: int)
     def set_active_page(index: int, emit_signal: bool = False)
     def get_selected_pages() -> list[int]
 ```
+
+- 암호화 PDF 썸네일 로드는 grid 내부에서 별도 프롬프트를 띄우지 않습니다. preview가 먼저 인증한 뒤 `password`를 넘겨 같은 세션 상태를 재사용합니다.
 
 ---
 
@@ -454,7 +458,7 @@ class ZoomablePreviewWidget(QWidget):
 
 ---
 
-## 🧪 테스트 업데이트 (v4.5.4)
+## 🧪 테스트 업데이트 (v4.5.5)
 
 - 검증 환경 준비: `pip install -r requirements-dev.txt`
 - `python -m pyright` -> `0 errors`
@@ -462,6 +466,22 @@ class ZoomablePreviewWidget(QWidget):
 - UTF-8/BOM/U+FFFD 회귀는 `tests/test_encoding_audit.py`가 검사
 - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행
 
+- `tests/test_ai_thumbnail_grid_flow.py`
+  - AI 썸네일 grid의 preview 동기화/암호 세션 재사용 검증
+- `tests/test_thumbnail_grid_runtime.py`
+  - 암호화 PDF grid 로딩/완료 시그널/loader 정리 검증
+- `tests/test_preview_print.py`
+  - Qt 인쇄 페이지 범위 해석 및 렌더 경로 검증
+- `tests/test_worker_cancel_regression.py`
+  - `split`/양식/프리핸드 서명 취소 체크 회귀 검증
+- `tests/test_worker_undo_modes.py`
+  - Undo 대상 모드 확장과 비대상 모드 제외 검증
+- `tests/test_worker_regression_modes.py`
+  - `metadata_update`/`protect`/`decrypt_pdf`/`reorder`/`split_by_pages`/`extract_markdown` 검증
+- `tests/test_ai_worker_ui_flow.py`
+  - AI 요약/채팅/키워드 성공/실패 UI 흐름 검증
+- `tests/test_close_shutdown_flow.py`
+  - 종료 시 cooperative cancel/강제 종료 확인 흐름 검증
 - `tests/test_worker_param_compat.py`
   - 고급 기능 kwargs 호환성 검증 (도형/링크/텍스트박스/페이지복사/이미지워터마크)
 - `tests/test_worker_preflight.py`
@@ -514,7 +534,7 @@ class ZoomablePreviewWidget(QWidget):
   - README/가이드/spec/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest`: `85 passed, 1 warning`
+- 현재 워크트리 기준 `python -m pytest`: `113 passed, 1 warning`
 
 ---
 
@@ -528,7 +548,7 @@ pip install PyInstaller
 python -m PyInstaller pdf_master.spec --clean
 
 # 결과물
-dist/PDF_Master_v4.5.4.exe (~30-40MB)
+dist/PDF_Master_v4.5.5.exe (~30-40MB)
 ```
 
 ### 경량화 최적화
@@ -595,4 +615,4 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-25)*
+*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-02)*

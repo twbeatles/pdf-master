@@ -1,4 +1,4 @@
-# GEMINI.md - PDF Master v4.5.4 AI 가이드
+# GEMINI.md - PDF Master v4.5.5 AI 가이드
 
 이 문서는 AI 어시스턴트(Gemini)가 PDF Master 프로젝트를 이해하고 개발을 지원하기 위한 가이드입니다.
 
@@ -7,6 +7,8 @@
 ## Current Behavior Notes
 
 - The main right-side preview now runs through `src/ui/zoomable_preview.py` in real usage, including wheel zoom, drag pan, page navigation, preview print, and resize-triggered rerender.
+- Preview print now renders through the Qt print pipeline instead of delegating to OS-level `print` commands.
+- AI and rotate thumbnail entry points reuse the preview document/password session, so encrypted thumbnail loading stays aligned with preview behavior.
 - `convert_to_img` and `extract_text` use collision-safe auto output naming (`name`, `name__2`, `name__3`, ...).
 - `resize_pages` preserves aspect ratio and fit-centers the source page on the requested paper size instead of changing only the mediabox.
 - `compare_pdfs` uses sequence-based line diffing and can optionally emit a visual diff PDF from the Advanced tab UI.
@@ -24,7 +26,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| **버전** | v4.5.4 |
+| **버전** | v4.5.5 |
 | **언어** | Python 3.10+ |
 | **UI 프레임워크** | PyQt6 6.5+ |
 | **PDF 엔진** | PyMuPDF (fitz) |
@@ -545,10 +547,10 @@ pip install google-genai  # AI 기능 (선택)
 ### 프로덕션 빌드
 ```bash
 python -m PyInstaller pdf_master.spec --clean
-# 결과: dist/PDF_Master_v4.5.4.exe (~30-40MB)
+# 결과: dist/PDF_Master_v4.5.5.exe (~30-40MB)
 ```
 
-### 정합성 검증 (v4.5.4)
+### 정합성 검증 (v4.5.5)
 ```bash
 python -m pyright
 python -m pytest -q
@@ -556,7 +558,7 @@ python -m pytest -q
 
 - 기준 결과:
   - `python -m pyright` -> `0 errors`
-  - 현재 환경 `python -m pytest` -> `85 passed, 1 warning`
+  - 현재 환경 `python -m pytest` -> `113 passed, 1 warning`
   - `pytest` 임시 디렉터리 -> repo-local `.pytest_tmp`
   - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD 회귀 방지
   - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip
@@ -583,6 +585,13 @@ python -m pytest -q
 ---
 
 ## 🚀 버전 히스토리
+
+### v4.5.5 (2026-04-02)
+- preview/thumbnail 동기화 계약을 강화하고 암호화 PDF 썸네일 로딩을 preview 비밀번호 세션 재사용 기준으로 통일
+- 미리보기 인쇄를 Qt 인쇄 파이프라인으로 전환하여 실제 프린터/페이지 범위를 반영
+- `split`, `get_form_fields`, `fill_form`, `add_freehand_signature` 취소 체크포인트 강화
+- 단일 입력/단일 출력 PDF 수정 모드 전반으로 Undo 확장
+- `.gitignore`, `pdf_master.spec`, README 계열 문서와 신규 회귀 테스트 8종 동기화
 
 ### v4.5.4 (2026-03-09)
 - `pyrightconfig.json` 추가 및 저장소 전체 `python -m pyright` 통과
@@ -662,4 +671,4 @@ python -m pytest -q
 
 ---
 
-*이 문서는 PDF Master v4.5.4 기준으로 작성되었습니다. (2026-03-25)*
+*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-02)*

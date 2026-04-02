@@ -1,0 +1,213 @@
+from _deps import require_pyqt6
+
+
+class _LabelStub:
+    def __init__(self):
+        self.text = ""
+
+    def setText(self, text):
+        self.text = text
+
+
+class _ProgressBarStub:
+    def __init__(self):
+        self.value = None
+
+    def setValue(self, value):
+        self.value = value
+
+
+class _ButtonStub:
+    def __init__(self):
+        self.visible = None
+
+    def setVisible(self, visible):
+        self.visible = visible
+
+    def setEnabled(self, _enabled):
+        return None
+
+
+class _OverlayStub:
+    def hide_progress(self):
+        return None
+
+
+class _TextEditStub:
+    def __init__(self):
+        self.value = ""
+
+    def setPlainText(self, text):
+        self.value = text
+
+
+class _CursorStub:
+    class MoveOperation:
+        End = object()
+
+    class SelectionType:
+        BlockUnderCursor = object()
+
+    def movePosition(self, *_args, **_kwargs):
+        return None
+
+    def select(self, *_args, **_kwargs):
+        return None
+
+    def removeSelectedText(self):
+        return None
+
+    def deletePreviousChar(self):
+        return None
+
+
+class _ChatHistoryStub:
+    def __init__(self):
+        self.entries = []
+
+    def textCursor(self):
+        return _CursorStub()
+
+    def append(self, text):
+        self.entries.append(text)
+
+
+class _PathStub:
+    def __init__(self, path):
+        self._path = path
+
+    def get_path(self):
+        return self._path
+
+
+class _WorkerStub:
+    def __init__(self, mode, kwargs):
+        self.mode = mode
+        self.kwargs = kwargs
+
+    def isRunning(self):
+        return False
+
+
+def _build_dummy(worker):
+    from src.ui.main_window_worker import MainWindowWorkerMixin
+
+    class Dummy(MainWindowWorkerMixin):
+        def __init__(self):
+            self.worker = worker
+            self._last_output_path = None
+            self._has_output = False
+            self.status_label = _LabelStub()
+            self.progress_bar = _ProgressBarStub()
+            self.btn_open_folder = _ButtonStub()
+            self.progress_overlay = _OverlayStub()
+            self.txt_summary_result = _TextEditStub()
+            self.lbl_keywords_result = _LabelStub()
+            self.txt_chat_history = _ChatHistoryStub()
+            self.sel_chat_pdf = _PathStub("chat.pdf")
+            self._chat_histories = {}
+            self.saved_histories = 0
+
+        def sender(self):
+            return None
+
+        def set_ui_busy(self, _busy):
+            return None
+
+        def _finalize_worker(self):
+            return None
+
+        def _run_pending_worker(self):
+            return None
+
+        def _record_chat_entry(self, path, role, content):
+            history = self._chat_histories.setdefault(path, [])
+            history.append({"role": role, "content": content})
+
+        def _save_chat_histories(self):
+            self.saved_histories += 1
+
+    return Dummy()
+
+
+def test_on_success_updates_summary_result(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_worker as worker_module
+
+    monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
+    monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+
+    worker = _WorkerStub("ai_summarize", {"summary_result": "summary"})
+    dummy = _build_dummy(worker)
+    dummy._ai_worker_mode = True
+
+    dummy.on_success("done")
+
+    assert dummy.txt_summary_result.value == "summary"
+    assert dummy.status_label.text
+
+
+def test_on_success_updates_keyword_result(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_worker as worker_module
+
+    monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
+    monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+
+    worker = _WorkerStub("ai_extract_keywords", {"keywords_result": ["alpha", "beta"]})
+    dummy = _build_dummy(worker)
+    dummy._keyword_worker_mode = True
+
+    dummy.on_success("done")
+
+    assert dummy.lbl_keywords_result.text == "alpha • beta"
+
+
+def test_on_success_appends_chat_answer(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_worker as worker_module
+    from src.core.i18n import tm
+
+    monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
+    monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+
+    worker = _WorkerStub("ai_ask_question", {"answer_result": "answer"})
+    dummy = _build_dummy(worker)
+    dummy._chat_worker_mode = True
+    dummy._chat_pending_path = "chat.pdf"
+
+    dummy.on_success("done")
+
+    assert any("answer" in entry for entry in dummy.txt_chat_history.entries)
+    assert any(tm.get("chat_assistant_prefix") in entry for entry in dummy.txt_chat_history.entries)
+    assert dummy.saved_histories == 1
+
+
+def test_on_fail_cleans_pending_chat_history_and_appends_error(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_worker as worker_module
+
+    monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
+    monkeypatch.setattr(worker_module.QMessageBox, "critical", lambda *_args, **_kwargs: None)
+
+    worker = _WorkerStub("ai_ask_question", {})
+    dummy = _build_dummy(worker)
+    dummy._chat_worker_mode = True
+    dummy._chat_pending_path = "chat.pdf"
+    dummy._chat_histories = {"chat.pdf": [{"role": "user", "content": "question"}]}
+
+    dummy.on_fail("boom")
+
+    assert "chat.pdf" not in dummy._chat_histories
+    assert any("boom" in entry for entry in dummy.txt_chat_history.entries)
+
+
+class _ToastStub:
+    def __init__(self, *_args, **_kwargs):
+        pass
+
+    def show_toast(self, *_args, **_kwargs):
+        return None

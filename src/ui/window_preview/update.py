@@ -32,7 +32,6 @@ def _update_preview(self, path):
     self._add_to_recent_files(path)
 
     try:
-        self._current_preview_password = None
         doc, locked_state = self._ensure_preview_document(path)
         if not doc:
             if locked_state == "error":

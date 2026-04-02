@@ -1,10 +1,9 @@
 import logging
 import os
-import subprocess
-import sys
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtGui import QImage, QPainter, QPixmap
+from PyQt6.QtPrintSupport import QAbstractPrintDialog, QPrinter, QPrintDialog
 from PyQt6.QtWidgets import QMessageBox
 
 from ...core.optional_deps import fitz
@@ -14,6 +13,75 @@ from ..widgets import ToastWidget
 
 logger = logging.getLogger(__name__)
 
+
+def _collect_print_page_indices(printer, total_pages: int, current_page_index: int) -> list[int]:
+    if total_pages <= 0:
+        return []
+
+    try:
+        print_range = printer.printRange()
+    except Exception:
+        print_range = None
+
+    try:
+        if print_range == QPrinter.PrintRange.CurrentPage:
+            return [max(0, min(total_pages - 1, current_page_index))]
+
+        if print_range == QPrinter.PrintRange.PageRange:
+            indices: list[int] = []
+            try:
+                page_ranges = printer.pageRanges()
+            except Exception:
+                page_ranges = None
+
+            if page_ranges is not None and hasattr(page_ranges, "isEmpty") and not page_ranges.isEmpty():
+                for page_range in page_ranges.toRangeList():
+                    start = max(1, int(page_range.from_()))
+                    end = min(total_pages, int(page_range.to()))
+                    indices.extend(range(start - 1, end))
+                if indices:
+                    return indices
+
+            start = max(1, int(getattr(printer, "fromPage", lambda: 1)()))
+            end = min(total_pages, int(getattr(printer, "toPage", lambda: total_pages)()))
+            return list(range(start - 1, end))
+    except Exception:
+        logger.debug("Falling back to printing all pages", exc_info=True)
+
+    return list(range(total_pages))
+
+
+def _render_pdf_page_to_printer(printer, painter: QPainter, page) -> None:
+    from PyQt6.QtCore import QRect
+
+    target_rect = printer.pageRect(QPrinter.Unit.DevicePixel)
+    if hasattr(target_rect, "toRect"):
+        target_rect = target_rect.toRect()
+    if target_rect.width() <= 0 or target_rect.height() <= 0:
+        raise RuntimeError("Printer page rect is invalid")
+
+    render_scale = min(
+        target_rect.width() / max(float(page.rect.width), 1.0),
+        target_rect.height() / max(float(page.rect.height), 1.0),
+    )
+    render_scale = max(1.0, render_scale)
+
+    pix = page.get_pixmap(matrix=fitz.Matrix(render_scale, render_scale), alpha=False)
+    image_format = QImage.Format.Format_RGBA8888 if pix.alpha else QImage.Format.Format_RGB888
+    image = QImage(bytes(pix.samples), pix.width, pix.height, pix.stride, image_format).copy()
+    scaled = image.scaled(
+        target_rect.size(),
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )
+    draw_rect = QRect(
+        target_rect.x() + max(0, (target_rect.width() - scaled.width()) // 2),
+        target_rect.y() + max(0, (target_rect.height() - scaled.height()) // 2),
+        scaled.width(),
+        scaled.height(),
+    )
+    painter.drawImage(draw_rect, scaled)
+
 def _print_current_preview(self):
     if hasattr(self, "_current_preview_path") and self._current_preview_path:
         self._print_pdf(self._current_preview_path)
@@ -21,22 +89,48 @@ def _print_current_preview(self):
         QMessageBox.warning(self, tm.get("print_title"), tm.get("print_no_file"))
 
 def _print_pdf(self, path):
-    from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
-
     if not path or not os.path.exists(path):
         QMessageBox.warning(self, tm.get("print_title"), tm.get("print_no_file"))
         return
 
+    ready, _password = self._ensure_preview_access(path)
+    if not ready:
+        QMessageBox.warning(self, tm.get("print_title"), self.preview_label.text())
+        return
+
     try:
+        doc = getattr(self, "_current_preview_doc", None)
+        if not doc:
+            raise RuntimeError(tm.get("print_no_file"))
+
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        printer.setDocName(os.path.basename(path))
         dialog = QPrintDialog(printer, self)
+        dialog.setMinMax(1, len(doc))
+        dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintPageRange, True)
+        dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintCurrentPage, True)
 
         if dialog.exec() == QPrintDialog.DialogCode.Accepted:
-            if sys.platform == "win32":
-                os.startfile(path, "print")
-            else:
-                subprocess.run(["lpr", path])
-            toast = ToastWidget(tm.get("print_sent"), toast_type="success", duration=2000)
+            page_indices = _collect_print_page_indices(
+                printer,
+                len(doc),
+                getattr(self, "_current_preview_page", 0),
+            )
+            if not page_indices:
+                raise RuntimeError(tm.get("print_no_file"))
+
+            painter = QPainter()
+            if not painter.begin(printer):
+                raise RuntimeError("Failed to initialize printer painter")
+            try:
+                for render_idx, page_index in enumerate(page_indices):
+                    if render_idx > 0 and not printer.newPage():
+                        raise RuntimeError("Failed to start a new printer page")
+                    _render_pdf_page_to_printer(printer, painter, doc[page_index])
+            finally:
+                painter.end()
+
+            toast = ToastWidget(tm.get("print_completed"), toast_type="success", duration=2000)
             toast.show_toast(self)
     except Exception as e:
         QMessageBox.warning(self, tm.get("print_error_title"), tm.get("print_error_msg", str(e)))

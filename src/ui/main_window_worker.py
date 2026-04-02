@@ -18,6 +18,45 @@ from .window_worker import MainWindowWorkerMixin as _MainWindowWorkerMixin
 
 logger = logging.getLogger(__name__)
 
+UNDO_SINGLE_OUTPUT_MUTATION_MODES = frozenset(
+    {
+        "add_annotation",
+        "add_attachment",
+        "add_background",
+        "add_freehand_signature",
+        "add_link",
+        "add_page_numbers",
+        "add_stamp",
+        "add_text_markup",
+        "compress",
+        "crop_pdf",
+        "decrypt_pdf",
+        "delete_pages",
+        "draw_shapes",
+        "fill_form",
+        "image_watermark",
+        "insert_blank_page",
+        "insert_textbox",
+        "metadata_update",
+        "protect",
+        "redact_text",
+        "remove_annotations",
+        "reorder",
+        "replace_page",
+        "reverse_pages",
+        "rotate",
+        "set_bookmarks",
+        "duplicate_page",
+        "watermark",
+    }
+)
+
+
+def _is_undo_eligible_mode(mode, kwargs) -> bool:
+    if mode not in UNDO_SINGLE_OUTPUT_MUTATION_MODES:
+        return False
+    return bool(kwargs.get("file_path") and kwargs.get("output_path"))
+
 
 class MainWindowWorkerMixin(_MainWindowWorkerMixin):
     def run_worker(self, mode, output_path=None, **kwargs):
@@ -125,14 +164,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         # v4.3: Undo 지원 작업 - 백업 생성
         self._pending_undo = None  # 초기화
-        # v4.5: Undo 지원 모드 확장
-        undo_supported_modes = [
-            'delete_pages', 'rotate', 'add_page_numbers', 'watermark', 'compress',
-            'add_stamp', 'image_watermark', 'crop_pdf', 'insert_textbox', 'draw_shapes',
-            'reorder', 'reverse_pages', 'duplicate_page', 'insert_blank_page',
-            'add_link', 'add_background', 'add_text_markup'
-        ]
-        if mode in undo_supported_modes:
+        if _is_undo_eligible_mode(mode, kwargs):
             source = kwargs.get('file_path', '')
             output = kwargs.get('output_path', '')
             if source and output:

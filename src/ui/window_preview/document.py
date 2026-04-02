@@ -53,6 +53,27 @@ def _ensure_preview_document(self, path: str):
         self._current_preview_path = path
     return new_doc, locked_state
 
+def _ensure_preview_access(self, path: str):
+    if not path or not os.path.exists(path):
+        return False, None
+
+    current_path = getattr(self, "_current_preview_path", "")
+    current_doc = getattr(self, "_current_preview_doc", None)
+    if not current_doc or os.path.abspath(current_path) != os.path.abspath(path):
+        self._update_preview(path)
+
+    current_path = getattr(self, "_current_preview_path", "")
+    current_doc = getattr(self, "_current_preview_doc", None)
+    if not current_doc or os.path.abspath(current_path) != os.path.abspath(path):
+        return False, None
+
+    try:
+        _ = len(current_doc)
+    except Exception:
+        return False, None
+
+    return True, getattr(self, "_current_preview_password", None)
+
 def _reset_preview_state(self, close_doc: bool = True):
     self.preview_image.clear_display()
     if close_doc:
@@ -81,6 +102,7 @@ def _open_preview_document(self, path: str):
         return None, "error"
 
     if not doc.is_encrypted:
+        self._current_preview_password = None
         return doc, None
 
     doc.close()

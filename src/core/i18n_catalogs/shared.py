@@ -403,8 +403,11 @@ TRANSLATIONS = {
         "print_title": "인쇄",
         "print_no_file": "인쇄할 파일이 없습니다.",
         "print_sent": "인쇄 명령이 전송되었습니다",
+        "print_completed": "인쇄가 완료되었습니다",
         "print_error_title": "인쇄 오류",
         "print_error_msg": "인쇄 중 오류: {}",
+        "close_running_task_title": "작업 종료 대기",
+        "close_running_task_message": "작업이 아직 종료되지 않았습니다.\n취소를 눌러 계속 기다리거나, 닫기를 눌러 강제 종료하세요.",
         
         # Status Messages (v4.4)
         "msg_worker_cancelled": "작업이 취소되었습니다",
@@ -1134,8 +1137,11 @@ TRANSLATIONS = {
         "print_title": "Print",
         "print_no_file": "No file to print.",
         "print_sent": "Print command sent",
+        "print_completed": "Printing completed",
         "print_error_title": "Print Error",
         "print_error_msg": "Error printing: {}",
+        "close_running_task_title": "Wait For Task",
+        "close_running_task_message": "A task is still shutting down.\nChoose Cancel to keep waiting, or Close to force quit.",
         
         # Status Messages (v4.4)
         "msg_worker_cancelled": "Operation cancelled",

@@ -19,10 +19,27 @@ from PyQt6.QtWidgets import (
     QSpinBox,
 )
 
+from ..core.i18n import tm
 from ..core.optional_deps import fitz
 from ..core.perf import PerfTimer
 
 logger = logging.getLogger(__name__)
+
+
+def _open_thumbnail_document(pdf_path: str, password: str | None = None):
+    doc = fitz.open(pdf_path)
+    if not doc.is_encrypted:
+        return doc, None
+
+    if not password:
+        doc.close()
+        return None, tm.get("preview_encrypted")
+
+    if not doc.authenticate(password):
+        doc.close()
+        return None, tm.get("preview_password_wrong")
+
+    return doc, None
 
 
 class ThumbnailLoaderThread(QThread):
@@ -32,10 +49,18 @@ class ThumbnailLoaderThread(QThread):
     loading_complete = pyqtSignal()
     progress = pyqtSignal(int)
 
-    def __init__(self, pdf_path: str, page_indices: list[int], thumb_w: int = 140, thumb_h: int = 160):
+    def __init__(
+        self,
+        pdf_path: str,
+        page_indices: list[int],
+        password: str | None = None,
+        thumb_w: int = 140,
+        thumb_h: int = 160,
+    ):
         super().__init__()
         self.pdf_path = pdf_path
         self.page_indices = page_indices
+        self.password = password
         self.thumb_w = thumb_w
         self.thumb_h = thumb_h
         self._is_cancelled = False
@@ -47,10 +72,9 @@ class ThumbnailLoaderThread(QThread):
         doc = None
         try:
             with PerfTimer("ui.thumbnail.batch_load", logger=logger, extra={"count": len(self.page_indices)}):
-                doc = fitz.open(self.pdf_path)
-                if doc.is_encrypted:
-                    logger.warning("Encrypted PDF skipped in thumbnail loader: %s", self.pdf_path)
-                    self.loading_complete.emit()
+                doc, error_message = _open_thumbnail_document(self.pdf_path, self.password)
+                if not doc:
+                    logger.warning("Thumbnail loader skipped document %s: %s", self.pdf_path, error_message)
                     return
 
                 total = max(1, len(self.page_indices))
@@ -222,6 +246,7 @@ class ThumbnailGridWidget(QWidget):
         self._pending_indices: set[int] = set()
         self._active_batch_indices: list[int] = []
         self._total_pages = 0
+        self._pdf_password: str | None = None
 
         self._setup_ui()
 
@@ -266,18 +291,36 @@ class ThumbnailGridWidget(QWidget):
         self.loading_label.setStyleSheet("color: #666; font-size: 14px; padding: 40px;")
         self.grid_layout.addWidget(self.loading_label, 0, 0)
 
-    def load_pdf(self, pdf_path: str):
+    def _set_loading_message(self, message: str):
+        if self.grid_layout.indexOf(self.loading_label) < 0:
+            self.grid_layout.addWidget(self.loading_label, 0, 0)
+        self.info_label.setText("페이지: 0")
+        self.loading_label.setText(message)
+        self.loading_label.show()
+
+    def show_status_message(self, message: str):
+        self._cleanup_loader_thread()
+        self._pdf_path = ""
+        self._pdf_password = None
+        self._clear_thumbnails()
+        self._set_loading_message(message)
+
+    def load_pdf(self, pdf_path: str, password: str | None = None):
         if not pdf_path:
             self.clear()
             return
 
         self._cleanup_loader_thread()
         self._pdf_path = pdf_path
+        self._pdf_password = password
         self._clear_thumbnails()
 
         doc = None
         try:
-            doc = fitz.open(pdf_path)
+            doc, error_message = _open_thumbnail_document(pdf_path, password)
+            if not doc:
+                self._set_loading_message(error_message or tm.get("preview_default"))
+                return
             self._total_pages = len(doc)
             self.info_label.setText(f"페이지: {self._total_pages}")
             for i in range(self._total_pages):
@@ -288,28 +331,41 @@ class ThumbnailGridWidget(QWidget):
             self._request_visible_thumbnails()
         except Exception as e:
             logger.error("Failed to open PDF: %s", e)
-            self.loading_label.setText(f"PDF 로드 실패: {e}")
-            self.loading_label.show()
+            self._set_loading_message(f"PDF 로드 실패: {e}")
             return
         finally:
             if doc:
                 doc.close()
 
-    def _cleanup_loader_thread(self):
-        if self._loader_thread:
-            try:
-                self._loader_thread.thumbnail_ready.disconnect()
-                self._loader_thread.progress.disconnect()
-                self._loader_thread.loading_complete.disconnect()
-            except Exception:
-                pass
+    def _disconnect_loader_thread(self, thread: ThumbnailLoaderThread):
+        try:
+            thread.thumbnail_ready.disconnect(self._on_thumbnail_ready)
+        except Exception:
+            pass
+        try:
+            thread.progress.disconnect(self._on_loader_progress)
+        except Exception:
+            pass
+        try:
+            thread.loading_complete.disconnect(self._on_loading_complete)
+        except Exception:
+            pass
 
-            if self._loader_thread.isRunning():
-                self._loader_thread.cancel()
-                if not self._loader_thread.wait(3000):
-                    logger.warning("ThumbnailLoaderThread did not finish in time")
-                    self._loader_thread.terminate()
-                    self._loader_thread.wait(1000)
+    def _cleanup_loader_thread(self):
+        thread = self._loader_thread
+        if thread:
+            self._disconnect_loader_thread(thread)
+
+            if thread.isRunning():
+                thread.cancel()
+                try:
+                    thread.finished.connect(thread.deleteLater)
+                except Exception:
+                    pass
+                if not thread.wait(300):
+                    logger.info("ThumbnailLoaderThread is stopping in background")
+            else:
+                thread.deleteLater()
 
             self._loader_thread = None
 
@@ -337,15 +393,17 @@ class ThumbnailGridWidget(QWidget):
                 continue
             widget = item.widget()
             if widget is not None:
+                if widget is self.loading_label:
+                    self.loading_label.hide()
+                    continue
                 widget.deleteLater()
 
     def clear(self):
         self._cleanup_loader_thread()
         self._pdf_path = ""
+        self._pdf_password = None
         self._clear_thumbnails()
-        self.info_label.setText("페이지: 0")
-        self.loading_label.setText("PDF 파일을 선택하세요")
-        self.loading_label.show()
+        self._set_loading_message("PDF 파일을 선택하세요")
 
     def _arrange_grid(self):
         for i in reversed(range(self.grid_layout.count())):
@@ -359,7 +417,7 @@ class ThumbnailGridWidget(QWidget):
         if self._thumbnails:
             self.loading_label.hide()
         else:
-            self.loading_label.show()
+            self._set_loading_message("PDF 파일을 선택하세요")
 
     def _visible_index_window(self) -> tuple[int, int]:
         if not self._thumbnails:
@@ -401,7 +459,13 @@ class ThumbnailGridWidget(QWidget):
         self._requested_indices.update(batch)
         self._active_batch_indices = batch
 
-        self._loader_thread = ThumbnailLoaderThread(self._pdf_path, batch, thumb_w=140, thumb_h=160)
+        self._loader_thread = ThumbnailLoaderThread(
+            self._pdf_path,
+            batch,
+            password=self._pdf_password,
+            thumb_w=140,
+            thumb_h=160,
+        )
         self._loader_thread.thumbnail_ready.connect(self._on_thumbnail_ready)
         self._loader_thread.progress.connect(self._on_loader_progress)
         self._loader_thread.loading_complete.connect(self._on_loading_complete)
@@ -421,8 +485,18 @@ class ThumbnailGridWidget(QWidget):
 
     @pyqtSlot()
     def _on_loading_complete(self):
+        sender = self.sender()
+        if self._loader_thread and sender is not None and sender is not self._loader_thread:
+            return
         logger.debug("Thumbnail batch loading complete")
+        unfinished = [
+            index for index in self._active_batch_indices if index not in self._loaded_indices
+        ]
+        self._requested_indices.difference_update(self._active_batch_indices)
+        self._pending_indices.update(unfinished)
         self._active_batch_indices = []
+        if self._loader_thread:
+            self._loader_thread.deleteLater()
         self._loader_thread = None
         self._request_visible_thumbnails()
         self._start_next_loader()

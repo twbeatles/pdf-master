@@ -1,8 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PDF Master v4.5.4 - PyInstaller Spec File
+# PDF Master v4.5.5 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
 # Python 3.10+ 호환, 폴더 기반 모듈 분할 및 optional dependency 경계 반영
-# Verified 2026-03-25 after validation/docs/build consistency follow-up
+# Verified 2026-04-02 after preview/thumbnail/undo hardening follow-up
 
 import sys
 import os
@@ -77,6 +77,7 @@ hiddenimports += [
     'src.core._typing',  # Pyright/Pylance host contracts imported by worker mixins
     'src.ui._typing',  # Pyright/Pylance host contracts imported by UI mixins
     'src.ui.zoomable_preview',  # Runtime-critical preview widget path (main preview panel)
+    'src.ui.thumbnail_grid',  # Runtime-loaded thumbnail grid path used by AI/page flows
 ]
 
 # v4.5.3+: 폴더 기반 모듈 분할(hidden import 보강)
@@ -284,7 +285,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='PDF_Master_v4.5.4',
+    name='PDF_Master_v4.5.5',
     debug=False,
     bootloader_ignore_signals=False,
     # Windows에서 strip 실행 파일이 없는 환경이 많아 자동 비활성화
@@ -303,5 +304,5 @@ exe = EXE(
 
 # =====================================================================
 # 빌드: python -m PyInstaller pdf_master.spec --clean
-# 예상 결과: dist/PDF_Master_v4.5.4.exe (~30-40MB)
+# 예상 결과: dist/PDF_Master_v4.5.5.exe (~30-40MB)
 # =====================================================================

@@ -171,6 +171,7 @@ def setup_ai_tab(self):
     l_thumb.addWidget(thumb_desc)
 
     self.sel_thumb_pdf = FileSelectorWidget(tm.get("lbl_thumb_file"), ['.pdf'])
+    self.sel_thumb_pdf.pathChanged.connect(self._update_preview)
     l_thumb.addWidget(self.sel_thumb_pdf)
 
     btn_show_grid = QPushButton(tm.get("btn_show_grid"))

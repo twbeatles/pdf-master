@@ -78,3 +78,6 @@ class MainWindowHost:
 
     def _schedule_preview_rerender(self) -> None:
         ...
+
+    def _ensure_preview_access(self, path: str) -> tuple[bool, str | None]:
+        ...

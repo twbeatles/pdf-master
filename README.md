@@ -1,4 +1,4 @@
-# PDF Master v4.5.4
+# PDF Master v4.5.5
 
 📑 **올인원 PDF 편집 프로그램** - PyQt6 기반 데스크톱 앱
 
@@ -12,6 +12,8 @@
 ## 현재 동작 기준 메모
 
 - 우측 미리보기 패널은 이제 `src/ui/zoomable_preview.py`를 직접 사용하며, 마우스 휠 줌, 드래그 패닝, 페이지 이동, 미리보기 인쇄를 함께 처리합니다.
+- 미리보기 인쇄는 OS 기본 인쇄 위임이 아니라 Qt 인쇄 파이프라인으로 현재 PDF 문서를 실제 프린터 설정에 맞춰 출력합니다.
+- AI/회전 썸네일 그리드는 우측 미리보기와 같은 문서를 기준으로 동기화되며, 암호화 PDF도 미리보기에서 인증한 비밀번호를 재사용합니다.
 - 스플리터 이동이나 패널 리사이즈 이후에도 미리보기를 다시 렌더링해서 저해상도 상태로 남지 않도록 보강했습니다.
 - `페이지 크기 변경`은 원본 비율을 유지한 채 대상 용지 중앙에 fit-center 배치하는 방식으로 동작합니다.
 - `PDF -> 이미지`, `텍스트 추출`의 자동 출력 파일명은 `__2`, `__3` 접미사로 충돌을 회피합니다.
@@ -117,9 +119,9 @@
 - **토스트 알림** - 비침습적 알림 시스템
 - **드래그 앤 드롭** - 파일 추가, 페이지 순서 변경
 - **줌/패닝 미리보기** - 마우스 휠 줌, 드래그 이동
-- **썸네일 그리드** - 모든 페이지 한눈에 보기
+- **썸네일 그리드** - 모든 페이지 한눈에 보기 + preview 문서/페이지 동기화
 - **회전 탭 페이지 연동** - 썸네일 클릭 시 오른쪽 미리보기 즉시 동기화
-- **Undo/Redo** - 페이지 삭제, 회전, 압축 등 실행 취소
+- **Undo/Redo** - 단일 출력 PDF 편집 작업 전반 실행 취소
 - **다국어 지원** - 한국어/영어 자동 감지 및 설정 가능 (v4.4)
 
 ---
@@ -253,7 +255,7 @@ python -m PyInstaller pdf_master.spec --clean
 ```
 
 ### 빌드 결과
-- 출력: `dist/PDF_Master_v4.5.4.exe`
+- 출력: `dist/PDF_Master_v4.5.5.exe`
 - 크기: ~30-40MB (UPX 압축 적용)
 
 ### 빌드 최적화
@@ -355,6 +357,15 @@ API 키 저장 정책:
 
 ## 📝 변경 이력
 
+### v4.5.5 (2026-04-02) - Preview/Thumbnail/Undo Hardening
+- ✅ AI/회전 썸네일이 preview와 같은 문서를 기준으로 먼저 동기화되도록 고정
+- ✅ 암호화 PDF 썸네일이 preview 비밀번호 세션을 재사용하고 별도 grid 프롬프트를 제거
+- ✅ 미리보기 인쇄를 OS 위임에서 Qt 인쇄 파이프라인으로 교체하여 실제 프린터/페이지 범위를 반영
+- ✅ `split`, `get_form_fields`, `fill_form`, `add_freehand_signature` 취소 응답성 강화
+- ✅ 앱 종료 시 worker 강제 종료를 즉시 수행하지 않고 사용자 확인 기반으로 안전화
+- ✅ 단일 입력/단일 출력 PDF 수정 모드 전반으로 Undo 대상 확장
+- ✅ README/README_EN/CLAUDE/GEMINI/spec/.gitignore 정합성 동기화 및 회귀 테스트 8종 추가
+
 ### v4.5.4 (2026-03-18 addendum) - 페이지 회전 UX 보강
 - ✅ 페이지 탭 회전 섹션에 전용 썸네일 목록 추가
 - ✅ `전체 페이지` / `선택 페이지` 토글로 회전 범위 명시화
@@ -423,7 +434,7 @@ API 키 저장 정책:
 - 📝 **텍스트 상자** - PDF에 텍스트 직접 삽입 (위치, 폰트, 색상)
 - 📋 **페이지 복사** - 다른 PDF에서 특정 페이지 복사해오기
 - 🖼️ **이미지 워터마크 개선** - 9개 위치, 크기(px), 투명도(%) 파라미터 지원
-- 🖨️ **미리보기 인쇄** - 미리보기 패널에서 바로 인쇄
+- 🖨️ **미리보기 인쇄** - Qt 인쇄 파이프라인으로 현재 PDF 문서를 실제 프린터 설정에 맞춰 인쇄
 - 💬 **PDF 채팅** - PDF 내용에 대해 AI에게 질문하기
 - 🏷️ **키워드 추출** - AI 기반 핵심 키워드 추출
 - 🔒 **AI 스레드 안전성** - AI 싱글톤 Double-check locking 적용
@@ -448,13 +459,21 @@ API 키 저장 정책:
 
 ---
 
-## 🧪 테스트 및 정합성 현황 (v4.5.4)
+## 🧪 테스트 및 정합성 현황 (v4.5.5)
 
 - 정적 분석: `python -m pyright` → `0 errors`
-- 회귀 테스트: `python -m pytest` → `85 passed, 1 warning`
+- 회귀 테스트: `python -m pytest` → `113 passed, 1 warning`
 - 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD 회귀 방지
 
 - 신규 테스트:
+  - `tests/test_ai_thumbnail_grid_flow.py` (AI 썸네일 grid의 preview 동기화/암호 세션 재사용 검증)
+  - `tests/test_thumbnail_grid_runtime.py` (암호화 PDF grid 로딩/완료 시그널/loader 정리 검증)
+  - `tests/test_preview_print.py` (Qt 인쇄 페이지 범위 해석 및 렌더 경로 검증)
+  - `tests/test_worker_cancel_regression.py` (`split`/양식/프리핸드 서명 취소 체크 회귀 검증)
+  - `tests/test_worker_undo_modes.py` (Undo 대상 모드 확장과 비대상 모드 제외 검증)
+  - `tests/test_worker_regression_modes.py` (`metadata_update`/`protect`/`decrypt_pdf`/`reorder`/`split_by_pages`/`extract_markdown` 검증)
+  - `tests/test_ai_worker_ui_flow.py` (AI 요약/채팅/키워드 성공/실패 UI 흐름 검증)
+  - `tests/test_close_shutdown_flow.py` (종료 시 cooperative cancel/강제 종료 확인 흐름 검증)
   - `tests/test_worker_batch_watermark.py` (배치 워터마크 출력 생성/실패 원인 요약 검증)
   - `tests/test_worker_copy_page_range_strict.py` (페이지 복사 무효 범위 hard-fail 정책 검증)
   - `tests/test_worker_attachment_extract_security.py` (첨부 추출 파일명 정규화/경로 고정 검증)

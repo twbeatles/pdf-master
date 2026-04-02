@@ -8,6 +8,7 @@ __pycache__/
 .ruff_cache/
 .pyright/
 .pyrightcache/
+.tmp_pyright_test*/
 .hypothesis/
 .tox/
 .nox/

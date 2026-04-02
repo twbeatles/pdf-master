@@ -6,6 +6,7 @@ from .cache import (
 )
 from .document import (
     _close_preview_document,
+    _ensure_preview_access,
     _ensure_preview_document,
     _open_preview_document,
     _prompt_pdf_password,
@@ -39,6 +40,7 @@ class MainWindowPreviewMixin(MainWindowHost):
     _next_preview_page = _next_preview_page
     _on_preview_page_requested = _on_preview_page_requested
     _schedule_preview_rerender = _schedule_preview_rerender
+    _ensure_preview_access = _ensure_preview_access
     _ensure_preview_document = _ensure_preview_document
     _render_preview_page = _render_preview_page
     _on_list_item_clicked = _on_list_item_clicked

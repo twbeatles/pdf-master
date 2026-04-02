@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QSplitter,
@@ -32,6 +33,33 @@ from .progress_overlay import ProgressOverlayWidget
 from .widgets import WheelEventFilter
 
 logger = logging.getLogger(__name__)
+
+
+def _shutdown_worker_for_close(parent, worker) -> bool:
+    if not worker or not worker.isRunning():
+        return True
+
+    logger.info("Stopping running worker...")
+    if hasattr(worker, "cancel"):
+        worker.cancel()
+    if worker.wait(3000):
+        return True
+
+    logger.warning("Worker did not stop in time")
+    result = QMessageBox.warning(
+        parent,
+        tm.get("close_running_task_title"),
+        tm.get("close_running_task_message"),
+        QMessageBox.StandardButton.Close | QMessageBox.StandardButton.Cancel,
+        QMessageBox.StandardButton.Cancel,
+    )
+    if result != QMessageBox.StandardButton.Close:
+        return False
+
+    logger.warning("User requested forced termination during close")
+    worker.terminate()
+    worker.wait(1000)
+    return True
 
 
 class PDFMasterApp(
@@ -175,15 +203,9 @@ class PDFMasterApp(
         logger.info("Application closing...")
 
         # 1. 실행 중인 Worker 정리
-        if self.worker and self.worker.isRunning():
-            logger.info("Stopping running worker...")
-            if hasattr(self.worker, 'cancel'):
-                self.worker.cancel()
-            self.worker.quit()
-            if not self.worker.wait(3000):  # 3초 대기
-                logger.warning("Worker did not stop in time, forcing termination")
-                self.worker.terminate()
-                self.worker.wait(1000)
+        if not _shutdown_worker_for_close(self, self.worker):
+            a0.ignore()
+            return
 
         # 2. 미리보기 문서 리소스 정리
         if hasattr(self, '_current_preview_doc') and self._current_preview_doc:

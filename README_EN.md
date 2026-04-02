@@ -1,4 +1,4 @@
-# PDF Master v4.5.4
+# PDF Master v4.5.5
 
 📑 **All-in-One PDF Editor** - PyQt6 based Desktop Application
 
@@ -10,6 +10,8 @@
 ## Current Behavior Notes
 
 - The right preview panel now uses `src/ui/zoomable_preview.py` directly for wheel zoom, drag pan, page navigation, and preview print.
+- Preview print now goes through the Qt print pipeline instead of OS-level `print` delegation, so printer/page-range choices are applied to the actual job.
+- AI/rotate thumbnail entry points stay synchronized with the right preview document, and encrypted PDFs reuse the authenticated preview password session for thumbnail loading.
 - Preview rendering is refreshed after splitter moves and panel resize events to avoid stale low-resolution previews.
 - `Resize Pages` keeps the original page aspect ratio and places the source page fit-centered on the target paper size.
 - Auto-generated outputs from `PDF -> Image` and `Extract Text` avoid filename collisions with `__2`, `__3`, and later suffixes.
@@ -117,10 +119,10 @@
 - **Toast Notifications** - Non-intrusive notifications
 - **Drag & Drop** - Add files, reorder pages
 - **Zoom/Pan Preview** - Mouse wheel zoom, drag move, page navigation, print, and resize-aware rerender
-- **Thumbnail Grid** - View all pages at a glance
+- **Thumbnail Grid** - View all pages at a glance with preview document/page synchronization
 - **Rotate-tab Page Sync** - Clicking a thumbnail jumps the right preview to the same page
-- **Undo/Redo** - Undo/Redo for page delete, rotate, compress, etc.
-- **Preview Print** - Print directly from preview panel (v4.5)
+- **Undo/Redo** - Undo/Redo across single-output PDF mutation workflows
+- **Preview Print** - Print the current PDF through Qt print pipeline (v4.5)
 
 ---
 
@@ -244,7 +246,7 @@ python -m PyInstaller pdf_master.spec --clean
 ```
 
 ### Build Result
-- Output: `dist/PDF_Master_v4.5.4.exe`
+- Output: `dist/PDF_Master_v4.5.5.exe`
 - Size: ~30-40MB (UPX Compressed)
 
 ---
@@ -343,6 +345,15 @@ API key storage policy:
 
 ## 📝 Changelog
 
+### v4.5.5 (2026-04-02) - Preview/Thumbnail/Undo Hardening
+- Synced AI/rotate thumbnail flows to the active preview document before page jumps.
+- Reused preview password sessions for encrypted thumbnail loading instead of prompting from the grid itself.
+- Replaced OS print delegation with Qt print rendering so selected printer/page ranges affect the real output.
+- Added cancellation checkpoints to `split`, `get_form_fields`, `fill_form`, and `add_freehand_signature`.
+- Made app shutdown wait cooperatively before any forced worker termination.
+- Expanded Undo coverage to single-source/single-output PDF mutation modes.
+- Synced README/README_EN/CLAUDE/GEMINI/spec/.gitignore and added 8 regression suites for the new contracts.
+
 ### v4.5.4 (2026-03-18 addendum) - Rotate UX Upgrade
 - Added a dedicated thumbnail list inside the Page tab rotate section.
 - Added explicit `All pages` / `Selected pages` rotate scope toggle.
@@ -425,13 +436,21 @@ API key storage policy:
 
 ---
 
-## 🧪 Test and Consistency Status (v4.5.4)
+## 🧪 Test and Consistency Status (v4.5.5)
 
 - Static analysis: `python -m pyright` -> `0 errors`
-- Regression tests: `python -m pytest` -> `85 passed, 1 warning`
+- Regression tests: `python -m pytest` -> `113 passed, 1 warning`
 - Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD regressions
 
 - Added:
+  - `tests/test_ai_thumbnail_grid_flow.py`
+  - `tests/test_thumbnail_grid_runtime.py`
+  - `tests/test_preview_print.py`
+  - `tests/test_worker_cancel_regression.py`
+  - `tests/test_worker_undo_modes.py`
+  - `tests/test_worker_regression_modes.py`
+  - `tests/test_ai_worker_ui_flow.py`
+  - `tests/test_close_shutdown_flow.py`
   - `tests/test_worker_batch_watermark.py`
   - `tests/test_worker_copy_page_range_strict.py`
   - `tests/test_worker_attachment_extract_security.py`

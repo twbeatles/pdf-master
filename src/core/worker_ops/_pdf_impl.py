@@ -238,11 +238,13 @@ class WorkerPdfOpsMixin(WorkerHost):
 
             total_count = max(1, len(pages_to_keep))  # Division by zero 방지
             for idx, p_num in enumerate(pages_to_keep):
+                self._check_cancelled()
                 doc_final.insert_pdf(doc_src, from_page=p_num, to_page=p_num)
                 self._emit_progress_if_due(int((idx + 1) / total_count * 100))
 
             base = os.path.splitext(os.path.basename(file_path))[0]
             out = os.path.join(output_dir, f"{base}_extracted.pdf")
+            self._check_cancelled()
             self._atomic_pdf_save(doc_final, out)
             self.finished_signal.emit(f"✅ 추출 완료!\n{len(pages_to_keep)}페이지 추출됨")
         finally:
@@ -909,7 +911,9 @@ class WorkerPdfOpsMixin(WorkerHost):
         fields = []
 
         try:
+            total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
+                self._check_cancelled()
                 page = doc[page_num]
                 widgets = page.widgets()
                 if widgets:
@@ -922,6 +926,7 @@ class WorkerPdfOpsMixin(WorkerHost):
                             'value': widget.field_value or "",
                             'rect': [rect.x0, rect.y0, rect.x1, rect.y1],
                         })
+                self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
 
             # 결과를 kwargs에 저장 (메인 스레드에서 접근)
             self.kwargs['result_fields'] = fields
@@ -939,7 +944,9 @@ class WorkerPdfOpsMixin(WorkerHost):
         filled_count = 0
 
         try:
-            for page in doc:
+            total_pages = max(1, len(doc))
+            for page_index, page in enumerate(doc):
+                self._check_cancelled()
                 widgets = page.widgets()
                 if widgets:
                     for widget in widgets:
@@ -948,7 +955,9 @@ class WorkerPdfOpsMixin(WorkerHost):
                             widget.field_value = field_values[field_name]
                             widget.update()
                             filled_count += 1
+                self._emit_progress_if_due(int((page_index + 1) / total_pages * 100))
 
+            self._check_cancelled()
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
             self.finished_signal.emit(f"✅ 양식 작성 완료!\n{filled_count}개 필드 채움")
@@ -1897,6 +1906,7 @@ class WorkerPdfOpsMixin(WorkerHost):
 
             all_strokes: list[list[list[float]]] = []
             for stroke in strokes:
+                self._check_cancelled()
                 try:
                     all_strokes.append(_normalize_stroke_points(stroke))
                 except (TypeError, ValueError):
@@ -1908,6 +1918,7 @@ class WorkerPdfOpsMixin(WorkerHost):
                 return
 
             try:
+                self._check_cancelled()
                 annot = page.add_ink_annot(all_strokes)
             except (TypeError, ValueError):
                 self.error_signal.emit(self._get_msg("msg_invalid_stroke_format"))
@@ -1917,6 +1928,7 @@ class WorkerPdfOpsMixin(WorkerHost):
                 annot.set_border(width=width)
                 annot.update()
 
+            self._check_cancelled()
             self._emit_progress_if_due(100)
             self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(f"✅ 프리핸드 서명 추가 완료!\n페이지 {resolved_page_num + 1}, {len(all_strokes)}개 획")

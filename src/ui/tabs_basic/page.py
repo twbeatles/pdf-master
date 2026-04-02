@@ -30,6 +30,21 @@ from ..widgets import FileListWidget, FileSelectorWidget, ImageListWidget, Toast
 
 logger = logging.getLogger(__name__)
 
+
+def _ensure_preview_ready(self, path):
+    ensure_preview_access = getattr(self, "_ensure_preview_access", None)
+    if callable(ensure_preview_access):
+        result = ensure_preview_access(path)
+        if result is None:
+            self._update_preview(path)
+            return True, None
+        if isinstance(result, tuple):
+            return bool(result[0]), result[1] if len(result) > 1 else None
+        return bool(result), None
+
+    self._update_preview(path)
+    return True, None
+
 def setup_page_tab(self):
     tab = QWidget()
     layout = QVBoxLayout(tab)
@@ -191,22 +206,25 @@ def action_rotate(self):
         self.run_worker("rotate", **kwargs)
 
 def _on_rotate_pdf_changed(self, path):
-    self._update_preview(path)
     if not hasattr(self, "rot_thumb_grid"):
         return
     if not path or not os.path.exists(path):
         self.rot_thumb_grid.clear()
         return
-    self.rot_thumb_grid.load_pdf(path)
-    self.rot_thumb_grid.set_active_page(0, emit_signal=False)
+    ready, password = _ensure_preview_ready(self, path)
+    if not ready:
+        self.rot_thumb_grid.show_status_message(self.preview_label.text())
+        return
+    self.rot_thumb_grid.load_pdf(path, password=password)
+    self.rot_thumb_grid.set_active_page(getattr(self, "_current_preview_page", 0), emit_signal=False)
 
 def _on_rotate_thumbnail_page_selected(self, page_index: int):
     path = self.sel_rot.get_path() if hasattr(self, "sel_rot") else ""
     if not path or not os.path.exists(path):
         return
-    current_path = getattr(self, "_current_preview_path", "")
-    if not current_path or os.path.abspath(current_path) != os.path.abspath(path):
-        self._update_preview(path)
+    ready, _password = _ensure_preview_ready(self, path)
+    if not ready:
+        return
     self._current_preview_page = page_index
     self._render_preview_page()
     if hasattr(self, "status_label"):
