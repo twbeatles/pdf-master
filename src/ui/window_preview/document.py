@@ -105,6 +105,11 @@ def _open_preview_document(self, path: str):
         self._current_preview_password = None
         return doc, None
 
+    password_hint = getattr(self, "_preview_password_hint", None)
+    if isinstance(password_hint, str) and password_hint:
+        if doc.authenticate(password_hint):
+            self._current_preview_password = password_hint
+            return doc, None
     doc.close()
     while True:
         password = self._prompt_pdf_password(path)

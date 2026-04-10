@@ -47,7 +47,7 @@ def _save_summary_result(self):
     if not text:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_no_summary"))
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("dlg_save_summary"), "summary.txt", tm.get("file_filter_text"))
+    s, _ = self._choose_save_file(tm.get("dlg_save_summary"), "summary.txt", tm.get("file_filter_text"))
     if s:
         with open(s, 'w', encoding='utf-8') as f:
             f.write(text)

@@ -192,7 +192,7 @@ def action_img(self):
     paths = self.img_conv_list.get_all_paths()
     if not paths:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_pdf_files"))
-    d = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
+    d = self._choose_output_directory(tm.get("dlg_select_output_dir"))
     if d:
         self.run_worker("convert_to_img", file_paths=paths, output_dir=d, 
                       fmt=self.cmb_fmt.currentText(), dpi=self.spn_dpi.value())
@@ -201,7 +201,7 @@ def action_img_to_pdf(self):
     files = self.img_list.get_all_paths()
     if not files:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_image_files"))
-    save, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "images.pdf", "PDF (*.pdf)")
+    save, _ = self._choose_save_file(tm.get("save"), "images.pdf", "PDF (*.pdf)")
     if save:
         self.run_worker("images_to_pdf", files=files, output_path=save)
 
@@ -209,6 +209,6 @@ def action_txt(self):
     paths = self.txt_conv_list.get_all_paths()
     if not paths:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_pdf_files"))
-    d = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
+    d = self._choose_output_directory(tm.get("dlg_select_output_dir"))
     if d:
         self.run_worker("extract_text", file_paths=paths, output_dir=d)

@@ -2,7 +2,7 @@
 # PDF Master v4.5.5 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
 # Python 3.10+ 호환, 폴더 기반 모듈 분할 및 optional dependency 경계 반영
-# Verified 2026-04-02 after preview/thumbnail/undo hardening follow-up
+# Verified 2026-04-10 after same-path save / undo snapshot / output-dialog stability follow-up
 
 import sys
 import os

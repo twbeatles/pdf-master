@@ -103,6 +103,6 @@ def action_reorder(self):
     if not path or self.reorder_list.count() == 0:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf_and_check_pages"))
     page_order = [self.reorder_list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.reorder_list.count())]
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "reordered.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "reordered.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("reorder", file_path=path, output_path=s, page_order=page_order)

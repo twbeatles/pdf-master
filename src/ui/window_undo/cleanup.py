@@ -1,13 +1,46 @@
 import logging
 import os
-import shutil
 import time
 
-from PyQt6.QtWidgets import QMessageBox
-
-from ...core.i18n import tm
-
 logger = logging.getLogger(__name__)
+
+
+def _normalize_backup_path(self, path: str) -> str:
+    if not isinstance(path, str) or not path:
+        return ""
+    try:
+        abs_path = os.path.abspath(path)
+        backup_dir = os.path.abspath(self._undo_backup_dir)
+        if os.path.commonpath([backup_dir, abs_path]) != backup_dir:
+            return ""
+        return abs_path
+    except Exception:
+        return ""
+
+
+def _collect_active_backup_paths(self) -> set[str]:
+    active_paths: set[str] = set()
+    state_keys = ("backup_path", "before_backup_path", "after_backup_path")
+
+    stacks = [getattr(self.undo_manager, "_undo_stack", []), getattr(self.undo_manager, "_redo_stack", [])]
+    for stack in stacks:
+        for record in stack:
+            for state in (getattr(record, "before_state", {}), getattr(record, "after_state", {})):
+                if not isinstance(state, dict):
+                    continue
+                for key in state_keys:
+                    normalized = _normalize_backup_path(self, state.get(key, ""))
+                    if normalized:
+                        active_paths.add(normalized)
+
+    pending_undo = getattr(self, "_pending_undo", None)
+    if isinstance(pending_undo, dict):
+        for key in ("before_backup_path", "after_backup_path"):
+            normalized = _normalize_backup_path(self, pending_undo.get(key, ""))
+            if normalized:
+                active_paths.add(normalized)
+
+    return active_paths
 
 def _cleanup_old_undo_backups(self, max_age_hours: int = 24):
     """오래된 undo 백업 파일 정리
@@ -18,10 +51,10 @@ def _cleanup_old_undo_backups(self, max_age_hours: int = 24):
     if not os.path.exists(self._undo_backup_dir):
         return
 
-    import time
     current_time = time.time()
     max_age_seconds = max_age_hours * 3600
     cleaned_count = 0
+    active_backups = _collect_active_backup_paths(self)
 
     try:
         for filename in os.listdir(self._undo_backup_dir):
@@ -29,6 +62,8 @@ def _cleanup_old_undo_backups(self, max_age_hours: int = 24):
                 continue
             filepath = os.path.join(self._undo_backup_dir, filename)
             try:
+                if os.path.abspath(filepath) in active_backups:
+                    continue
                 file_age = current_time - os.path.getmtime(filepath)
                 if file_age > max_age_seconds:
                     os.remove(filepath)
@@ -46,24 +81,15 @@ def _cleanup_unused_undo_backups(self):
     if not os.path.exists(self._undo_backup_dir):
         return
 
-    # 현재 undo/redo 스택에서 사용 중인 백업 경로 수집
-    active_backups = set()
-    for record in self.undo_manager._undo_stack:
-        backup = record.before_state.get("backup_path", "")
-        if backup:
-            active_backups.add(os.path.basename(backup))
-    for record in self.undo_manager._redo_stack:
-        backup = record.before_state.get("backup_path", "")
-        if backup:
-            active_backups.add(os.path.basename(backup))
+    active_backups = _collect_active_backup_paths(self)
 
     cleaned_count = 0
     try:
         for filename in os.listdir(self._undo_backup_dir):
             if not filename.startswith("undo_"):
                 continue
-            if filename not in active_backups:
-                filepath = os.path.join(self._undo_backup_dir, filename)
+            filepath = os.path.join(self._undo_backup_dir, filename)
+            if os.path.abspath(filepath) not in active_backups:
                 try:
                     os.remove(filepath)
                     cleaned_count += 1
@@ -85,6 +111,7 @@ def _cleanup_undo_backups_by_size(self, max_size_mb: int = 500):
         return
 
     max_size_bytes = max_size_mb * 1024 * 1024
+    active_backups = _collect_active_backup_paths(self)
 
     try:
         # 백업 파일들과 정보 수집
@@ -115,6 +142,8 @@ def _cleanup_undo_backups_by_size(self, max_size_mb: int = 500):
             for bf in backup_files:
                 if total_size <= max_size_bytes:
                     break
+                if os.path.abspath(bf["path"]) in active_backups:
+                    continue
                 try:
                     os.remove(bf['path'])
                     total_size -= bf['size']

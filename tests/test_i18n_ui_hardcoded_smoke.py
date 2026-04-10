@@ -3,21 +3,21 @@ import ast
 from pathlib import Path
 
 
-TARGET_UI_FILES = [
-    "src/ui/main_window_tabs_basic.py",
-    "src/ui/main_window_tabs_advanced.py",
-    "src/ui/main_window_tabs_ai.py",
-    "src/ui/main_window_core.py",
-    "src/ui/main_window_preview.py",
-    "src/ui/main_window_worker.py",
-]
+EXCLUDED_UI_FILES = {
+    "src/ui/progress_overlay.py",
+    "src/ui/styles.py",
+    "src/ui/widgets.py",
+}
 
 
-def test_no_hardcoded_korean_string_literals_in_target_ui_files():
+def test_no_hardcoded_korean_string_literals_in_runtime_ui_files():
     pattern = re.compile(r"[가-힣]")
     violations = []
 
-    for rel in TARGET_UI_FILES:
+    for path in Path("src/ui").rglob("*.py"):
+        rel = path.as_posix()
+        if rel in EXCLUDED_UI_FILES:
+            continue
         path = Path(rel)
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=rel)

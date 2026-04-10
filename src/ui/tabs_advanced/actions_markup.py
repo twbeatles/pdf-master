@@ -13,7 +13,7 @@ def action_highlight_text(self):
     if not term:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_keyword"))
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "highlighted.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "highlighted.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("highlight_text", file_path=path, output_path=s, search_term=term)
 
@@ -22,7 +22,7 @@ def action_list_annotations(self):
     path = self.sel_annot.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "annotations.txt", "Text (*.txt)")
+    s, _ = self._choose_save_file(tm.get("save"), "annotations.txt", "Text (*.txt)")
     if s:
         self.run_worker("list_annotations", file_path=path, output_path=s)
 
@@ -38,7 +38,7 @@ def action_remove_annotations(self):
     if reply != QMessageBox.StandardButton.Yes:
         return
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "no_annotations.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "no_annotations.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("remove_annotations", file_path=path, output_path=s)
 
@@ -58,7 +58,7 @@ def action_redact_text(self):
     if reply != QMessageBox.StandardButton.Yes:
         return
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "redacted.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "redacted.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("redact_text", file_path=path, output_path=s, search_term=term)
 
@@ -74,7 +74,7 @@ def action_add_text_markup(self):
 
     markup_type = self.cmb_markup.currentData() or "underline"
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "marked_up.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "marked_up.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("add_text_markup", file_path=path, output_path=s, 
                       search_term=term, markup_type=markup_type)
@@ -87,7 +87,7 @@ def action_add_background(self):
 
     color = self.cmb_bg_color.currentData() or [1, 1, 0.9]
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_background.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "with_background.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("add_background", file_path=path, output_path=s, color=color)
 
@@ -106,7 +106,7 @@ def action_add_sticky_note(self):
     page_num = self.spn_sticky_page.value() - 1
     icon = self.cmb_sticky_icon.currentText()
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_note.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "with_note.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("add_sticky_note", file_path=path, output_path=s,
                       page_num=page_num, x=x, y=y, content=content, icon=icon)
@@ -139,7 +139,7 @@ def action_add_ink_annotation(self):
 
     color = self.cmb_ink_color.currentData() or (0, 0, 1)
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_drawing.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "with_drawing.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("add_ink_annotation", file_path=path, output_path=s,
                       page_num=page_num, points=points, color=color, width=width)
@@ -162,7 +162,7 @@ def action_draw_shape(self):
 
     fill_color = self.cmb_shape_fill_color.currentData()
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_shape.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "with_shape.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("draw_shapes", file_path=path, output_path=s,
                       page_num=page_num, shape_type=shape_type,
@@ -203,7 +203,7 @@ def action_add_hyperlink(self):
     except Exception as e:
         return QMessageBox.warning(self, tm.get("error"), tm.get("msg_coord_format_error", str(e)))
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_link.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "with_link.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("add_link", file_path=path, output_path=s,
                       page_num=page_num, link_type=link_type,
@@ -226,7 +226,7 @@ def action_insert_textbox(self):
 
     color = self.cmb_tb_color.currentData() or (0, 0, 0)
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_textbox.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "with_textbox.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("insert_textbox", file_path=path, output_path=s,
                       page_num=page_num, x=x, y=y, text=text,
@@ -261,7 +261,7 @@ def action_add_annotation_basic(self):
     except ValueError as exc:
         return QMessageBox.warning(self, tm.get("error"), tm.get("msg_coord_format_error", str(exc)))
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_annotation.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "with_annotation.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker(
             "add_annotation",

@@ -1,7 +1,6 @@
 import logging
 import os
 import shutil
-import time
 
 from PyQt6.QtWidgets import QMessageBox
 
@@ -27,7 +26,7 @@ def _create_backup_for_undo(self, source_path: str) -> str:
 
 def _restore_from_backup(self, state: dict):
     """백업에서 파일 복원 (undo 콜백)"""
-    backup_path = state.get("backup_path", "")
+    backup_path = state.get("before_backup_path", "") or state.get("backup_path", "")
     target_path = state.get("target_path", "")
     if not backup_path or not target_path:
         logger.warning("Undo: Missing paths")
@@ -49,12 +48,21 @@ def _restore_from_backup(self, state: dict):
 
 def _redo_from_output(self, state: dict):
     """출력 파일로 다시 적용 (redo 콜백)"""
-    output_path = state.get("output_path", "")
+    output_path = state.get("after_backup_path", "") or state.get("output_path", "")
     target_path = state.get("target_path", "")
-    if output_path and target_path and os.path.exists(output_path):
-        try:
-            shutil.copy2(output_path, target_path)
-            logger.info(f"Redo applied: {target_path}")
-            self._update_preview(target_path)
-        except Exception as e:
-            logger.error(f"Redo failed: {e}")
+    if not output_path or not target_path:
+        logger.warning("Redo: Missing paths")
+        return
+    if not os.path.exists(output_path):
+        logger.warning("Redo: Backup not found: %s", output_path)
+        QMessageBox.warning(self, tm.get("restore_failed_title"), tm.get("undo_backup_not_found"))
+        return
+    try:
+        shutil.copy2(output_path, target_path)
+        logger.info("Redo applied: %s", target_path)
+        self._update_preview(target_path)
+        toast = ToastWidget(tm.get("restore_success"), toast_type="success", duration=2000)
+        toast.show_toast(self)
+    except Exception as e:
+        logger.error("Redo failed: %s", e)
+        QMessageBox.warning(self, tm.get("restore_failed_title"), tm.get("restore_failed_msg", str(e)))

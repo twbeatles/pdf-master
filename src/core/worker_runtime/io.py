@@ -9,6 +9,14 @@ from typing import Any, cast
 logger = logging.getLogger(__name__)
 
 
+def _mark_document_closed(doc: Any) -> None:
+    try:
+        setattr(doc, "_pdf_master_closed_by_atomic_save", True)
+        doc.close = lambda: None
+    except Exception:
+        logger.debug("Failed to mark document as already closed", exc_info=True)
+
+
 def sanitize_attachment_filename(raw_name: str, fallback: str) -> str:
     """첨부 파일명을 파일시스템 안전한 형태로 정규화."""
     base_name = os.path.basename(str(raw_name or "").strip())
@@ -109,6 +117,7 @@ def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -
 
     out_dir = os.path.dirname(os.path.abspath(output_path)) or "."
     os.makedirs(out_dir, exist_ok=True)
+    output_existed = os.path.exists(output_path)
 
     fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=".tmp.pdf", dir=out_dir)
     os.close(fd)
@@ -131,11 +140,14 @@ def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -
             if same_target:
                 try:
                     doc.close()
+                    _mark_document_closed(doc)
                 except Exception:
                     logger.debug("Failed to close document before replace", exc_info=True)
                 os.replace(tmp_path, output_path)
             else:
                 raise
+        if not output_existed:
+            record_created_output_path(host, output_path)
     finally:
         if os.path.exists(tmp_path):
             try:

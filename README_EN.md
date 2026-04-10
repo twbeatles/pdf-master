@@ -16,6 +16,9 @@
 - `Resize Pages` keeps the original page aspect ratio and places the source page fit-centered on the target paper size.
 - Auto-generated outputs from `PDF -> Image` and `Extract Text` avoid filename collisions with `__2`, `__3`, and later suffixes.
 - `Compare PDFs` now detects line-order changes and duplicate-count differences, and visual diff PDF generation is optional from the Advanced tab UI.
+- Single-input/single-output PDF mutation modes can save back to the original path; if preview is holding the same file, it is closed before the worker starts and restored after success/fail/cancel.
+- Output save/folder dialogs reuse `last_output_dir` as their starting directory and update it after successful output selection.
+- Undo/Redo now restores before/after snapshots instead of re-running the worker, and the expanded snapshot flow covers `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
 - Updated worker result/status messages in the touched flows are synchronized through the KO/EN i18n catalogs.
 
 ---
@@ -122,6 +125,8 @@
 - **Thumbnail Grid** - View all pages at a glance with preview document/page synchronization
 - **Rotate-tab Page Sync** - Clicking a thumbnail jumps the right preview to the same page
 - **Undo/Redo** - Undo/Redo across single-output PDF mutation workflows
+- **Same-path Save Safety** - Overwriting the source PDF is allowed for single-input/single-output mutation flows
+- **Remember Output Folder** - Output dialogs reopen from the last successful output directory
 - **Preview Print** - Print the current PDF through Qt print pipeline (v4.5)
 
 ---
@@ -340,10 +345,19 @@ API key storage policy:
 - `keyring` available: keyring-first save/load
 - `keyring` unavailable: settings-file fallback (`gemini_api_key`)
 - Legacy plain key is migrated/cleaned when keyring path is active
+- `load_settings()` normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, and `last_output_dir` during load.
 
 ---
 
 ## 📝 Changelog
+
+### v4.5.5 (2026-04-10) - Stability Bundle
+- Added safe same-path overwrite handling by closing preview-held documents before worker start and restoring preview after success/fail/cancel.
+- Reworked Undo/Redo to restore explicit before/after snapshots rather than re-running worker logic.
+- Expanded Undo coverage to include `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
+- Wired all output save/folder dialogs to `last_output_dir`.
+- Moved `thumbnail_grid.py` user-facing strings into i18n and widened the runtime UI hardcoded-string smoke scan.
+- Added regression coverage for output dialog state, same-path preview restore, and undo snapshot cleanup.
 
 ### v4.5.5 (2026-04-02) - Preview/Thumbnail/Undo Hardening
 - Synced AI/rotate thumbnail flows to the active preview document before page jumps.
@@ -439,7 +453,7 @@ API key storage policy:
 ## 🧪 Test and Consistency Status (v4.5.5)
 
 - Static analysis: `python -m pyright` -> `0 errors`
-- Regression tests: `python -m pytest` -> `113 passed, 1 warning`
+- Regression tests: `python -m pytest -q` -> `120 passed, 1 warning`
 - Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD regressions
 
 - Added:
@@ -451,6 +465,9 @@ API key storage policy:
   - `tests/test_worker_regression_modes.py`
   - `tests/test_ai_worker_ui_flow.py`
   - `tests/test_close_shutdown_flow.py`
+  - `tests/test_output_dialog_state.py`
+  - `tests/test_same_path_preview_restore.py`
+  - `tests/test_undo_backup_flow.py`
   - `tests/test_worker_batch_watermark.py`
   - `tests/test_worker_copy_page_range_strict.py`
   - `tests/test_worker_attachment_extract_security.py`

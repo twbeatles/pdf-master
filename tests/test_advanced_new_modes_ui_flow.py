@@ -57,6 +57,11 @@ def _dummy_for_replace(target_path, source_path, target_page=3, source_page=1):
         def run_worker(self, mode, **kwargs):
             self.called = (mode, kwargs)
 
+        def _choose_save_file(self, title, default_name, file_filter):
+            import src.ui.main_window_tabs_advanced as adv_module
+
+            return adv_module.QFileDialog.getSaveFileName(self, title, default_name, file_filter)
+
     return Dummy()
 
 
@@ -71,6 +76,11 @@ def _dummy_for_set_bookmarks(pdf_path, text):
 
         def run_worker(self, mode, **kwargs):
             self.called = (mode, kwargs)
+
+        def _choose_save_file(self, title, default_name, file_filter):
+            import src.ui.main_window_tabs_advanced as adv_module
+
+            return adv_module.QFileDialog.getSaveFileName(self, title, default_name, file_filter)
 
     return Dummy()
 
@@ -90,6 +100,11 @@ def _dummy_for_add_annotation(pdf_path, annot_type, text, page, point_text, rect
 
         def run_worker(self, mode, **kwargs):
             self.called = (mode, kwargs)
+
+        def _choose_save_file(self, title, default_name, file_filter):
+            import src.ui.main_window_tabs_advanced as adv_module
+
+            return adv_module.QFileDialog.getSaveFileName(self, title, default_name, file_filter)
 
     return Dummy()
 

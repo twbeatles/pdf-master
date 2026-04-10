@@ -129,7 +129,7 @@ class ThumbnailLabel(QFrame):
         self.image_label.setStyleSheet("background: #1a1a2e; border-radius: 4px;")
         layout.addWidget(self.image_label)
 
-        self.page_label = QLabel(f"Page {page_index + 1}")
+        self.page_label = QLabel(tm.get("thumb_page_label", page_index + 1))
         self.page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.page_label.setStyleSheet("color: #888; font-size: 11px;")
         layout.addWidget(self.page_label)
@@ -256,7 +256,7 @@ class ThumbnailGridWidget(QWidget):
         layout.setSpacing(8)
 
         control_bar = QHBoxLayout()
-        control_bar.addWidget(QLabel("열 수"))
+        control_bar.addWidget(QLabel(tm.get("thumb_columns_label")))
 
         self.columns_spin = QSpinBox()
         self.columns_spin.setRange(2, 8)
@@ -266,7 +266,7 @@ class ThumbnailGridWidget(QWidget):
 
         control_bar.addStretch()
 
-        self.info_label = QLabel("페이지: 0")
+        self.info_label = QLabel(tm.get("thumb_page_count", 0))
         self.info_label.setStyleSheet("color: #888;")
         control_bar.addWidget(self.info_label)
         layout.addLayout(control_bar)
@@ -286,7 +286,7 @@ class ThumbnailGridWidget(QWidget):
         self.scroll_area.setWidget(self.grid_container)
         layout.addWidget(self.scroll_area)
 
-        self.loading_label = QLabel("PDF 파일을 선택하세요")
+        self.loading_label = QLabel(tm.get("thumb_select_pdf"))
         self.loading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.loading_label.setStyleSheet("color: #666; font-size: 14px; padding: 40px;")
         self.grid_layout.addWidget(self.loading_label, 0, 0)
@@ -294,7 +294,7 @@ class ThumbnailGridWidget(QWidget):
     def _set_loading_message(self, message: str):
         if self.grid_layout.indexOf(self.loading_label) < 0:
             self.grid_layout.addWidget(self.loading_label, 0, 0)
-        self.info_label.setText("페이지: 0")
+        self.info_label.setText(tm.get("thumb_page_count", 0))
         self.loading_label.setText(message)
         self.loading_label.show()
 
@@ -322,7 +322,7 @@ class ThumbnailGridWidget(QWidget):
                 self._set_loading_message(error_message or tm.get("preview_default"))
                 return
             self._total_pages = len(doc)
-            self.info_label.setText(f"페이지: {self._total_pages}")
+            self.info_label.setText(tm.get("thumb_page_count", self._total_pages))
             for i in range(self._total_pages):
                 thumb = ThumbnailLabel(i)
                 thumb.clickedWithModifiers.connect(self._on_thumbnail_clicked)
@@ -331,7 +331,7 @@ class ThumbnailGridWidget(QWidget):
             self._request_visible_thumbnails()
         except Exception as e:
             logger.error("Failed to open PDF: %s", e)
-            self._set_loading_message(f"PDF 로드 실패: {e}")
+            self._set_loading_message(tm.get("thumb_load_failed", str(e)))
             return
         finally:
             if doc:
@@ -403,7 +403,7 @@ class ThumbnailGridWidget(QWidget):
         self._pdf_path = ""
         self._pdf_password = None
         self._clear_thumbnails()
-        self._set_loading_message("PDF 파일을 선택하세요")
+        self._set_loading_message(tm.get("thumb_select_pdf"))
 
     def _arrange_grid(self):
         for i in reversed(range(self.grid_layout.count())):
@@ -417,7 +417,7 @@ class ThumbnailGridWidget(QWidget):
         if self._thumbnails:
             self.loading_label.hide()
         else:
-            self._set_loading_message("PDF 파일을 선택하세요")
+            self._set_loading_message(tm.get("thumb_select_pdf"))
 
     def _visible_index_window(self) -> tuple[int, int]:
         if not self._thumbnails:

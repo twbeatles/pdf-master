@@ -14,6 +14,9 @@
 - `compare_pdfs` uses sequence-based line diffing and can optionally emit a visual diff PDF from the Advanced tab UI.
 - Page-targeted worker modes share a strict page resolver; `-1` last-page sentinel remains only for signature insertion flows.
 - Directory-output cancellation uses `kwargs["created_output_paths"]` so only newly created files are rolled back.
+- Single-input/single-output mutation modes can overwrite the source path safely; preview closes that document before the worker starts and restores it after success/fail/cancel.
+- Output save/folder dialogs reuse `last_output_dir` as their initial directory and update it after successful output selection.
+- Undo/Redo is snapshot-based: restore `before_backup_path` on undo and `after_backup_path` on redo instead of re-running worker logic.
 - Updated AI/batch/annotation/extract worker completion and error messages are expected to come from the i18n catalogs.
 
 ---
@@ -218,6 +221,8 @@ def set_api_key(api_key: str) -> bool
 def reset_settings() -> bool
 ```
 
+- `load_settings()` normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, and `last_output_dir` on load.
+
 ### 타입 계약 파일 (v4.5.4)
 
 - `src/core/_typing.py`
@@ -290,6 +295,10 @@ class UndoManager:
     def redo(self) -> Optional[ActionRecord]
     def can_undo -> bool
     def can_redo -> bool
+```
+
+- Current UI integration stores `before_backup_path`, `after_backup_path`, and `target_path`.
+- Undo coverage includes the expanded single-input/single-output mutation set used by `main_window_worker.py`, including `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
 
 ### 6. `src/core/i18n.py` - TranslationManager
 
@@ -410,6 +419,9 @@ class ThumbnailGridWidget(QWidget):
     def set_active_page(index: int, emit_signal: bool = False)
     def get_selected_pages() -> list[int]
 ```
+
+- `thumbnail_grid.py` user-facing runtime strings should come from `tm.get(...)`.
+- Runtime UI hardcoded-string smoke tests now scan `src/ui` broadly with a small allowlist for known exceptions.
 
 ### 12. `src/ui/zoomable_preview.py` - 줌/패닝 미리보기
 
@@ -558,7 +570,7 @@ python -m pytest -q
 
 - 기준 결과:
   - `python -m pyright` -> `0 errors`
-  - 현재 환경 `python -m pytest` -> `113 passed, 1 warning`
+  - 현재 환경 `python -m pytest -q` -> `120 passed, 1 warning`
   - `pytest` 임시 디렉터리 -> repo-local `.pytest_tmp`
   - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD 회귀 방지
   - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip
@@ -585,6 +597,14 @@ python -m pytest -q
 ---
 
 ## 🚀 버전 히스토리
+
+### v4.5.5 (2026-04-10)
+- same-path 저장 시 preview-held 문서를 선행 해제하고 success/fail/cancel 후 복원
+- Undo/Redo를 before/after snapshot restore 구조로 재설계
+- `resize_pages` / `insert_signature` / `highlight_text` / `add_sticky_note` / `add_ink_annotation` / `copy_page_between_docs`를 Undo 대상에 포함
+- 출력 관련 다이얼로그에 `last_output_dir` 실제 연동
+- `thumbnail_grid.py` 하드코딩 사용자 문자열 i18n 치환 및 runtime UI 하드코딩 스모크 범위 확대
+- `tests/test_output_dialog_state.py`, `tests/test_same_path_preview_restore.py`, `tests/test_undo_backup_flow.py` 추가
 
 ### v4.5.5 (2026-04-02)
 - preview/thumbnail 동기화 계약을 강화하고 암호화 PDF 썸네일 로딩을 preview 비밀번호 세션 재사용 기준으로 통일
@@ -671,4 +691,4 @@ python -m pytest -q
 
 ---
 
-*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-02)*
+*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-10)*

@@ -18,6 +18,9 @@
 - `페이지 크기 변경`은 원본 비율을 유지한 채 대상 용지 중앙에 fit-center 배치하는 방식으로 동작합니다.
 - `PDF -> 이미지`, `텍스트 추출`의 자동 출력 파일명은 `__2`, `__3` 접미사로 충돌을 회피합니다.
 - `PDF 비교`는 이제 줄 순서 변경과 중복 줄 개수 차이까지 감지하며, 시각적 diff PDF 생성은 UI에서 선택적으로 켤 수 있습니다.
+- 단일 입력/단일 출력 PDF 수정 모드에서 원본 경로로 저장해도, preview가 같은 파일을 잡고 있으면 작업 전에 닫고 완료/실패/취소 후 다시 복원합니다.
+- 출력 관련 저장/폴더 선택 다이얼로그는 `last_output_dir`를 시작 경로로 재사용하고, 성공한 출력 경로를 다시 기억합니다.
+- Undo/Redo는 작업 재실행이 아니라 before/after 스냅샷 복원 기반이며, `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, `copy_page_between_docs`도 같은 규칙으로 포함됩니다.
 - 이번에 정리한 worker 결과/상태 메시지는 KO/EN i18n 카탈로그를 통해 함께 관리됩니다.
 
 ---
@@ -352,10 +355,19 @@ API 키 저장 정책:
 - `keyring` 사용 가능: keyring 우선 저장/조회
 - `keyring` 미사용: 설정 파일(`gemini_api_key`) 폴백
 - 레거시 평문 키는 keyring 경로 사용 시 자동 마이그레이션/정리
+- `load_settings()`는 `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`를 로드 시 정규화합니다.
 
 ---
 
 ## 📝 변경 이력
+
+### v4.5.5 (2026-04-10) - Stability Bundle
+- ✅ same-path 저장 시 preview 문서를 선행 해제하고 success/fail/cancel 이후 동일 페이지로 복원
+- ✅ Undo/Redo를 before/after 백업 스냅샷 복원 구조로 재설계
+- ✅ `resize_pages` / `insert_signature` / `highlight_text` / `add_sticky_note` / `add_ink_annotation` / `copy_page_between_docs`를 Undo 대상에 포함
+- ✅ 출력 관련 다이얼로그에 `last_output_dir` 실제 연동
+- ✅ `thumbnail_grid.py` 사용자 문자열 i18n 치환 및 runtime UI 하드코딩 스모크 범위 확대
+- ✅ 설정 로드 정규화 강화 + Undo/출력/preview 회귀 테스트 추가
 
 ### v4.5.5 (2026-04-02) - Preview/Thumbnail/Undo Hardening
 - ✅ AI/회전 썸네일이 preview와 같은 문서를 기준으로 먼저 동기화되도록 고정
@@ -462,7 +474,7 @@ API 키 저장 정책:
 ## 🧪 테스트 및 정합성 현황 (v4.5.5)
 
 - 정적 분석: `python -m pyright` → `0 errors`
-- 회귀 테스트: `python -m pytest` → `113 passed, 1 warning`
+- 회귀 테스트: `python -m pytest -q` → `120 passed, 1 warning`
 - 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD 회귀 방지
 
 - 신규 테스트:
@@ -474,6 +486,9 @@ API 키 저장 정책:
   - `tests/test_worker_regression_modes.py` (`metadata_update`/`protect`/`decrypt_pdf`/`reorder`/`split_by_pages`/`extract_markdown` 검증)
   - `tests/test_ai_worker_ui_flow.py` (AI 요약/채팅/키워드 성공/실패 UI 흐름 검증)
   - `tests/test_close_shutdown_flow.py` (종료 시 cooperative cancel/강제 종료 확인 흐름 검증)
+  - `tests/test_output_dialog_state.py` (출력 다이얼로그가 `last_output_dir`를 재사용/갱신하는지 검증)
+  - `tests/test_same_path_preview_restore.py` (same-path 저장 전 preview 해제 및 저장 후 preview 복원 검증)
+  - `tests/test_undo_backup_flow.py` (Undo/Redo before/after 스냅샷 복원과 backup cleanup 검증)
   - `tests/test_worker_batch_watermark.py` (배치 워터마크 출력 생성/실패 원인 요약 검증)
   - `tests/test_worker_copy_page_range_strict.py` (페이지 복사 무효 범위 hard-fail 정책 검증)
   - `tests/test_worker_attachment_extract_security.py` (첨부 추출 파일명 정규화/경로 고정 검증)
@@ -491,13 +506,13 @@ API 키 저장 정책:
   - `tests/test_freehand_signature_ui_flow.py` (프리핸드 서명 파서/액션 검증)
   - `tests/test_ai_key_storage_path.py` (API 키 저장 경로, keyring/폴백 정책 검증)
   - `tests/test_page_index_policy.py` (1-based UI → 0-based Worker 정규화 검증)
-  - `tests/test_i18n_ui_hardcoded_smoke.py` (UI 문자열 하드코딩 및 번역 키 누락 스모크)
+  - `tests/test_i18n_ui_hardcoded_smoke.py` (runtime UI 전체 대상 allowlist 기반 하드코딩 문자열 및 번역 키 누락 스모크)
   - `tests/test_worker_rotate_selection.py` (선택 페이지 회전/전체 회전 회귀 검증)
   - `tests/test_rotate_selection_ui_flow.py` (회전 탭 액션/경고/미리보기 연동 검증)
   - `tests/test_thumbnail_grid_selection.py` (썸네일 active page / selected pages 분리 검증)
   - `tests/test_worker_ink_signature_runtime.py` (잉크/프리핸드 서명 실제 저장 및 sentinel 정책 검증)
   - `tests/test_worker_page_validation.py` (sticky note/blank page/duplicate strict page validation 검증)
-  - `tests/test_worker_cancel_cleanup.py` (디렉터리 출력 취소 rollback이 생성 파일만 삭제하는지 검증)
+  - `tests/test_worker_cancel_cleanup.py` (디렉터리 출력 rollback + same-path/preexisting output 보호 검증)
   - `tests/test_validation_docs_config.py` (README/가이드/spec/검증 설정 정합성 검증)
 
 ---

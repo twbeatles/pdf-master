@@ -18,6 +18,58 @@ if not KEYRING_AVAILABLE:
 KEYRING_SERVICE = "PDFMaster"
 KEYRING_USERNAME = "gemini_api_key"
 
+
+def _normalize_recent_files(value) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item]
+
+
+def _normalize_chat_histories(value) -> dict:
+    if not isinstance(value, dict):
+        return {}
+    return value
+
+
+def _normalize_splitter_sizes(value) -> list[int] | None:
+    if value is None:
+        return None
+    if not isinstance(value, (list, tuple)):
+        return None
+
+    normalized: list[int] = []
+    for item in value:
+        if not isinstance(item, (int, float)):
+            return None
+        size = int(item)
+        if size < 0:
+            return None
+        normalized.append(size)
+
+    return normalized or None
+
+
+def _normalize_theme(value) -> str:
+    return value if value in {"dark", "light"} else "dark"
+
+
+def _normalize_language(value) -> str:
+    return value if value in {"auto", "ko", "en"} else "auto"
+
+
+def _normalize_window_geometry(value):
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return value
+    return None
+
+
+def _normalize_last_output_dir(value) -> str:
+    return value if isinstance(value, str) else ""
+
 def default_settings() -> dict:
     """
     기본 설정 생성.
@@ -107,10 +159,13 @@ def load_settings():
                         settings[key] = default_value
 
                 # 타입 방어: 잘못된 타입이면 기본값으로 교체
-                if not isinstance(settings.get("recent_files", []), list):
-                    settings["recent_files"] = []
-                if not isinstance(settings.get("chat_histories", {}), dict):
-                    settings["chat_histories"] = {}
+                settings["recent_files"] = _normalize_recent_files(settings.get("recent_files", []))
+                settings["chat_histories"] = _normalize_chat_histories(settings.get("chat_histories", {}))
+                settings["splitter_sizes"] = _normalize_splitter_sizes(settings.get("splitter_sizes"))
+                settings["theme"] = _normalize_theme(settings.get("theme"))
+                settings["language"] = _normalize_language(settings.get("language"))
+                settings["window_geometry"] = _normalize_window_geometry(settings.get("window_geometry"))
+                settings["last_output_dir"] = _normalize_last_output_dir(settings.get("last_output_dir"))
                 return settings
         except json.JSONDecodeError as e:
             # 손상된 설정 파일 백업

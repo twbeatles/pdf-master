@@ -169,7 +169,7 @@ def action_split(self):
     rng = self.inp_range.text()
     if not path or not rng:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_range_required"))
-    d = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
+    d = self._choose_output_directory(tm.get("dlg_select_output_dir"))
     if d:
         self.run_worker("split", file_path=path, output_dir=d, page_range=rng)
 
@@ -178,7 +178,7 @@ def action_delete_pages(self):
     rng = self.inp_del_range.text()
     if not path or not rng:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_delete_range_required"))
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "deleted.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "deleted.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("delete_pages", file_path=path, output_path=s, page_range=rng)
 
@@ -194,7 +194,7 @@ def action_rotate(self):
         page_indices = self.rot_thumb_grid.get_selected_pages() if hasattr(self, "rot_thumb_grid") else []
         if not page_indices:
             return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_rotate_pages"))
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "rotated.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "rotated.pdf", "PDF (*.pdf)")
     if s:
         kwargs = {
             "file_path": path,
@@ -250,7 +250,7 @@ def action_page_numbers(self):
     position = self.cmb_pn_pos.currentData() or "bottom"
     format_str = self.cmb_pn_format.currentText()
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "numbered.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "numbered.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("add_page_numbers", file_path=path, output_path=s,
                       position=position, format=format_str)

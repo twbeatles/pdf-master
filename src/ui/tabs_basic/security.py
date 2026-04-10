@@ -184,7 +184,7 @@ def action_metadata(self):
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_file"))
     meta = {'title': self.inp_title.text(), 'author': self.inp_author.text(), 'subject': self.inp_subj.text()}
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "metadata_updated.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "metadata_updated.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("metadata_update", file_path=path, output_path=s, metadata=meta)
 
@@ -194,7 +194,7 @@ def action_watermark(self):
     if not path or not text:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_text_required"))
     color = self.cmb_wm_color.currentData() or (0.5, 0.5, 0.5)
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "watermarked.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "watermarked.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("watermark", file_path=path, output_path=s, text=text, color=color)
 
@@ -203,7 +203,7 @@ def action_protect(self):
     pw = self.inp_pw.text()
     if not path or not pw:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_password_required"))
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "encrypted.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "encrypted.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("protect", file_path=path, output_path=s, password=pw)
 
@@ -217,7 +217,7 @@ def action_unlock(self):
     if not pw:
          return QMessageBox.warning(self, tm.get("info"), tm.get("err_password_required"))
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "decrypted.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "decrypted.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("decrypt_pdf", file_path=path, output_path=s, password=pw)
 
@@ -225,6 +225,6 @@ def action_compress(self):
     path = self.sel_sec.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_file"))
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "compressed.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "compressed.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("compress", file_path=path, output_path=s)

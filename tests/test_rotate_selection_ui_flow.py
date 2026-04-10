@@ -56,6 +56,11 @@ def _build_rotate_dummy(path, target="selected", angle=90, selected_pages=None):
         def run_worker(self, mode, **kwargs):
             self.called = (mode, kwargs)
 
+        def _choose_save_file(self, title, default_name, file_filter):
+            import src.ui.tabs_basic.page as page_module
+
+            return page_module.QFileDialog.getSaveFileName(self, title, default_name, file_filter)
+
     return Dummy()
 
 

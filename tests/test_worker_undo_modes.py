@@ -31,6 +31,12 @@ def test_is_undo_eligible_mode_matches_single_output_mutations():
     assert _is_undo_eligible_mode("protect", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
     assert _is_undo_eligible_mode("fill_form", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
     assert _is_undo_eligible_mode("add_attachment", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
+    assert _is_undo_eligible_mode("resize_pages", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
+    assert _is_undo_eligible_mode("insert_signature", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
+    assert _is_undo_eligible_mode("highlight_text", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
+    assert _is_undo_eligible_mode("add_sticky_note", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
+    assert _is_undo_eligible_mode("add_ink_annotation", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
+    assert _is_undo_eligible_mode("copy_page_between_docs", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
 
     assert _is_undo_eligible_mode("ai_summarize", {"file_path": "src.pdf"}) is False
     assert _is_undo_eligible_mode("compare_pdfs", {"file_path1": "a.pdf", "file_path2": "b.pdf", "output_path": "out.txt"}) is False
@@ -91,11 +97,12 @@ def test_run_worker_registers_pending_undo_for_newly_supported_mode(monkeypatch)
     monkeypatch.setattr(worker_module, "WorkerThread", FakeWorker)
 
     dummy = Dummy()
-    dummy.run_worker("protect", file_path="src.pdf", output_path="out.pdf", password="pw")
+    dummy.run_worker("resize_pages", file_path="src.pdf", output_path="out.pdf", target_size="A4")
 
     assert dummy._pending_undo is not None
-    assert dummy._pending_undo["action_type"] == "protect"
-    assert dummy._pending_undo["backup_path"] == "backup.pdf"
+    assert dummy._pending_undo["action_type"] == "resize_pages"
+    assert dummy._pending_undo["before_backup_path"] == "backup.pdf"
+    assert dummy._pending_undo["after_backup_path"] == ""
 
 
 def test_run_worker_skips_pending_undo_for_non_mutating_mode(monkeypatch):

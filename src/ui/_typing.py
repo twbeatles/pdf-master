@@ -37,8 +37,11 @@ class MainWindowHost:
     _cancel_handled: bool
     _has_output: bool
     _last_output_path: str | None
+    _last_output_existed: bool
     _form_field_data: dict[str, str]
     _chat_histories: dict[str, Any]
+    _preview_password_hint: str | None
+    _same_path_preview_restore: dict[str, Any] | None
 
     def sender(self) -> QObject | None:
         ...
@@ -79,5 +82,26 @@ class MainWindowHost:
     def _schedule_preview_rerender(self) -> None:
         ...
 
+    def _schedule_settings_save(self, delay_ms: int = 400) -> None:
+        ...
+
     def _ensure_preview_access(self, path: str) -> tuple[bool, str | None]:
+        ...
+
+    def _close_preview_document(self) -> None:
+        ...
+
+    def _update_preview(self, path: str) -> None:
+        ...
+
+    def _render_preview_page(self) -> None:
+        ...
+
+    def _choose_save_file(self, title: str, default_name: str, file_filter: str) -> tuple[str, str]:
+        ...
+
+    def _choose_output_directory(self, title: str) -> str:
+        ...
+
+    def _remember_output_location(self, selected_path: str) -> None:
         ...

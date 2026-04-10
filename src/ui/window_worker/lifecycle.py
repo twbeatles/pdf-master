@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QMessageBox
@@ -8,6 +9,33 @@ from ...core.i18n import tm
 from ..widgets import ToastWidget
 
 logger = logging.getLogger(__name__)
+
+
+def _collect_worker_input_paths(worker) -> set[str]:
+    if worker is None:
+        return set()
+
+    kwargs = getattr(worker, "kwargs", {})
+    if not isinstance(kwargs, dict):
+        return set()
+
+    input_paths: set[str] = set()
+    path_keys = ("file_path", "file_path1", "file_path2", "source_path", "replace_path")
+    list_keys = ("file_paths", "files")
+
+    for key in path_keys:
+        value = kwargs.get(key)
+        if isinstance(value, str) and value:
+            input_paths.add(os.path.abspath(value))
+
+    for key in list_keys:
+        value = kwargs.get(key)
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, str) and item:
+                    input_paths.add(os.path.abspath(item))
+
+    return input_paths
 
 def _on_progress_update(self, value: int):
     """진행률 업데이트 (오버레이 + 상태바)"""
@@ -37,33 +65,44 @@ def _cleanup_cancelled_worker(self):
     self._has_output = False
     self._cancel_pending = False
     self._cancel_handled = True
+    created_paths = getattr(self.worker, "kwargs", {}).get("created_output_paths", []) if getattr(self, "worker", None) else []
+    if not isinstance(created_paths, list):
+        created_paths = []
+    created_paths_abs = {os.path.abspath(str(path)) for path in created_paths if isinstance(path, str) and path}
+    input_paths_abs = _collect_worker_input_paths(getattr(self, "worker", None))
 
     # v4.4: 취소된 작업의 미완성 출력 파일 정리
     if hasattr(self, '_last_output_path') and self._last_output_path:
         output_path = self._last_output_path
         if os.path.isdir(output_path) and getattr(self, "worker", None):
-            created_paths = getattr(self.worker, "kwargs", {}).get("created_output_paths", [])
-            if isinstance(created_paths, list):
-                output_dir_abs = os.path.abspath(output_path)
-                for created_path in created_paths:
-                    try:
-                        created_path_abs = os.path.abspath(str(created_path))
-                        if not os.path.isfile(created_path_abs):
-                            continue
-                        if os.path.commonpath([output_dir_abs, created_path_abs]) != output_dir_abs:
-                            continue
-                        os.remove(created_path_abs)
-                        logger.info("Removed cancelled output file: %s", created_path_abs)
-                    except Exception as e:
-                        logger.debug(f"Could not remove cancelled output: {e}")
+            output_dir_abs = os.path.abspath(output_path)
+            for created_path_abs in created_paths_abs:
+                try:
+                    if not os.path.isfile(created_path_abs):
+                        continue
+                    if os.path.commonpath([output_dir_abs, created_path_abs]) != output_dir_abs:
+                        continue
+                    os.remove(created_path_abs)
+                    logger.info("Removed cancelled output file: %s", created_path_abs)
+                except Exception as e:
+                    logger.debug(f"Could not remove cancelled output: {e}")
         elif os.path.isfile(output_path):
-            # 파일인 경우 삭제 시도
+            output_path_abs = os.path.abspath(output_path)
+            should_remove = False
+            if output_path_abs in input_paths_abs or getattr(self, "_last_output_existed", False):
+                logger.info("Keeping cancelled output path because it pre-existed or is an input: %s", output_path_abs)
+            else:
+                should_remove = output_path_abs in created_paths_abs
+                # 파일인 경우 삭제 시도
+                if not should_remove:
+                    try:
+                        should_remove = time.time() - os.path.getmtime(output_path_abs) < 5
+                    except Exception:
+                        should_remove = False
             try:
-                # 최근 생성된 파일만 삭제 (5초 이내)
-                import time
-                if time.time() - os.path.getmtime(output_path) < 5:
-                    os.remove(output_path)
-                    logger.info(f"Removed incomplete output file: {output_path}")
+                if should_remove and os.path.isfile(output_path_abs):
+                    os.remove(output_path_abs)
+                    logger.info(f"Removed incomplete output file: {output_path_abs}")
             except Exception as e:
                 logger.debug(f"Could not remove cancelled output: {e}")
 

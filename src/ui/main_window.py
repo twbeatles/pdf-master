@@ -80,9 +80,12 @@ class PDFMasterApp(
         self._settings_save_timer.timeout.connect(self._flush_settings_save)
         self.worker = None
         self._last_output_path = None  # 마지막 저장 경로 추적
+        self._last_output_existed = False
         self._current_preview_page = 0
         self._current_preview_doc = None
         self._current_preview_password = None
+        self._preview_password_hint = None
+        self._same_path_preview_restore = None
         self._chat_histories = self._load_chat_histories()
         self._chat_pending_path = None
 

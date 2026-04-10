@@ -24,22 +24,28 @@ UNDO_SINGLE_OUTPUT_MUTATION_MODES = frozenset(
         "add_attachment",
         "add_background",
         "add_freehand_signature",
+        "add_ink_annotation",
         "add_link",
         "add_page_numbers",
         "add_stamp",
+        "add_sticky_note",
         "add_text_markup",
         "compress",
+        "copy_page_between_docs",
         "crop_pdf",
         "decrypt_pdf",
         "delete_pages",
         "draw_shapes",
         "fill_form",
+        "highlight_text",
         "image_watermark",
         "insert_blank_page",
+        "insert_signature",
         "insert_textbox",
         "metadata_update",
         "protect",
         "redact_text",
+        "resize_pages",
         "remove_annotations",
         "reorder",
         "replace_page",
@@ -58,16 +64,95 @@ def _is_undo_eligible_mode(mode, kwargs) -> bool:
     return bool(kwargs.get("file_path") and kwargs.get("output_path"))
 
 
+def _normalize_abs_path(path) -> str:
+    if not isinstance(path, str) or not path:
+        return ""
+    return os.path.normcase(os.path.abspath(path))
+
+
+def _is_same_path_pdf_mutation(mode, kwargs) -> bool:
+    if not _is_undo_eligible_mode(mode, kwargs):
+        return False
+    input_path = _normalize_abs_path(kwargs.get("file_path"))
+    output_path = _normalize_abs_path(kwargs.get("output_path"))
+    return bool(input_path and output_path and input_path == output_path)
+
+
+def _delete_undo_backup_file(path: str) -> None:
+    if not path:
+        return
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        logger.debug("Failed to remove undo backup %s", path, exc_info=True)
+
+
 class MainWindowWorkerMixin(_MainWindowWorkerMixin):
+    def _prepare_preview_for_same_path_output(self, mode, kwargs):
+        self._same_path_preview_restore = None
+        if not _is_same_path_pdf_mutation(mode, kwargs):
+            return
+
+        preview_path = _normalize_abs_path(getattr(self, "_current_preview_path", ""))
+        input_path = _normalize_abs_path(kwargs.get("file_path"))
+        preview_doc = getattr(self, "_current_preview_doc", None)
+        if not preview_doc or not preview_path or preview_path != input_path:
+            return
+
+        self._same_path_preview_restore = {
+            "path": kwargs.get("file_path"),
+            "page": getattr(self, "_current_preview_page", 0),
+            "password": getattr(self, "_current_preview_password", None),
+        }
+        self._close_preview_document()
+
+    def _restore_preview_after_same_path_output(self):
+        restore = getattr(self, "_same_path_preview_restore", None)
+        self._same_path_preview_restore = None
+        if not restore:
+            return
+
+        path = restore.get("path")
+        if not isinstance(path, str) or not path or not os.path.exists(path):
+            return
+
+        restore_page = restore.get("page", 0)
+        restore_password = restore.get("password")
+        self._preview_password_hint = restore_password if isinstance(restore_password, str) else None
+        try:
+            self._update_preview(path)
+            total_pages = int(getattr(self, "_preview_total_pages", 0) or 0)
+            if total_pages <= 0:
+                return
+            try:
+                page_index = int(restore_page)
+            except (TypeError, ValueError):
+                page_index = 0
+            page_index = max(0, min(total_pages - 1, page_index))
+            if page_index != getattr(self, "_current_preview_page", 0):
+                self._current_preview_page = page_index
+                self._render_preview_page()
+        finally:
+            self._preview_password_hint = None
+
+    def _discard_pending_undo(self, delete_backups: bool = False):
+        undo_info = getattr(self, "_pending_undo", None)
+        self._pending_undo = None
+        if not undo_info or not delete_backups:
+            return
+        _delete_undo_backup_file(undo_info.get("before_backup_path", ""))
+        _delete_undo_backup_file(undo_info.get("after_backup_path", ""))
+
     def run_worker(self, mode, output_path=None, **kwargs):
         """작업 스레드 실행 (안전한 동시 작업 처리)"""
         parent = cast(QWidget, self)
-        # 이전 Worker가 실행 중인지 확인
         if self.worker and self.worker.isRunning():
             result = QMessageBox.question(
-                parent, tm.get("task_in_progress"),
+                parent,
+                tm.get("task_in_progress"),
                 tm.get("task_wait_or_cancel"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if result == QMessageBox.StandardButton.Yes:
                 self._pending_worker = {
@@ -75,14 +160,12 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     "output_path": output_path,
                     "kwargs": dict(kwargs),
                 }
-                toast = ToastWidget(tm.get("msg_worker_queued"), toast_type='info', duration=2000)
+                toast = ToastWidget(tm.get("msg_worker_queued"), toast_type="info", duration=2000)
                 toast.show_toast(self)
                 return
-            return  # 새 작업 취소
+            return
 
-        # 이전 Worker 정리 (v4.5: 강화된 정리)
         if self.worker:
-            # 실행 중이면 잠시 대기
             if self.worker.isRunning():
                 self.worker.wait(500)
             self._finalize_worker()
@@ -91,22 +174,26 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         self._cancel_pending = False
         self._cancel_handled = False
 
-        # output_path 추적 (폴더 열기 기능용)
         if output_path:
             self._last_output_path = output_path
+            self._last_output_existed = bool(os.path.exists(output_path))
             self._has_output = True
-            kwargs['output_path'] = output_path
-        elif kwargs.get('output_path'):
-            self._last_output_path = kwargs['output_path']
+            kwargs["output_path"] = output_path
+        elif kwargs.get("output_path"):
+            self._last_output_path = kwargs["output_path"]
+            self._last_output_existed = bool(os.path.exists(kwargs["output_path"]))
             self._has_output = True
-        elif kwargs.get('output_dir'):
-            self._last_output_path = kwargs['output_dir']
+        elif kwargs.get("output_dir"):
+            self._last_output_path = kwargs["output_dir"]
+            self._last_output_existed = False
             self._has_output = True
         else:
             self._last_output_path = None
+            self._last_output_existed = False
             self._has_output = False
 
-        # 작업 모드에 따른 설명 (Undo에서도 사용)
+        self._prepare_preview_for_same_path_output(mode, kwargs)
+
         mode_descriptions = {
             "merge": tm.get("action_merge"),
             "convert_to_img": tm.get("action_convert_to_img"),
@@ -162,20 +249,20 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             "ai_extract_keywords": tm.get("mode_ai_keywords"),
         }
 
-        # v4.3: Undo 지원 작업 - 백업 생성
-        self._pending_undo = None  # 초기화
+        self._pending_undo = None
         if _is_undo_eligible_mode(mode, kwargs):
-            source = kwargs.get('file_path', '')
-            output = kwargs.get('output_path', '')
+            source = kwargs.get("file_path", "")
+            output = kwargs.get("output_path", "")
             if source and output:
                 backup = self._create_backup_for_undo(source)
                 if backup:
                     self._pending_undo = {
-                        'action_type': mode,
-                        'description': mode_descriptions.get(mode, mode),
-                        'backup_path': backup,
-                        'source_path': source,
-                        'output_path': output
+                        "action_type": mode,
+                        "description": mode_descriptions.get(mode, mode),
+                        "before_backup_path": backup,
+                        "after_backup_path": "",
+                        "source_path": source,
+                        "output_path": output,
                     }
 
         description = mode_descriptions.get(mode, tm.get("processing_plain")) + "..."
@@ -190,26 +277,25 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         self.status_label.setText(tm.get("processing_status"))
         self.set_ui_busy(True)
 
-        # 진행 오버레이 표시 (개선된 UX)
         self.progress_overlay.show_progress(tm.get("processing"), description)
-
         self.worker.start()
 
     def on_cancelled(self, msg):
         sender = self.sender()
         if sender is not None and sender is not self.worker:
-            return  # stale signal
+            return
 
-        # v4.5: AI 모드 플래그 초기화 (취소 시에도 정상 초기화)
-        if hasattr(self, '_ai_worker_mode'):
+        if hasattr(self, "_ai_worker_mode"):
             self._ai_worker_mode = False
-        if hasattr(self, '_keyword_worker_mode'):
+        if hasattr(self, "_keyword_worker_mode"):
             self._keyword_worker_mode = False
-        if hasattr(self, '_chat_worker_mode'):
+        if hasattr(self, "_chat_worker_mode"):
             self._chat_worker_mode = False
             self._chat_pending_path = None
 
         self._cleanup_cancelled_worker()
+        self._discard_pending_undo(delete_backups=True)
+        self._restore_preview_after_same_path_output()
         self._finalize_worker()
         self._run_pending_worker()
         QTimer.singleShot(3000, self._reset_progress_if_idle)
@@ -218,79 +304,81 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         parent = cast(QWidget, self)
         sender = self.sender()
         if sender is not None and sender is not self.worker:
-            return  # stale signal
+            return
 
         self.set_ui_busy(False)
-        self.progress_overlay.hide_progress()  # 오버레이 숨기기
+        self.progress_overlay.hide_progress()
         self.status_label.setText(tm.get("completed"))
         self.progress_bar.setValue(100)
         self.btn_open_folder.setVisible(bool(getattr(self, "_has_output", False) and self._last_output_path))
 
-        # v4.0: AI 요약 결과 처리
-        if hasattr(self, '_ai_worker_mode') and self._ai_worker_mode:
+        if hasattr(self, "_ai_worker_mode") and self._ai_worker_mode:
             self._ai_worker_mode = False
-            if self.worker and hasattr(self.worker, 'kwargs'):
-                summary = self.worker.kwargs.get('summary_result', '')
-                if summary and hasattr(self, 'txt_summary_result'):
+            if self.worker and hasattr(self.worker, "kwargs"):
+                summary = self.worker.kwargs.get("summary_result", "")
+                if summary and hasattr(self, "txt_summary_result"):
                     self.txt_summary_result.setPlainText(summary)
 
-        # v4.5: AI 채팅 답변 처리
-        if hasattr(self, '_chat_worker_mode') and self._chat_worker_mode:
+        if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode:
             self._chat_worker_mode = False
-            if self.worker and hasattr(self.worker, 'kwargs'):
-                answer = self.worker.kwargs.get('answer_result', '')
+            if self.worker and hasattr(self.worker, "kwargs"):
+                answer = self.worker.kwargs.get("answer_result", "")
                 if answer:
                     pending_path = self._chat_pending_path
                     if pending_path:
                         self._record_chat_entry(pending_path, "assistant", answer)
                         self._save_chat_histories()
-                    if hasattr(self, 'txt_chat_history') and pending_path == self.sel_chat_pdf.get_path():
-                        # "AI가 답변 생성 중..." 메시지 제거 (마지막 줄)
+                    if hasattr(self, "txt_chat_history") and pending_path == self.sel_chat_pdf.get_path():
                         cursor = self.txt_chat_history.textCursor()
                         cursor.movePosition(cursor.MoveOperation.End)
                         cursor.select(cursor.SelectionType.BlockUnderCursor)
                         cursor.removeSelectedText()
                         cursor.deletePreviousChar()
-                        # 답변 추가
                         self.txt_chat_history.append(f"<b>{tm.get('chat_assistant_prefix')}</b> {answer}")
                         self.txt_chat_history.append("<hr>")
                 self._chat_pending_path = None
 
-        # v4.5: 키워드 추출 결과 처리
-        if hasattr(self, '_keyword_worker_mode') and self._keyword_worker_mode:
+        if hasattr(self, "_keyword_worker_mode") and self._keyword_worker_mode:
             self._keyword_worker_mode = False
-            if self.worker and hasattr(self.worker, 'kwargs'):
-                keywords = self.worker.kwargs.get('keywords_result', [])
-                if keywords and hasattr(self, 'lbl_keywords_result'):
-                    # 태그 형태로 키워드 표시
-                    keyword_tags = " • ".join(keywords)
-                    self.lbl_keywords_result.setText(keyword_tags)
+            if self.worker and hasattr(self.worker, "kwargs"):
+                keywords = self.worker.kwargs.get("keywords_result", [])
+                if keywords and hasattr(self, "lbl_keywords_result"):
+                    self.lbl_keywords_result.setText(" • ".join(keywords))
                 else:
                     self.lbl_keywords_result.setText(tm.get("msg_no_keywords"))
 
-        # v4.3: Undo 등록 (파일 수정 작업)
-        if hasattr(self, '_pending_undo') and self._pending_undo:
+        if hasattr(self, "_pending_undo") and self._pending_undo:
             undo_info = self._pending_undo
-            self._pending_undo = None  # 소비
+            self._pending_undo = None
+            after_backup = self._create_backup_for_undo(undo_info["output_path"])
 
-            before_state = {
-                "backup_path": undo_info['backup_path'],
-                "target_path": undo_info['output_path']
-            }
-            after_state = {
-                "output_path": undo_info['output_path'],
-                "target_path": undo_info['output_path']
-            }
+            if after_backup:
+                before_state = {
+                    "before_backup_path": undo_info["before_backup_path"],
+                    "target_path": undo_info["output_path"],
+                }
+                after_state = {
+                    "after_backup_path": after_backup,
+                    "target_path": undo_info["output_path"],
+                }
 
-            self.undo_manager.push(
-                action_type=undo_info['action_type'],
-                description=undo_info['description'],
-                before_state=before_state,
-                after_state=after_state,
-                undo_callback=self._restore_from_backup,
-                redo_callback=self._redo_from_output
-            )
-            logger.info(f"Registered undo for: {undo_info['action_type']}")
+                self.undo_manager.push(
+                    action_type=undo_info["action_type"],
+                    description=undo_info["description"],
+                    before_state=before_state,
+                    after_state=after_state,
+                    undo_callback=self._restore_from_backup,
+                    redo_callback=self._redo_from_output,
+                )
+                logger.info("Registered undo for: %s", undo_info["action_type"])
+            else:
+                _delete_undo_backup_file(undo_info.get("before_backup_path", ""))
+                logger.warning(
+                    "Skipping undo registration for %s: after snapshot creation failed",
+                    undo_info["action_type"],
+                )
+
+        self._restore_preview_after_same_path_output()
 
         custom_dialog_shown = False
         if self.worker and hasattr(self.worker, "kwargs"):
@@ -301,18 +389,25 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                 self._form_field_data = {}
                 from PyQt6.QtCore import Qt
                 from PyQt6.QtWidgets import QListWidgetItem
+
                 for field in fields:
                     name = field.get("name", f"field_{self.form_fields_list.count()}")
                     value = field.get("value", "")
                     item = QListWidgetItem(f"📋 {name}: {value}")
                     item.setData(Qt.ItemDataRole.UserRole, name)
-                    item.setToolTip(tm.get("msg_field_tooltip", field.get("type", "-"), field.get("page", 0)))
+                    item.setToolTip(
+                        tm.get("msg_field_tooltip", field.get("type", "-"), field.get("page", 0))
+                    )
                     self.form_fields_list.addItem(item)
                     self._form_field_data[name] = value
                 if not fields:
                     QMessageBox.information(parent, tm.get("info"), tm.get("msg_no_form_fields"))
                 else:
-                    toast = ToastWidget(tm.get("msg_form_fields_detected", len(fields)), toast_type='success', duration=2000)
+                    toast = ToastWidget(
+                        tm.get("msg_form_fields_detected", len(fields)),
+                        toast_type="success",
+                        duration=2000,
+                    )
                     toast.show_toast(self)
                 custom_dialog_shown = True
             elif mode == "list_attachments":
@@ -331,8 +426,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     )
                 custom_dialog_shown = True
 
-        # Toast 알림 표시
-        toast = ToastWidget(tm.get("completed"), toast_type='success', duration=4000)
+        toast = ToastWidget(tm.get("completed"), toast_type="success", duration=4000)
         toast.show_toast(self)
 
         if not custom_dialog_shown:
@@ -345,21 +439,20 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         parent = cast(QWidget, self)
         sender = self.sender()
         if sender is not None and sender is not self.worker:
-            return  # stale signal
+            return
 
-        # v4.5: AI 모드 플래그 초기화 (에러 시에도 정상 초기화)
-        if hasattr(self, '_ai_worker_mode'):
+        if hasattr(self, "_ai_worker_mode"):
             self._ai_worker_mode = False
-        if hasattr(self, '_keyword_worker_mode'):
+        if hasattr(self, "_keyword_worker_mode"):
             self._keyword_worker_mode = False
 
         self.set_ui_busy(False)
-        self.progress_overlay.hide_progress()  # 오버레이 숨기기
+        self.progress_overlay.hide_progress()
         self.status_label.setText(tm.get("error"))
         self.progress_bar.setValue(0)
         self.btn_open_folder.setVisible(False)
 
-        if hasattr(self, '_chat_worker_mode') and self._chat_worker_mode:
+        if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode:
             self._chat_worker_mode = False
             pending_path = self._chat_pending_path
             self._chat_pending_path = None
@@ -370,7 +463,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     if not history:
                         del self._chat_histories[pending_path]
                     self._save_chat_histories()
-            if hasattr(self, 'txt_chat_history'):
+            if hasattr(self, "txt_chat_history"):
                 cursor = self.txt_chat_history.textCursor()
                 cursor.movePosition(cursor.MoveOperation.End)
                 cursor.select(cursor.SelectionType.BlockUnderCursor)
@@ -378,8 +471,10 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                 cursor.deletePreviousChar()
                 self.txt_chat_history.append(f"<span style='color:#ef4444'>❌ {msg}</span>")
 
-        # Toast 알림 표시
-        toast = ToastWidget(tm.get("error"), toast_type='error', duration=5000)
+        self._discard_pending_undo(delete_backups=True)
+        self._restore_preview_after_same_path_output()
+
+        toast = ToastWidget(tm.get("error"), toast_type="error", duration=5000)
         toast.show_toast(self)
 
         QMessageBox.critical(parent, tm.get("error"), tm.get("msg_worker_error", msg))

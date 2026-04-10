@@ -130,7 +130,7 @@ def action_batch(self):
     files = self.batch_list.get_all_paths()
     if not files:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_pdf_files"))
-    out_dir = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_output_dir"))
+    out_dir = self._choose_output_directory(tm.get("dlg_select_output_dir"))
     if not out_dir:
         return
     op = self.cmb_batch_op.currentData() or self.cmb_batch_op.currentText()

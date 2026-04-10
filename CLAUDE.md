@@ -15,6 +15,9 @@
 - `compare_pdfs` uses sequence-based line diffing and the Advanced tab can optionally generate a visual diff PDF.
 - Page-targeted worker modes share a strict page resolver; `-1` last-page sentinel is reserved for signature insertion flows.
 - Directory-output cancellations roll back only files tracked in `kwargs["created_output_paths"]`, not the whole output folder.
+- Single-input/single-output mutation modes can save back onto the original path; preview closes that document before the worker starts and restores it after success/fail/cancel.
+- Output save/folder dialogs reuse `settings["last_output_dir"]` and update it after a successful selection.
+- Undo/Redo is snapshot-based: restore `before_backup_path` on undo and `after_backup_path` on redo instead of re-running the worker.
 - Updated worker completion/error messages in the AI/batch/annotation/extract flows are keyed through the i18n catalogs.
 
 ---
@@ -230,6 +233,8 @@ DEFAULT_SETTINGS = {
 }
 ```
 
+- `load_settings()` now normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir` on load.
+
 ### 타입 계약 파일 (v4.5.4)
 
 - `src/core/_typing.py`
@@ -291,6 +296,9 @@ class UndoManager:
     @property can_undo -> bool
     @property can_redo -> bool
 ```
+
+- Current UI integration stores `before_backup_path` / `after_backup_path` / `target_path`.
+- Undo coverage includes the single-input/single-output mutation set used by `main_window_worker.py`, including `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, `copy_page_between_docs`.
 
 ---
 
@@ -425,6 +433,7 @@ class ThumbnailGridWidget(QWidget):
 ```
 
 - 암호화 PDF 썸네일 로드는 grid 내부에서 별도 프롬프트를 띄우지 않습니다. preview가 먼저 인증한 뒤 `password`를 넘겨 같은 세션 상태를 재사용합니다.
+- User-facing strings in `thumbnail_grid.py` are expected to come from `tm.get(...)`; runtime UI hardcoded-string smoke tests scan `src/ui` broadly with a small allowlist.
 
 ---
 
@@ -476,6 +485,12 @@ class ZoomablePreviewWidget(QWidget):
   - `split`/양식/프리핸드 서명 취소 체크 회귀 검증
 - `tests/test_worker_undo_modes.py`
   - Undo 대상 모드 확장과 비대상 모드 제외 검증
+- `tests/test_output_dialog_state.py`
+  - `last_output_dir` 기반 출력 다이얼로그 시작 경로/갱신 검증
+- `tests/test_same_path_preview_restore.py`
+  - same-path 저장 전 preview 해제 + 저장 후 preview 복원 검증
+- `tests/test_undo_backup_flow.py`
+  - Undo/Redo 스냅샷 복원 및 backup cleanup 검증
 - `tests/test_worker_regression_modes.py`
   - `metadata_update`/`protect`/`decrypt_pdf`/`reorder`/`split_by_pages`/`extract_markdown` 검증
 - `tests/test_ai_worker_ui_flow.py`
@@ -503,7 +518,7 @@ class ZoomablePreviewWidget(QWidget):
 - `tests/test_page_index_policy.py`
   - UI 1-based 입력 정규화 검증
 - `tests/test_i18n_ui_hardcoded_smoke.py`
-  - UI 하드코딩 문자열 및 i18n 키 누락 스모크 검증
+  - runtime UI 전체 대상 allowlist 기반 하드코딩 문자열 및 i18n 키 누락 스모크 검증
 
 ### v4.5.3 추가 테스트 (2026-02-26)
 - `tests/test_worker_batch_watermark.py`
@@ -529,12 +544,12 @@ class ZoomablePreviewWidget(QWidget):
 - `tests/test_worker_page_validation.py`
   - sticky note / blank page / duplicate strict page validation 검증
 - `tests/test_worker_cancel_cleanup.py`
-  - 디렉터리 출력 취소 시 생성 파일만 rollback 되는지 검증
+  - 디렉터리 출력 rollback + same-path/preexisting output 보호 검증
 - `tests/test_validation_docs_config.py`
   - README/가이드/spec/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest`: `113 passed, 1 warning`
+- 현재 워크트리 기준 `python -m pytest -q`: `120 passed, 1 warning`
 
 ---
 

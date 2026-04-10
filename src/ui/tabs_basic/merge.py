@@ -117,6 +117,6 @@ def action_merge(self):
     files = self.merge_list.get_all_paths()
     if len(files) < 2:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_merge_count_error"))
-    save, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "merged.pdf", "PDF (*.pdf)")
+    save, _ = self._choose_save_file(tm.get("save"), "merged.pdf", "PDF (*.pdf)")
     if save:
         self.run_worker("merge", files=files, output_path=save)

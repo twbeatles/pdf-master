@@ -41,6 +41,11 @@ def _dummy_adv(pdf_path, sig_path, page_value):
         def run_worker(self, mode, **kwargs):
             self.called = (mode, kwargs)
 
+        def _choose_save_file(self, title, default_name, file_filter):
+            import src.ui.main_window_tabs_advanced as adv_module
+
+            return adv_module.QFileDialog.getSaveFileName(self, title, default_name, file_filter)
+
     return Dummy()
 
 

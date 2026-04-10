@@ -1,9 +1,5 @@
 import logging
 import os
-import shutil
-import time
-
-from PyQt6.QtWidgets import QMessageBox
 
 from ...core.i18n import tm
 from ..widgets import ToastWidget
@@ -37,17 +33,26 @@ def _redo_action(self):
 def _register_undo_action(self, action_type: str, description: str, 
                           source_path: str, output_path: str):
     """작업을 undo 히스토리에 등록"""
-    backup_path = self._create_backup_for_undo(source_path)
-    if not backup_path:
+    before_backup_path = self._create_backup_for_undo(source_path)
+    if not before_backup_path:
         logger.warning(f"Skipping undo registration for {action_type}: no backup")
         return
 
+    after_backup_path = self._create_backup_for_undo(output_path)
+    if not after_backup_path:
+        logger.warning(f"Skipping undo registration for {action_type}: no after snapshot")
+        try:
+            os.remove(before_backup_path)
+        except Exception:
+            logger.debug("Failed to remove orphaned undo backup", exc_info=True)
+        return
+
     before_state = {
-        "backup_path": backup_path,
+        "before_backup_path": before_backup_path,
         "target_path": output_path
     }
     after_state = {
-        "output_path": output_path,
+        "after_backup_path": after_backup_path,
         "target_path": output_path
     }
 

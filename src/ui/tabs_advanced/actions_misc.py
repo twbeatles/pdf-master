@@ -32,7 +32,7 @@ def action_fill_form(self):
     if not hasattr(self, '_form_field_data') or not self._form_field_data:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_detect_fields_first"))
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "filled_form.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "filled_form.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("fill_form", file_path=path, output_path=s, 
                       field_values=self._form_field_data)
@@ -46,7 +46,7 @@ def action_compare_pdfs(self):
     if not path1 or not path2:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_two_pdf"))
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("dlg_save_compare"), "comparison.txt", "Text (*.txt)")
+    s, _ = self._choose_save_file(tm.get("dlg_save_compare"), "comparison.txt", "Text (*.txt)")
     if s:
         self.run_worker(
             "compare_pdfs",
@@ -66,7 +66,7 @@ def action_decrypt_pdf(self):
     if not password:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_password"))
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "decrypted.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "decrypted.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("decrypt_pdf", file_path=path, output_path=s, password=password)
 
@@ -87,7 +87,7 @@ def action_add_attachment(self):
     if not attach_path:
         return
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_attachment.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "with_attachment.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("add_attachment", file_path=pdf_path, output_path=s, attach_path=attach_path)
 
@@ -97,7 +97,7 @@ def action_extract_attachments(self):
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
 
-    out_dir = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_attachment_output_dir"))
+    out_dir = self._choose_output_directory(tm.get("dlg_select_attachment_output_dir"))
     if out_dir:
         self.run_worker("extract_attachments", file_path=path, output_dir=out_dir)
 
@@ -116,7 +116,7 @@ def action_copy_pages(self):
 
     insert_pos = self.spn_copy_insert.value()
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "merged.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "merged.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("copy_page_between_docs", file_path=target_path, output_path=s,
                       source_path=source_path, page_range=page_range, insert_at=insert_pos)
@@ -133,7 +133,7 @@ def action_replace_page(self):
 
     target_page = self.spn_replace_target_page.value()
     source_page = self.spn_replace_source_page.value()
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "replaced_page.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "replaced_page.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker(
             "replace_page",
@@ -155,7 +155,7 @@ def action_set_bookmarks(self):
     except ValueError as exc:
         return QMessageBox.warning(self, tm.get("warning"), str(exc))
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "bookmarks_set.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "bookmarks_set.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker(
             "set_bookmarks",
@@ -178,7 +178,7 @@ def action_image_watermark(self):
     scale = self.spn_img_wm_scale.value() / 100.0
     opacity = self.spn_img_wm_opacity.value() / 100.0
 
-    s, _ = QFileDialog.getSaveFileName(self, tm.get("save"), "with_image_watermark.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(tm.get("save"), "with_image_watermark.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("image_watermark", file_path=pdf_path, output_path=s,
                       image_path=img_path, position=position,

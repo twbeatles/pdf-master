@@ -39,6 +39,51 @@ def _open_last_folder(self):
         else:
             QDesktopServices.openUrl(QUrl.fromLocalFile(folder))
 
+
+def _get_output_dialog_dir(self) -> str:
+    """출력 관련 다이얼로그의 시작 경로를 결정한다."""
+    last_output_dir = self.settings.get("last_output_dir", "")
+    if isinstance(last_output_dir, str) and last_output_dir:
+        if os.path.isdir(last_output_dir):
+            return last_output_dir
+        parent = os.path.dirname(last_output_dir)
+        if parent and os.path.isdir(parent):
+            return parent
+    return ""
+
+
+def _remember_output_location(self, selected_path: str) -> None:
+    """출력 파일/폴더 선택 결과를 최근 출력 폴더로 저장한다."""
+    if not selected_path:
+        return
+
+    output_dir = selected_path if os.path.isdir(selected_path) else os.path.dirname(selected_path)
+    if not output_dir:
+        return
+
+    self.settings["last_output_dir"] = output_dir
+    if hasattr(self, "_schedule_settings_save"):
+        self._schedule_settings_save()
+    else:
+        save_settings(self.settings)
+
+
+def _choose_save_file(self, title: str, default_name: str, file_filter: str):
+    start_dir = self._get_output_dialog_dir()
+    initial_path = os.path.join(start_dir, default_name) if start_dir else default_name
+    selected, selected_filter = QFileDialog.getSaveFileName(self, title, initial_path, file_filter)
+    if selected:
+        self._remember_output_location(selected)
+    return selected, selected_filter
+
+
+def _choose_output_directory(self, title: str) -> str:
+    start_dir = self._get_output_dialog_dir()
+    selected = QFileDialog.getExistingDirectory(self, title, start_dir)
+    if selected:
+        self._remember_output_location(selected)
+    return selected
+
 def _save_splitter_state(self):
     """Save splitter position"""
     self.settings["splitter_sizes"] = self.content_splitter.sizes()

@@ -67,6 +67,7 @@ class _CleanupHost:
     def __init__(self, worker, output_path):
         self.worker = worker
         self._last_output_path = str(output_path)
+        self._last_output_existed = False
         self._cancel_handled = False
         self._has_output = True
         self._cancel_pending = True
@@ -170,3 +171,27 @@ def test_cancel_cleanup_keeps_preexisting_batch_outputs(monkeypatch, tmp_path):
 
     assert preexisting_output.exists()
     assert not new_output.exists()
+
+
+def test_cancel_cleanup_keeps_same_path_input_file(monkeypatch, tmp_path):
+    require_pyqt6_and_pymupdf()
+    import src.ui.window_worker.lifecycle as lifecycle
+
+    src = tmp_path / "same.pdf"
+    _make_pdf(src, "ORIGINAL")
+
+    class Worker:
+        def __init__(self):
+            self.kwargs = {
+                "file_path": str(src),
+                "output_path": str(src),
+                "created_output_paths": [],
+            }
+
+    host = _CleanupHost(Worker(), src)
+    host._last_output_existed = True
+    monkeypatch.setattr(lifecycle, "ToastWidget", _ToastStub)
+
+    lifecycle._cleanup_cancelled_worker(host)
+
+    assert src.exists()

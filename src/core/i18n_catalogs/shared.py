@@ -193,6 +193,11 @@ TRANSLATIONS = {
         "btn_show_grid": "🔲 썸네일 그리드 보기",
         "title_thumb_grid": "📋 페이지 썸네일 - {}",
         "status_page_sel": "📄 {}페이지 선택됨",
+        "thumb_columns_label": "열 수",
+        "thumb_page_count": "페이지: {}",
+        "thumb_select_pdf": "PDF 파일을 선택하세요",
+        "thumb_page_label": "페이지 {}",
+        "thumb_load_failed": "PDF 로드 실패: {}",
         
         # Merge Tab
         "grp_metadata": "📋 메타데이터 수정",
@@ -1002,6 +1007,11 @@ TRANSLATIONS = {
         "btn_show_grid": "🔲 Show Thumbnail Grid",
         "title_thumb_grid": "📋 Page Thumbnails - {}",
         "status_page_sel": "📄 Page {} selected",
+        "thumb_columns_label": "Columns",
+        "thumb_page_count": "Pages: {}",
+        "thumb_select_pdf": "Select a PDF file",
+        "thumb_page_label": "Page {}",
+        "thumb_load_failed": "Failed to load PDF: {}",
 
         # Edit/Security Tab
         "grp_metadata": "📋 Edit Metadata",
