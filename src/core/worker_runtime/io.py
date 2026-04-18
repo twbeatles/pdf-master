@@ -6,6 +6,8 @@ import re
 import tempfile
 from typing import Any, cast
 
+from .save_profiles import resolve_save_kwargs
+
 logger = logging.getLogger(__name__)
 
 
@@ -130,9 +132,16 @@ def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -
     except Exception:
         same_target = False
 
+    resolved_save_kwargs = resolve_save_kwargs(
+        doc,
+        output_path,
+        save_profile=save_kwargs.pop("save_profile", None),
+        **save_kwargs,
+    )
+
     try:
         host._check_cancelled()
-        doc.save(tmp_path, **cast(Any, save_kwargs))
+        doc.save(tmp_path, **cast(Any, resolved_save_kwargs))
         host._check_cancelled()
         try:
             os.replace(tmp_path, output_path)

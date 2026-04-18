@@ -34,18 +34,24 @@ def test_same_path_output_closes_and_restores_preview(tmp_path):
             self._preview_total_pages = len(self._current_preview_doc)
             self.rendered_pages = []
             self.reopened_paths = []
+            self.preview_image = type(
+                "PreviewStub",
+                (),
+                {"capture_view_state": staticmethod(lambda: {"page": 1, "zoom_mode": "custom", "zoom_factor": 1.2})},
+            )()
 
         def _close_preview_document(self):
             if self._current_preview_doc is not None:
                 self._current_preview_doc.close()
             self._current_preview_doc = None
 
-        def _update_preview(self, path):
+        def _update_preview(self, path, restore_state=None):
             self.reopened_paths.append(path)
             self._current_preview_doc = fitz.open(path)
             self._current_preview_path = path
             self._preview_total_pages = len(self._current_preview_doc)
-            self._current_preview_page = 0
+            raw_page = (restore_state or {}).get("page", 0)
+            self._current_preview_page = int(raw_page) if isinstance(raw_page, (int, float)) else 0
 
         def _render_preview_page(self):
             self.rendered_pages.append(self._current_preview_page)

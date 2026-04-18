@@ -17,6 +17,9 @@
 - Auto-generated outputs from `PDF -> Image` and `Extract Text` avoid filename collisions with `__2`, `__3`, and later suffixes.
 - `Compare PDFs` now detects line-order changes and duplicate-count differences, and visual diff PDF generation is optional from the Advanced tab UI.
 - Single-input/single-output PDF mutation modes can save back to the original path; if preview is holding the same file, it is closed before the worker starts and restored after success/fail/cancel.
+- The right preview now watches both the active PDF and its parent directory, so external atomic replace flows can auto-reload after a short retry window.
+- **Page Setup** keeps its own printer state, while **Print Preview** creates a fresh `QPrinter` per launch so the previous print range does not leak into the next job.
+- **Clear Chat** now resets only the currently selected PDF's persisted history and SDK chat session; histories for other PDFs stay intact.
 - Output save/folder dialogs reuse `last_output_dir` as their starting directory and update it after successful output selection.
 - Undo/Redo now restores before/after snapshots instead of re-running the worker, and the expanded snapshot flow covers `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
 - Updated worker result/status messages in the touched flows are synchronized through the KO/EN i18n catalogs.
@@ -73,7 +76,7 @@
 | Feature | Description |
 |---------|-------------|
 | **Split PDF** | Split by page or range |
-| **Compress PDF** | High/Medium/Low compression levels |
+| **Compress PDF** | Choose `fast`, `compact`, or `web` save profile |
 | **Crop PDF** | Trim margins |
 | **Edit Metadata** | Modify title, author, subject, keywords |
 | **Compare PDFs** | Analyze text differences including line order/duplicate changes, with optional visual diff PDF |
@@ -101,7 +104,7 @@
 | **Extract Images** | Extract embedded images | Save as PNG/JPG |
 | **Extract Tables** | Extract table data | Save as CSV |
 | **Extract Bookmarks** | Extract outline structure | Save as TXT |
-| **Markdown Convert** | PDF → Markdown | Save as MD |
+| **Markdown Convert** | `auto/native/text` mode with front matter, page marker, and asset placeholder options | Save as MD |
 | **Attachment Manager** | Add/Extract attachments | Various formats |
 
 ### 🤖 AI Features (Gemini API)
@@ -124,6 +127,7 @@
 - **Zoom/Pan Preview** - Mouse wheel zoom, drag move, page navigation, print, and resize-aware rerender
 - **Thumbnail Grid** - View all pages at a glance with preview document/page synchronization
 - **Rotate-tab Page Sync** - Clicking a thumbnail jumps the right preview to the same page
+- **External Rewrite Auto-Reload** - Preview is reloaded if the same PDF is replaced by another app
 - **Undo/Redo** - Undo/Redo across single-output PDF mutation workflows
 - **Same-path Save Safety** - Overwriting the source PDF is allowed for single-input/single-output mutation flows
 - **Remember Output Folder** - Output dialogs reopen from the last successful output directory
@@ -139,20 +143,16 @@
 
 ### Install Dependencies
 ```bash
-# Core packages
-pip install PyQt6 PyMuPDF
+# Canonical manifest (`pyproject.toml`)
+pip install -e .[dev]
 
-# Validation toolchain
+# Optional extras
+pip install -e .[build]
+pip install -e .[ai]
+pip install -e .[secure]
+
+# Compatibility shim for older workflows
 pip install -r requirements-dev.txt
-
-# For builds
-pip install PyInstaller
-
-# For AI features (optional)
-pip install google-genai
-
-# Or legacy SDK (deprecated)
-pip install google-generativeai
 ```
 
 ### Run
@@ -208,6 +208,17 @@ python main.py
 5. Choose Style (Concise/Detailed/Bullet)
 6. Click **AI Summary**
 
+### 6-1. PDF Chat / Clear Chat
+1. In the **AI Summary** tab, select the PDF you want to chat about.
+2. Enter a question and click **Ask**.
+3. **Clear Chat** only clears the currently selected PDF's history and chat session.
+
+### 6-2. Markdown Extraction Options
+1. Open **Advanced > Extract > Markdown**.
+2. Choose `auto`, `native`, or `text` mode.
+3. Enable `YAML front matter`, `page markers`, and `image/table placeholders` if needed.
+4. Run **Extract Markdown**.
+
 ### 7. Reorder Pages
 1. Select **Reorder** tab
 2. Select PDF file (Automatically loads pages)
@@ -258,9 +269,14 @@ python -m PyInstaller pdf_master.spec --clean
 
 ## ✅ Development Validation
 
-- Prepare validation environment: `pip install -r requirements-dev.txt`
+- Canonical dependency/build manifest: `pyproject.toml`
+- Prepare validation environment: `pip install -e .[dev]`
+- Compatibility shim: `requirements-dev.txt` -> `-e .[dev]`
 - Static analysis: `python -m pyright` -> `0 errors`
 - Regression tests: `python -m pytest -q`
+- Package build: `python -m build`
+- Executable build: `python -m PyInstaller pdf_master.spec --clean`
+- `.gitignore` now keeps build/validation artifacts such as `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, and `*.whl` out of the working tree.
 - `pytest` temp files stay inside repo-local `.pytest_tmp`
 - Encoding audit: tracked text files pass UTF-8 decode/BOM/U+FFFD checks
 
@@ -273,8 +289,9 @@ pdf-master/
 ├── .editorconfig
 ├── main.py
 ├── pdf_master.spec
+├── pyproject.toml
 ├── pyrightconfig.json
-├── requirements-dev.txt
+├── requirements-dev.txt       # compatibility shim -> -e .[dev]
 ├── typings/
 ├── README.md
 ├── README_EN.md

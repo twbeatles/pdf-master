@@ -1,38 +1,33 @@
 import logging
 import os
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QPixmap
-from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
-from PyQt6.QtWidgets import (
-    QFrame,
-    QGraphicsOpacityEffect,
-    QHBoxLayout,
-    QLabel,
-    QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PyQt6.QtPdf import QPdfDocument
 
-from ...core.i18n import tm
 from ...core.constants import RECENT_FILES_MAX
+from ...core.i18n import tm
+from ...core.path_utils import normalize_path_key
 from ...core.settings import save_settings
-from ..widgets import FileSelectorWidget
-from ..zoomable_preview import ZoomablePreviewWidget
 
 logger = logging.getLogger(__name__)
 
-def _update_preview(self, path):
-    if not path or not os.path.exists(path):
+
+def _preview_metadata(doc: QPdfDocument, field) -> str:
+    try:
+        value = doc.metaData(field)
+    except Exception:
+        return "-"
+    return value if isinstance(value, str) and value else "-"
+
+
+def _update_preview(self, path, restore_state=None):
+    path_key = normalize_path_key(path)
+    if not path_key or not os.path.exists(path_key):
         self.preview_label.setText(tm.get("preview_default"))
         self._reset_preview_state()
         return
 
-    self._add_to_recent_files(path)
-
     try:
-        doc, locked_state = self._ensure_preview_document(path)
+        doc, locked_state = self._ensure_preview_document(path_key)
         if not doc:
             if locked_state == "error":
                 raise RuntimeError(tm.get("err_pdf_corrupted"))
@@ -43,38 +38,48 @@ def _update_preview(self, path):
             self._reset_preview_state(close_doc=False)
             return
 
-        size_kb = os.path.getsize(path) / 1024
-        meta = doc.metadata
-        title = meta.get("title", "-") if meta else "-"
-        author = meta.get("author", "-") if meta else "-"
+        size_kb = os.path.getsize(path_key) / 1024
+        title = _preview_metadata(doc, QPdfDocument.MetaDataField.Title)
+        author = _preview_metadata(doc, QPdfDocument.MetaDataField.Author)
+        total_pages = doc.pageCount()
         info = tm.get(
             "preview_info",
-            os.path.basename(path),
-            len(doc),
+            os.path.basename(path_key),
+            total_pages,
             size_kb,
-            title or "-",
-            author or "-",
+            title,
+            author,
         )
         self.preview_label.setText(info)
 
-        self._current_preview_path = path
-        self._preview_total_pages = len(doc)
+        self._current_preview_path = path_key
+        self._preview_total_pages = total_pages
         self._current_preview_page = 0
-        self.preview_image.set_page_state(0, len(doc))
-        self._set_preview_navigation_enabled(True)
+        self._set_preview_navigation_enabled(total_pages > 0)
+
+        if restore_state and hasattr(self, "preview_image"):
+            self.preview_image.restore_view_state(restore_state)
+            self._current_preview_page = int(restore_state.get("page", 0) or 0)
+        elif total_pages > 0:
+            self.preview_image.set_page_state(0, total_pages)
+            self.preview_image.go_to_page(0, emit_signal=False)
+
         if hasattr(self, "_sync_rotate_thumbnail_with_preview"):
             self._sync_rotate_thumbnail_with_preview()
-        if len(doc) > 0:
-            self._render_preview_page()
-    except Exception as e:
-        self.preview_label.setText(tm.get("preview_error", str(e)))
+        self._add_to_recent_files(path_key)
+    except Exception as exc:
+        self.preview_label.setText(tm.get("preview_error", str(exc)))
         self._reset_preview_state()
 
+
 def _add_to_recent_files(self, path):
-    recent = self.settings.get("recent_files", [])
-    if path in recent:
-        recent.remove(path)
-    recent.insert(0, path)
+    path_key = normalize_path_key(path)
+    if not path_key or not os.path.exists(path_key):
+        return
+    recent = [item for item in self.settings.get("recent_files", []) if isinstance(item, str)]
+    if path_key in recent:
+        recent.remove(path_key)
+    recent.insert(0, path_key)
     self.settings["recent_files"] = recent[:RECENT_FILES_MAX]
     if hasattr(self, "_schedule_settings_save"):
         self._schedule_settings_save()

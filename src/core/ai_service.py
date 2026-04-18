@@ -1,31 +1,34 @@
 """
-AI Service for PDF Master v4.2
-Gemini API를 활용한 PDF 요약 서비스를 제공합니다.
-(google-genai 패키지 사용 - 2025년 11월 이후 권장 SDK)
+AI Service for PDF Master.
+
+Uses the official `google-genai` SDK only.
 """
+
+from __future__ import annotations
+
 import atexit
+import json
 import logging
 import os
 import threading
 import time
 from collections import OrderedDict
-from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from functools import wraps
 from importlib import import_module
 from typing import Any, Callable, Optional, ParamSpec, TypeVar, cast
 
 from .optional_deps import fitz
+from .path_utils import normalize_path_key
 
-# AI 관련 상수 import
 try:
-    from .constants import AI_MAX_TEXT_LENGTH, AI_DEFAULT_TIMEOUT, AI_MAX_RETRIES, AI_BASE_DELAY, AI_MAX_DELAY
+    from .constants import AI_BASE_DELAY, AI_DEFAULT_TIMEOUT, AI_MAX_DELAY, AI_MAX_RETRIES, AI_MAX_TEXT_LENGTH
 except ImportError:
-    # 독립 실행 시 폴백
     AI_MAX_TEXT_LENGTH = 30000
     AI_DEFAULT_TIMEOUT = 30
     AI_MAX_RETRIES = 3
     AI_BASE_DELAY = 1.0
     AI_MAX_DELAY = 30.0
+
 
 class _PerfTimerFallback:
     def __init__(self, *_args: object, **_kwargs: object):
@@ -43,6 +46,7 @@ try:
 except ImportError:
     PerfTimer = cast(Any, _PerfTimerFallback)
 
+
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -55,274 +59,168 @@ def _import_optional_module(module_name: str) -> Any | None:
         return None
 
 
+_GENAI_MODULE = _import_optional_module("google.genai")
+
+GENAI_AVAILABLE = _GENAI_MODULE is not None
+GENAI_CLIENT: Any | None = _GENAI_MODULE
+
+if _GENAI_MODULE is not None:
+    logger.info("google-genai SDK loaded successfully")
+else:
+    logger.warning("google-genai SDK is not installed. AI features are disabled.")
+
+
 def _response_text(response: object) -> str:
     text = getattr(response, "text", "")
     return text if isinstance(text, str) else ""
 
-# =====================================================================
-# Gemini API SDK 가용성 체크
-# =====================================================================
-# 공식 패키지: google-genai (pip install google-genai)
-# Import 방식: from google import genai
-# 참고: google-generativeai는 2025년 11월 30일 deprecated됨
-
-_GENAI_MODULE = _import_optional_module("google.genai")
-_GENAI_LEGACY_MODULE = _import_optional_module("google.generativeai")
-
-GENAI_AVAILABLE = _GENAI_MODULE is not None or _GENAI_LEGACY_MODULE is not None
-LEGACY_SDK = _GENAI_MODULE is None and _GENAI_LEGACY_MODULE is not None
-GENAI_CLIENT: Any | None = _GENAI_MODULE if _GENAI_MODULE is not None else _GENAI_LEGACY_MODULE
-
-if _GENAI_MODULE is not None:
-    logger.info("google-genai SDK loaded successfully")
-elif _GENAI_LEGACY_MODULE is not None:
-    logger.warning(
-        "Using deprecated google-generativeai SDK. "
-        "Please upgrade: pip install google-genai"
-    )
-else:
-    logger.warning(
-        "No Gemini SDK installed. AI features disabled. "
-        "Install with: pip install google-genai"
-    )
-
 
 class AIServiceError(Exception):
-    """AI 서비스 관련 기본 예외"""
     pass
 
 
 class APIKeyError(AIServiceError):
-    """API 키 관련 오류"""
     pass
 
 
 class APITimeoutError(AIServiceError):
-    """API 타임아웃 오류"""
     pass
 
 
 class APIRateLimitError(AIServiceError):
-    """API 호출 제한 오류"""
     pass
 
 
 def retry_with_backoff(
-    max_retries: int = 3,
-    base_delay: float = 1.0,
-    max_delay: float = 30.0,
+    max_retries: int = AI_MAX_RETRIES,
+    base_delay: float = AI_BASE_DELAY,
+    max_delay: float = AI_MAX_DELAY,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-    """
-    지수 백오프를 사용한 재시도 데코레이터
-    
-    Args:
-        max_retries: 최대 재시도 횟수
-        base_delay: 기본 대기 시간 (초)
-        max_delay: 최대 대기 시간 (초)
-    """
-    import random  # v4.5: jitter를 위한 import
-    
+    import random
+
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            last_exception: Exception | None = None
+            last_error: Exception | None = None
             for attempt in range(max_retries + 1):
                 try:
                     return func(*args, **kwargs)
-                except (ConnectionError, TimeoutError) as e:
-                    last_exception = e
-                    if attempt < max_retries:
-                        # v4.5: 랜덤 jitter 추가 (Thundering Herd 방지)
-                        jitter = random.uniform(0, 1)
-                        delay = min(base_delay * (2 ** attempt) + jitter, max_delay)
-                        logger.warning(f"Attempt {attempt + 1} failed, retrying in {delay:.1f}s: {e}")
-                        time.sleep(delay)
-                    else:
-                        logger.error(f"All {max_retries + 1} attempts failed")
+                except Exception as exc:
+                    last_error = exc
+                    error_text = str(exc).lower()
+                    if any(token in error_text for token in ("api key", "authentication", "invalid api key")):
+                        raise APIKeyError(str(exc)) from exc
+                    if any(token in error_text for token in ("rate limit", "quota", "429")):
+                        if attempt >= max_retries:
+                            raise APIRateLimitError(str(exc)) from exc
+                    if attempt >= max_retries:
                         raise
-                except Exception as e:
-                    # 재시도 불가능한 오류는 즉시 발생
-                    error_str = str(e).lower()
-                    if 'rate limit' in error_str or 'quota' in error_str:
-                        raise APIRateLimitError(f"API 호출 제한에 도달했습니다: {e}")
-                    elif 'api key' in error_str or 'invalid' in error_str or 'authentication' in error_str:
-                        raise APIKeyError(f"API 키가 유효하지 않습니다: {e}")
-                    raise
-            if last_exception is not None:
-                raise last_exception
-            raise RuntimeError("Retry loop exited without returning a result")
+                    delay = min(base_delay * (2 ** attempt) + random.uniform(0, 1), max_delay)
+                    logger.warning("AI call failed, retrying in %.1fs: %s", delay, exc)
+                    time.sleep(delay)
+            if last_error is not None:
+                raise last_error
+            raise RuntimeError("retry loop exited without returning")
+
         return wrapper
+
     return decorator
 
 
 class AIService:
-    """
-    Gemini API를 사용한 AI 서비스 클래스
-    
-    사용 예시:
-        service = AIService(api_key="your-api-key")
-        summary = service.summarize_pdf("document.pdf")
-    """
-    
-    DEFAULT_MODEL = "gemini-flash-latest"
-    MAX_TEXT_LENGTH = AI_MAX_TEXT_LENGTH  # constants.py에서 가져옴
-    DEFAULT_TIMEOUT = AI_DEFAULT_TIMEOUT  # constants.py에서 가져옴
-    MAX_RETRIES = AI_MAX_RETRIES  # constants.py에서 가져옴
+    DEFAULT_MODEL = "gemini-2.5-flash"
+    MAX_TEXT_LENGTH = AI_MAX_TEXT_LENGTH
+    DEFAULT_TIMEOUT = AI_DEFAULT_TIMEOUT
     _TEXT_CACHE_MAX_BYTES = 16 * 1024 * 1024
-    _text_cache: OrderedDict = OrderedDict()
+    _UPLOAD_CACHE_MAX_ITEMS = 16
+
+    _text_cache: OrderedDict[tuple[Any, ...], tuple[str, int]] = OrderedDict()
     _text_cache_bytes = 0
     _text_cache_lock = threading.Lock()
-    _shared_executor: Optional[ThreadPoolExecutor] = None
-    _executor_lock = threading.Lock()
-    
+
+    _uploaded_file_cache: OrderedDict[tuple[str, int], Any] = OrderedDict()
+    _uploaded_file_cache_lock = threading.Lock()
+
+    _chat_sessions: dict[tuple[str, str, int], Any] = {}
+    _chat_sessions_lock = threading.Lock()
+
     def __init__(self, api_key: str = "", model: str | None = None, timeout: int | None = None):
-        """
-        Args:
-            api_key: Gemini API 키
-            model: 사용할 모델명 (기본값: gemini-flash-latest)
-            timeout: API 호출 타임아웃 (초, 기본값: 30)
-        """
         self._api_key = api_key
         self._model = model or self.DEFAULT_MODEL
         self._timeout = timeout or self.DEFAULT_TIMEOUT
         self._configured = False
-        self._client: Any | None = None  # 새 SDK용 클라이언트
-        
+        self._client: Any | None = None
+        self._types: Any | None = None
         if api_key:
             self._configure_api()
-    
+
     def _configure_api(self) -> bool:
-        """API 설정 초기화"""
         if not GENAI_AVAILABLE:
-            logger.error("Gemini API not available - package not installed")
+            logger.error("google-genai is not available")
             return False
-            
         if not self._api_key:
             logger.warning("API key not provided")
             return False
-        
-        # API 키 형식 기본 검증
         if not self._validate_api_key_format(self._api_key):
             logger.error("Invalid API key format")
             return False
-            
+
         try:
-            if LEGACY_SDK:
-                # 기존 SDK 방식 (deprecated)
-                genai_legacy = _GENAI_LEGACY_MODULE
-                if genai_legacy is None:
-                    logger.error("Legacy Gemini SDK is not available")
-                    return False
-                genai_legacy.configure(api_key=self._api_key)
-            else:
-                # 새 SDK 방식 (권장)
-                genai = _GENAI_MODULE
-                client_class = getattr(genai, "Client", None) if genai is not None else None
-                if client_class is None:
-                    logger.error("google-genai SDK is not available")
-                    return False
-                self._client = client_class(api_key=self._api_key)
-            
+            genai = _GENAI_MODULE
+            client_class = getattr(genai, "Client", None) if genai is not None else None
+            self._types = getattr(genai, "types", None) if genai is not None else None
+            if client_class is None or self._types is None:
+                logger.error("google-genai SDK surface is incomplete")
+                return False
+            self._client = client_class(api_key=self._api_key)
             self._configured = True
-            logger.info(f"Gemini API configured with model: {self._model}")
             return True
-        except Exception as e:
-            logger.error(f"Failed to configure Gemini API: {e}")
+        except Exception as exc:
+            logger.error("Failed to configure google-genai client: %s", exc)
             return False
-    
+
     def _validate_api_key_format(self, api_key: str) -> bool:
-        """
-        API 키 형식 기본 검증
-        
-        Args:
-            api_key: 검증할 API 키
-            
-        Returns:
-            형식이 유효한지 여부
-        """
         if not api_key or not isinstance(api_key, str):
             return False
-        
-        # 최소 길이 확인 (Gemini API 키는 보통 39자)
         if len(api_key) < 20:
             return False
-        
-        # 공백 없음 확인
-        if ' ' in api_key or '\n' in api_key or '\t' in api_key:
+        if any(ch in api_key for ch in (" ", "\n", "\t")):
             return False
-        
         return True
-    
+
     def validate_api_key(self) -> tuple[bool, str]:
-        """
-        API 키 유효성 실제 검증 (API 호출로 확인)
-        
-        Returns:
-            (성공 여부, 메시지) 튜플
-        """
         if not GENAI_AVAILABLE:
-            return False, "Gemini SDK가 설치되지 않았습니다."
-        
+            return False, "google-genai SDK is not installed."
         if not self._api_key:
-            return False, "API 키가 설정되지 않았습니다."
-        
+            return False, "API key is not configured."
         if not self._validate_api_key_format(self._api_key):
-            return False, "API 키 형식이 올바르지 않습니다."
-        
+            return False, "API key format is invalid."
+
         try:
-            # 간단한 테스트 요청으로 API 키 확인
-            test_prompt = "Hi"
-            if LEGACY_SDK:
-                genai_legacy = _GENAI_LEGACY_MODULE
-                if genai_legacy is None:
-                    return False, "Gemini SDK를 초기화할 수 없습니다."
-                genai_legacy.configure(api_key=self._api_key)
-                model = genai_legacy.GenerativeModel(self._model)
-                response = model.generate_content(test_prompt)
-            else:
-                genai = _GENAI_MODULE
-                client_class = getattr(genai, "Client", None) if genai is not None else None
-                if client_class is None:
-                    return False, "Gemini SDK를 초기화할 수 없습니다."
-                client = client_class(api_key=self._api_key)
-                response = client.models.generate_content(
-                    model=self._model,
-                    contents=test_prompt
-                )
-            
-            if response:
-                return True, "API 키가 유효합니다."
-            return False, "API 응답을 받지 못했습니다."
-            
-        except Exception as e:
-            error_str = str(e).lower()
-            if 'api key' in error_str or 'invalid' in error_str or 'authentication' in error_str:
-                return False, "API 키가 유효하지 않습니다."
-            elif 'rate limit' in error_str or 'quota' in error_str:
-                return False, "API 호출 제한에 도달했습니다. 잠시 후 다시 시도하세요."
-            else:
-                return False, f"API 연결 오류: {e}"
-    
+            client = self._client if self._configured else None
+            if client is None:
+                if not self._configure_api():
+                    return False, "Failed to initialize google-genai client."
+                client = self._client
+            if client is None:
+                return False, "Failed to initialize google-genai client."
+            response = client.models.generate_content(model=self._model, contents="Hi")
+            return bool(response), "API key is valid."
+        except APIKeyError:
+            return False, "API key is invalid."
+        except Exception as exc:
+            return False, f"API connection error: {exc}"
+
     def set_api_key(self, api_key: str) -> bool:
-        """
-        API 키 설정
-        
-        Args:
-            api_key: Gemini API 키
-            
-        Returns:
-            설정 성공 여부
-        """
         self._api_key = api_key
         return self._configure_api()
-    
+
     @property
     def is_available(self) -> bool:
-        """AI 서비스 사용 가능 여부"""
-        return GENAI_AVAILABLE and self._configured
+        return bool(GENAI_AVAILABLE and self._configured and self._client is not None)
 
-    def _make_text_cache_key(self, pdf_path: str, max_pages: int | None) -> tuple:
-        abs_path = os.path.abspath(pdf_path)
+    def _make_text_cache_key(self, pdf_path: str, max_pages: int | None) -> tuple[Any, ...]:
+        abs_path = normalize_path_key(pdf_path)
         try:
             mtime_ns = os.stat(abs_path).st_mtime_ns
         except OSError:
@@ -333,7 +231,7 @@ class AIService:
     def _estimate_text_bytes(text: str) -> int:
         return len(text.encode("utf-8", errors="ignore"))
 
-    def _get_cached_text(self, key: tuple) -> str | None:
+    def _get_cached_text(self, key: tuple[Any, ...]) -> str | None:
         cls = self.__class__
         with cls._text_cache_lock:
             item = cls._text_cache.get(key)
@@ -343,7 +241,7 @@ class AIService:
             cls._text_cache.move_to_end(key)
             return text
 
-    def _put_cached_text(self, key: tuple, text: str):
+    def _put_cached_text(self, key: tuple[Any, ...], text: str) -> None:
         cls = self.__class__
         size = self._estimate_text_bytes(text)
         if size > cls._TEXT_CACHE_MAX_BYTES:
@@ -358,36 +256,118 @@ class AIService:
                 _, (_old_text, old_size) = cls._text_cache.popitem(last=False)
                 cls._text_cache_bytes -= old_size
 
-    @classmethod
-    def _get_shared_executor(cls) -> ThreadPoolExecutor:
-        with cls._executor_lock:
-            if cls._shared_executor is None:
-                cls._shared_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="pdfmaster-ai")
-            return cls._shared_executor
+    def _make_upload_cache_key(self, pdf_path: str) -> tuple[str, int]:
+        abs_path = normalize_path_key(pdf_path)
+        try:
+            mtime_ns = os.stat(abs_path).st_mtime_ns
+        except OSError:
+            mtime_ns = 0
+        return abs_path, mtime_ns
 
-    @classmethod
-    def shutdown_executor(cls):
-        executor = None
-        with cls._executor_lock:
-            executor = cls._shared_executor
-            cls._shared_executor = None
-        if executor is not None:
-            try:
-                executor.shutdown(wait=False, cancel_futures=True)
-            except TypeError:
-                executor.shutdown(wait=False)
-    
+    def _make_chat_session_cache_key(self, pdf_path: str) -> tuple[str, str, int]:
+        abs_path = normalize_path_key(pdf_path)
+        try:
+            mtime_ns = os.stat(abs_path).st_mtime_ns
+        except OSError:
+            mtime_ns = 0
+        return self._model, abs_path, mtime_ns
+
+    @staticmethod
+    def _collect_exception_text(exc: BaseException) -> str:
+        parts: list[str] = []
+        current: BaseException | None = exc
+        seen: set[int] = set()
+        while current is not None and id(current) not in seen:
+            seen.add(id(current))
+            text = str(current).strip()
+            if text:
+                parts.append(text)
+            current = current.__cause__ or current.__context__
+        return " | ".join(parts).lower()
+
+    def _should_fallback_from_file_api(self, exc: BaseException) -> bool:
+        text = self._collect_exception_text(exc)
+        if not text:
+            return False
+
+        allow_tokens = (
+            "file",
+            "upload",
+            "mime",
+            "unsupported",
+            "too large",
+            "size",
+            "invalid argument",
+        )
+        deny_tokens = (
+            "api key",
+            "auth",
+            "quota",
+            "rate",
+            "permission",
+            "timeout",
+            "schema",
+            "json",
+            "parse",
+            "internal",
+        )
+        return any(token in text for token in allow_tokens) and not any(token in text for token in deny_tokens)
+
+    def _generate_structured_payload_from_extracted_text(
+        self,
+        *,
+        prompt: str,
+        pdf_path: str,
+        schema: dict[str, Any],
+        partial_callback: Callable[[str], None] | None = None,
+        fallback_max_pages: int | None = None,
+        upload_error: Exception | None = None,
+    ) -> dict[str, Any]:
+        extracted_text = self.extract_text_from_pdf(pdf_path, max_pages=fallback_max_pages)
+        if not extracted_text.strip():
+            raise RuntimeError(f"PDF text extraction failed after File API upload failure: {upload_error}")
+        contents = [prompt, extracted_text]
+        if partial_callback is not None:
+            return self._stream_generate_content(
+                contents=contents,
+                schema=schema,
+                partial_callback=partial_callback,
+            )
+        return self._generate_content(contents=contents, schema=schema)
+
+    def _get_cached_uploaded_file(self, key: tuple[str, int]) -> Any | None:
+        cls = self.__class__
+        with cls._uploaded_file_cache_lock:
+            item = cls._uploaded_file_cache.get(key)
+            if item is None:
+                return None
+            cls._uploaded_file_cache.move_to_end(key)
+            return item
+
+    def _put_cached_uploaded_file(self, key: tuple[str, int], uploaded_file: Any) -> None:
+        cls = self.__class__
+        with cls._uploaded_file_cache_lock:
+            cls._uploaded_file_cache.pop(key, None)
+            cls._uploaded_file_cache[key] = uploaded_file
+            while len(cls._uploaded_file_cache) > cls._UPLOAD_CACHE_MAX_ITEMS:
+                cls._uploaded_file_cache.popitem(last=False)
+
+    @retry_with_backoff()
+    def _upload_pdf_file(self, pdf_path: str) -> Any:
+        if not self.is_available or self._client is None:
+            raise RuntimeError("AI service not available")
+        cache_key = self._make_upload_cache_key(pdf_path)
+        cached = self._get_cached_uploaded_file(cache_key)
+        if cached is not None:
+            return cached
+        files_api = getattr(self._client, "files", None)
+        if files_api is None or not hasattr(files_api, "upload"):
+            raise RuntimeError("google-genai client does not expose File API upload")
+        uploaded = files_api.upload(file=pdf_path)
+        self._put_cached_uploaded_file(cache_key, uploaded)
+        return uploaded
+
     def extract_text_from_pdf(self, pdf_path: str, max_pages: int | None = None) -> str:
-        """
-        PDF에서 텍스트 추출
-        
-        Args:
-            pdf_path: PDF 파일 경로
-            max_pages: 추출할 최대 페이지 수 (None이면 전체)
-            
-        Returns:
-            추출된 텍스트
-        """
         cache_key = self._make_text_cache_key(pdf_path, max_pages)
         with PerfTimer(
             "core.ai.extract_text",
@@ -396,7 +376,6 @@ class AIService:
         ):
             cached = self._get_cached_text(cache_key)
             if cached is not None:
-                logger.debug("AI text cache hit: %s", os.path.basename(pdf_path))
                 return cached
 
             doc = None
@@ -404,310 +383,393 @@ class AIService:
                 doc = fitz.open(pdf_path)
                 text_parts: list[str] = []
                 page_count = len(doc) if max_pages is None else min(len(doc), max_pages)
-                current_length = 0  # v4.5: 메모리 최적화 - 누적 길이 추적
+                current_length = 0
 
                 for i in range(page_count):
                     page = doc[i]
                     raw_text = page.get_text()
                     text = raw_text if isinstance(raw_text, str) else ""
                     if text.strip():
-                        text_parts.append(f"[Page {i+1}]\n{text}")
-                        current_length += len(text_parts[-1])
-
-                        # v4.5: 최대 길이 초과 시 조기 종료 (메모리 절약)
+                        chunk = f"[Page {i + 1}]\n{text}"
+                        text_parts.append(chunk)
+                        current_length += len(chunk)
                         if current_length > self.MAX_TEXT_LENGTH:
-                            logger.info(f"Text extraction stopped at page {i+1} due to length limit")
                             break
 
                 full_text = "\n\n".join(text_parts)
-
-                # 텍스트 길이 제한
                 if len(full_text) > self.MAX_TEXT_LENGTH:
-                    full_text = full_text[:self.MAX_TEXT_LENGTH] + "\n\n[... 텍스트가 잘렸습니다 ...]"
-
+                    full_text = full_text[: self.MAX_TEXT_LENGTH] + "\n\n[... truncated ...]"
                 self._put_cached_text(cache_key, full_text)
                 return full_text
-
-            except Exception as e:
-                logger.error(f"Failed to extract text from PDF: {e}")
-                raise
             finally:
                 if doc:
                     doc.close()
-    
-    @retry_with_backoff(max_retries=AI_MAX_RETRIES, base_delay=AI_BASE_DELAY, max_delay=AI_MAX_DELAY)
-    def _generate_content(self, prompt: str) -> str:
-        """
-        API를 통해 콘텐츠 생성 (SDK 버전에 따라 분기)
-        
-        Args:
-            prompt: 프롬프트 텍스트
-            
-        Returns:
-            생성된 텍스트
-            
-        Raises:
-            APITimeoutError: 타임아웃 발생 시
-            APIKeyError: API 키 오류 시
-            APIRateLimitError: Rate limit 초과 시
-        """
-        def api_call() -> str:
-            if LEGACY_SDK:
-                # 기존 SDK 방식
-                genai_legacy = _GENAI_LEGACY_MODULE
-                if genai_legacy is None:
-                    raise RuntimeError("Legacy Gemini SDK is not available")
-                model = genai_legacy.GenerativeModel(self._model)
-                response = model.generate_content(prompt)
-                return _response_text(response)
-            else:
-                # 새 SDK 방식
-                client = self._client
-                if client is None:
-                    raise RuntimeError("Gemini client is not configured")
-                models = getattr(client, "models", None)
-                if models is None:
-                    raise RuntimeError("Gemini client does not expose models")
-                response = models.generate_content(
-                    model=self._model,
-                    contents=prompt
-                )
-                return _response_text(response)
-            return ""
 
-        with PerfTimer("core.ai.generate_content", logger=logger, extra={"model": self._model}):
-            executor = self._get_shared_executor()
-            future: Future[str] | None = None
-            try:
-                try:
-                    future = executor.submit(api_call)
-                except RuntimeError:
-                    # 종료된 executor를 재생성 후 재시도
-                    with self.__class__._executor_lock:
-                        if self.__class__._shared_executor is executor:
-                            self.__class__._shared_executor = None
-                    executor = self._get_shared_executor()
-                    future = executor.submit(api_call)
-                # 타임아웃 설정
-                result = future.result(timeout=self._timeout)
-                return result
-            except FutureTimeoutError:
-                logger.error(f"API call timed out after {self._timeout} seconds")
-                # 타임아웃 시 future 취소 시도
-                if future is not None:
-                    future.cancel()
-                raise APITimeoutError(f"API 호출이 {self._timeout}초 후 타임아웃되었습니다.")
-            except Exception as e:
-                logger.error(f"API call error: {e}")
-                raise
-    
-    def summarize_text(self, text: str, language: str = "ko", 
-                       style: str = "concise") -> str:
-        """
-        텍스트 요약
-        
-        Args:
-            text: 요약할 텍스트
-            language: 출력 언어 ("ko", "en")
-            style: 요약 스타일 ("concise", "detailed", "bullet")
-            
-        Returns:
-            요약된 텍스트
-            
-        Raises:
-            RuntimeError: AI 서비스 사용 불가 시
-            APITimeoutError: 타임아웃 발생 시
-            APIKeyError: API 키 오류 시
-            APIRateLimitError: Rate limit 초과 시
-        """
-        if not self.is_available:
-            raise RuntimeError("AI service not available. Check API key and installation.")
-        
-        if not text.strip():
-            return "요약할 텍스트가 없습니다."
-        
-        # 프롬프트 생성
-        lang_instruction = "한국어로" if language == "ko" else "in English"
-        
-        style_instructions = {
-            "concise": "핵심 내용 위주로 1~2 문단으로 간결하게",
-            "detailed": "주요 내용을 챕터별로 상세하게",
-            "bullet": "핵심 포인트를 불릿 포인트로"
+    def _make_summary_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string"},
+                "summary": {"type": "string"},
+                "key_points": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+            },
+            "required": ["title", "summary", "key_points"],
+            "additionalProperties": False,
         }
-        style_inst = style_instructions.get(style, style_instructions["concise"])
-        
-        prompt = f"""다음 PDF 문서의 내용을 {lang_instruction} {style_inst} 요약해주세요.
 
-문서 내용:
-{text}
+    def _make_answer_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "answer": {"type": "string"},
+            },
+            "required": ["answer"],
+            "additionalProperties": False,
+        }
 
-요약:"""
+    def _make_keywords_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "keywords": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+            },
+            "required": ["keywords"],
+            "additionalProperties": False,
+        }
 
+    def _build_generate_config(self, schema: dict[str, Any]) -> Any:
+        if self._types is None:
+            raise RuntimeError("google-genai types module is not available")
+        return self._types.GenerateContentConfig(
+            temperature=0.2,
+            response_mime_type="application/json",
+            response_schema=schema,
+        )
+
+    def _coerce_payload(self, parsed: Any, schema: dict[str, Any]) -> dict[str, Any]:
+        if hasattr(parsed, "model_dump"):
+            parsed = parsed.model_dump()
+        if isinstance(parsed, dict):
+            return parsed
+        required = schema.get("required", [])
+        return {key: "" if key != "key_points" and key != "keywords" else [] for key in required}
+
+    def _parse_structured_response(self, response: Any, raw_text: str, schema: dict[str, Any]) -> dict[str, Any]:
+        parsed = getattr(response, "parsed", None) if response is not None else None
+        if parsed is not None:
+            return self._coerce_payload(parsed, schema)
+        if raw_text.strip():
+            loaded = json.loads(raw_text)
+            if isinstance(loaded, dict):
+                return loaded
+        raise RuntimeError("Structured response parsing failed")
+
+    def _stream_generate_content(
+        self,
+        *,
+        contents: list[Any],
+        schema: dict[str, Any],
+        partial_callback: Callable[[str], None] | None = None,
+    ) -> dict[str, Any]:
+        if self._client is None:
+            raise RuntimeError("Gemini client is not configured")
+
+        config = self._build_generate_config(schema)
+        chunks: list[str] = []
+        for chunk in self._client.models.generate_content_stream(
+            model=self._model,
+            contents=contents,
+            config=config,
+        ):
+            text = _response_text(chunk)
+            if text:
+                chunks.append(text)
+                if partial_callback is not None:
+                    partial_callback(text)
+        raw_text = "".join(chunks)
+        return self._parse_structured_response(None, raw_text, schema)
+
+    @retry_with_backoff()
+    def _generate_content(
+        self,
+        *,
+        contents: list[Any],
+        schema: dict[str, Any],
+    ) -> dict[str, Any]:
+        if self._client is None:
+            raise RuntimeError("Gemini client is not configured")
+        config = self._build_generate_config(schema)
+        response = self._client.models.generate_content(
+            model=self._model,
+            contents=contents,
+            config=config,
+        )
+        return self._parse_structured_response(response, _response_text(response), schema)
+
+    def _generate_structured_payload(
+        self,
+        *,
+        prompt: str,
+        pdf_path: str,
+        schema: dict[str, Any],
+        partial_callback: Callable[[str], None] | None = None,
+        fallback_max_pages: int | None = None,
+    ) -> dict[str, Any]:
         try:
-            result = self._generate_content(prompt)
-            return result if result else "요약을 생성할 수 없습니다."
-        except APITimeoutError:
-            raise RuntimeError("요약 생성 시간이 초과되었습니다. 잠시 후 다시 시도하세요.")
-        except APIKeyError as e:
-            raise RuntimeError(str(e))
-        except APIRateLimitError as e:
-            raise RuntimeError(str(e))
-        except Exception as e:
-            logger.error(f"Summarization failed: {e}")
-            raise RuntimeError(f"요약 생성 실패: {e}")
-    
-    def summarize_pdf(self, pdf_path: str, language: str = "ko",
-                      style: str = "concise", max_pages: int | None = None) -> str:
-        """
-        PDF 파일 요약
-        
-        Args:
-            pdf_path: PDF 파일 경로
-            language: 출력 언어 ("ko", "en")
-            style: 요약 스타일 ("concise", "detailed", "bullet")
-            max_pages: 요약할 최대 페이지 수
-            
-        Returns:
-            요약된 텍스트
-        """
-        logger.info(f"Summarizing PDF: {pdf_path}")
-        
-        # 1. 텍스트 추출
-        text = self.extract_text_from_pdf(pdf_path, max_pages)
-        
-        if not text.strip():
-            return "PDF에서 추출할 텍스트가 없습니다. (이미지 기반 PDF일 수 있습니다)"
-        
-        # 2. 요약 생성
-        return self.summarize_text(text, language, style)
-    
-    def ask_about_pdf(self, pdf_path: str, question: str,
-                      conversation_history: list[dict[str, str]] | None = None) -> str:
-        """
-        PDF 내용에 대해 질문 (v4.5: 대화 맥락 지원)
-        
-        Args:
-            pdf_path: PDF 파일 경로
-            question: 질문 내용
-            conversation_history: 이전 대화 기록 [{"role": "user"|"assistant", "content": "..."}]
-            
-        Returns:
-            답변 텍스트
-        """
+            uploaded_file = self._upload_pdf_file(pdf_path)
+        except Exception as exc:
+            if not self._should_fallback_from_file_api(exc):
+                raise
+            logger.warning("Gemini File API upload failed, falling back to local text extraction: %s", exc)
+            return self._generate_structured_payload_from_extracted_text(
+                prompt=prompt,
+                pdf_path=pdf_path,
+                schema=schema,
+                partial_callback=partial_callback,
+                fallback_max_pages=fallback_max_pages,
+                upload_error=exc,
+            )
+
+        contents = [prompt, uploaded_file]
+        if partial_callback is not None:
+            return self._stream_generate_content(
+                contents=contents,
+                schema=schema,
+                partial_callback=partial_callback,
+            )
+        return self._generate_content(contents=contents, schema=schema)
+
+    def _build_summary_prompt(self, language: str, style: str, max_pages: int | None) -> str:
+        style_map = {
+            "concise": "Keep the summary compact and easy to scan.",
+            "detailed": "Provide a fuller summary with more detail.",
+            "bullet": "Prefer concise bullet-style phrasing in the summary and key points.",
+        }
+        language_name = "Korean" if language == "ko" else "English"
+        page_limit = (
+            f"If the document is long, focus on the first {max_pages} page(s)."
+            if max_pages and max_pages > 0
+            else "Summarize the whole document."
+        )
+        return (
+            f"Analyze the attached PDF and return JSON only. Respond in {language_name}. "
+            f"{style_map.get(style, style_map['concise'])} "
+            f"{page_limit} "
+            'Schema: {"title": string, "summary": string, "key_points": string[]}. '
+            "The title should be concise and the key points should be distinct."
+        )
+
+    def _build_keywords_prompt(self, max_keywords: int, language: str) -> str:
+        language_name = "Korean" if language == "ko" else "English"
+        return (
+            f"Extract up to {max_keywords} important keywords from the attached PDF and return JSON only. "
+            f"Use {language_name}. "
+            'Schema: {"keywords": string[]}. '
+            "Return short, deduplicated keywords only."
+        )
+
+    def summarize_pdf(
+        self,
+        pdf_path: str,
+        language: str = "ko",
+        style: str = "concise",
+        max_pages: int | None = None,
+        partial_callback: Callable[[str], None] | None = None,
+    ) -> dict[str, Any]:
         if not self.is_available:
-            raise RuntimeError("AI service not available. Check API key and installation.")
-        
-        text = self.extract_text_from_pdf(pdf_path)
-        
-        # v4.5: 대화 기록 포맷팅
-        history_context = ""
-        if conversation_history:
-            history_parts = []
-            for entry in conversation_history[-5:]:  # 최근 5개 대화만 사용
-                role = "사용자" if entry.get("role") == "user" else "AI"
-                history_parts.append(f"{role}: {entry.get('content', '')}")
-            if history_parts:
-                history_context = "\n\n이전 대화:\n" + "\n".join(history_parts)
-        
-        prompt = f"""다음 PDF 문서의 내용을 기반으로 질문에 답변해주세요.
+            raise RuntimeError("AI service not available. Check API key and google-genai installation.")
+        prompt = self._build_summary_prompt(language, style, max_pages)
+        payload = self._generate_structured_payload(
+            prompt=prompt,
+            pdf_path=pdf_path,
+            schema=self._make_summary_schema(),
+            partial_callback=partial_callback,
+            fallback_max_pages=max_pages,
+        )
+        payload.setdefault("title", "")
+        payload.setdefault("summary", "")
+        payload.setdefault("key_points", [])
+        return {
+            "title": str(payload.get("title", "")),
+            "summary": str(payload.get("summary", "")),
+            "key_points": [str(item) for item in payload.get("key_points", []) if str(item).strip()],
+        }
 
-문서 내용:
-{text}{history_context}
-
-질문: {question}
-
-답변:"""
-
-        try:
-            result = self._generate_content(prompt)
-            return result if result else "답변을 생성할 수 없습니다."
-        except APITimeoutError:
-            raise RuntimeError("답변 생성 시간이 초과되었습니다. 잠시 후 다시 시도하세요.")
-        except APIKeyError as e:
-            raise RuntimeError(str(e))
-        except APIRateLimitError as e:
-            raise RuntimeError(str(e))
-        except Exception as e:
-            logger.error(f"Q&A failed: {e}")
-            raise RuntimeError(f"답변 생성 실패: {e}")
-    
-    def extract_keywords(self, pdf_path: str, max_keywords: int = 10,
-                         language: str = "ko") -> list[str]:
-        """
-        PDF에서 핵심 키워드 추출
-        
-        Args:
-            pdf_path: PDF 파일 경로
-            max_keywords: 추출할 최대 키워드 수 (기본값: 10)
-            language: 출력 언어 ("ko", "en")
-            
-        Returns:
-            키워드 리스트
-        """
-        if not self.is_available:
-            raise RuntimeError("AI service not available. Check API key and installation.")
-        
-        text = self.extract_text_from_pdf(pdf_path)
-        
-        if not text.strip():
+    def _history_to_contents(self, history: list[dict[str, str]]) -> list[Any]:
+        if self._types is None:
             return []
-        
-        lang_instruction = "한국어로" if language == "ko" else "in English"
-        
-        prompt = f"""다음 PDF 문서에서 가장 중요한 핵심 키워드/주제를 추출해주세요.
+        contents: list[Any] = []
+        part_factory = getattr(self._types, "Part", None)
+        content_type = getattr(self._types, "Content", None)
+        if part_factory is None or content_type is None:
+            return []
+        for entry in history:
+            role = entry.get("role")
+            content = entry.get("content", "")
+            if role not in {"user", "assistant"} or not content:
+                continue
+            normalized_role = "model" if role == "assistant" else "user"
+            contents.append(
+                content_type(
+                    role=normalized_role,
+                    parts=[part_factory.from_text(text=content)],
+                )
+            )
+        return contents
 
-규칙:
-1. 최대 {max_keywords}개의 키워드만 추출
-2. 각 키워드는 한 줄에 하나씩
-3. 키워드만 출력 (번호나 설명 없이)
-4. {lang_instruction} 작성
+    def _get_or_create_chat(self, pdf_path: str, conversation_history: list[dict[str, str]] | None) -> Any:
+        if self._client is None or self._types is None:
+            raise RuntimeError("Gemini client is not configured")
+        cache_key = self._make_chat_session_cache_key(pdf_path)
+        with self.__class__._chat_sessions_lock:
+            cached = self.__class__._chat_sessions.get(cache_key)
+            if cached is not None:
+                return cached
 
-문서 내용:
-{text}
+        uploaded_file = self._upload_pdf_file(pdf_path)
+        part_factory = getattr(self._types, "Part", None)
+        content_type = getattr(self._types, "Content", None)
+        if part_factory is None or content_type is None:
+            raise RuntimeError("google-genai content types are unavailable")
 
-키워드:"""
+        history_contents = [
+            content_type(
+                role="user",
+                parts=[
+                    part_factory.from_text(
+                        text=(
+                            "You are assisting with questions about the attached PDF. "
+                            "Use the PDF as the primary source of truth."
+                        )
+                    ),
+                    uploaded_file,
+                ],
+            )
+        ]
+        history_contents.extend(self._history_to_contents(conversation_history or []))
+        chat = self._client.chats.create(model=self._model, history=history_contents)
+        with self.__class__._chat_sessions_lock:
+            self.__class__._chat_sessions[cache_key] = chat
+        return chat
 
+    @classmethod
+    def clear_chat_session(cls, pdf_path: str, all_versions: bool = True) -> None:
+        abs_path = normalize_path_key(pdf_path)
+        if not abs_path:
+            return
+
+        with cls._chat_sessions_lock:
+            if all_versions:
+                stale_keys = [key for key in cls._chat_sessions if len(key) >= 2 and key[1] == abs_path]
+                for key in stale_keys:
+                    cls._chat_sessions.pop(key, None)
+                return
+
+            try:
+                mtime_ns = os.stat(abs_path).st_mtime_ns
+            except OSError:
+                mtime_ns = 0
+            stale_keys = [key for key in cls._chat_sessions if key[1] == abs_path and key[2] == mtime_ns]
+            for key in stale_keys:
+                cls._chat_sessions.pop(key, None)
+
+    def ask_about_pdf(
+        self,
+        pdf_path: str,
+        question: str,
+        conversation_history: list[dict[str, str]] | None = None,
+        partial_callback: Callable[[str], None] | None = None,
+    ) -> dict[str, Any]:
+        if not self.is_available:
+            raise RuntimeError("AI service not available. Check API key and google-genai installation.")
+        if not question.strip():
+            raise RuntimeError("Question is required.")
+
+        schema = self._make_answer_schema()
+        config = self._build_generate_config(schema)
         try:
-            result = self._generate_content(prompt)
-            if not result:
-                return []
-            
-            # 결과 파싱 - 각 줄을 키워드로 처리
-            keywords = []
-            for line in result.strip().split('\n'):
-                keyword = line.strip()
-                # 번호 제거 (예: "1. 키워드" -> "키워드")
-                if keyword and len(keyword) > 0:
-                    # 번호 패턴 제거
-                    import re
-                    keyword = re.sub(r'^[\d]+[\.\)\-\s]+', '', keyword).strip()
-                    if keyword and keyword not in keywords:
-                        keywords.append(keyword)
-                        if len(keywords) >= max_keywords:
-                            break
-            
-            return keywords
-            
-        except APITimeoutError:
-            raise RuntimeError("키워드 추출 시간이 초과되었습니다.")
-        except APIKeyError as e:
-            raise RuntimeError(str(e))
-        except APIRateLimitError as e:
-            raise RuntimeError(str(e))
-        except Exception as e:
-            logger.error(f"Keyword extraction failed: {e}")
-            raise RuntimeError(f"키워드 추출 실패: {e}")
+            chat = self._get_or_create_chat(pdf_path, conversation_history)
+        except Exception as exc:
+            if not self._should_fallback_from_file_api(exc):
+                raise
+            logger.warning("Chat session initialization failed, falling back to local-context QA: %s", exc)
+            prompt = (
+                "Answer the user's question about the PDF and return JSON only. "
+                'Schema: {"answer": string}. '
+                f"Question: {question}"
+            )
+            payload = self._generate_structured_payload(
+                prompt=prompt,
+                pdf_path=pdf_path,
+                schema=schema,
+                partial_callback=partial_callback,
+                fallback_max_pages=None,
+            )
+        else:
+            if partial_callback is not None:
+                chunks: list[str] = []
+                for chunk in chat.send_message_stream(question, config=config):
+                    text = _response_text(chunk)
+                    if text:
+                        chunks.append(text)
+                        partial_callback(text)
+                raw_text = "".join(chunks)
+                payload = self._parse_structured_response(None, raw_text, schema)
+            else:
+                response = chat.send_message(question, config=config)
+                payload = self._parse_structured_response(response, _response_text(response), schema)
 
-# 싱글톤 인스턴스 (선택적 사용)
+        payload.setdefault("answer", "")
+        return {"answer": str(payload.get("answer", ""))}
+
+    def extract_keywords(
+        self,
+        pdf_path: str,
+        max_keywords: int = 10,
+        language: str = "ko",
+    ) -> dict[str, Any]:
+        if not self.is_available:
+            raise RuntimeError("AI service not available. Check API key and google-genai installation.")
+        prompt = self._build_keywords_prompt(max_keywords, language)
+        payload = self._generate_structured_payload(
+            prompt=prompt,
+            pdf_path=pdf_path,
+            schema=self._make_keywords_schema(),
+            partial_callback=None,
+            fallback_max_pages=None,
+        )
+        keywords = [str(item) for item in payload.get("keywords", []) if str(item).strip()]
+        deduped: list[str] = []
+        seen: set[str] = set()
+        for keyword in keywords:
+            lowered = keyword.casefold()
+            if lowered in seen:
+                continue
+            seen.add(lowered)
+            deduped.append(keyword)
+            if len(deduped) >= max_keywords:
+                break
+        return {"keywords": deduped}
+
+    @classmethod
+    def shutdown_executor(cls):
+        return None
+
+
 _ai_service_instance: Optional[AIService] = None
-_ai_service_lock = threading.Lock()  # v4.5: 스레드 안전성
+_ai_service_lock = threading.Lock()
+
 
 def get_ai_service() -> AIService:
-    """전역 AI 서비스 인스턴스 반환 (스레드 안전)"""
     global _ai_service_instance
     if _ai_service_instance is None:
         with _ai_service_lock:
-            # Double-check locking pattern
             if _ai_service_instance is None:
                 _ai_service_instance = AIService()
     return _ai_service_instance

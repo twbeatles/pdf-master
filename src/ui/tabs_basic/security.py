@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 from ...core.optional_deps import fitz
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
+from ...core.worker_runtime.save_profiles import DEFAULT_COMPRESSION_SAVE_PROFILE, SAVE_PROFILE_CHOICES
 from ...core.settings import save_settings
 from ..widgets import FileListWidget, FileSelectorWidget, ImageListWidget, ToastWidget
 
@@ -144,6 +145,14 @@ def setup_edit_sec_tab(self):
     self.inp_pw.setPlaceholderText(tm.get("ph_password"))
     self.inp_pw.setEchoMode(QLineEdit.EchoMode.Password)
     h_sec.addWidget(self.inp_pw)
+    self.cmb_compress_profile = QComboBox()
+    for profile_name in SAVE_PROFILE_CHOICES:
+        self.cmb_compress_profile.addItem(tm.get(f"save_profile_{profile_name}"), profile_name)
+    default_index = self.cmb_compress_profile.findData(DEFAULT_COMPRESSION_SAVE_PROFILE)
+    if default_index >= 0:
+        self.cmb_compress_profile.setCurrentIndex(default_index)
+    self.cmb_compress_profile.setToolTip(tm.get("tooltip_compress_profile"))
+    h_sec.addWidget(self.cmb_compress_profile)
     b_enc = QPushButton(tm.get("btn_encrypt"))
     b_enc.clicked.connect(self.action_protect)
     h_sec.addWidget(b_enc)
@@ -227,4 +236,5 @@ def action_compress(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_file"))
     s, _ = self._choose_save_file(tm.get("save"), "compressed.pdf", "PDF (*.pdf)")
     if s:
-        self.run_worker("compress", file_path=path, output_path=s)
+        save_profile = self.cmb_compress_profile.currentData() or DEFAULT_COMPRESSION_SAVE_PROFILE
+        self.run_worker("compress", file_path=path, output_path=s, save_profile=save_profile)

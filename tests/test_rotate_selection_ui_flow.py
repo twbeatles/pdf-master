@@ -77,7 +77,8 @@ def _build_preview_dummy(path, preview_path=""):
             self.rendered = []
             self.status_label = _StatusStub()
 
-        def _update_preview(self, path):
+        def _update_preview(self, path, restore_state=None):
+            _ = restore_state
             self.updated.append(path)
             self._current_preview_path = path
 

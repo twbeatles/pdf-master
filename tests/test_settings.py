@@ -49,16 +49,20 @@ def test_load_settings_type_defense(tmp_path, monkeypatch):
 
 def test_load_settings_preserves_valid_normalized_values(tmp_path, monkeypatch):
     from src.core import settings as st
+    from src.core.path_utils import normalize_path_key
 
     settings_file = tmp_path / "settings.json"
     monkeypatch.setattr(st, "SETTINGS_FILE", str(settings_file))
+    existing_pdf = tmp_path / "a.pdf"
+    existing_pdf.write_text("pdf", encoding="utf-8")
+    normalized_path = normalize_path_key(str(existing_pdf))
 
     settings_file.write_text(
         json.dumps(
             {
                 "theme": "light",
-                "recent_files": ["a.pdf", "", 3],
-                "chat_histories": {"a.pdf": [{"role": "user", "content": "hi"}]},
+                "recent_files": [str(existing_pdf), "", 3],
+                "chat_histories": {str(existing_pdf): [{"role": "user", "content": "hi"}]},
                 "splitter_sizes": [100, 200.8],
                 "language": "en",
                 "window_geometry": {"x": 10, "y": 20, "width": 100, "height": 200},
@@ -70,12 +74,47 @@ def test_load_settings_preserves_valid_normalized_values(tmp_path, monkeypatch):
 
     loaded = st.load_settings()
     assert loaded["theme"] == "light"
-    assert loaded["recent_files"] == ["a.pdf"]
-    assert loaded["chat_histories"] == {"a.pdf": [{"role": "user", "content": "hi"}]}
+    assert loaded["recent_files"] == [normalized_path]
+    assert loaded["chat_histories"] == {normalized_path: [{"role": "user", "content": "hi"}]}
     assert loaded["splitter_sizes"] == [100, 200]
     assert loaded["language"] == "en"
     assert loaded["window_geometry"] == {"x": 10, "y": 20, "width": 100, "height": 200}
     assert loaded["last_output_dir"] == str(tmp_path / "exports")
+
+
+def test_load_settings_merges_duplicate_normalized_chat_history_keys(tmp_path, monkeypatch):
+    from src.core import settings as st
+    from src.core.path_utils import normalize_path_key
+
+    settings_file = tmp_path / "settings.json"
+    monkeypatch.setattr(st, "SETTINGS_FILE", str(settings_file))
+
+    existing_pdf = tmp_path / "chat.pdf"
+    existing_pdf.write_text("pdf", encoding="utf-8")
+    normalized_path = normalize_path_key(str(existing_pdf))
+
+    settings_file.write_text(
+        json.dumps(
+            {
+                "chat_histories": {
+                    str(existing_pdf): [{"role": "user", "content": "one"}],
+                    normalized_path: [{"role": "assistant", "content": "two"}],
+                },
+                "recent_files": [str(existing_pdf), normalized_path, ""],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = st.load_settings()
+
+    assert loaded["recent_files"] == [normalized_path]
+    assert loaded["chat_histories"] == {
+        normalized_path: [
+            {"role": "user", "content": "one"},
+            {"role": "assistant", "content": "two"},
+        ]
+    }
 
 
 def test_load_settings_corrupt_file_creates_backup(tmp_path, monkeypatch):

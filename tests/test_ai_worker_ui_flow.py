@@ -81,9 +81,10 @@ class _PathStub:
 
 
 class _WorkerStub:
-    def __init__(self, mode, kwargs):
+    def __init__(self, mode, kwargs, result_payload=None):
         self.mode = mode
         self.kwargs = kwargs
+        self.result_payload = result_payload or {}
 
     def isRunning(self):
         return False
@@ -138,13 +139,18 @@ def test_on_success_updates_summary_result(monkeypatch):
     monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
 
-    worker = _WorkerStub("ai_summarize", {"summary_result": "summary"})
+    worker = _WorkerStub(
+        "ai_summarize",
+        {"summary_result": "summary"},
+        {"title": "Doc", "summary": "summary", "key_points": ["alpha", "beta"]},
+    )
     dummy = _build_dummy(worker)
     dummy._ai_worker_mode = True
 
     dummy.on_success("done")
 
-    assert dummy.txt_summary_result.value == "summary"
+    assert "summary" in dummy.txt_summary_result.value
+    assert "alpha" in dummy.txt_summary_result.value
     assert dummy.status_label.text
 
 
@@ -156,7 +162,11 @@ def test_on_success_updates_keyword_result(monkeypatch):
     monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
 
-    worker = _WorkerStub("ai_extract_keywords", {"keywords_result": ["alpha", "beta"]})
+    worker = _WorkerStub(
+        "ai_extract_keywords",
+        {"keywords_result": ["alpha", "beta"]},
+        {"keywords": ["alpha", "beta"]},
+    )
     dummy = _build_dummy(worker)
     dummy._keyword_worker_mode = True
 
@@ -174,7 +184,11 @@ def test_on_success_appends_chat_answer(monkeypatch):
     monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
 
-    worker = _WorkerStub("ai_ask_question", {"answer_result": "answer"})
+    worker = _WorkerStub(
+        "ai_ask_question",
+        {"answer_result": "answer"},
+        {"answer": "answer"},
+    )
     dummy = _build_dummy(worker)
     dummy._chat_worker_mode = True
     dummy._chat_pending_path = "chat.pdf"
@@ -211,3 +225,27 @@ class _ToastStub:
 
     def show_toast(self, *_args, **_kwargs):
         return None
+
+
+def test_on_partial_result_streams_summary_and_chat(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_worker as worker_module
+
+    monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
+
+    summary_worker = _WorkerStub("ai_summarize", {}, {})
+    summary_dummy = _build_dummy(summary_worker)
+    summary_dummy.worker = summary_worker
+    summary_dummy._ai_worker_mode = True
+    summary_dummy._on_partial_result({"text": '{"summary":"part'})
+    summary_dummy._on_partial_result({"text": 'ial"}'})
+    assert "partial" in summary_dummy.txt_summary_result.value
+
+    chat_worker = _WorkerStub("ai_ask_question", {}, {})
+    chat_dummy = _build_dummy(chat_worker)
+    chat_dummy.worker = chat_worker
+    chat_dummy._chat_worker_mode = True
+    chat_dummy._chat_pending_path = "chat.pdf"
+    chat_dummy._on_partial_result({"text": '{"answer":"hel'})
+    chat_dummy._on_partial_result({"text": 'lo"}'})
+    assert any("hello" in entry for entry in chat_dummy.txt_chat_history.entries)

@@ -4,6 +4,7 @@ import os
 from .._typing import WorkerHost
 from ..optional_deps import fitz
 from ..worker_runtime.args import _as_list, _as_str
+from ..worker_runtime.save_profiles import DEFAULT_COMPRESSION_SAVE_PROFILE, normalize_save_profile
 from ._pdf_impl import FITZ_PDF_ENCRYPT_AES_256, FITZ_PDF_PERM_ACCESSIBILITY, FITZ_PDF_PERM_COPY, FITZ_PDF_PERM_PRINT
 from ._pdf_impl import WorkerPdfOpsMixin as _LegacyWorkerPdfOpsMixin
 
@@ -34,7 +35,14 @@ class WorkerBatchOpsMixin(WorkerHost):
                 doc = fitz.open(file_path)
 
                 if operation == "compress":
-                    self._atomic_pdf_save(doc, out_path, garbage=4, deflate=True)
+                    self._atomic_pdf_save(
+                        doc,
+                        out_path,
+                        save_profile=normalize_save_profile(
+                            self.kwargs.get("save_profile"),
+                            default=DEFAULT_COMPRESSION_SAVE_PROFILE,
+                        ),
+                    )
                 elif operation == "watermark" and option:
                     for page in doc:
                         text_rect = fitz.Rect(

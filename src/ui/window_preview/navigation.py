@@ -2,16 +2,43 @@ import logging
 import os
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QImage, QPainter, QPixmap
-from PyQt6.QtPrintSupport import QAbstractPrintDialog, QPrinter, QPrintDialog
+from PyQt6.QtGui import QImage, QPainter
+from PyQt6.QtPrintSupport import QAbstractPrintDialog, QPageSetupDialog, QPrintPreviewDialog, QPrinter
 from PyQt6.QtWidgets import QMessageBox
 
 from ...core.optional_deps import fitz
 from ...core.i18n import tm
-from ...core.perf import PerfTimer
 from ..widgets import ToastWidget
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_preview_printer(self):
+    printer = getattr(self, "_preview_printer", None)
+    if printer is None:
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        self._preview_printer = printer
+    return printer
+
+
+def _copy_printer_setup_state(source, target) -> None:
+    if source is None or target is None or source is target:
+        return
+    try:
+        page_layout = source.pageLayout()
+    except Exception:
+        page_layout = None
+    if page_layout is not None and hasattr(target, "setPageLayout"):
+        try:
+            target.setPageLayout(page_layout)
+        except Exception:
+            logger.debug("Failed to copy printer page layout", exc_info=True)
+
+
+def _create_preview_printer(self):
+    printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+    _copy_printer_setup_state(getattr(self, "_preview_printer", None), printer)
+    return printer
 
 
 def _collect_print_page_indices(printer, total_pages: int, current_page_index: int) -> list[int]:
@@ -82,68 +109,92 @@ def _render_pdf_page_to_printer(printer, painter: QPainter, page) -> None:
     )
     painter.drawImage(draw_rect, scaled)
 
+
+def _paint_pdf_document(printer, path: str, password: str | None, current_page_index: int):
+    doc = fitz.open(path)
+    try:
+        if doc.is_encrypted and password:
+            doc.authenticate(password)
+        page_indices = _collect_print_page_indices(printer, len(doc), current_page_index)
+        if not page_indices:
+            return
+        painter = QPainter()
+        if not painter.begin(printer):
+            raise RuntimeError("Failed to initialize printer painter")
+        try:
+            for render_idx, page_index in enumerate(page_indices):
+                if render_idx > 0 and not printer.newPage():
+                    raise RuntimeError("Failed to start a new printer page")
+                _render_pdf_page_to_printer(printer, painter, doc[page_index])
+        finally:
+            painter.end()
+    finally:
+        doc.close()
+
+
 def _print_current_preview(self):
-    if hasattr(self, "_current_preview_path") and self._current_preview_path:
+    if getattr(self, "_current_preview_path", ""):
         self._print_pdf(self._current_preview_path)
     else:
         QMessageBox.warning(self, tm.get("print_title"), tm.get("print_no_file"))
+
+
+def _open_page_setup(self):
+    if not getattr(self, "_current_preview_path", ""):
+        QMessageBox.warning(self, tm.get("print_title"), tm.get("print_no_file"))
+        return
+    printer = _ensure_preview_printer(self)
+    dialog = QPageSetupDialog(printer, self)
+    dialog.exec()
+
 
 def _print_pdf(self, path):
     if not path or not os.path.exists(path):
         QMessageBox.warning(self, tm.get("print_title"), tm.get("print_no_file"))
         return
 
-    ready, _password = self._ensure_preview_access(path)
+    ready, password = self._ensure_preview_access(path)
     if not ready:
         QMessageBox.warning(self, tm.get("print_title"), self.preview_label.text())
         return
 
     try:
-        doc = getattr(self, "_current_preview_doc", None)
-        if not doc:
-            raise RuntimeError(tm.get("print_no_file"))
-
-        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        printer = _create_preview_printer(self)
         printer.setDocName(os.path.basename(path))
-        dialog = QPrintDialog(printer, self)
-        dialog.setMinMax(1, len(doc))
-        dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintPageRange, True)
-        dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintCurrentPage, True)
 
-        if dialog.exec() == QPrintDialog.DialogCode.Accepted:
-            page_indices = _collect_print_page_indices(
-                printer,
-                len(doc),
+        dialog = QPrintPreviewDialog(printer, self)
+        dialog.setWindowTitle(tm.get("print_title"))
+        if hasattr(dialog, "setOption"):
+            dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintPageRange, True)
+            dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintCurrentPage, True)
+        dialog.paintRequested.connect(
+            lambda current_printer: _paint_pdf_document(
+                current_printer,
+                path,
+                password,
                 getattr(self, "_current_preview_page", 0),
             )
-            if not page_indices:
-                raise RuntimeError(tm.get("print_no_file"))
+        )
 
-            painter = QPainter()
-            if not painter.begin(printer):
-                raise RuntimeError("Failed to initialize printer painter")
-            try:
-                for render_idx, page_index in enumerate(page_indices):
-                    if render_idx > 0 and not printer.newPage():
-                        raise RuntimeError("Failed to start a new printer page")
-                    _render_pdf_page_to_printer(printer, painter, doc[page_index])
-            finally:
-                painter.end()
-
+        result = dialog.exec()
+        if result == QPrintPreviewDialog.DialogCode.Accepted:
             toast = ToastWidget(tm.get("print_completed"), toast_type="success", duration=2000)
             toast.show_toast(self)
-    except Exception as e:
-        QMessageBox.warning(self, tm.get("print_error_title"), tm.get("print_error_msg", str(e)))
+    except Exception as exc:
+        QMessageBox.warning(self, tm.get("print_error_title"), tm.get("print_error_msg", str(exc)))
+
 
 def _prev_preview_page(self):
     if self._current_preview_page > 0:
         self._current_preview_page -= 1
         self._render_preview_page()
 
+
 def _next_preview_page(self):
-    if hasattr(self, "_preview_total_pages") and self._current_preview_page < self._preview_total_pages - 1:
+    if self._current_preview_page < getattr(self, "_preview_total_pages", 0) - 1:
         self._current_preview_page += 1
         self._render_preview_page()
+
 
 def _on_preview_page_requested(self, page_index: int):
     if page_index == getattr(self, "_current_preview_page", -1):
@@ -151,68 +202,40 @@ def _on_preview_page_requested(self, page_index: int):
     if page_index < 0 or page_index >= getattr(self, "_preview_total_pages", 0):
         return
     self._current_preview_page = page_index
-    self._render_preview_page()
+    if hasattr(self, "_sync_rotate_thumbnail_with_preview"):
+        self._sync_rotate_thumbnail_with_preview()
+
 
 def _schedule_preview_rerender(self):
-    if not getattr(self, "_current_preview_path", ""):
-        return
-    if getattr(self, "_preview_total_pages", 0) <= 0:
-        return
-    self._render_preview_page()
+    if getattr(self, "_current_preview_path", "") and getattr(self, "_preview_total_pages", 0) > 0:
+        self._render_preview_page()
+
 
 def _render_preview_page(self):
-    if not hasattr(self, "_current_preview_path") or not self._current_preview_path:
+    if not getattr(self, "_current_preview_path", ""):
         return
-    with PerfTimer("ui.preview.render", logger=logger, extra={"page": self._current_preview_page}):
-        doc, locked_state = self._ensure_preview_document(self._current_preview_path)
-        if not doc:
-            if locked_state == "wrong":
-                self.preview_label.setText(tm.get("preview_password_wrong"))
-            elif locked_state == "cancelled":
-                self.preview_label.setText(tm.get("preview_encrypted"))
-            self._reset_preview_state(close_doc=False)
-            return
 
-        if self._current_preview_page < 0 or self._current_preview_page >= len(doc):
-            return
+    doc, locked_state = self._ensure_preview_document(self._current_preview_path)
+    if not doc:
+        if locked_state == "wrong":
+            self.preview_label.setText(tm.get("preview_password_wrong"))
+        elif locked_state == "cancelled":
+            self.preview_label.setText(tm.get("preview_encrypted"))
+        self._reset_preview_state(close_doc=False)
+        return
 
-        preview_size = self.preview_image.display_size()
-        target_w = max(280, preview_size.width() - 20)
-        target_h = max(400, preview_size.height() - 20)
-        render_zoom = float(getattr(self, "_PREVIEW_RENDER_ZOOM", 2.0))
-        zoom_bucket = int(render_zoom * 100)
-        key = self._make_preview_cache_key(
-            self._current_preview_path,
-            self._current_preview_page,
-            target_w,
-            target_h,
-            zoom_bucket,
-        )
+    total_pages = doc.pageCount()
+    if total_pages <= 0:
+        self._reset_preview_state(close_doc=False)
+        return
 
-        pixmap = self._get_cached_preview_pixmap(key)
-        if pixmap is None:
-            page = doc[self._current_preview_page]
-            pix = page.get_pixmap(matrix=fitz.Matrix(render_zoom, render_zoom))
-            img_data = bytes(pix.samples)
-            fmt = QImage.Format.Format_RGBA8888 if pix.alpha else QImage.Format.Format_RGB888
-            img = QImage(img_data, pix.width, pix.height, pix.stride, fmt)
-            base_pixmap = QPixmap.fromImage(img.copy())
-            pixmap = base_pixmap.scaled(
-                target_w,
-                target_h,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            self._put_cached_preview_pixmap(key, pixmap)
+    self._current_preview_page = max(0, min(getattr(self, "_current_preview_page", 0), total_pages - 1))
+    self.preview_image.set_page_state(self._current_preview_page, total_pages)
+    self.preview_image.go_to_page(self._current_preview_page, emit_signal=False)
+    self._set_preview_navigation_enabled(True)
+    if hasattr(self, "_sync_rotate_thumbnail_with_preview"):
+        self._sync_rotate_thumbnail_with_preview()
 
-        self.preview_image.set_preview_pixmap(
-            pixmap,
-            current_page=self._current_preview_page,
-            total_pages=self._preview_total_pages,
-            preserve_view=True,
-        )
-        if hasattr(self, "_sync_rotate_thumbnail_with_preview"):
-            self._sync_rotate_thumbnail_with_preview()
 
 def _on_list_item_clicked(self, item):
     path = item.data(Qt.ItemDataRole.UserRole)

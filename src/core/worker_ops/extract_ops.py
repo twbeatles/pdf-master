@@ -223,6 +223,7 @@ class WorkerExtractOpsMixin(WorkerHost):
             if doc:
                 doc.close()
         self.kwargs["result_annotations"] = all_annots
+        self._set_result_payload(annotations=all_annots)
         self.finished_signal.emit(
             self._get_msg("msg_annotations_extracted", len(all_annots))
         )

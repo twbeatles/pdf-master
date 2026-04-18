@@ -42,6 +42,10 @@ class MainWindowHost:
     _chat_histories: dict[str, Any]
     _preview_password_hint: str | None
     _same_path_preview_restore: dict[str, Any] | None
+    _preview_dir_watcher: Any
+    _preview_reload_attempts: int
+    _preview_reload_target_path: str
+    _preview_reload_restore_state: dict[str, object] | None
 
     def sender(self) -> QObject | None:
         ...
@@ -82,6 +86,9 @@ class MainWindowHost:
     def _schedule_preview_rerender(self) -> None:
         ...
 
+    def _open_page_setup(self) -> None:
+        ...
+
     def _schedule_settings_save(self, delay_ms: int = 400) -> None:
         ...
 
@@ -91,7 +98,7 @@ class MainWindowHost:
     def _close_preview_document(self) -> None:
         ...
 
-    def _update_preview(self, path: str) -> None:
+    def _update_preview(self, path: str, restore_state: dict[str, object] | None = None) -> None:
         ...
 
     def _render_preview_page(self) -> None:

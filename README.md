@@ -19,6 +19,9 @@
 - `PDF -> 이미지`, `텍스트 추출`의 자동 출력 파일명은 `__2`, `__3` 접미사로 충돌을 회피합니다.
 - `PDF 비교`는 이제 줄 순서 변경과 중복 줄 개수 차이까지 감지하며, 시각적 diff PDF 생성은 UI에서 선택적으로 켤 수 있습니다.
 - 단일 입력/단일 출력 PDF 수정 모드에서 원본 경로로 저장해도, preview가 같은 파일을 잡고 있으면 작업 전에 닫고 완료/실패/취소 후 다시 복원합니다.
+- 우측 미리보기는 `QFileSystemWatcher`로 현재 PDF와 부모 폴더를 함께 감시하며, 외부 프로그램이 파일을 atomic replace해도 짧은 재시도 후 자동으로 다시 엽니다.
+- 미리보기의 **페이지 설정**은 별도 상태로 유지되고, **인쇄 미리보기**는 매번 fresh `QPrinter`를 만들어 직전 인쇄 범위가 새 작업에 섞이지 않도록 분리되었습니다.
+- AI 채팅의 **대화 삭제**는 이제 현재 선택한 PDF의 기록과 SDK 채팅 세션만 지우며, 다른 PDF 기록은 유지합니다.
 - 출력 관련 저장/폴더 선택 다이얼로그는 `last_output_dir`를 시작 경로로 재사용하고, 성공한 출력 경로를 다시 기억합니다.
 - Undo/Redo는 작업 재실행이 아니라 before/after 스냅샷 복원 기반이며, `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, `copy_page_between_docs`도 같은 규칙으로 포함됩니다.
 - 이번에 정리한 worker 결과/상태 메시지는 KO/EN i18n 카탈로그를 통해 함께 관리됩니다.
@@ -75,7 +78,7 @@
 | 기능 | 설명 |
 |------|------|
 | **PDF 분할** | 각 페이지별 또는 범위별 분리 |
-| **PDF 압축** | 고/중/저 압축률 선택 |
+| **PDF 압축** | `fast` / `compact` / `web` 저장 프로필 선택 |
 | **PDF 크롭** | 여백 자르기 |
 | **메타데이터 편집** | 제목, 저자, 주제, 키워드 수정 |
 | **PDF 비교** | 줄 순서/중복 차이까지 분석 + 선택적 시각 diff PDF 생성 |
@@ -102,7 +105,7 @@
 | **이미지 추출** | 포함된 이미지 추출 | PNG/JPG 저장 |
 | **테이블 추출** | 표 데이터 추출 | CSV 저장 |
 | **북마크 추출** | 목차 구조 추출 | TXT 저장 |
-| **Markdown 변환** | PDF → Markdown | MD 저장 |
+| **Markdown 변환** | `auto/native/text` 모드, front matter, 페이지 마커, asset placeholder 옵션 | MD 저장 |
 | **첨부파일 관리** | 첨부파일 추가/추출 | 다양한 형식 |
 
 ### 🤖 AI 기능 (Gemini API)
@@ -124,6 +127,7 @@
 - **줌/패닝 미리보기** - 마우스 휠 줌, 드래그 이동
 - **썸네일 그리드** - 모든 페이지 한눈에 보기 + preview 문서/페이지 동기화
 - **회전 탭 페이지 연동** - 썸네일 클릭 시 오른쪽 미리보기 즉시 동기화
+- **외부 수정 자동 감지** - 같은 PDF가 외부에서 덮어써져도 preview 자동 재로드
 - **Undo/Redo** - 단일 출력 PDF 편집 작업 전반 실행 취소
 - **다국어 지원** - 한국어/영어 자동 감지 및 설정 가능 (v4.4)
 
@@ -137,20 +141,16 @@
 
 ### 의존성 설치
 ```bash
-# 필수 패키지
-pip install PyQt6 PyMuPDF
+# canonical manifest (`pyproject.toml`)
+pip install -e .[dev]
 
-# 개발 검증용 의존성
+# optional extras
+pip install -e .[build]
+pip install -e .[ai]
+pip install -e .[secure]
+
+# 기존 워크플로 호환용 shim
 pip install -r requirements-dev.txt
-
-# 빌드 시
-pip install PyInstaller
-
-# AI 기능 사용 시 (선택)
-pip install google-genai
-
-# 또는 기존 SDK (deprecated)
-pip install google-generativeai
 ```
 
 ### 실행
@@ -215,6 +215,17 @@ python main.py
 5. 요약 스타일 선택 (간결/상세/글머리 기호)
 6. **요약 실행** 클릭
 
+### 6-1. PDF 채팅 / 대화 삭제
+1. **AI 요약** 탭에서 채팅용 PDF 선택
+2. 질문 입력 후 **질문하기** 클릭
+3. **대화 삭제**는 현재 선택한 PDF의 기록만 초기화하며, 다른 PDF 대화는 유지됩니다.
+
+### 6-2. Markdown 추출 옵션
+1. **고급 > 추출 > Markdown 추출** 영역 선택
+2. `auto`, `native`, `text` 중 추출 모드 선택
+3. 필요 시 `YAML front matter`, `페이지 마커`, `이미지/표 placeholder` 옵션을 켭니다.
+4. **Markdown 추출** 실행
+
 ### 7. 페이지 순서 변경
 1. **순서 변경** 탭 선택
 2. PDF 파일 선택 (자동으로 페이지 목록 로드)
@@ -270,9 +281,14 @@ python -m PyInstaller pdf_master.spec --clean
 
 ## ✅ 개발 검증
 
-- 검증 환경 준비: `pip install -r requirements-dev.txt`
+- 단일 의존성/빌드 manifest: `pyproject.toml`
+- 검증 환경 준비: `pip install -e .[dev]`
+- 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - 정적 분석: `python -m pyright` → `0 errors`
 - 회귀 테스트: `python -m pytest -q`
+- 패키지 빌드: `python -m build`
+- 실행 파일 빌드: `python -m PyInstaller pdf_master.spec --clean`
+- `.gitignore`는 빌드/검증 산출물(`build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl`)이 워크트리를 오염시키지 않도록 정리되어 있습니다.
 - 인코딩 점검: 추적 텍스트 파일 UTF-8 decode/BOM/U+FFFD audit 통과
 
 ---
@@ -284,8 +300,9 @@ pdf-master/
 ├── .editorconfig              # UTF-8/개행 규칙
 ├── main.py                    # 애플리케이션 진입점
 ├── pdf_master.spec            # PyInstaller 빌드 설정
+├── pyproject.toml             # canonical dependency/build manifest
 ├── pyrightconfig.json         # Pyright/Pylance 분석 범위 설정
-├── requirements-dev.txt       # 개발 검증용 의존성
+├── requirements-dev.txt       # compatibility shim -> -e .[dev]
 ├── typings/                   # Pyright용 최소 외부 stub
 ├── README.md                  # 프로젝트 설명서
 ├── README_EN.md               # 영문 문서
@@ -465,7 +482,7 @@ API 키 저장 정책:
 
 ### v4.2 (2026-01-06)
 - 🔄 **google-genai SDK** - 새 공식 SDK 사용
-- 🧠 **gemini-flash-latest** - 최신 AI 모델
+- 🧠 **gemini-2.5-flash** - 기본 AI 모델
 - ❌ **PDF → Word 기능 제거** - 의존성 간소화
 - 📦 **빌드 경량화** - ~30-40MB
 

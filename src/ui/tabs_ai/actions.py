@@ -20,11 +20,16 @@ from PyQt6.QtWidgets import (
 )
 
 from ...core.i18n import tm
+from ...core.path_utils import normalize_path_key
 from ...core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
 from ..main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
 from ..widgets import FileSelectorWidget, ToastWidget, is_pdf_encrypted
 
 logger = logging.getLogger(__name__)
+
+
+def _chat_history_key(path: object) -> str:
+    return normalize_path_key(path)
 
 
 def _ensure_preview_ready(self, path):
@@ -111,7 +116,8 @@ def _ask_ai_question(self):
     if not question:
         return
 
-    conversation_history = list(self._chat_histories.get(path, []))
+    history_key = _chat_history_key(path)
+    conversation_history = list(self._chat_histories.get(history_key, []))
     self._record_chat_entry(path, "user", question)
     self._save_chat_histories()
 
@@ -122,7 +128,7 @@ def _ask_ai_question(self):
 
     # Worker 실행
     self._chat_worker_mode = True
-    self._chat_pending_path = path
+    self._chat_pending_path = history_key
     self.run_worker("ai_ask_question",
                    file_path=path,
                    api_key=api_key,
@@ -141,7 +147,7 @@ def _load_chat_history_for_path(self, path: str):
     self.txt_chat_history.clear()
     if not path:
         return
-    history = self._chat_histories.get(path, [])
+    history = self._chat_histories.get(_chat_history_key(path), [])
     for entry in history:
         role = entry.get("role")
         content = entry.get("content", "")
@@ -154,9 +160,17 @@ def _load_chat_history_for_path(self, path: str):
 def _clear_chat_history(self):
     """채팅 히스토리 삭제"""
     path = self.sel_chat_pdf.get_path() if hasattr(self, "sel_chat_pdf") else None
-    if path and path in self._chat_histories:
-        del self._chat_histories[path]
+    history_key = _chat_history_key(path)
+    if history_key and history_key in self._chat_histories:
+        del self._chat_histories[history_key]
         self._save_chat_histories()
+    if history_key:
+        try:
+            from ...core.ai_service import AIService
+
+            AIService.clear_chat_session(history_key)
+        except Exception:
+            logger.debug("Failed to clear cached chat session for %s", history_key, exc_info=True)
     self.txt_chat_history.clear()
     toast = ToastWidget(tm.get("msg_chat_cleared"), toast_type='info', duration=2000)
     toast.show_toast(self)

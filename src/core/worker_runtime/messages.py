@@ -9,6 +9,7 @@ FALLBACK_MESSAGES = {
     "err_question_required": "질문을 입력해주세요.",
     "err_input_file_missing": "입력 파일이 존재하지 않습니다.",
     "err_output_path_missing": "출력 경로가 지정되지 않았습니다.",
+    "err_required_parameter_missing": "필수 옵션이 누락되었습니다: {}",
     "err_cancelled": "작업이 취소되었습니다.",
     "err_pdf_corrupted": "PDF 파일이 손상되었거나 형식이 올바르지 않습니다.",
     "err_operation_failed": "오류 발생: {}",

@@ -1,24 +1,18 @@
 import logging
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
-)
+from PyQt6.QtWidgets import QGroupBox, QLabel, QVBoxLayout
 
 from ...core.i18n import tm
 from ..zoomable_preview import ZoomablePreviewWidget
 
 logger = logging.getLogger(__name__)
 
+
 def _create_preview_panel(self):
     panel = QGroupBox(tm.get("preview_title"))
     layout = QVBoxLayout(panel)
     layout.setSpacing(10)
-    self._ensure_preview_cache()
 
     self.preview_label = QLabel(tm.get("preview_default"))
     self.preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -29,30 +23,23 @@ def _create_preview_panel(self):
 
     self.preview_image = ZoomablePreviewWidget()
     self.preview_image.setMinimumSize(250, 350)
-    self.preview_image.set_controlled_mode(True)
     self.preview_image.pageChanged.connect(self._on_preview_page_requested)
-    self.preview_image.renderRequested.connect(self._schedule_preview_rerender)
+    self.preview_image.printRequested.connect(self._print_current_preview)
+    self.preview_image.pageSetupRequested.connect(self._open_page_setup)
     layout.addWidget(self.preview_image, 1)
 
     self.btn_prev_page = self.preview_image.btn_prev
     self.page_counter = self.preview_image.page_label
     self.btn_next_page = self.preview_image.btn_next
+    self.btn_print_preview = self.preview_image.btn_print
 
-    footer_layout = QHBoxLayout()
-    footer_layout.addStretch()
-    self.btn_print_preview = QPushButton(tm.get("btn_print_preview"))
-    self.btn_print_preview.setObjectName("secondaryBtn")
-    self.btn_print_preview.setFixedSize(70, 30)
-    self.btn_print_preview.setToolTip(tm.get("tooltip_print_preview"))
-    self.btn_print_preview.clicked.connect(self._print_current_preview)
-    footer_layout.addWidget(self.btn_print_preview)
-
-    layout.addLayout(footer_layout)
     self._set_preview_navigation_enabled(False)
     return panel
 
+
 def _set_preview_navigation_enabled(self, enabled: bool):
     self.preview_image.set_navigation_enabled(enabled)
-    self.btn_print_preview.setEnabled(enabled)
+    self.preview_image.btn_print.setEnabled(enabled)
+    self.preview_image.btn_page_setup.setEnabled(enabled)
     if not enabled:
         self.preview_image.set_page_state(0, 0)

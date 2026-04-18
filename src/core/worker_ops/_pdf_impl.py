@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from typing import Any, cast
 
 from .._typing import WorkerHost
@@ -13,6 +14,10 @@ from ..constants import (
 )
 from ..optional_deps import fitz
 from ..worker_runtime.args import _as_bool, _as_dict, _as_float, _as_int, _as_list, _as_str
+from ..worker_runtime.save_profiles import (
+    normalize_save_profile,
+    quality_to_save_profile,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +48,84 @@ def _normalize_stroke_points(raw_points: Any) -> list[list[float]]:
     return normalized_points
 
 
+def _fallback_markdown_from_text(page: Any) -> str:
+    text = _as_str(page.get_text("text"))
+    page_chunks: list[str] = []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if stripped:
+            page_chunks.append(stripped)
+    return "\n\n".join(page_chunks).strip()
+
+
+def _extract_native_markdown(page: Any) -> str:
+    for option in ("markdown", "md"):
+        try:
+            extracted = page.get_text(option)
+        except Exception:
+            extracted = ""
+        if isinstance(extracted, str) and extracted.strip():
+            return extracted.strip()
+    return ""
+
+
+def _extract_page_markdown(page: Any, markdown_mode: str) -> str:
+    if markdown_mode in {"auto", "native"}:
+        native_markdown = _extract_native_markdown(page)
+        if native_markdown:
+            return native_markdown
+        if markdown_mode == "native":
+            raise RuntimeError("Native Markdown extraction is not available for this document/runtime.")
+    return _fallback_markdown_from_text(page)
+
+
+def _page_asset_placeholders(page: Any) -> list[str]:
+    placeholders: list[str] = []
+    try:
+        image_count = len(page.get_images(full=True))
+    except Exception:
+        image_count = 0
+    if image_count > 0:
+        placeholders.append(f"_[Images detected: {image_count}]_")
+
+    try:
+        find_tables = getattr(page, "find_tables", None)
+        tables = find_tables() if callable(find_tables) else None
+        table_list = getattr(tables, "tables", tables)
+        if table_list is not None and hasattr(table_list, "__len__"):
+            table_count = len(cast(Any, table_list))
+        else:
+            table_count = 0
+    except Exception:
+        table_count = 0
+    if table_count > 0:
+        placeholders.append(f"_[Tables detected: {table_count}]_")
+    return placeholders
+
+
+def _markdown_front_matter(file_path: str, doc: Any) -> str:
+    metadata = doc.metadata if isinstance(getattr(doc, "metadata", None), dict) else {}
+    title = _as_str(metadata.get("title"))
+    author = _as_str(metadata.get("author"))
+    page_count = len(doc)
+    lines = [
+        "---",
+        f"file_name: {json.dumps(os.path.basename(file_path), ensure_ascii=False)}",
+        f"title: {json.dumps(title, ensure_ascii=False)}",
+        f"author: {json.dumps(author, ensure_ascii=False)}",
+        f"page_count: {page_count}",
+        "---",
+        "",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 class WorkerPdfOpsMixin(WorkerHost):
 
     def merge(self):
         files = [path for path in _as_list(self.kwargs.get('files')) if isinstance(path, str)]
         output_path = _as_str(self.kwargs.get('output_path'))
-
-        # 입력 유효성 검사
         if not files:
             self.error_signal.emit(self._get_msg("err_no_files_selected"))
             return
@@ -259,17 +335,13 @@ class WorkerPdfOpsMixin(WorkerHost):
         try:
             doc = fitz.open(file_path)
             total_pages = len(doc)
-
-            # v3.2: 개선된 페이지 파싱 유틸리티 사용
             pages_to_delete = self._parse_page_range(page_range, total_pages)
-
-            # 삭제는 뒤에서부터 해야 인덱스가 꼬이지 않음
             pages_to_delete = sorted(pages_to_delete, reverse=True)
             if not pages_to_delete:
                 raise ValueError("삭제할 페이지가 없습니다.")
             total_to_delete = len(pages_to_delete)
             for idx, p in enumerate(pages_to_delete):
-                self._check_cancelled()  # 취소 체크포인트
+                self._check_cancelled()
                 doc.delete_page(p)
                 self._emit_progress_if_due(int((idx + 1) / total_to_delete * 90))
             self._atomic_pdf_save(doc, output_path)
@@ -471,6 +543,7 @@ class WorkerPdfOpsMixin(WorkerHost):
         file_path = _as_str(self.kwargs.get('file_path'))
         output_path = _as_str(self.kwargs.get('output_path'))
         quality = _as_str(self.kwargs.get('quality'), 'high')  # low, medium, high
+        raw_save_profile = _as_str(self.kwargs.get('save_profile'))
 
         # 입력 유효성 검사
         if not file_path or not os.path.exists(file_path):
@@ -484,13 +557,25 @@ class WorkerPdfOpsMixin(WorkerHost):
         doc = fitz.open(file_path)
         try:
             total_pages = len(doc)
+            save_profile = normalize_save_profile(
+                raw_save_profile,
+                default=quality_to_save_profile(quality),
+            )
+            extra_save_kwargs = {}
+            if not raw_save_profile:
+                extra_save_kwargs = dict(COMPRESSION_SETTINGS.get(quality, COMPRESSION_SETTINGS['high']))
             # v4.5: 진행률 개선 - 페이지 스캔 20%, 저장(실제 압축) 80%
             for page_num in range(total_pages):
                 self._check_cancelled()  # 취소 체크포인트
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 20))
 
             self._emit_progress_if_due(25)  # 저장 시작
-            self._atomic_pdf_save(doc, output_path, **COMPRESSION_SETTINGS.get(quality, COMPRESSION_SETTINGS['high']))
+            self._atomic_pdf_save(
+                doc,
+                output_path,
+                save_profile=save_profile,
+                **extra_save_kwargs,
+            )
             self._emit_progress_if_due(95)  # 저장 완료
         finally:
             doc.close()
@@ -498,8 +583,9 @@ class WorkerPdfOpsMixin(WorkerHost):
         new_size = os.path.getsize(output_path)
         ratio = (1 - new_size / original_size) * 100 if original_size > 0 else 0
         self._emit_progress_if_due(100)
-        quality_name = {'low': '최대 압축', 'medium': '중간', 'high': '고품질'}.get(quality, '고품질')
-        self.finished_signal.emit(f"✅ 압축 완료! ({quality_name})\n{original_size//1024}KB → {new_size//1024}KB ({ratio:.1f}% 감소)")
+        self.finished_signal.emit(
+            f"Compression completed ({save_profile})\n{original_size//1024}KB -> {new_size//1024}KB ({ratio:.1f}% reduced)"
+        )
 
     def images_to_pdf(self):
         files = [path for path in _as_list(self.kwargs.get('files')) if isinstance(path, str)]
@@ -930,6 +1016,7 @@ class WorkerPdfOpsMixin(WorkerHost):
 
             # 결과를 kwargs에 저장 (메인 스레드에서 접근)
             self.kwargs['result_fields'] = fields
+            self._set_result_payload(fields=fields)
             self.finished_signal.emit(f"✅ 양식 필드 감지 완료!\n{len(fields)}개 필드 발견")
         finally:
             doc.close()
@@ -1563,6 +1650,7 @@ class WorkerPdfOpsMixin(WorkerHost):
                 })
 
             self.kwargs['result_attachments'] = attachments
+            self._set_result_payload(attachments=attachments)
             self._emit_progress_if_due(100)
             self.finished_signal.emit(f"✅ 첨부 파일 목록!\n{len(attachments)}개 발견")
         finally:
@@ -1603,24 +1691,52 @@ class WorkerPdfOpsMixin(WorkerHost):
         """PDF를 Markdown으로 추출"""
         file_path = _as_str(self.kwargs.get('file_path'))
         output_path = _as_str(self.kwargs.get('output_path'))
+        markdown_mode = _as_str(self.kwargs.get('markdown_mode'), 'auto')
+        if markdown_mode not in {'auto', 'native', 'text'}:
+            markdown_mode = 'auto'
+        include_front_matter = _as_bool(self.kwargs.get('include_front_matter'), False)
+        include_page_markers = _as_bool(self.kwargs.get('include_page_markers'), True)
+        include_asset_placeholders = _as_bool(self.kwargs.get('include_asset_placeholders'), False)
 
         doc = fitz.open(file_path)
-        markdown_chunks = [f"# {os.path.basename(file_path)}\n\n"]
+        markdown_chunks: list[str] = []
         total_pages = 0
 
         try:
             total_pages = len(doc)
-            for page_num in range(len(doc)):
+            if include_front_matter:
+                markdown_chunks.append(_markdown_front_matter(file_path, doc))
+
+            metadata = doc.metadata if isinstance(getattr(doc, "metadata", None), dict) else {}
+            document_title = _as_str(metadata.get("title")) or os.path.basename(file_path)
+            markdown_chunks.append(f"# {document_title}\n\n")
+
+            for page_num in range(total_pages):
                 page = doc[page_num]
-                self._check_cancelled()  # 취소 체크포인트
-                text = _as_str(page.get_text("text"))
-                markdown_chunks.append(f"\n---\n\n## Page {page_num + 1}\n\n")
-                # 기본 텍스트 변환 (단순 줄바꿈 정리)
-                lines = text.split('\n')
-                for line in lines:
-                    line = line.strip()
-                    if line:
-                        markdown_chunks.append(line + "\n\n")
+                self._check_cancelled()
+
+                if page_num > 0:
+                    markdown_chunks.append("\n")
+                if include_page_markers:
+                    markdown_chunks.append(f"---\n\n## Page {page_num + 1}\n\n")
+                if include_asset_placeholders:
+                    placeholders = _page_asset_placeholders(page)
+                    if placeholders:
+                        markdown_chunks.append("\n".join(placeholders))
+                        markdown_chunks.append("\n\n")
+
+                if markdown_mode == 'text':
+                    markdown_text = _fallback_markdown_from_text(page)
+                else:
+                    try:
+                        markdown_text = _extract_page_markdown(page, markdown_mode)
+                    except RuntimeError as exc:
+                        self.error_signal.emit(str(exc))
+                        return
+
+                if markdown_text:
+                    markdown_chunks.append(markdown_text)
+                    markdown_chunks.append("\n\n")
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
         finally:
             doc.close()

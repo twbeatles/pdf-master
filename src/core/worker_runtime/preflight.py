@@ -6,6 +6,7 @@ from typing import Any
 
 from ..constants import MAX_FILE_SIZE, MAX_PAGE_RANGE_LENGTH, MIN_PDF_SIZE
 from ..optional_deps import fitz
+from .dispatch import get_operation_spec
 
 logger = logging.getLogger(__name__)
 
@@ -103,12 +104,29 @@ def validate_non_pdf_size(host: Any, file_path: str, emit_error: bool = True) ->
 def preflight_inputs(host: Any) -> bool:
     """작업 실행 전 입력 파일 검증 (fail-fast)."""
     kwargs = host.kwargs
+    spec = get_operation_spec(getattr(host, "mode", ""))
+
+    def _has_required_value(value: object) -> bool:
+        if value is None:
+            return False
+        if isinstance(value, str):
+            return bool(value.strip())
+        if isinstance(value, (list, tuple, set, dict)):
+            return bool(value)
+        return True
 
     def _validate_pdf_path(path: str) -> bool:
         if not path or not os.path.exists(path):
             host.error_signal.emit(host._get_msg("err_pdf_not_found"))
             return False
         return validate_file_size(host, path, emit_error=True)
+
+    if spec is not None:
+        for key in spec.required_kwargs:
+            if _has_required_value(kwargs.get(key)):
+                continue
+            host.error_signal.emit(host._get_msg("err_required_parameter_missing", key))
+            return False
 
     for key in ("file_path", "file_path1", "file_path2", "source_path", "target_path", "replace_path"):
         path = kwargs.get(key)

@@ -1,8 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PDF Master v4.5.5 - PyInstaller Spec File
-# 경량화 최적화 빌드 설정 (onefile)
-# Python 3.10+ 호환, 폴더 기반 모듈 분할 및 optional dependency 경계 반영
-# Verified 2026-04-10 after same-path save / undo snapshot / output-dialog stability follow-up
+# One-file desktop build for the current split-package runtime layout.
+# Python 3.10+ compatible, with explicit optional dependency boundaries.
+# Verified 2026-04-19 after QtPdf preview integration, google-genai-only cleanup,
+# save-profile wiring, and docs/build validation sync.
 
 import sys
 import os
@@ -61,6 +62,8 @@ hiddenimports += [
     'PyQt6.QtGui', 
     'PyQt6.QtWidgets',
     'PyQt6.QtPrintSupport',  # v4.5: 인쇄 기능
+    'PyQt6.QtPdf',
+    'PyQt6.QtPdfWidgets',
 ]
 
 # v4.5: Python 표준 라이브러리 (명시적 추가)
@@ -74,6 +77,7 @@ hiddenimports += [
     'dataclasses',  # UndoManager ActionRecord
     'src.core.i18n',  # Explicitly include i18n for dynamic imports in widgets
     'src.core.optional_deps',  # Centralized optional fitz/keyring boundary
+    'src.core.path_utils',  # Shared normalized path helper used across settings/AI/UI
     'src.core._typing',  # Pyright/Pylance host contracts imported by worker mixins
     'src.ui._typing',  # Pyright/Pylance host contracts imported by UI mixins
     'src.ui.zoomable_preview',  # Runtime-critical preview widget path (main preview panel)
@@ -110,15 +114,17 @@ if _module_exists('keyring'):
 else:
     print("[INFO] keyring not installed - API key will be stored in file")
 
+# Runtime helper imported indirectly through worker runtime save paths.
+hiddenimports += ['src.core.worker_runtime.save_profiles']
+
 # 데이터 파일 수집
 datas = []
 
 # =====================================================================
-# AI 기능 (조건부) - google-genai SDK
+# AI 기능 (조건부) - google-genai SDK only
 # =====================================================================
 # 패키지명: google-genai (pip install google-genai)
 # Import: from google import genai
-# 참고: google-generativeai는 2025년 11월 deprecated됨
 
 ai_hiddenimports = []
 
@@ -162,22 +168,7 @@ if _module_exists('google.genai'):
     hiddenimports += ai_hiddenimports
     print(f"[OK] google-genai SDK detected ({len(ai_hiddenimports)} imports)")
 else:
-    # deprecated SDK 폴백 (2025.11 이전 호환)
-    if _module_exists('google.generativeai'):
-        ai_hiddenimports += [
-            'google.generativeai',
-            'google.ai.generativelanguage',
-        ]
-        try:
-            ai_hiddenimports += collect_submodules('google.generativeai')
-            ai_hiddenimports += collect_submodules('google.ai')
-        except Exception:
-            pass
-        ai_hiddenimports = _prune_hiddenimports(ai_hiddenimports)
-        hiddenimports += ai_hiddenimports
-        print(f"[WARN] Using deprecated google-generativeai SDK ({len(ai_hiddenimports)} imports)")
-    else:
-        print("[INFO] No Gemini SDK installed - AI features disabled")
+    print("[INFO] google-genai SDK not installed - AI features disabled")
 
 # =====================================================================
 # PDF to Word 기능 제거 (v4.2) - pdf2docx 의존성 삭제
@@ -212,7 +203,6 @@ excludes = [
     'PyQt6.QtSvg', 'PyQt6.QtSvgWidgets',
     'PyQt6.QtDesigner', 'PyQt6.QtHelp', 'PyQt6.QtUiTools',
     'PyQt6.QtOpenGL', 'PyQt6.QtOpenGLWidgets',
-    'PyQt6.QtPdf', 'PyQt6.QtPdfWidgets',
     'PyQt6.QtCharts', 'PyQt6.QtDataVisualization',
     'PyQt6.Qt3DCore', 'PyQt6.Qt3DRender', 'PyQt6.Qt3DInput',
     'PyQt6.Qt3DLogic', 'PyQt6.Qt3DAnimation', 'PyQt6.Qt3DExtras',
@@ -253,7 +243,7 @@ a = Analysis(
 # =====================================================================
 binary_excludes = [
     'qt6webengine', 'qt6multimedia', 'qt6quick', 'qt6qml',
-    'qt6pdf', 'qt63d', 'qt6charts', 'qt6datavisualization',
+    'qt63d', 'qt6charts', 'qt6datavisualization',
     'qt6bluetooth', 'qt6nfc', 'qt6sensors', 'qt6serial',
     'qt6positioning', 'qt6location', 'qt6remoteobjects',
     'qt6texttospeech', 'qt6virtualkeyboard', 'qt6webchannel',

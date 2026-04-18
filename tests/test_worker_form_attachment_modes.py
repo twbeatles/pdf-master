@@ -31,6 +31,7 @@ def test_get_form_fields_sets_result_payload(tmp_path):
 
     assert "result_fields" in worker.kwargs
     assert isinstance(worker.kwargs["result_fields"], list)
+    assert isinstance(worker.result_payload.get("fields"), list)
 
 
 def test_list_attachments_sets_result_payload(tmp_path):
@@ -47,6 +48,7 @@ def test_list_attachments_sets_result_payload(tmp_path):
     assert isinstance(payload, list)
     assert len(payload) == 1
     assert payload[0]["name"] == "sample.txt"
+    assert isinstance(worker.result_payload.get("attachments"), list)
 
 
 def test_worker_on_success_consumes_form_fields_payload(monkeypatch):
@@ -91,6 +93,16 @@ def test_worker_on_success_consumes_form_fields_payload(monkeypatch):
     class DummyWorker:
         def __init__(self):
             self.mode = "get_form_fields"
+            self.result_payload = {
+                "fields": [
+                    {
+                        "name": "customer_name",
+                        "value": "Alice",
+                        "type": "Text",
+                        "page": 1,
+                    }
+                ]
+            }
             self.kwargs = {
                 "result_fields": [
                     {

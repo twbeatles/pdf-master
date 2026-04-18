@@ -16,6 +16,11 @@
 - Page-targeted worker modes share a strict page resolver; `-1` last-page sentinel is reserved for signature insertion flows.
 - Directory-output cancellations roll back only files tracked in `kwargs["created_output_paths"]`, not the whole output folder.
 - Single-input/single-output mutation modes can save back onto the original path; preview closes that document before the worker starts and restores it after success/fail/cancel.
+- Preview file watching now tracks both the active PDF and its parent directory so external atomic replace flows can auto-reload after a bounded retry window.
+- Preview page setup and print preview are intentionally split: page setup persists layout state, while each print preview dialog uses a fresh `QPrinter`.
+- Compression now routes through central save profiles (`fast`, `compact`, `web`) instead of ad-hoc quality flags.
+- Markdown extraction now supports `auto/native/text` mode plus front matter, page marker, and asset placeholder toggles.
+- AI chat clearing is scoped to the currently selected PDF path and also clears the in-memory SDK chat session for that PDF.
 - Output save/folder dialogs reuse `settings["last_output_dir"]` and update it after a successful selection.
 - Undo/Redo is snapshot-based: restore `before_backup_path` on undo and `after_backup_path` on redo instead of re-running the worker.
 - Updated worker completion/error messages in the AI/batch/annotation/extract flows are keyed through the i18n catalogs.
@@ -43,6 +48,7 @@ pdf-master/
 ├── main.py
 ├── .editorconfig
 ├── pdf_master.spec
+├── pyproject.toml
 ├── pyrightconfig.json
 ├── requirements-dev.txt
 ├── typings/
@@ -184,7 +190,7 @@ def _check_cancelled(self):
 #### 주요 클래스
 ```python
 class AIService:
-    def __init__(self, api_key: str, model: str = "gemini-flash-latest", timeout: int = 30)
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash", timeout: int = 30)
     def summarize_pdf(self, pdf_path: str, language: str = "ko", style: str = "concise")
     def ask_about_pdf(self, pdf_path: str, question: str)
     def extract_keywords(self, pdf_path: str, max_keywords: int = 10, language: str = "ko")  # v4.5
@@ -193,9 +199,9 @@ class AIService:
 
 #### SDK 호환성
 ```python
-# 새 SDK (권장): google-genai
-# 기존 SDK (폴백): google-generativeai (2025.11 deprecated)
-# v4.5.4: 런타임에서는 importlib 기반 선택적 로딩을 사용
+# SDK: google-genai only
+# File API upload + structured output + streaming partial callbacks
+# no legacy fallback
 ```
 
 #### 예외 클래스
@@ -440,19 +446,22 @@ class ThumbnailGridWidget(QWidget):
 ### 13. `src/ui/zoomable_preview.py` - 줌/패닝 미리보기
 
 ```python
-class ZoomableGraphicsView(QGraphicsView):
-    """마우스 휠 줌, 드래그 패닝"""
-    zoomChanged = pyqtSignal(float)
-    
-    def set_zoom(zoom: float)
-    def zoom_in() / zoom_out()
-    def fit_in_view()
-    
 class ZoomablePreviewWidget(QWidget):
-    """줌 컨트롤 포함 미리보기"""
-    def load_pdf(pdf_path: str)
+    zoomChanged = pyqtSignal(float)
+    pageChanged = pyqtSignal(int)
+    printRequested = pyqtSignal()
+    pageSetupRequested = pyqtSignal()
+
+    def set_document(document: QPdfDocument | None, path: str = "")
+    def capture_view_state() -> dict[str, object]
+    def restore_view_state(state: dict[str, object] | None)
     def go_to_page(page_index: int)
 ```
+
+- `QPdfDocument + QPdfView + QPdfSearchModel + QPdfBookmarkModel + QPdfPageNavigator` wrapper입니다.
+- search/bookmark sidebar, print preview, page setup, page/zoom state restore를 위젯이 직접 담당합니다.
+- same-path overwrite 복원, 암호 세션 재사용, external rewrite auto-reload는 이 preview 경로와 `window_preview/*` helper들이 함께 책임집니다.
+- 예전 pixmap/control-mode 및 `renderRequested` 계약은 제거되었습니다.
 
 ---
 
@@ -469,9 +478,14 @@ class ZoomablePreviewWidget(QWidget):
 
 ## 🧪 테스트 업데이트 (v4.5.5)
 
-- 검증 환경 준비: `pip install -r requirements-dev.txt`
+- canonical manifest: `pyproject.toml`
+- 검증 환경 준비: `pip install -e .[dev]`
+- 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - `python -m pyright` -> `0 errors`
 - `python -m pytest -q` -> repo-local `.pytest_tmp` 사용
+- `python -m build`
+- `python -m PyInstaller pdf_master.spec --clean`
+- `.gitignore`는 `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl` 같은 검증/패키징 산출물을 기본적으로 제외합니다.
 - UTF-8/BOM/U+FFFD 회귀는 `tests/test_encoding_audit.py`가 검사
 - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행
 
@@ -481,6 +495,12 @@ class ZoomablePreviewWidget(QWidget):
   - 암호화 PDF grid 로딩/완료 시그널/loader 정리 검증
 - `tests/test_preview_print.py`
   - Qt 인쇄 페이지 범위 해석 및 렌더 경로 검증
+- `tests/test_ai_service_cache.py`
+  - File API fallback 제한, chat session clear, 텍스트 캐시 재사용 검증
+- `tests/test_worker_preflight.py`
+  - required kwargs 기반 preflight 검증
+- `tests/test_worker_regression_modes.py`
+  - Markdown 옵션 및 batch compress save profile 회귀 검증
 - `tests/test_worker_cancel_regression.py`
   - `split`/양식/프리핸드 서명 취소 체크 회귀 검증
 - `tests/test_worker_undo_modes.py`
