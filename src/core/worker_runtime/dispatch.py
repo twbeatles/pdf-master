@@ -88,7 +88,7 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
         result_kind="answer",
         title_key="mode_ai_ask",
         required_kwargs=("api_key", "question"),
-        result_payload_keys=("answer",),
+        result_payload_keys=("answer", "meta"),
         refresh_preview=False,
     ),
     "ai_extract_keywords": _spec(
@@ -97,7 +97,7 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
         result_kind="keywords",
         title_key="mode_ai_keywords",
         required_kwargs=("api_key",),
-        result_payload_keys=("keywords",),
+        result_payload_keys=("keywords", "meta"),
         refresh_preview=False,
     ),
     "ai_summarize": _spec(
@@ -106,7 +106,7 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
         result_kind="summary",
         title_key="mode_ai_summarize",
         required_kwargs=("api_key",),
-        result_payload_keys=("title", "summary", "key_points"),
+        result_payload_keys=("title", "summary", "key_points", "meta"),
         refresh_preview=False,
     ),
     "batch": _spec("batch", output_kind="directory", title_key="mode_batch", required_kwargs=("output_dir", "operation")),

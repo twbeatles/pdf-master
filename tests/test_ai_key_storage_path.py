@@ -39,7 +39,7 @@ def test_load_api_key_no_keyring_keeps_legacy_key(monkeypatch):
 
     assert loaded == "legacy-key"
     assert dummy.settings.get("gemini_api_key") == "legacy-key"
-    assert set_calls == ["legacy-key"]
+    assert set_calls == []
 
 
 def test_load_api_key_keyring_mode_migrates_and_cleans_legacy(monkeypatch):
@@ -92,4 +92,80 @@ def test_save_api_key_uses_settings_api(monkeypatch):
     # keyring 미사용 경로에서는 파일 폴백 키를 제거하면 안 됨
     assert dummy.settings.get("gemini_api_key") == "old-key"
     assert not save_calls
+
+
+def test_save_api_key_prompts_before_plaintext_fallback(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_tabs_ai as ai_module
+
+    dummy = _dummy_ai()
+    dummy.settings = {}
+    dummy.txt_api_key = _TextStub("new-key")
+
+    set_calls = []
+    question_calls = []
+
+    class DummyToast:
+        def __init__(self, *_args, **_kwargs):
+            return None
+
+        def show_toast(self, *_args, **_kwargs):
+            return None
+
+    def fake_set_api_key(key, allow_file_fallback=False):
+        set_calls.append((key, allow_file_fallback))
+        return allow_file_fallback
+
+    monkeypatch.setattr(ai_module, "ToastWidget", DummyToast)
+    monkeypatch.setattr(ai_module, "set_api_key", fake_set_api_key)
+    monkeypatch.setattr(
+        ai_module.QMessageBox,
+        "question",
+        lambda *_args, **_kwargs: question_calls.append(True) or ai_module.QMessageBox.StandardButton.Yes,
+    )
+    monkeypatch.setattr(ai_module.QMessageBox, "warning", lambda *_args, **_kwargs: None)
+
+    dummy._save_api_key()
+
+    assert set_calls == [("new-key", False), ("new-key", True)]
+    assert question_calls == [True]
+    assert dummy.settings["gemini_api_key"] == "new-key"
+
+
+def test_save_api_key_decline_plaintext_fallback(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_tabs_ai as ai_module
+
+    dummy = _dummy_ai()
+    dummy.settings = {}
+    dummy.txt_api_key = _TextStub("new-key")
+
+    set_calls = []
+    warnings = []
+
+    class DummyToast:
+        def __init__(self, *_args, **_kwargs):
+            return None
+
+        def show_toast(self, *_args, **_kwargs):
+            return None
+
+    monkeypatch.setattr(ai_module, "ToastWidget", DummyToast)
+    monkeypatch.setattr(
+        ai_module,
+        "set_api_key",
+        lambda key, allow_file_fallback=False: set_calls.append((key, allow_file_fallback)) or False,
+    )
+    monkeypatch.setattr(
+        ai_module.QMessageBox,
+        "question",
+        lambda *_args, **_kwargs: ai_module.QMessageBox.StandardButton.No,
+    )
+    monkeypatch.setattr(ai_module.QMessageBox, "warning", lambda *_args, **_kwargs: warnings.append(True))
+
+    dummy._save_api_key()
+
+    assert set_calls == [("new-key", False)]
+    assert warnings
+    assert "gemini_api_key" not in dummy.settings
 

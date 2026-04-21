@@ -703,3 +703,14 @@ python -m PyInstaller pdf_master.spec --clean
 ---
 
 *이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-10)*
+
+---
+
+## 2026-04-21 Stability Addendum
+
+- `AIService.summarize_pdf()`, `ask_about_pdf()`, and `extract_keywords()` now return a `meta` dictionary describing `file_api` vs `text_fallback`, truncation, focus limit, fallback page counts, and the 30,000-character cap.
+- AI result presentation now includes meta labels in the tab UI, and summary export prepends a short header when fallback extraction or truncation affected the answer.
+- Uploaded Gemini files are now tracked with remote names so LRU eviction, Clear Chat for the currently selected PDF, and shutdown cleanup can call `client.files.delete(name=...)` on a best-effort basis.
+- Worker/runtime changes now include atomic text saves, case-insensitive batch filename collision avoidance, bidirectional visual diff overlays, and explicit undo-unavailable warnings when snapshot backups fail.
+- Settings persistence is now keyring-first; plaintext fallback storage requires an explicit user confirmation path instead of a silent fallback.
+- Packaging/docs are synced with the current repo contract: `pyproject.toml`, `requirements-dev.txt`, `typings/`, `python -m pyright`, `python -m pytest -q`, `python -m build`, and `python -m PyInstaller pdf_master.spec --clean`.

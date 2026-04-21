@@ -13,8 +13,11 @@ class MainWindowHost:
     status_label: Any
     progress_overlay: Any
     txt_summary_result: Any
+    lbl_summary_meta: Any
     txt_chat_history: Any
+    lbl_chat_meta: Any
     lbl_keywords_result: Any
+    lbl_keywords_meta: Any
     sel_chat_pdf: Any
     form_fields_list: Any
     undo_manager: Any
@@ -31,6 +34,9 @@ class MainWindowHost:
     _chat_worker_mode: bool
     _keyword_worker_mode: bool
     _chat_pending_path: str | None
+    _summary_result_meta: dict[str, Any]
+    _chat_result_meta: dict[str, Any]
+    _keywords_result_meta: dict[str, Any]
     _pending_worker: dict[str, Any] | None
     _pending_undo: dict[str, Any] | None
     _cancel_pending: bool

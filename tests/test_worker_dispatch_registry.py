@@ -42,7 +42,7 @@ def test_worker_dispatch_specs_expose_extended_metadata():
 
     ai_summary = get_operation_spec("ai_summarize")
     assert ai_summary is not None
-    assert ai_summary.result_payload_keys == ("title", "summary", "key_points")
+    assert ai_summary.result_payload_keys == ("title", "summary", "key_points", "meta")
     assert ai_summary.refresh_preview is False
 
     batch = get_operation_spec("batch")

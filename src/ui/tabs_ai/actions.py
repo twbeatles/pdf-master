@@ -21,9 +21,10 @@ from PyQt6.QtWidgets import (
 
 from ...core.i18n import tm
 from ...core.path_utils import normalize_path_key
-from ...core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
+from ...core.worker_runtime.io import atomic_text_write
 from ..main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
 from ..widgets import FileSelectorWidget, ToastWidget, is_pdf_encrypted
+from .meta import build_summary_save_text
 
 logger = logging.getLogger(__name__)
 

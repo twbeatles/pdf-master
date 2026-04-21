@@ -107,6 +107,55 @@ def record_created_output_path(host: Any, path: str) -> None:
         created_paths.append(abs_path)
 
 
+def atomic_text_write(
+    output_path: str,
+    text: str,
+    *,
+    encoding: str = "utf-8",
+    newline: str | None = None,
+) -> bool:
+    """Write text atomically and return whether the target file was newly created."""
+    if not output_path:
+        raise ValueError("output_path is required")
+
+    out_dir = os.path.dirname(os.path.abspath(output_path)) or "."
+    os.makedirs(out_dir, exist_ok=True)
+    output_existed = os.path.exists(output_path)
+
+    suffix = os.path.splitext(output_path)[1] or ".tmp"
+    fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=f".tmp{suffix}", dir=out_dir)
+    os.close(fd)
+
+    try:
+        with open(tmp_path, "w", encoding=encoding, newline=newline) as handle:
+            handle.write(text)
+        os.replace(tmp_path, output_path)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                logger.debug("Failed to remove temporary text file", exc_info=True)
+
+    return not output_existed
+
+
+def atomic_text_save(
+    host: Any,
+    output_path: str,
+    text: str,
+    *,
+    encoding: str = "utf-8",
+    newline: str | None = None,
+) -> None:
+    """Host-aware atomic text save with cancel checks and created-output tracking."""
+    host._check_cancelled()
+    created = atomic_text_write(output_path, text, encoding=encoding, newline=newline)
+    host._check_cancelled()
+    if created:
+        record_created_output_path(host, output_path)
+
+
 def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -> None:
     """
     원자적 PDF 저장.

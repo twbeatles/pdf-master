@@ -518,3 +518,17 @@ API key storage policy:
 MIT License
 
 Copyright (c) 2026 PDF Master
+
+---
+
+## 2026-04-21 Stability And Packaging Audit
+
+- AI summary/chat/keyword flows now expose result metadata that distinguishes `file_api` from `text_fallback`, flags 30,000-character truncation, and records fallback page counts.
+- Saving an AI summary now prepends a short metadata header only when the result came from fallback text extraction or was truncated.
+- Gemini uploaded-file cache entries now track the remote file name and attempt best-effort `client.files.delete(name=...)` cleanup on LRU eviction, Clear Chat for the currently selected PDF, and application shutdown.
+- Batch-generated outputs now use case-insensitive collision-safe stems such as `name_processed.pdf` and `name_processed__2.pdf`, and text/markdown/report outputs use atomic temp-write + replace saves.
+- Visual diff generation now produces a bidirectional overlay PDF: file-1-only blocks are highlighted in red, file-2-only blocks in blue, duplicate text counts are compared with `Counter`, and each diff page includes a legend.
+- When undo snapshots cannot be created, the worker continues but the UI now warns that the current operation cannot be undone.
+- API key persistence now prefers `keyring`; if secure storage is unavailable, the UI asks before allowing plaintext settings-file fallback.
+- `pdf_master.spec` was updated to include the runtime AI meta UI modules (`src.ui.tabs_ai.meta`, `src.ui.tabs_ai.actions_meta`) and its verification note now matches the current stabilization scope.
+- `.gitignore` was re-audited against validation/build outputs. The current entries already cover repo-local test/build artifacts including `.pytest_tmp/`, `build/`, `dist/`, `pip-wheel-metadata/`, `*.whl`, and `*.tar.gz`.

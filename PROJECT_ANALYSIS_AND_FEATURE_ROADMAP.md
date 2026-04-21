@@ -170,3 +170,18 @@ PDF Master는 현재 "기능이 부족한 프로젝트"가 아니라 "좋은 기
 2. `_pdf_impl.py` / advanced builder 구조 정리
 3. OCR 및 richer extraction 설계
 4. 탐색/분석 UX polish
+
+---
+
+## 2026-04-21 Implementation Status Addendum
+
+The following roadmap-adjacent stabilization items are now implemented in the repository:
+
+- Batch output collision avoidance now uses deterministic `*_processed`, `*_processed__2`, ... naming and treats case-only collisions as the same target family.
+- AI flows now expose fallback/truncation metadata end-to-end, including worker payloads and user-visible labels in the AI tab.
+- Gemini uploaded-file lifecycle cleanup now covers cache eviction, current-PDF chat clearing, and application shutdown.
+- Visual diff PDF generation now uses bidirectional block overlays with duplicate-aware `Counter` comparison and page legends.
+- Undo snapshot failures are now surfaced to the user as explicit "undo unavailable" warnings.
+- API key persistence now requires explicit confirmation before any plaintext settings-file fallback.
+- Worker text outputs now use atomic save/replace semantics for TXT, Markdown, comparison reports, and saved AI summaries.
+- `pdf_master.spec` and the core docs were re-synced to the current validation/build contract before package builds.

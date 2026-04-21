@@ -21,6 +21,7 @@ class WorkerBatchOpsMixin(WorkerHost):
         operation = _as_str(self.kwargs.get("operation"))
         option = _as_str(self.kwargs.get("option"))
         failed_files: list[tuple[str, str]] = []
+        used_output_stems: set[str] = set()
 
         success_count = 0
         skipped_count = 0
@@ -29,8 +30,13 @@ class WorkerBatchOpsMixin(WorkerHost):
             doc = None
             try:
                 base = os.path.splitext(os.path.basename(file_path))[0]
-                out_path = os.path.join(output_dir, f"{base}_processed.pdf")
-                out_path_exists = os.path.exists(out_path)
+                unique_stem = self._build_unique_output_stem(
+                    output_dir,
+                    f"{base}_processed",
+                    ".pdf",
+                    used_output_stems,
+                )
+                out_path = os.path.join(output_dir, f"{unique_stem}.pdf")
 
                 doc = fitz.open(file_path)
 
@@ -77,8 +83,6 @@ class WorkerBatchOpsMixin(WorkerHost):
                     self._atomic_pdf_save(doc, out_path)
                 else:
                     self._atomic_pdf_save(doc, out_path)
-                if not out_path_exists:
-                    self._record_created_output_path(out_path)
                 success_count += 1
             except Exception as exc:
                 from ..worker import CancelledError

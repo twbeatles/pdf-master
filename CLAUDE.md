@@ -651,3 +651,14 @@ for i, page in enumerate(pages):
 ---
 
 *이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-02)*
+
+---
+
+## 2026-04-21 Stability Addendum
+
+- AI result payloads now include `meta` fields for `source`, `truncated`, `page_focus_limit`, `fallback_pages_total`, `fallback_pages_used`, and `max_text_chars`.
+- The AI tab UI now renders warning-capable meta labels for summary/chat/keyword results so fallback text extraction and truncation are visible to the operator.
+- `AIService.clear_chat_session()` now clears both the chat session and the cached uploaded Gemini file for the currently selected PDF; LRU eviction and app shutdown also attempt best-effort remote delete.
+- Worker-side text outputs now use atomic saves, batch outputs avoid case-insensitive filename collisions, and compare visual diff PDFs now show bidirectional block overlays with a legend.
+- Undo snapshot failures are surfaced as "undo unavailable" warnings instead of silent degradation, and API key saves now require explicit consent before plaintext settings-file fallback.
+- `pdf_master.spec`, `README.md`, `README_EN.md`, `CLAUDE.md`, and `GEMINI.md` are aligned around `pyproject.toml`, `requirements-dev.txt`, `python -m pyright`, `python -m pytest -q`, `python -m build`, and `python -m PyInstaller pdf_master.spec --clean`.

@@ -15,6 +15,7 @@ from ..core.i18n import tm
 from ..core.path_utils import normalize_path_key
 from ..core.worker_runtime import get_operation_spec
 from ..core.worker import WorkerThread
+from .tabs_ai.meta import format_ai_meta, is_warning_ai_meta, normalize_ai_meta
 from .widgets import ToastWidget
 from .window_worker import MainWindowWorkerMixin as _MainWindowWorkerMixin
 
@@ -57,11 +58,11 @@ def _get_worker_payload(worker) -> dict:
     if not isinstance(kwargs, dict):
         return {}
     if "summary_result" in kwargs:
-        return {"title": "", "summary": kwargs.get("summary_result", ""), "key_points": []}
+        return {"title": "", "summary": kwargs.get("summary_result", ""), "key_points": [], "meta": {}}
     if "answer_result" in kwargs:
-        return {"answer": kwargs.get("answer_result", "")}
+        return {"answer": kwargs.get("answer_result", ""), "meta": {}}
     if "keywords_result" in kwargs:
-        return {"keywords": kwargs.get("keywords_result", [])}
+        return {"keywords": kwargs.get("keywords_result", []), "meta": {}}
     if "result_fields" in kwargs:
         return {"fields": kwargs.get("result_fields", [])}
     if "result_attachments" in kwargs:
@@ -78,12 +79,13 @@ def _coerce_payload_defaults(mode: str, payload: dict) -> dict:
 
     normalized = dict(payload)
     list_keys = {"key_points", "keywords", "fields", "attachments", "annotations"}
+    dict_keys = {"meta"}
     missing_keys: list[str] = []
     for key in spec.result_payload_keys:
         if key in normalized:
             continue
         missing_keys.append(key)
-        normalized[key] = [] if key in list_keys else ""
+        normalized[key] = [] if key in list_keys else ({} if key in dict_keys else "")
 
     if missing_keys:
         logger.warning("Worker payload for mode '%s' is missing keys: %s", mode, ", ".join(missing_keys))
@@ -123,6 +125,41 @@ def _delete_undo_backup_file(path: str) -> None:
             os.remove(path)
     except Exception:
         logger.debug("Failed to remove undo backup %s", path, exc_info=True)
+
+
+def _set_meta_label(label, meta: dict) -> None:
+    if label is None:
+        return
+    meta_text = format_ai_meta(meta)
+    label.setText(meta_text)
+    warning = is_warning_ai_meta(meta)
+    set_style = getattr(label, "setStyleSheet", None)
+    if callable(set_style):
+        if warning:
+            set_style("color: #b45309;")
+        elif meta_text:
+            set_style("color: #475569;")
+        else:
+            set_style("")
+    set_visible = getattr(label, "setVisible", None)
+    if callable(set_visible):
+        set_visible(bool(meta_text))
+
+
+def _clear_meta_label(label) -> None:
+    if label is None:
+        return
+    clear = getattr(label, "clear", None)
+    if callable(clear):
+        clear()
+    else:
+        label.setText("")
+    set_style = getattr(label, "setStyleSheet", None)
+    if callable(set_style):
+        set_style("")
+    set_visible = getattr(label, "setVisible", None)
+    if callable(set_visible):
+        set_visible(False)
 
 
 class MainWindowWorkerMixin(_MainWindowWorkerMixin):
@@ -250,6 +287,8 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                         "source_path": source,
                         "output_path": output,
                     }
+                else:
+                    ToastWidget(tm.get("msg_undo_unavailable"), toast_type="warning", duration=3000).show_toast(self)
 
         description = _get_operation_description(mode) + "..."
 
@@ -298,12 +337,18 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         if hasattr(self, "_ai_worker_mode"):
             self._ai_worker_mode = False
             self._summary_partial_text = ""
+            self._summary_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_summary_meta", None))
         if hasattr(self, "_keyword_worker_mode"):
             self._keyword_worker_mode = False
+            self._keywords_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_keywords_meta", None))
         if hasattr(self, "_chat_worker_mode"):
             self._chat_worker_mode = False
             self._chat_pending_path = None
             self._chat_partial_text = ""
+            self._chat_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_chat_meta", None))
 
         self._cleanup_cancelled_worker()
         self._discard_pending_undo(delete_backups=True)
@@ -330,11 +375,15 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             self._ai_worker_mode = False
             self._summary_partial_text = ""
             summary_text = _format_summary_payload(payload)
+            self._summary_result_meta = normalize_ai_meta(payload.get("meta"))
+            _set_meta_label(getattr(self, "lbl_summary_meta", None), self._summary_result_meta)
             if summary_text and hasattr(self, "txt_summary_result"):
                 self.txt_summary_result.setPlainText(summary_text)
 
         if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode:
             self._chat_worker_mode = False
+            self._chat_result_meta = normalize_ai_meta(payload.get("meta"))
+            _set_meta_label(getattr(self, "lbl_chat_meta", None), self._chat_result_meta)
             answer = str(payload.get("answer", "") or "")
             if answer:
                 pending_path = _normalize_abs_path(self._chat_pending_path)
@@ -353,6 +402,8 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         if hasattr(self, "_keyword_worker_mode") and self._keyword_worker_mode:
             self._keyword_worker_mode = False
+            self._keywords_result_meta = normalize_ai_meta(payload.get("meta"))
+            _set_meta_label(getattr(self, "lbl_keywords_meta", None), self._keywords_result_meta)
             keywords = payload.get("keywords", [])
             if keywords and hasattr(self, "lbl_keywords_result"):
                 self.lbl_keywords_result.setText(" • ".join(keywords))
@@ -389,6 +440,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     "Skipping undo registration for %s: after snapshot creation failed",
                     undo_info["action_type"],
                 )
+                ToastWidget(tm.get("msg_undo_unavailable"), toast_type="warning", duration=3000).show_toast(self)
 
         self._restore_preview_after_same_path_output()
 
@@ -456,8 +508,12 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         if hasattr(self, "_ai_worker_mode"):
             self._ai_worker_mode = False
             self._summary_partial_text = ""
+            self._summary_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_summary_meta", None))
         if hasattr(self, "_keyword_worker_mode"):
             self._keyword_worker_mode = False
+            self._keywords_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_keywords_meta", None))
 
         self.set_ui_busy(False)
         self.progress_overlay.hide_progress()
@@ -471,6 +527,8 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             pending_path = _normalize_abs_path(raw_pending_path)
             self._chat_pending_path = None
             self._chat_partial_text = ""
+            self._chat_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_chat_meta", None))
             history_keys = [key for key in (pending_path, raw_pending_path) if isinstance(key, str) and key]
             seen_history_keys: set[str] = set()
             for history_key in history_keys:

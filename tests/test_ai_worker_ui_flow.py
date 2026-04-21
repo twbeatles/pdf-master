@@ -4,9 +4,17 @@ from _deps import require_pyqt6
 class _LabelStub:
     def __init__(self):
         self.text = ""
+        self.visible = None
+        self.stylesheet = ""
 
     def setText(self, text):
         self.text = text
+
+    def setVisible(self, visible):
+        self.visible = visible
+
+    def setStyleSheet(self, stylesheet):
+        self.stylesheet = stylesheet
 
 
 class _ProgressBarStub:
@@ -103,8 +111,11 @@ def _build_dummy(worker):
             self.btn_open_folder = _ButtonStub()
             self.progress_overlay = _OverlayStub()
             self.txt_summary_result = _TextEditStub()
+            self.lbl_summary_meta = _LabelStub()
             self.lbl_keywords_result = _LabelStub()
+            self.lbl_keywords_meta = _LabelStub()
             self.txt_chat_history = _ChatHistoryStub()
+            self.lbl_chat_meta = _LabelStub()
             self.sel_chat_pdf = _PathStub("chat.pdf")
             self._chat_histories = {}
             self.saved_histories = 0
@@ -142,7 +153,18 @@ def test_on_success_updates_summary_result(monkeypatch):
     worker = _WorkerStub(
         "ai_summarize",
         {"summary_result": "summary"},
-        {"title": "Doc", "summary": "summary", "key_points": ["alpha", "beta"]},
+        {
+            "title": "Doc",
+            "summary": "summary",
+            "key_points": ["alpha", "beta"],
+            "meta": {
+                "source": "text_fallback",
+                "truncated": True,
+                "fallback_pages_used": 2,
+                "fallback_pages_total": 5,
+                "max_text_chars": 30000,
+            },
+        },
     )
     dummy = _build_dummy(worker)
     dummy._ai_worker_mode = True
@@ -151,6 +173,8 @@ def test_on_success_updates_summary_result(monkeypatch):
 
     assert "summary" in dummy.txt_summary_result.value
     assert "alpha" in dummy.txt_summary_result.value
+    assert dummy.lbl_summary_meta.visible is True
+    assert "fallback" in dummy.lbl_summary_meta.text.lower()
     assert dummy.status_label.text
 
 
@@ -165,7 +189,7 @@ def test_on_success_updates_keyword_result(monkeypatch):
     worker = _WorkerStub(
         "ai_extract_keywords",
         {"keywords_result": ["alpha", "beta"]},
-        {"keywords": ["alpha", "beta"]},
+        {"keywords": ["alpha", "beta"], "meta": {"source": "file_api"}},
     )
     dummy = _build_dummy(worker)
     dummy._keyword_worker_mode = True
@@ -173,6 +197,7 @@ def test_on_success_updates_keyword_result(monkeypatch):
     dummy.on_success("done")
 
     assert dummy.lbl_keywords_result.text == "alpha • beta"
+    assert dummy.lbl_keywords_meta.visible is True
 
 
 def test_on_success_appends_chat_answer(monkeypatch):
@@ -187,7 +212,7 @@ def test_on_success_appends_chat_answer(monkeypatch):
     worker = _WorkerStub(
         "ai_ask_question",
         {"answer_result": "answer"},
-        {"answer": "answer"},
+        {"answer": "answer", "meta": {"source": "file_api"}},
     )
     dummy = _build_dummy(worker)
     dummy._chat_worker_mode = True
@@ -197,6 +222,7 @@ def test_on_success_appends_chat_answer(monkeypatch):
 
     assert any("answer" in entry for entry in dummy.txt_chat_history.entries)
     assert any(tm.get("chat_assistant_prefix") in entry for entry in dummy.txt_chat_history.entries)
+    assert dummy.lbl_chat_meta.visible is True
     assert dummy.saved_histories == 1
 
 

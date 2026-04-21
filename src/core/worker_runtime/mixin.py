@@ -9,6 +9,7 @@ from .._typing import WorkerHost
 from ..optional_deps import fitz
 from .dispatch import get_handler_method_name, get_operation_spec
 from .io import (
+    atomic_text_save,
     atomic_pdf_save,
     build_safe_attachment_output_path,
     build_unique_output_stem,
@@ -152,6 +153,16 @@ class WorkerRuntimeMixin(WorkerHost):
 
     def _atomic_pdf_save(self, doc: Any, output_path: str, **save_kwargs: Any) -> None:
         atomic_pdf_save(self, doc, output_path, **save_kwargs)
+
+    def _atomic_text_save(
+        self,
+        output_path: str,
+        text: str,
+        *,
+        encoding: str = "utf-8",
+        newline: str | None = None,
+    ) -> None:
+        atomic_text_save(self, output_path, text, encoding=encoding, newline=newline)
 
     def _get_msg(self, key: str, *args: object) -> str:
         return get_message(key, *args)

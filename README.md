@@ -564,3 +564,16 @@ furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
+
+---
+
+## 2026-04-21 Stability Update
+
+- AI Summary / Chat / Keyword 결과는 이제 `file_api` / `text_fallback` 메타정보와 truncation 여부를 함께 표시합니다.
+- text fallback 이 발생하면 사용된 페이지 수와 30,000-character limit 여부를 UI 에서 확인할 수 있고, 요약 저장 시 필요한 경우에만 짧은 meta header 가 함께 저장됩니다.
+- Gemini uploaded-file cache 는 현재 선택된 PDF 의 Clear Chat, LRU eviction, 앱 종료 시 remote delete 를 best-effort 로 시도합니다.
+- Batch 출력은 `name_processed.pdf`, `name_processed__2.pdf` 규칙으로 case-insensitive 충돌을 회피하고, TXT/MD/report 저장은 atomic temp-write + replace 로 정리했습니다.
+- Visual diff PDF 는 이제 양방향 overlay 를 사용합니다. file1-only block 은 red, file2-only block 은 blue 로 표시되고 페이지 legend 도 함께 추가됩니다.
+- Undo snapshot backup 이 실패하면 작업은 계속 진행하되 이번 작업은 Undo 불가 경고를 표시합니다.
+- API key 저장은 keyring 우선 정책이며, secure storage 가 불가능한 경우에만 plaintext settings fallback 여부를 사용자에게 다시 확인합니다.
+- `pdf_master.spec` 는 새 AI meta UI 모듈을 hiddenimports 에 반영했고, `.gitignore` 는 `build/`, `dist/`, `.pytest_tmp/`, `pip-wheel-metadata/`, `*.whl`, `*.tar.gz` 등 현재 빌드/검증 산출물을 계속 제외하는 상태를 재확인했습니다.

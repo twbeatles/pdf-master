@@ -51,14 +51,17 @@ class WorkerAiOpsMixin(WorkerHost):
             self._emit_progress_if_due(85)
 
             if output_path:
-                with open(output_path, "w", encoding="utf-8") as handle:
-                    handle.write(f"# {summary_payload.get('title', os.path.basename(file_path))}\n\n")
-                    handle.write(f"{summary_payload.get('summary', '')}\n\n")
-                    key_points = cast(list[str], summary_payload.get("key_points", []))
-                    if key_points:
-                        handle.write("## Key Points\n\n")
-                        for point in key_points:
-                            handle.write(f"- {point}\n")
+                lines = [
+                    f"# {summary_payload.get('title', os.path.basename(file_path))}",
+                    "",
+                    str(summary_payload.get("summary", "")),
+                    "",
+                ]
+                key_points = cast(list[str], summary_payload.get("key_points", []))
+                if key_points:
+                    lines.extend(["## Key Points", ""])
+                    lines.extend(f"- {point}" for point in key_points)
+                self._atomic_text_save(output_path, "\n".join(lines).rstrip() + "\n")
 
             self._emit_progress_if_due(100)
             self.finished_signal.emit(self._get_msg("msg_ai_summary_done", len(summary_payload.get("summary", ""))))

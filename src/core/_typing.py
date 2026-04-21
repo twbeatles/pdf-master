@@ -32,6 +32,16 @@ class WorkerHost:
     def _atomic_pdf_save(self, doc: Any, output_path: str, **save_kwargs: Any) -> None:
         ...
 
+    def _atomic_text_save(
+        self,
+        output_path: str,
+        text: str,
+        *,
+        encoding: str = "utf-8",
+        newline: str | None = None,
+    ) -> None:
+        ...
+
     def _build_safe_attachment_output_path(
         self,
         output_dir: str,

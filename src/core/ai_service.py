@@ -134,11 +134,11 @@ class AIService:
     _TEXT_CACHE_MAX_BYTES = 16 * 1024 * 1024
     _UPLOAD_CACHE_MAX_ITEMS = 16
 
-    _text_cache: OrderedDict[tuple[Any, ...], tuple[str, int]] = OrderedDict()
+    _text_cache: OrderedDict[tuple[Any, ...], tuple[str, int, dict[str, Any]]] = OrderedDict()
     _text_cache_bytes = 0
     _text_cache_lock = threading.Lock()
 
-    _uploaded_file_cache: OrderedDict[tuple[str, int], Any] = OrderedDict()
+    _uploaded_file_cache: OrderedDict[tuple[str, int], dict[str, Any]] = OrderedDict()
     _uploaded_file_cache_lock = threading.Lock()
 
     _chat_sessions: dict[tuple[str, str, int], Any] = {}
@@ -231,17 +231,56 @@ class AIService:
     def _estimate_text_bytes(text: str) -> int:
         return len(text.encode("utf-8", errors="ignore"))
 
-    def _get_cached_text(self, key: tuple[Any, ...]) -> str | None:
+    def _build_result_meta(
+        self,
+        *,
+        source: str,
+        truncated: bool = False,
+        page_focus_limit: int | None = None,
+        fallback_pages_total: int | None = None,
+        fallback_pages_used: int | None = None,
+        max_text_chars: int | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "source": source,
+            "truncated": bool(truncated),
+            "page_focus_limit": int(page_focus_limit) if isinstance(page_focus_limit, int) and page_focus_limit > 0 else None,
+            "fallback_pages_total": (
+                int(fallback_pages_total)
+                if isinstance(fallback_pages_total, int) and fallback_pages_total > 0
+                else None
+            ),
+            "fallback_pages_used": (
+                int(fallback_pages_used)
+                if isinstance(fallback_pages_used, int) and fallback_pages_used > 0
+                else None
+            ),
+            "max_text_chars": int(max_text_chars) if isinstance(max_text_chars, int) and max_text_chars > 0 else None,
+        }
+
+    def _normalize_meta(self, meta: Any, *, default_source: str = "file_api") -> dict[str, Any]:
+        if not isinstance(meta, dict):
+            return self._build_result_meta(source=default_source)
+        return self._build_result_meta(
+            source=str(meta.get("source") or default_source),
+            truncated=bool(meta.get("truncated", False)),
+            page_focus_limit=meta.get("page_focus_limit"),
+            fallback_pages_total=meta.get("fallback_pages_total"),
+            fallback_pages_used=meta.get("fallback_pages_used"),
+            max_text_chars=meta.get("max_text_chars"),
+        )
+
+    def _get_cached_text(self, key: tuple[Any, ...]) -> tuple[str, dict[str, Any]] | None:
         cls = self.__class__
         with cls._text_cache_lock:
             item = cls._text_cache.get(key)
             if item is None:
                 return None
-            text, _size = item
+            text, _size, meta = item
             cls._text_cache.move_to_end(key)
-            return text
+            return text, dict(meta)
 
-    def _put_cached_text(self, key: tuple[Any, ...], text: str) -> None:
+    def _put_cached_text(self, key: tuple[Any, ...], text: str, meta: dict[str, Any]) -> None:
         cls = self.__class__
         size = self._estimate_text_bytes(text)
         if size > cls._TEXT_CACHE_MAX_BYTES:
@@ -250,10 +289,10 @@ class AIService:
             old = cls._text_cache.pop(key, None)
             if old:
                 cls._text_cache_bytes -= old[1]
-            cls._text_cache[key] = (text, size)
+            cls._text_cache[key] = (text, size, dict(meta))
             cls._text_cache_bytes += size
             while cls._text_cache_bytes > cls._TEXT_CACHE_MAX_BYTES and cls._text_cache:
-                _, (_old_text, old_size) = cls._text_cache.popitem(last=False)
+                _, (_old_text, old_size, _old_meta) = cls._text_cache.popitem(last=False)
                 cls._text_cache_bytes -= old_size
 
     def _make_upload_cache_key(self, pdf_path: str) -> tuple[str, int]:
@@ -323,17 +362,35 @@ class AIService:
         fallback_max_pages: int | None = None,
         upload_error: Exception | None = None,
     ) -> dict[str, Any]:
-        extracted_text = self.extract_text_from_pdf(pdf_path, max_pages=fallback_max_pages)
+        extracted_text, meta = self._extract_text_with_meta(pdf_path, max_pages=fallback_max_pages)
         if not extracted_text.strip():
             raise RuntimeError(f"PDF text extraction failed after File API upload failure: {upload_error}")
         contents = [prompt, extracted_text]
         if partial_callback is not None:
-            return self._stream_generate_content(
+            payload = self._stream_generate_content(
                 contents=contents,
                 schema=schema,
                 partial_callback=partial_callback,
             )
-        return self._generate_content(contents=contents, schema=schema)
+        else:
+            payload = self._generate_content(contents=contents, schema=schema)
+        payload["meta"] = meta
+        return payload
+
+    def _delete_uploaded_file_entry(self, entry: Any) -> None:
+        if not isinstance(entry, dict):
+            return
+        remote_name = entry.get("name")
+        client = entry.get("client")
+        if not isinstance(remote_name, str) or not remote_name:
+            return
+        files_api = getattr(client, "files", None)
+        if files_api is None or not hasattr(files_api, "delete"):
+            return
+        try:
+            files_api.delete(name=remote_name)
+        except Exception:
+            logger.debug("Failed to delete remote Gemini file %s", remote_name, exc_info=True)
 
     def _get_cached_uploaded_file(self, key: tuple[str, int]) -> Any | None:
         cls = self.__class__
@@ -342,15 +399,25 @@ class AIService:
             if item is None:
                 return None
             cls._uploaded_file_cache.move_to_end(key)
-            return item
+            return item.get("file")
 
     def _put_cached_uploaded_file(self, key: tuple[str, int], uploaded_file: Any) -> None:
         cls = self.__class__
+        evicted_entries: list[dict[str, Any]] = []
         with cls._uploaded_file_cache_lock:
-            cls._uploaded_file_cache.pop(key, None)
-            cls._uploaded_file_cache[key] = uploaded_file
+            previous = cls._uploaded_file_cache.pop(key, None)
+            if previous is not None:
+                evicted_entries.append(previous)
+            cls._uploaded_file_cache[key] = {
+                "file": uploaded_file,
+                "name": getattr(uploaded_file, "name", None),
+                "client": self._client,
+            }
             while len(cls._uploaded_file_cache) > cls._UPLOAD_CACHE_MAX_ITEMS:
-                cls._uploaded_file_cache.popitem(last=False)
+                _cache_key, entry = cls._uploaded_file_cache.popitem(last=False)
+                evicted_entries.append(entry)
+        for entry in evicted_entries:
+            self._delete_uploaded_file_entry(entry)
 
     @retry_with_backoff()
     def _upload_pdf_file(self, pdf_path: str) -> Any:
@@ -367,7 +434,7 @@ class AIService:
         self._put_cached_uploaded_file(cache_key, uploaded)
         return uploaded
 
-    def extract_text_from_pdf(self, pdf_path: str, max_pages: int | None = None) -> str:
+    def _extract_text_with_meta(self, pdf_path: str, max_pages: int | None = None) -> tuple[str, dict[str, Any]]:
         cache_key = self._make_text_cache_key(pdf_path, max_pages)
         with PerfTimer(
             "core.ai.extract_text",
@@ -384,6 +451,8 @@ class AIService:
                 text_parts: list[str] = []
                 page_count = len(doc) if max_pages is None else min(len(doc), max_pages)
                 current_length = 0
+                pages_used = 0
+                truncated = False
 
                 for i in range(page_count):
                     page = doc[i]
@@ -391,19 +460,37 @@ class AIService:
                     text = raw_text if isinstance(raw_text, str) else ""
                     if text.strip():
                         chunk = f"[Page {i + 1}]\n{text}"
+                        if current_length + len(chunk) > self.MAX_TEXT_LENGTH:
+                            remaining = self.MAX_TEXT_LENGTH - current_length
+                            if remaining > 0:
+                                text_parts.append(chunk[:remaining])
+                            truncated = True
+                            pages_used = i + 1
+                            break
                         text_parts.append(chunk)
                         current_length += len(chunk)
-                        if current_length > self.MAX_TEXT_LENGTH:
-                            break
+                    pages_used = i + 1
 
                 full_text = "\n\n".join(text_parts)
-                if len(full_text) > self.MAX_TEXT_LENGTH:
-                    full_text = full_text[: self.MAX_TEXT_LENGTH] + "\n\n[... truncated ...]"
-                self._put_cached_text(cache_key, full_text)
-                return full_text
+                if truncated and full_text and not full_text.endswith("[... truncated ...]"):
+                    full_text = full_text.rstrip() + "\n\n[... truncated ...]"
+                meta = self._build_result_meta(
+                    source="text_fallback",
+                    truncated=truncated,
+                    page_focus_limit=max_pages,
+                    fallback_pages_total=len(doc),
+                    fallback_pages_used=pages_used,
+                    max_text_chars=self.MAX_TEXT_LENGTH if truncated else None,
+                )
+                self._put_cached_text(cache_key, full_text, meta)
+                return full_text, meta
             finally:
                 if doc:
                     doc.close()
+
+    def extract_text_from_pdf(self, pdf_path: str, max_pages: int | None = None) -> str:
+        text, _meta = self._extract_text_with_meta(pdf_path, max_pages=max_pages)
+        return text
 
     def _make_summary_schema(self) -> dict[str, Any]:
         return {
@@ -538,12 +625,18 @@ class AIService:
 
         contents = [prompt, uploaded_file]
         if partial_callback is not None:
-            return self._stream_generate_content(
+            payload = self._stream_generate_content(
                 contents=contents,
                 schema=schema,
                 partial_callback=partial_callback,
             )
-        return self._generate_content(contents=contents, schema=schema)
+        else:
+            payload = self._generate_content(contents=contents, schema=schema)
+        payload["meta"] = self._build_result_meta(
+            source="file_api",
+            page_focus_limit=fallback_max_pages,
+        )
+        return payload
 
     def _build_summary_prompt(self, language: str, style: str, max_pages: int | None) -> str:
         style_map = {
@@ -595,10 +688,12 @@ class AIService:
         payload.setdefault("title", "")
         payload.setdefault("summary", "")
         payload.setdefault("key_points", [])
+        meta = self._normalize_meta(payload.get("meta"), default_source="file_api")
         return {
             "title": str(payload.get("title", "")),
             "summary": str(payload.get("summary", "")),
             "key_points": [str(item) for item in payload.get("key_points", []) if str(item).strip()],
+            "meta": meta,
         }
 
     def _history_to_contents(self, history: list[dict[str, str]]) -> list[Any]:
@@ -669,15 +764,33 @@ class AIService:
                 stale_keys = [key for key in cls._chat_sessions if len(key) >= 2 and key[1] == abs_path]
                 for key in stale_keys:
                     cls._chat_sessions.pop(key, None)
-                return
+            else:
+                try:
+                    mtime_ns = os.stat(abs_path).st_mtime_ns
+                except OSError:
+                    mtime_ns = 0
+                stale_keys = [key for key in cls._chat_sessions if key[1] == abs_path and key[2] == mtime_ns]
+                for key in stale_keys:
+                    cls._chat_sessions.pop(key, None)
 
-            try:
-                mtime_ns = os.stat(abs_path).st_mtime_ns
-            except OSError:
-                mtime_ns = 0
-            stale_keys = [key for key in cls._chat_sessions if key[1] == abs_path and key[2] == mtime_ns]
-            for key in stale_keys:
-                cls._chat_sessions.pop(key, None)
+        stale_upload_entries: list[dict[str, Any]] = []
+        with cls._uploaded_file_cache_lock:
+            if all_versions:
+                stale_upload_keys = [key for key in cls._uploaded_file_cache if key[0] == abs_path]
+            else:
+                try:
+                    upload_mtime_ns = os.stat(abs_path).st_mtime_ns
+                except OSError:
+                    upload_mtime_ns = 0
+                stale_upload_keys = [key for key in cls._uploaded_file_cache if key == (abs_path, upload_mtime_ns)]
+            for key in stale_upload_keys:
+                entry = cls._uploaded_file_cache.pop(key, None)
+                if entry is not None:
+                    stale_upload_entries.append(entry)
+
+        service = cls()
+        for entry in stale_upload_entries:
+            service._delete_uploaded_file_entry(entry)
 
     def ask_about_pdf(
         self,
@@ -726,7 +839,8 @@ class AIService:
                 payload = self._parse_structured_response(response, _response_text(response), schema)
 
         payload.setdefault("answer", "")
-        return {"answer": str(payload.get("answer", ""))}
+        meta = self._normalize_meta(payload.get("meta"), default_source="file_api")
+        return {"answer": str(payload.get("answer", "")), "meta": meta}
 
     def extract_keywords(
         self,
@@ -755,10 +869,21 @@ class AIService:
             deduped.append(keyword)
             if len(deduped) >= max_keywords:
                 break
-        return {"keywords": deduped}
+        meta = self._normalize_meta(payload.get("meta"), default_source="file_api")
+        return {"keywords": deduped, "meta": meta}
 
     @classmethod
     def shutdown_executor(cls):
+        stale_upload_entries: list[dict[str, Any]] = []
+        with cls._uploaded_file_cache_lock:
+            stale_upload_entries = list(cls._uploaded_file_cache.values())
+            cls._uploaded_file_cache.clear()
+        with cls._chat_sessions_lock:
+            cls._chat_sessions.clear()
+
+        service = cls()
+        for entry in stale_upload_entries:
+            service._delete_uploaded_file_entry(entry)
         return None
 
 
