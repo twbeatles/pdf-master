@@ -582,7 +582,7 @@ pip install PyInstaller
 python -m PyInstaller pdf_master.spec --clean
 
 # 결과물
-dist/PDF_Master_v4.5.5.exe (~30-40MB)
+dist/PDF_Master_v4.5.5.exe (~75-80MB in the current Python 3.14 + dependency set)
 ```
 
 ### 경량화 최적화

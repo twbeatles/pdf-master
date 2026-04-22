@@ -262,7 +262,7 @@ python -m PyInstaller pdf_master.spec --clean
 
 ### 빌드 결과
 - 출력: `dist/PDF_Master_v4.5.5.exe`
-- 크기: ~30-40MB (UPX 압축 적용)
+- 크기: ~75-80MB (현재 Python 3.14 / 의존성 기준, UPX 적용)
 
 ### 빌드 최적화
 - 불필요한 PyQt6 모듈 제외 (WebEngine, Multimedia, 3D 등)
@@ -477,7 +477,7 @@ API 키 저장 정책:
 - 🔄 **google-genai SDK** - 새 공식 SDK 사용
 - 🧠 **gemini-flash-latest** - 최신 AI 모델
 - ❌ **PDF → Word 기능 제거** - 의존성 간소화
-- 📦 **빌드 경량화** - ~30-40MB
+- 📦 **빌드 경량화** - 현재 기준 약 75-80MB 실행 파일로 패키징
 
 ---
 

@@ -306,5 +306,5 @@ exe = EXE(
 
 # =====================================================================
 # 빌드: python -m PyInstaller pdf_master.spec --clean
-# 예상 결과: dist/PDF_Master_v4.5.5.exe (~30-40MB)
+# 예상 결과: dist/PDF_Master_v4.5.5.exe (~75-80MB with current Python 3.14 + dependency set)
 # =====================================================================

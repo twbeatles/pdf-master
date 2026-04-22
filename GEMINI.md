@@ -568,7 +568,7 @@ pip install google-genai  # AI 기능 (선택)
 ### 프로덕션 빌드
 ```bash
 python -m PyInstaller pdf_master.spec --clean
-# 결과: dist/PDF_Master_v4.5.5.exe (~30-40MB)
+# 결과: dist/PDF_Master_v4.5.5.exe (~75-80MB, 현재 Python 3.14 / 의존성 기준)
 ```
 
 ### 정합성 검증 (v4.5.5)

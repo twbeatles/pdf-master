@@ -255,7 +255,7 @@ python -m PyInstaller pdf_master.spec --clean
 
 ### Build Result
 - Output: `dist/PDF_Master_v4.5.5.exe`
-- Size: ~30-40MB (UPX Compressed)
+- Size: ~75-80MB in the current Python 3.14 + dependency set (with UPX enabled)
 
 ---
 
