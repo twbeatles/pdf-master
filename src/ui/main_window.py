@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+from collections import OrderedDict
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
@@ -86,6 +87,14 @@ class PDFMasterApp(
         self._current_preview_password = None
         self._preview_password_hint = None
         self._same_path_preview_restore = None
+        self._preview_search_query = ""
+        self._preview_search_matches = []
+        self._preview_search_index = -1
+        self._preview_search_path = ""
+        self._preview_search_request_id = 0
+        self._preview_search_worker = None
+        self._preview_search_active_request = None
+        self._preview_search_result_cache = OrderedDict()
         self._chat_histories = self._load_chat_histories()
         self._chat_pending_path = None
 
@@ -211,6 +220,8 @@ class PDFMasterApp(
             return
 
         # 2. 미리보기 문서 리소스 정리
+        if hasattr(self, "_cancel_preview_search_worker"):
+            self._cancel_preview_search_worker(wait_ms=1000)
         if hasattr(self, '_current_preview_doc') and self._current_preview_doc:
             try:
                 self._current_preview_doc.close()

@@ -23,6 +23,19 @@ from .navigation import (
     _schedule_preview_rerender,
 )
 from .panel import _create_preview_panel, _set_preview_navigation_enabled
+from .search import (
+    _active_preview_search_match,
+    _cancel_preview_search_worker,
+    _clear_preview_search,
+    _focus_preview_search,
+    _on_preview_search_cancelled,
+    _on_preview_search_failed,
+    _on_preview_search_results,
+    _on_preview_search_visibility_changed,
+    _preview_search_matches_for_page,
+    _search_preview_text,
+    _step_preview_search,
+)
 from .update import _add_to_recent_files, _update_preview
 from .._typing import MainWindowHost
 
@@ -45,6 +58,17 @@ class MainWindowPreviewMixin(MainWindowHost):
     _render_preview_page = _render_preview_page
     _on_list_item_clicked = _on_list_item_clicked
     _set_preview_navigation_enabled = _set_preview_navigation_enabled
+    _search_preview_text = _search_preview_text
+    _step_preview_search = _step_preview_search
+    _cancel_preview_search_worker = _cancel_preview_search_worker
+    _clear_preview_search = _clear_preview_search
+    _preview_search_matches_for_page = _preview_search_matches_for_page
+    _active_preview_search_match = _active_preview_search_match
+    _on_preview_search_results = _on_preview_search_results
+    _on_preview_search_failed = _on_preview_search_failed
+    _on_preview_search_cancelled = _on_preview_search_cancelled
+    _on_preview_search_visibility_changed = _on_preview_search_visibility_changed
+    _focus_preview_search = _focus_preview_search
     _reset_preview_state = _reset_preview_state
     _prompt_pdf_password = _prompt_pdf_password
     _open_preview_document = _open_preview_document

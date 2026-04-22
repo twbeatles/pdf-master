@@ -132,6 +132,7 @@ def _show_shortcuts(self):
 {tm.get('shortcut_open')}
 {tm.get('shortcut_exit')}
 {tm.get('shortcut_theme')}
+{tm.get('shortcut_preview_search')}
 {tm.get('shortcut_tabs')}
 {tm.get('shortcut_help')}"""
     QMessageBox.information(self, tm.get("shortcuts"), shortcuts_text)

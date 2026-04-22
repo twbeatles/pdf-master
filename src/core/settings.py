@@ -70,6 +70,20 @@ def _normalize_window_geometry(value):
 def _normalize_last_output_dir(value) -> str:
     return value if isinstance(value, str) else ""
 
+
+def _normalize_bool(value, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value != 0
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off", ""}:
+            return False
+    return bool(default)
+
 def default_settings() -> dict:
     """
     기본 설정 생성.
@@ -84,6 +98,7 @@ def default_settings() -> dict:
         "splitter_sizes": None,
         "window_geometry": None,
         "language": "auto",  # auto, ko, en
+        "preview_search_expanded": True,
         "chat_histories": {},
         # gemini_api_key는 keyring 미사용 시에만 파일에 저장됨
     }
@@ -166,6 +181,10 @@ def load_settings():
                 settings["language"] = _normalize_language(settings.get("language"))
                 settings["window_geometry"] = _normalize_window_geometry(settings.get("window_geometry"))
                 settings["last_output_dir"] = _normalize_last_output_dir(settings.get("last_output_dir"))
+                settings["preview_search_expanded"] = _normalize_bool(
+                    settings.get("preview_search_expanded"),
+                    True,
+                )
                 return settings
         except json.JSONDecodeError as e:
             # 손상된 설정 파일 백업

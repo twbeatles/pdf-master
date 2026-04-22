@@ -104,6 +104,8 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             "path": kwargs.get("file_path"),
             "page": getattr(self, "_current_preview_page", 0),
             "password": getattr(self, "_current_preview_password", None),
+            "search_query": getattr(self, "_preview_search_query", ""),
+            "search_index": getattr(self, "_preview_search_index", -1),
         }
         self._close_preview_document()
 
@@ -119,6 +121,8 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         restore_page = restore.get("page", 0)
         restore_password = restore.get("password")
+        restore_search_query = restore.get("search_query", "")
+        restore_search_index = restore.get("search_index", -1)
         self._preview_password_hint = restore_password if isinstance(restore_password, str) else None
         try:
             self._update_preview(path)
@@ -133,6 +137,17 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             if page_index != getattr(self, "_current_preview_page", 0):
                 self._current_preview_page = page_index
                 self._render_preview_page()
+            if isinstance(restore_search_query, str) and restore_search_query.strip():
+                preferred_index = restore_search_index
+                try:
+                    preferred_index = int(preferred_index)
+                except (TypeError, ValueError):
+                    preferred_index = -1
+                self._search_preview_text(
+                    restore_search_query,
+                    preferred_index=preferred_index,
+                    restoring=True,
+                )
         finally:
             self._preview_password_hint = None
 

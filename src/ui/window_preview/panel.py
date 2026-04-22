@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
 )
 
@@ -32,6 +33,15 @@ def _create_preview_panel(self):
     self.preview_image.set_controlled_mode(True)
     self.preview_image.pageChanged.connect(self._on_preview_page_requested)
     self.preview_image.renderRequested.connect(self._schedule_preview_rerender)
+    self.preview_image.searchRequested.connect(self._search_preview_text)
+    self.preview_image.searchStepRequested.connect(self._step_preview_search)
+    self.preview_image.searchCleared.connect(self._clear_preview_search)
+    self.preview_image.searchVisibilityChanged.connect(
+        self._on_preview_search_visibility_changed
+    )
+    self.preview_image.set_search_panel_visible(
+        bool(self.settings.get("preview_search_expanded", True))
+    )
     layout.addWidget(self.preview_image, 1)
 
     self.btn_prev_page = self.preview_image.btn_prev
@@ -42,7 +52,10 @@ def _create_preview_panel(self):
     footer_layout.addStretch()
     self.btn_print_preview = QPushButton(tm.get("btn_print_preview"))
     self.btn_print_preview.setObjectName("secondaryBtn")
-    self.btn_print_preview.setFixedSize(70, 30)
+    self.btn_print_preview.setMinimumHeight(30)
+    self.btn_print_preview.setSizePolicy(
+        QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed
+    )
     self.btn_print_preview.setToolTip(tm.get("tooltip_print_preview"))
     self.btn_print_preview.clicked.connect(self._print_current_preview)
     footer_layout.addWidget(self.btn_print_preview)
@@ -53,6 +66,7 @@ def _create_preview_panel(self):
 
 def _set_preview_navigation_enabled(self, enabled: bool):
     self.preview_image.set_navigation_enabled(enabled)
+    self.preview_image.set_search_available(enabled)
     self.btn_print_preview.setEnabled(enabled)
     if not enabled:
         self.preview_image.set_page_state(0, 0)

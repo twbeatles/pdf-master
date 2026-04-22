@@ -10,6 +10,7 @@ from ...core.optional_deps import fitz
 from ...core.i18n import tm
 from ...core.perf import PerfTimer
 from ..widgets import ToastWidget
+from .search import _apply_preview_search_highlights
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +177,7 @@ def _render_preview_page(self):
         if self._current_preview_page < 0 or self._current_preview_page >= len(doc):
             return
 
+        page = doc[self._current_preview_page]
         preview_size = self.preview_image.display_size()
         target_w = max(280, preview_size.width() - 20)
         target_h = max(400, preview_size.height() - 20)
@@ -191,7 +193,6 @@ def _render_preview_page(self):
 
         pixmap = self._get_cached_preview_pixmap(key)
         if pixmap is None:
-            page = doc[self._current_preview_page]
             pix = page.get_pixmap(matrix=fitz.Matrix(render_zoom, render_zoom))
             img_data = bytes(pix.samples)
             fmt = QImage.Format.Format_RGBA8888 if pix.alpha else QImage.Format.Format_RGB888
@@ -205,8 +206,22 @@ def _render_preview_page(self):
             )
             self._put_cached_preview_pixmap(key, pixmap)
 
+        display_pixmap = pixmap
+        if hasattr(self, "_preview_search_matches_for_page"):
+            page_matches = self._preview_search_matches_for_page(self._current_preview_page)
+            if page_matches:
+                active_match = None
+                if hasattr(self, "_active_preview_search_match"):
+                    active_match = self._active_preview_search_match()
+                display_pixmap = _apply_preview_search_highlights(
+                    pixmap,
+                    page.rect,
+                    page_matches,
+                    active_match=active_match,
+                )
+
         self.preview_image.set_preview_pixmap(
-            pixmap,
+            display_pixmap,
             current_page=self._current_preview_page,
             total_pages=self._preview_total_pages,
             preserve_view=True,

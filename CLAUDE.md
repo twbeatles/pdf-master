@@ -7,6 +7,8 @@
 ## Current Behavior Notes
 
 - The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
+- Preview text search is asynchronous and preview-specific: `src/ui/window_preview/search.py` coordinates state/cache while `src/ui/window_preview/search_worker.py` reopens the PDF inside its own `QThread`.
+- Preview search UI is only exposed in controlled mode; standalone `ZoomablePreviewWidget.load_pdf()` hides the toggle/search bar, while the main window path supports collapse/expand, `Ctrl+F`, `Enter`/`Shift+Enter`, and current-hit highlighting.
 - Preview print now renders through the Qt print pipeline; it no longer delegates to `os.startfile(..., "print")` or `lpr`.
 - Thumbnail entry points in the AI and rotate flows are preview-synchronized: if they target a different PDF, preview is switched first and encrypted PDFs reuse the preview password session.
 - Preview rerendering is resize-aware: splitter moves and panel resizes request a fresh render instead of leaving a stale scaled pixmap.
@@ -15,7 +17,7 @@
 - `compare_pdfs` uses sequence-based line diffing and the Advanced tab can optionally generate a visual diff PDF.
 - Page-targeted worker modes share a strict page resolver; `-1` last-page sentinel is reserved for signature insertion flows.
 - Directory-output cancellations roll back only files tracked in `kwargs["created_output_paths"]`, not the whole output folder.
-- Single-input/single-output mutation modes can save back onto the original path; preview closes that document before the worker starts and restores it after success/fail/cancel.
+- Single-input/single-output mutation modes can save back onto the original path; preview closes that document before the worker starts and restores it after success/fail/cancel, including preview search query/index context.
 - Output save/folder dialogs reuse `settings["last_output_dir"]` and update it after a successful selection.
 - Undo/Redo is snapshot-based: restore `before_backup_path` on undo and `after_backup_path` on redo instead of re-running the worker.
 - Updated worker completion/error messages in the AI/batch/annotation/extract flows are keyed through the i18n catalogs.
@@ -228,12 +230,13 @@ DEFAULT_SETTINGS = {
     "language": "auto",
     "recent_files": [],
     "last_output_dir": "",
+    "preview_search_expanded": True,
     "splitter_sizes": None,
     "window_geometry": None,
 }
 ```
 
-- `load_settings()` now normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir` on load.
+- `load_settings()` now normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`, `preview_search_expanded` on load.
 
 ### 타입 계약 파일 (v4.5.4)
 
@@ -244,6 +247,7 @@ DEFAULT_SETTINGS = {
   - `fitz`, `keyring` optional import를 중앙화하고, 미설치 환경에서는 proxy/fallback으로 import-time 실패를 막습니다.
 - `src/ui/_typing.py`
   - UI 믹스인이 접근하는 공통 위젯/헬퍼 surface를 정의합니다.
+  - Preview search request id / worker / active request / result cache 같은 비동기 preview search 상태도 이 계약에 포함됩니다.
 - 규칙
   - 믹스인에서 새 속성 접근을 추가하면 대응 `_typing.py`도 함께 갱신합니다.
   - 변경 후 `python -m pyright`를 기본 검증으로 실행합니다.
@@ -454,6 +458,17 @@ class ZoomablePreviewWidget(QWidget):
     def go_to_page(page_index: int)
 ```
 
+- `ZoomablePreviewWidget` is now the real preview/search surface.
+- Controlled mode:
+  - external pixmap injection
+  - preview search toggle bar
+  - `Ctrl+F` focus entry via main window shortcut
+  - `Enter` to search-or-step, `Shift+Enter` previous hit, `Esc` clear/collapse
+- Standalone mode:
+  - widget-owned `fitz` document rendering
+  - preview search UI intentionally hidden
+- Search highlight overlays are painted at display time on top of the base preview pixmap, so the underlying render cache stays reusable.
+
 ---
 
 ## 🔐 보안 고려사항
@@ -481,6 +496,10 @@ class ZoomablePreviewWidget(QWidget):
   - 암호화 PDF grid 로딩/완료 시그널/loader 정리 검증
 - `tests/test_preview_print.py`
   - Qt 인쇄 페이지 범위 해석 및 렌더 경로 검증
+- `tests/test_preview_search.py`
+  - preview 전용 검색 worker stale result 무시, 결과 캐시 재사용, clear/focus 흐름 검증
+- `tests/test_zoomable_preview_widget.py`
+  - controlled/standalone search UI 정책, 검색 입력 키보드 UX, `Ctrl+F` shortcut 진입 검증
 - `tests/test_worker_cancel_regression.py`
   - `split`/양식/프리핸드 서명 취소 체크 회귀 검증
 - `tests/test_worker_undo_modes.py`
@@ -549,7 +568,7 @@ class ZoomablePreviewWidget(QWidget):
   - README/가이드/spec/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest -q`: `120 passed, 1 warning`
+- 현재 워크트리 기준 `python -m pytest -q`: `131 passed, 1 warning`
 
 ---
 
@@ -630,4 +649,4 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-02)*
+*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-22)*

@@ -2,7 +2,7 @@
 # PDF Master v4.5.5 - PyInstaller Spec File
 # 경량화 최적화 빌드 설정 (onefile)
 # Python 3.10+ 호환, 폴더 기반 모듈 분할 및 optional dependency 경계 반영
-# Verified 2026-04-10 after same-path save / undo snapshot / output-dialog stability follow-up
+# Verified 2026-04-22 after preview-search async worker / doc consistency follow-up
 
 import sys
 import os
@@ -77,6 +77,8 @@ hiddenimports += [
     'src.core._typing',  # Pyright/Pylance host contracts imported by worker mixins
     'src.ui._typing',  # Pyright/Pylance host contracts imported by UI mixins
     'src.ui.zoomable_preview',  # Runtime-critical preview widget path (main preview panel)
+    'src.ui.window_preview.search',  # Runtime-critical preview search state/orchestration
+    'src.ui.window_preview.search_worker',  # Runtime-critical preview search QThread worker
     'src.ui.thumbnail_grid',  # Runtime-loaded thumbnail grid path used by AI/page flows
 ]
 

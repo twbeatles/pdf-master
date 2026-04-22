@@ -29,6 +29,9 @@ def _update_preview(self, path):
         self._reset_preview_state()
         return
 
+    if hasattr(self, "_clear_preview_search"):
+        self._clear_preview_search(clear_query=True)
+
     self._add_to_recent_files(path)
 
     try:

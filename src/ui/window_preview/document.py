@@ -75,6 +75,8 @@ def _ensure_preview_access(self, path: str):
     return True, getattr(self, "_current_preview_password", None)
 
 def _reset_preview_state(self, close_doc: bool = True):
+    if hasattr(self, "_clear_preview_search"):
+        self._clear_preview_search(clear_query=True)
     self.preview_image.clear_display()
     if close_doc:
         self._close_preview_document()

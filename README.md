@@ -12,13 +12,14 @@
 ## 현재 동작 기준 메모
 
 - 우측 미리보기 패널은 이제 `src/ui/zoomable_preview.py`를 직접 사용하며, 마우스 휠 줌, 드래그 패닝, 페이지 이동, 미리보기 인쇄를 함께 처리합니다.
+- 우측 미리보기 검색은 preview 전용 백그라운드 스레드에서 비동기로 실행되며, 검색 패널 접기/펼치기, 현재 결과 하이라이트, 다음/이전 결과 이동, `Ctrl+F` 진입을 지원합니다.
 - 미리보기 인쇄는 OS 기본 인쇄 위임이 아니라 Qt 인쇄 파이프라인으로 현재 PDF 문서를 실제 프린터 설정에 맞춰 출력합니다.
 - AI/회전 썸네일 그리드는 우측 미리보기와 같은 문서를 기준으로 동기화되며, 암호화 PDF도 미리보기에서 인증한 비밀번호를 재사용합니다.
 - 스플리터 이동이나 패널 리사이즈 이후에도 미리보기를 다시 렌더링해서 저해상도 상태로 남지 않도록 보강했습니다.
 - `페이지 크기 변경`은 원본 비율을 유지한 채 대상 용지 중앙에 fit-center 배치하는 방식으로 동작합니다.
 - `PDF -> 이미지`, `텍스트 추출`의 자동 출력 파일명은 `__2`, `__3` 접미사로 충돌을 회피합니다.
 - `PDF 비교`는 이제 줄 순서 변경과 중복 줄 개수 차이까지 감지하며, 시각적 diff PDF 생성은 UI에서 선택적으로 켤 수 있습니다.
-- 단일 입력/단일 출력 PDF 수정 모드에서 원본 경로로 저장해도, preview가 같은 파일을 잡고 있으면 작업 전에 닫고 완료/실패/취소 후 다시 복원합니다.
+- 단일 입력/단일 출력 PDF 수정 모드에서 원본 경로로 저장해도, preview가 같은 파일을 잡고 있으면 작업 전에 닫고 완료/실패/취소 후 다시 복원하며 검색어/활성 결과 인덱스도 함께 복구합니다.
 - 출력 관련 저장/폴더 선택 다이얼로그는 `last_output_dir`를 시작 경로로 재사용하고, 성공한 출력 경로를 다시 기억합니다.
 - Undo/Redo는 작업 재실행이 아니라 before/after 스냅샷 복원 기반이며, `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, `copy_page_between_docs`도 같은 규칙으로 포함됩니다.
 - 이번에 정리한 worker 결과/상태 메시지는 KO/EN i18n 카탈로그를 통해 함께 관리됩니다.
@@ -122,6 +123,7 @@
 - **토스트 알림** - 비침습적 알림 시스템
 - **드래그 앤 드롭** - 파일 추가, 페이지 순서 변경
 - **줌/패닝 미리보기** - 마우스 휠 줌, 드래그 이동
+- **미리보기 검색** - 접기/펼치기, 비동기 텍스트 검색, 현재 매치 하이라이트, `Enter`/`Shift+Enter` 결과 이동, `Ctrl+F` 포커스
 - **썸네일 그리드** - 모든 페이지 한눈에 보기 + preview 문서/페이지 동기화
 - **회전 탭 페이지 연동** - 썸네일 클릭 시 오른쪽 미리보기 즉시 동기화
 - **Undo/Redo** - 단일 출력 PDF 편집 작업 전반 실행 취소
@@ -237,6 +239,7 @@ python main.py
 | `Ctrl+O` | 파일 열기 |
 | `Ctrl+Q` | 앱 종료 |
 | `Ctrl+T` | 다크/라이트 테마 전환 |
+| `Ctrl+F` | 우측 미리보기 검색창 열기/포커스 |
 | `Ctrl+Z` | 실행 취소 (Undo) |
 | `Ctrl+Y` | 다시 실행 (Redo) |
 | `Ctrl+1` | 병합 탭 |
@@ -347,6 +350,7 @@ pdf-master/
   "language": "auto",
   "recent_files": [],
   "last_output_dir": "",
+  "preview_search_expanded": true,
   "window_geometry": "..."
 }
 ```
@@ -355,11 +359,17 @@ API 키 저장 정책:
 - `keyring` 사용 가능: keyring 우선 저장/조회
 - `keyring` 미사용: 설정 파일(`gemini_api_key`) 폴백
 - 레거시 평문 키는 keyring 경로 사용 시 자동 마이그레이션/정리
-- `load_settings()`는 `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`를 로드 시 정규화합니다.
+- `load_settings()`는 `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`, `preview_search_expanded`를 로드 시 정규화합니다.
 
 ---
 
 ## 📝 변경 이력
+
+### v4.5.5 (2026-04-22) - Preview Search Hardening
+- ✅ preview 텍스트 검색을 preview 전용 async `QThread` worker로 분리하고 request-id 기반 stale result 무시를 추가
+- ✅ `(abs_path, mtime_ns, query)` 기반 결과 캐시와 display-only 하이라이트 overlay 정책을 추가
+- ✅ controlled/standalone 미리보기 검색 UI 정책, `Ctrl+F`, `Enter`/`Shift+Enter`/`Esc`, same-path 검색 컨텍스트 복원을 반영
+- ✅ `tests/test_preview_search.py`, `tests/test_zoomable_preview_widget.py`, `tests/test_same_path_preview_restore.py` 회귀 추가
 
 ### v4.5.5 (2026-04-10) - Stability Bundle
 - ✅ same-path 저장 시 preview 문서를 선행 해제하고 success/fail/cancel 이후 동일 페이지로 복원
@@ -474,7 +484,7 @@ API 키 저장 정책:
 ## 🧪 테스트 및 정합성 현황 (v4.5.5)
 
 - 정적 분석: `python -m pyright` → `0 errors`
-- 회귀 테스트: `python -m pytest -q` → `120 passed, 1 warning`
+- 회귀 테스트: `python -m pytest -q` → `131 passed, 1 warning`
 - 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD 회귀 방지
 
 - 신규 테스트:
@@ -487,7 +497,9 @@ API 키 저장 정책:
   - `tests/test_ai_worker_ui_flow.py` (AI 요약/채팅/키워드 성공/실패 UI 흐름 검증)
   - `tests/test_close_shutdown_flow.py` (종료 시 cooperative cancel/강제 종료 확인 흐름 검증)
   - `tests/test_output_dialog_state.py` (출력 다이얼로그가 `last_output_dir`를 재사용/갱신하는지 검증)
-  - `tests/test_same_path_preview_restore.py` (same-path 저장 전 preview 해제 및 저장 후 preview 복원 검증)
+  - `tests/test_same_path_preview_restore.py` (same-path 저장 전 preview 해제, 저장 후 preview 및 검색 컨텍스트 복원 검증)
+  - `tests/test_preview_search.py` (preview 전용 검색 worker stale result 무시, cache 재사용, clear/focus 흐름 검증)
+  - `tests/test_zoomable_preview_widget.py` (controlled/standalone search UI 정책, 검색 입력 키보드 UX, `Ctrl+F` shortcut 진입 검증)
   - `tests/test_undo_backup_flow.py` (Undo/Redo before/after 스냅샷 복원과 backup cleanup 검증)
   - `tests/test_worker_batch_watermark.py` (배치 워터마크 출력 생성/실패 원인 요약 검증)
   - `tests/test_worker_copy_page_range_strict.py` (페이지 복사 무효 범위 hard-fail 정책 검증)

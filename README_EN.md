@@ -10,13 +10,14 @@
 ## Current Behavior Notes
 
 - The right preview panel now uses `src/ui/zoomable_preview.py` directly for wheel zoom, drag pan, page navigation, and preview print.
+- Preview text search is now asynchronous on a preview-dedicated worker, with collapse/expand UI, current-hit highlighting, next/previous navigation, and `Ctrl+F` entry.
 - Preview print now goes through the Qt print pipeline instead of OS-level `print` delegation, so printer/page-range choices are applied to the actual job.
 - AI/rotate thumbnail entry points stay synchronized with the right preview document, and encrypted PDFs reuse the authenticated preview password session for thumbnail loading.
 - Preview rendering is refreshed after splitter moves and panel resize events to avoid stale low-resolution previews.
 - `Resize Pages` keeps the original page aspect ratio and places the source page fit-centered on the target paper size.
 - Auto-generated outputs from `PDF -> Image` and `Extract Text` avoid filename collisions with `__2`, `__3`, and later suffixes.
 - `Compare PDFs` now detects line-order changes and duplicate-count differences, and visual diff PDF generation is optional from the Advanced tab UI.
-- Single-input/single-output PDF mutation modes can save back to the original path; if preview is holding the same file, it is closed before the worker starts and restored after success/fail/cancel.
+- Single-input/single-output PDF mutation modes can save back to the original path; if preview is holding the same file, it is closed before the worker starts and restored after success/fail/cancel, including preview search query/index restoration.
 - Output save/folder dialogs reuse `last_output_dir` as their starting directory and update it after successful output selection.
 - Undo/Redo now restores before/after snapshots instead of re-running the worker, and the expanded snapshot flow covers `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
 - Updated worker result/status messages in the touched flows are synchronized through the KO/EN i18n catalogs.
@@ -122,6 +123,7 @@
 - **Toast Notifications** - Non-intrusive notifications
 - **Drag & Drop** - Add files, reorder pages
 - **Zoom/Pan Preview** - Mouse wheel zoom, drag move, page navigation, print, and resize-aware rerender
+- **Preview Search** - Collapsible search bar, async text search, current-hit highlight, `Enter`/`Shift+Enter` navigation, and `Ctrl+F` focus
 - **Thumbnail Grid** - View all pages at a glance with preview document/page synchronization
 - **Rotate-tab Page Sync** - Clicking a thumbnail jumps the right preview to the same page
 - **Undo/Redo** - Undo/Redo across single-output PDF mutation workflows
@@ -230,6 +232,7 @@ python main.py
 | `Ctrl+O` | Open File |
 | `Ctrl+Q` | Exit App |
 | `Ctrl+T` | Toggle Theme |
+| `Ctrl+F` | Open/Focus Preview Search |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` | Redo |
 | `Ctrl+1` | Merge Tab |
@@ -337,6 +340,7 @@ Location: `~/.pdf_master_settings.json`
   "language": "auto",
   "recent_files": [],
   "last_output_dir": "",
+  "preview_search_expanded": true,
   "window_geometry": "..."
 }
 ```
@@ -345,11 +349,17 @@ API key storage policy:
 - `keyring` available: keyring-first save/load
 - `keyring` unavailable: settings-file fallback (`gemini_api_key`)
 - Legacy plain key is migrated/cleaned when keyring path is active
-- `load_settings()` normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, and `last_output_dir` during load.
+- `load_settings()` normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`, and `preview_search_expanded` during load.
 
 ---
 
 ## 📝 Changelog
+
+### v4.5.5 (2026-04-22) - Preview Search Hardening
+- Moved preview text search to a preview-dedicated async `QThread` worker with request-id stale-result protection.
+- Added preview search result caching keyed by `(abs_path, mtime_ns, query)` and kept search highlights as display-only overlays on the preview pixmap.
+- Added controlled-vs-standalone preview search policy, `Ctrl+F`, `Enter`/`Shift+Enter`/`Esc` keyboard UX, and same-path search context restoration.
+- Added regression coverage for preview search worker flow, preview search keyboard UX, and same-path search-state restore.
 
 ### v4.5.5 (2026-04-10) - Stability Bundle
 - Added safe same-path overwrite handling by closing preview-held documents before worker start and restoring preview after success/fail/cancel.
@@ -453,7 +463,7 @@ API key storage policy:
 ## 🧪 Test and Consistency Status (v4.5.5)
 
 - Static analysis: `python -m pyright` -> `0 errors`
-- Regression tests: `python -m pytest -q` -> `120 passed, 1 warning`
+- Regression tests: `python -m pytest -q` -> `131 passed, 1 warning`
 - Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD regressions
 
 - Added:
@@ -467,6 +477,7 @@ API key storage policy:
   - `tests/test_close_shutdown_flow.py`
   - `tests/test_output_dialog_state.py`
   - `tests/test_same_path_preview_restore.py`
+  - `tests/test_preview_search.py`
   - `tests/test_undo_backup_flow.py`
   - `tests/test_worker_batch_watermark.py`
   - `tests/test_worker_copy_page_range_strict.py`
@@ -493,6 +504,7 @@ API key storage policy:
   - `tests/test_worker_rotate_selection.py`
   - `tests/test_rotate_selection_ui_flow.py`
   - `tests/test_thumbnail_grid_selection.py`
+  - `tests/test_zoomable_preview_widget.py`
 
 ---
 

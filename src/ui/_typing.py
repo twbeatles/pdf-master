@@ -26,6 +26,14 @@ class MainWindowHost:
     page_counter: Any
     btn_prev_page: Any
     btn_next_page: Any
+    _preview_search_query: str
+    _preview_search_matches: list[Any]
+    _preview_search_index: int
+    _preview_search_path: str
+    _preview_search_request_id: int
+    _preview_search_worker: Any
+    _preview_search_active_request: dict[str, Any] | None
+    _preview_search_result_cache: Any
 
     _ai_worker_mode: bool
     _chat_worker_mode: bool
@@ -95,6 +103,51 @@ class MainWindowHost:
         ...
 
     def _render_preview_page(self) -> None:
+        ...
+
+    def _search_preview_text(
+        self,
+        query: str,
+        preferred_index: int | None = None,
+        restoring: bool = False,
+    ) -> None:
+        ...
+
+    def _step_preview_search(self, step: int) -> None:
+        ...
+
+    def _cancel_preview_search_worker(self, wait_ms: int = 0) -> None:
+        ...
+
+    def _clear_preview_search(self, clear_query: bool = True) -> None:
+        ...
+
+    def _preview_search_matches_for_page(self, page_index: int) -> list[Any]:
+        ...
+
+    def _active_preview_search_match(self) -> Any:
+        ...
+
+    def _on_preview_search_results(
+        self,
+        request_id: int,
+        pdf_path: str,
+        query: str,
+        mtime_ns: int,
+        matches: Any,
+    ) -> None:
+        ...
+
+    def _on_preview_search_failed(self, request_id: int, message: str) -> None:
+        ...
+
+    def _on_preview_search_cancelled(self, request_id: int) -> None:
+        ...
+
+    def _on_preview_search_visibility_changed(self, visible: bool) -> None:
+        ...
+
+    def _focus_preview_search(self) -> None:
         ...
 
     def _choose_save_file(self, title: str, default_name: str, file_filter: str) -> tuple[str, str]:

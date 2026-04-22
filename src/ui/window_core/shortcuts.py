@@ -38,6 +38,7 @@ def _setup_shortcuts(self):
     QShortcut(QKeySequence("Ctrl+T"), self, self._toggle_theme)
     QShortcut(QKeySequence("Ctrl+Z"), self, self._undo_action)  # v4.0: Undo
     QShortcut(QKeySequence("Ctrl+Y"), self, self._redo_action)  # v4.0: Redo
+    QShortcut(QKeySequence("Ctrl+F"), self, self._focus_preview_search)
     QShortcut(QKeySequence("F1"), self, self._show_help)
     QShortcut(QKeySequence("Ctrl+1"), self, lambda: self.tabs.setCurrentIndex(0))
     QShortcut(QKeySequence("Ctrl+2"), self, lambda: self.tabs.setCurrentIndex(1))
