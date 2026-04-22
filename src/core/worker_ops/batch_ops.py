@@ -4,6 +4,7 @@ import os
 from .._typing import WorkerHost
 from ..optional_deps import fitz
 from ..worker_runtime.args import _as_list, _as_str
+from ..worker_runtime.save_profiles import DEFAULT_COMPRESSION_SAVE_PROFILE, normalize_save_profile
 from ._pdf_impl import FITZ_PDF_ENCRYPT_AES_256, FITZ_PDF_PERM_ACCESSIBILITY, FITZ_PDF_PERM_COPY, FITZ_PDF_PERM_PRINT
 from ._pdf_impl import WorkerPdfOpsMixin as _LegacyWorkerPdfOpsMixin
 
@@ -20,6 +21,7 @@ class WorkerBatchOpsMixin(WorkerHost):
         operation = _as_str(self.kwargs.get("operation"))
         option = _as_str(self.kwargs.get("option"))
         failed_files: list[tuple[str, str]] = []
+        used_output_stems: set[str] = set()
 
         success_count = 0
         skipped_count = 0
@@ -28,13 +30,25 @@ class WorkerBatchOpsMixin(WorkerHost):
             doc = None
             try:
                 base = os.path.splitext(os.path.basename(file_path))[0]
-                out_path = os.path.join(output_dir, f"{base}_processed.pdf")
-                out_path_exists = os.path.exists(out_path)
+                unique_stem = self._build_unique_output_stem(
+                    output_dir,
+                    f"{base}_processed",
+                    ".pdf",
+                    used_output_stems,
+                )
+                out_path = os.path.join(output_dir, f"{unique_stem}.pdf")
 
                 doc = fitz.open(file_path)
 
                 if operation == "compress":
-                    self._atomic_pdf_save(doc, out_path, garbage=4, deflate=True)
+                    self._atomic_pdf_save(
+                        doc,
+                        out_path,
+                        save_profile=normalize_save_profile(
+                            self.kwargs.get("save_profile"),
+                            default=DEFAULT_COMPRESSION_SAVE_PROFILE,
+                        ),
+                    )
                 elif operation == "watermark" and option:
                     for page in doc:
                         text_rect = fitz.Rect(
@@ -69,8 +83,6 @@ class WorkerBatchOpsMixin(WorkerHost):
                     self._atomic_pdf_save(doc, out_path)
                 else:
                     self._atomic_pdf_save(doc, out_path)
-                if not out_path_exists:
-                    self._record_created_output_path(out_path)
                 success_count += 1
             except Exception as exc:
                 from ..worker import CancelledError

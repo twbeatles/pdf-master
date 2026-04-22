@@ -79,5 +79,5 @@ def test_compare_pdfs_optional_visual_diff_and_duplicate_detection(tmp_path):
     assert visual_diff.exists()
 
     diff_doc = fitz.open(str(visual_diff))
-    assert len(diff_doc) >= 1
+    assert len(diff_doc) == 1
     diff_doc.close()

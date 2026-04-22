@@ -5,7 +5,9 @@ import shutil
 import tempfile
 from datetime import datetime
 
+from .constants import MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
 from .optional_deps import KEYRING_AVAILABLE, keyring
+from .path_utils import normalize_path_key
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -22,13 +24,43 @@ KEYRING_USERNAME = "gemini_api_key"
 def _normalize_recent_files(value) -> list[str]:
     if not isinstance(value, list):
         return []
-    return [item for item in value if isinstance(item, str) and item]
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        path_key = normalize_path_key(item)
+        if not path_key or path_key in seen or not os.path.exists(path_key):
+            continue
+        seen.add(path_key)
+        normalized.append(path_key)
+    return normalized
 
 
 def _normalize_chat_histories(value) -> dict:
     if not isinstance(value, dict):
         return {}
-    return value
+    normalized: dict[str, list[dict[str, str]]] = {}
+    for raw_path, raw_entries in value.items():
+        path_key = normalize_path_key(raw_path)
+        if not path_key or not isinstance(raw_entries, list):
+            continue
+        cleaned_entries = normalized.setdefault(path_key, [])
+        for entry in raw_entries:
+            if not isinstance(entry, dict):
+                continue
+            role = entry.get("role")
+            content = entry.get("content")
+            if role in ("user", "assistant") and isinstance(content, str) and content:
+                cleaned_entries.append({"role": role, "content": content})
+
+    trimmed: dict[str, list[dict[str, str]]] = {}
+    for path_key, entries in normalized.items():
+        if not entries:
+            continue
+        trimmed[path_key] = entries[-MAX_CHAT_HISTORY_ENTRIES:]
+
+    if len(trimmed) > MAX_CHAT_HISTORY_PDFS:
+        trimmed = dict(list(trimmed.items())[-MAX_CHAT_HISTORY_PDFS:])
+    return trimmed
 
 
 def _normalize_splitter_sizes(value) -> list[int] | None:
@@ -122,7 +154,7 @@ def get_api_key() -> str:
     settings = load_settings()
     return settings.get("gemini_api_key", "")
 
-def set_api_key(api_key: str) -> bool:
+def _legacy_set_api_key(api_key: str) -> bool:
     """
     API 키 안전하게 저장하기 (keyring 우선, 파일 폴백)
     
@@ -156,6 +188,52 @@ def set_api_key(api_key: str) -> bool:
     # 파일에 폴백 저장
     settings = load_settings()
     settings["gemini_api_key"] = api_key
+    return save_settings(settings)
+
+
+def set_api_key(api_key: str, allow_file_fallback: bool = False) -> bool:
+    """
+    Save the Gemini API key securely when possible.
+
+    Args:
+        api_key: API key to store.
+        allow_file_fallback: When True, allow plaintext settings-file storage
+            if keyring is unavailable or saving to keyring fails.
+
+    Returns:
+        True if the save or cleanup succeeded, False otherwise.
+    """
+    settings = load_settings()
+
+    if not api_key:
+        if KEYRING_AVAILABLE and keyring is not None:
+            try:
+                keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
+            except Exception:
+                logger.debug("API key was not present in keyring during delete", exc_info=True)
+        if "gemini_api_key" in settings:
+            del settings["gemini_api_key"]
+            return save_settings(settings)
+        return True
+
+    if KEYRING_AVAILABLE and keyring is not None:
+        try:
+            keyring.set_password(KEYRING_SERVICE, KEYRING_USERNAME, api_key)
+            if "gemini_api_key" in settings:
+                del settings["gemini_api_key"]
+                save_settings(settings)
+            logger.info("API key saved to keyring")
+            return True
+        except Exception as exc:
+            logger.warning("Failed to save API key to keyring: %s", exc)
+            if not allow_file_fallback:
+                return False
+
+    if not allow_file_fallback:
+        return False
+
+    settings["gemini_api_key"] = api_key
+    logger.warning("Saving API key to plaintext settings file due to explicit fallback approval")
     return save_settings(settings)
 
 def load_settings():

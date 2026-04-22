@@ -6,14 +6,22 @@ from .cache import (
 )
 from .document import (
     _close_preview_document,
+    _ensure_preview_watchers,
     _ensure_preview_access,
     _ensure_preview_document,
+    _load_qpdf_document,
+    _on_preview_directory_changed,
+    _on_preview_file_changed,
     _open_preview_document,
     _prompt_pdf_password,
+    _reload_preview_after_external_change,
     _reset_preview_state,
+    _unwatch_preview_file,
+    _watch_preview_file,
 )
 from .navigation import (
     _next_preview_page,
+    _open_page_setup,
     _on_preview_page_requested,
     _on_list_item_clicked,
     _prev_preview_page,
@@ -23,19 +31,7 @@ from .navigation import (
     _schedule_preview_rerender,
 )
 from .panel import _create_preview_panel, _set_preview_navigation_enabled
-from .search import (
-    _active_preview_search_match,
-    _cancel_preview_search_worker,
-    _clear_preview_search,
-    _focus_preview_search,
-    _on_preview_search_cancelled,
-    _on_preview_search_failed,
-    _on_preview_search_results,
-    _on_preview_search_visibility_changed,
-    _preview_search_matches_for_page,
-    _search_preview_text,
-    _step_preview_search,
-)
+from .search import _focus_preview_search, _on_preview_search_visibility_changed
 from .update import _add_to_recent_files, _update_preview
 from .._typing import MainWindowHost
 
@@ -47,30 +43,29 @@ class MainWindowPreviewMixin(MainWindowHost):
     _get_cached_preview_pixmap = _get_cached_preview_pixmap
     _put_cached_preview_pixmap = _put_cached_preview_pixmap
     _close_preview_document = _close_preview_document
+    _ensure_preview_watchers = _ensure_preview_watchers
     _print_current_preview = _print_current_preview
     _print_pdf = _print_pdf
+    _open_page_setup = _open_page_setup
     _prev_preview_page = _prev_preview_page
     _next_preview_page = _next_preview_page
     _on_preview_page_requested = _on_preview_page_requested
     _schedule_preview_rerender = _schedule_preview_rerender
     _ensure_preview_access = _ensure_preview_access
     _ensure_preview_document = _ensure_preview_document
+    _load_qpdf_document = _load_qpdf_document
+    _on_preview_directory_changed = _on_preview_directory_changed
+    _on_preview_file_changed = _on_preview_file_changed
     _render_preview_page = _render_preview_page
     _on_list_item_clicked = _on_list_item_clicked
     _set_preview_navigation_enabled = _set_preview_navigation_enabled
-    _search_preview_text = _search_preview_text
-    _step_preview_search = _step_preview_search
-    _cancel_preview_search_worker = _cancel_preview_search_worker
-    _clear_preview_search = _clear_preview_search
-    _preview_search_matches_for_page = _preview_search_matches_for_page
-    _active_preview_search_match = _active_preview_search_match
-    _on_preview_search_results = _on_preview_search_results
-    _on_preview_search_failed = _on_preview_search_failed
-    _on_preview_search_cancelled = _on_preview_search_cancelled
-    _on_preview_search_visibility_changed = _on_preview_search_visibility_changed
     _focus_preview_search = _focus_preview_search
+    _on_preview_search_visibility_changed = _on_preview_search_visibility_changed
     _reset_preview_state = _reset_preview_state
     _prompt_pdf_password = _prompt_pdf_password
+    _reload_preview_after_external_change = _reload_preview_after_external_change
     _open_preview_document = _open_preview_document
+    _unwatch_preview_file = _unwatch_preview_file
     _update_preview = _update_preview
+    _watch_preview_file = _watch_preview_file
     _add_to_recent_files = _add_to_recent_files

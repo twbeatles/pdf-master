@@ -99,3 +99,26 @@ def test_preflight_rejects_too_small_pdf(tmp_path):
     assert errors
     assert any(("small" in m.lower()) or ("작" in m) for m in errors)
     assert not out.exists()
+
+
+def test_preflight_rejects_missing_required_kwargs(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "out.pdf"
+    _make_pdf(src)
+
+    worker = WorkerThread(
+        "delete_pages",
+        file_path=str(src),
+        output_path=str(out),
+    )
+    errors = []
+    worker.error_signal.connect(lambda msg: errors.append(msg))
+
+    worker.run()
+
+    assert errors
+    assert any("page_range" in m for m in errors)
+    assert not out.exists()

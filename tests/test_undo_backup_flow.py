@@ -18,7 +18,8 @@ class _UndoHost:
         self._pending_undo = None
         self.preview_updates = []
 
-    def _update_preview(self, path):
+    def _update_preview(self, path, restore_state=None):
+        _ = restore_state
         self.preview_updates.append(path)
 
 

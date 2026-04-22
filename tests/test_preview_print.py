@@ -67,7 +67,7 @@ def test_collect_print_page_indices_respects_current_page():
     assert navigation._collect_print_page_indices(_PrinterStub(), total_pages=5, current_page_index=3) == [3]
 
 
-def test_print_pdf_uses_qt_render_pipeline(monkeypatch, tmp_path):
+def test_print_pdf_uses_qt_preview_pipeline(monkeypatch, tmp_path):
     require_pyqt6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -77,7 +77,7 @@ def test_print_pdf_uses_qt_render_pipeline(monkeypatch, tmp_path):
     _make_pdf(src_pdf, page_count=3)
 
     real_qprinter = navigation.QPrinter
-    real_qprintdialog = navigation.QPrintDialog
+    real_preview = navigation.QPrintPreviewDialog
 
     class FakePrinter:
         PrinterMode = real_qprinter.PrinterMode
@@ -88,48 +88,33 @@ def test_print_pdf_uses_qt_render_pipeline(monkeypatch, tmp_path):
         def __init__(self, *_args, **_kwargs):
             FakePrinter.last_instance = self
             self.doc_name = None
-            self.new_page_calls = 0
 
         def setDocName(self, name):
             self.doc_name = name
 
-        def newPage(self):
-            self.new_page_calls += 1
-            return True
+    class _SignalStub:
+        def __init__(self):
+            self.callback = None
+
+        def connect(self, callback):
+            self.callback = callback
 
     class FakeDialog:
-        DialogCode = real_qprintdialog.DialogCode
+        DialogCode = real_preview.DialogCode
 
         def __init__(self, printer, _parent):
             self.printer = printer
-            self.minmax = None
-            self.options = []
+            self.paintRequested = _SignalStub()
 
-        def setMinMax(self, start, end):
-            self.minmax = (start, end)
-
-        def setOption(self, option, enabled=True):
-            self.options.append((option, enabled))
+        def setWindowTitle(self, _title):
+            return None
 
         def exec(self):
+            assert self.paintRequested.callback is not None
+            self.paintRequested.callback(self.printer)
             return self.DialogCode.Accepted
 
-    class FakePainter:
-        instances = []
-
-        def __init__(self):
-            self.begin_calls = []
-            self.ended = False
-            FakePainter.instances.append(self)
-
-        def begin(self, printer):
-            self.begin_calls.append(printer)
-            return True
-
-        def end(self):
-            self.ended = True
-
-    rendered_pages = []
+    rendered = []
     toasts = []
 
     class _ToastStub:
@@ -145,7 +130,6 @@ def test_print_pdf_uses_qt_render_pipeline(monkeypatch, tmp_path):
 
     class Dummy:
         def __init__(self):
-            self._current_preview_doc = fitz.open(str(src_pdf))
             self._current_preview_page = 1
             self.preview_label = _LabelStub()
 
@@ -154,14 +138,12 @@ def test_print_pdf_uses_qt_render_pipeline(monkeypatch, tmp_path):
             return True, None
 
     monkeypatch.setattr(navigation, "QPrinter", FakePrinter)
-    monkeypatch.setattr(navigation, "QPrintDialog", FakeDialog)
-    monkeypatch.setattr(navigation, "QPainter", FakePainter)
+    monkeypatch.setattr(navigation, "QPrintPreviewDialog", FakeDialog)
     monkeypatch.setattr(navigation, "ToastWidget", _ToastStub)
-    monkeypatch.setattr(navigation, "_collect_print_page_indices", lambda *_args, **_kwargs: [1, 2])
     monkeypatch.setattr(
         navigation,
-        "_render_pdf_page_to_printer",
-        lambda _printer, _painter, page: rendered_pages.append(page.number),
+        "_paint_pdf_document",
+        lambda _printer, path, password, current_page: rendered.append((path, password, current_page)),
     )
     monkeypatch.setattr(
         navigation.QMessageBox,
@@ -170,14 +152,83 @@ def test_print_pdf_uses_qt_render_pipeline(monkeypatch, tmp_path):
     )
 
     dummy = Dummy()
-    try:
-        navigation._print_pdf(dummy, str(src_pdf))
-    finally:
-        dummy._current_preview_doc.close()
+    navigation._print_pdf(dummy, str(src_pdf))
 
     assert FakePrinter.last_instance is not None
     assert FakePrinter.last_instance.doc_name == src_pdf.name
-    assert FakePrinter.last_instance.new_page_calls == 1
-    assert rendered_pages == [1, 2]
-    assert FakePainter.instances and FakePainter.instances[0].ended is True
+    assert rendered == [(str(src_pdf), None, 1)]
     assert toasts == [navigation.tm.get("print_completed")]
+
+
+def test_open_page_setup_uses_dialog(monkeypatch):
+    require_pyqt6_and_pymupdf()
+    import src.ui.window_preview.navigation as navigation
+
+    real_qprinter = navigation.QPrinter
+
+    class FakePrinter:
+        PrinterMode = real_qprinter.PrinterMode
+
+        def __init__(self, *_args, **_kwargs):
+            return None
+
+    called = {"count": 0}
+
+    class FakeDialog:
+        def __init__(self, printer, parent):
+            assert printer is not None
+            assert parent is not None
+
+        def exec(self):
+            called["count"] += 1
+            return 1
+
+    class Dummy:
+        _current_preview_path = "sample.pdf"
+        _preview_printer = None
+
+    monkeypatch.setattr(navigation, "QPrinter", FakePrinter)
+    monkeypatch.setattr(navigation, "QPageSetupDialog", FakeDialog)
+    monkeypatch.setattr(
+        navigation.QMessageBox,
+        "warning",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("warning should not be shown")),
+    )
+
+    dummy = Dummy()
+    navigation._open_page_setup(dummy)
+    assert called["count"] == 1
+
+
+def test_create_preview_printer_uses_fresh_instance_and_copies_setup(monkeypatch):
+    require_pyqt6_and_pymupdf()
+    import src.ui.window_preview.navigation as navigation
+
+    real_qprinter = navigation.QPrinter
+
+    created = []
+    copied = []
+
+    class FakePrinter:
+        PrinterMode = real_qprinter.PrinterMode
+
+        def __init__(self, *_args, **_kwargs):
+            created.append(self)
+
+    class Dummy:
+        def __init__(self):
+            self._preview_printer = object()
+
+    monkeypatch.setattr(navigation, "QPrinter", FakePrinter)
+    monkeypatch.setattr(
+        navigation,
+        "_copy_printer_setup_state",
+        lambda source, target: copied.append((source, target)),
+    )
+
+    dummy = Dummy()
+    printer = navigation._create_preview_printer(dummy)
+
+    assert printer is created[0]
+    assert printer is not dummy._preview_printer
+    assert copied == [(dummy._preview_printer, printer)]

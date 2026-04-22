@@ -13,8 +13,11 @@ class MainWindowHost:
     status_label: Any
     progress_overlay: Any
     txt_summary_result: Any
+    lbl_summary_meta: Any
     txt_chat_history: Any
+    lbl_chat_meta: Any
     lbl_keywords_result: Any
+    lbl_keywords_meta: Any
     sel_chat_pdf: Any
     form_fields_list: Any
     undo_manager: Any
@@ -26,19 +29,14 @@ class MainWindowHost:
     page_counter: Any
     btn_prev_page: Any
     btn_next_page: Any
-    _preview_search_query: str
-    _preview_search_matches: list[Any]
-    _preview_search_index: int
-    _preview_search_path: str
-    _preview_search_request_id: int
-    _preview_search_worker: Any
-    _preview_search_active_request: dict[str, Any] | None
-    _preview_search_result_cache: Any
 
     _ai_worker_mode: bool
     _chat_worker_mode: bool
     _keyword_worker_mode: bool
     _chat_pending_path: str | None
+    _summary_result_meta: dict[str, Any]
+    _chat_result_meta: dict[str, Any]
+    _keywords_result_meta: dict[str, Any]
     _pending_worker: dict[str, Any] | None
     _pending_undo: dict[str, Any] | None
     _cancel_pending: bool
@@ -50,6 +48,10 @@ class MainWindowHost:
     _chat_histories: dict[str, Any]
     _preview_password_hint: str | None
     _same_path_preview_restore: dict[str, Any] | None
+    _preview_dir_watcher: Any
+    _preview_reload_attempts: int
+    _preview_reload_target_path: str
+    _preview_reload_restore_state: dict[str, object] | None
 
     def sender(self) -> QObject | None:
         ...
@@ -90,6 +92,9 @@ class MainWindowHost:
     def _schedule_preview_rerender(self) -> None:
         ...
 
+    def _open_page_setup(self) -> None:
+        ...
+
     def _schedule_settings_save(self, delay_ms: int = 400) -> None:
         ...
 
@@ -99,49 +104,10 @@ class MainWindowHost:
     def _close_preview_document(self) -> None:
         ...
 
-    def _update_preview(self, path: str) -> None:
+    def _update_preview(self, path: str, restore_state: dict[str, object] | None = None) -> None:
         ...
 
     def _render_preview_page(self) -> None:
-        ...
-
-    def _search_preview_text(
-        self,
-        query: str,
-        preferred_index: int | None = None,
-        restoring: bool = False,
-    ) -> None:
-        ...
-
-    def _step_preview_search(self, step: int) -> None:
-        ...
-
-    def _cancel_preview_search_worker(self, wait_ms: int = 0) -> None:
-        ...
-
-    def _clear_preview_search(self, clear_query: bool = True) -> None:
-        ...
-
-    def _preview_search_matches_for_page(self, page_index: int) -> list[Any]:
-        ...
-
-    def _active_preview_search_match(self) -> Any:
-        ...
-
-    def _on_preview_search_results(
-        self,
-        request_id: int,
-        pdf_path: str,
-        query: str,
-        mtime_ns: int,
-        matches: Any,
-    ) -> None:
-        ...
-
-    def _on_preview_search_failed(self, request_id: int, message: str) -> None:
-        ...
-
-    def _on_preview_search_cancelled(self, request_id: int) -> None:
         ...
 
     def _on_preview_search_visibility_changed(self, visible: bool) -> None:

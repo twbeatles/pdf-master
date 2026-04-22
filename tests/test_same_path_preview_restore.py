@@ -34,18 +34,24 @@ def test_same_path_output_closes_and_restores_preview(tmp_path):
             self._preview_total_pages = len(self._current_preview_doc)
             self.rendered_pages = []
             self.reopened_paths = []
+            self.preview_image = type(
+                "PreviewStub",
+                (),
+                {"capture_view_state": staticmethod(lambda: {"page": 1, "zoom_mode": "custom", "zoom_factor": 1.2})},
+            )()
 
         def _close_preview_document(self):
             if self._current_preview_doc is not None:
                 self._current_preview_doc.close()
             self._current_preview_doc = None
 
-        def _update_preview(self, path):
+        def _update_preview(self, path, restore_state=None):
             self.reopened_paths.append(path)
             self._current_preview_doc = fitz.open(path)
             self._current_preview_path = path
             self._preview_total_pages = len(self._current_preview_doc)
-            self._current_preview_page = 0
+            raw_page = (restore_state or {}).get("page", 0)
+            self._current_preview_page = int(raw_page) if isinstance(raw_page, (int, float)) else 0
 
         def _render_preview_page(self):
             self.rendered_pages.append(self._current_preview_page)
@@ -77,7 +83,7 @@ def test_same_path_output_closes_and_restores_preview(tmp_path):
     assert dummy._current_preview_doc.metadata.get("title") == "Updated Title"
 
 
-def test_same_path_output_restores_preview_search_context(tmp_path):
+def test_same_path_output_restores_preview_view_state(tmp_path):
     require_pyqt6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -95,34 +101,45 @@ def test_same_path_output_restores_preview_search_context(tmp_path):
             self._preview_password_hint = None
             self._same_path_preview_restore = None
             self._preview_total_pages = len(self._current_preview_doc)
-            self._preview_search_query = "PAGE_2"
-            self._preview_search_index = 2
             self.reopened_paths = []
             self.rendered_pages = []
-            self.search_requests = []
+            self.restore_states = []
+            self.preview_image = type(
+                "PreviewStub",
+                (),
+                {
+                    "capture_view_state": staticmethod(
+                        lambda: {
+                            "page": 1,
+                            "zoom_mode": "custom",
+                            "zoom_factor": 1.2,
+                            "search_panel_visible": True,
+                            "side_tab_index": 0,
+                            "search_query": "PAGE_2",
+                            "search_result_row": 2,
+                        }
+                    )
+                },
+            )()
 
         def _close_preview_document(self):
             if self._current_preview_doc is not None:
                 self._current_preview_doc.close()
             self._current_preview_doc = None
 
-        def _update_preview(self, path):
+        def _update_preview(self, path, restore_state=None):
             self.reopened_paths.append(path)
+            self.restore_states.append(restore_state)
             self._current_preview_doc = fitz.open(path)
             self._current_preview_path = path
             self._preview_total_pages = len(self._current_preview_doc)
-            self._current_preview_page = 0
+            raw_page = (restore_state or {}).get("page", 0)
+            self._current_preview_page = int(raw_page) if isinstance(
+                raw_page, (int, float)
+            ) else 0
 
         def _render_preview_page(self):
             self.rendered_pages.append(self._current_preview_page)
-
-        def _search_preview_text(
-            self,
-            query,
-            preferred_index=None,
-            restoring=False,
-        ):
-            self.search_requests.append((query, preferred_index, restoring))
 
     dummy = Dummy(src_pdf)
 
@@ -135,4 +152,14 @@ def test_same_path_output_restores_preview_search_context(tmp_path):
 
     assert dummy.reopened_paths == [str(src_pdf)]
     assert dummy.rendered_pages == [1]
-    assert dummy.search_requests == [("PAGE_2", 2, True)]
+    assert dummy.restore_states == [
+        {
+            "page": 1,
+            "zoom_mode": "custom",
+            "zoom_factor": 1.2,
+            "search_panel_visible": True,
+            "side_tab_index": 0,
+            "search_query": "PAGE_2",
+            "search_result_row": 2,
+        }
+    ]

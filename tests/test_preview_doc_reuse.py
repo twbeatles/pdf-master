@@ -7,11 +7,31 @@ class _DummyDoc:
     def __init__(self):
         self.closed = False
 
-    def __len__(self):
-        return 1
+    def status(self):
+        from PyQt6.QtPdf import QPdfDocument
+
+        return QPdfDocument.Status.Ready
 
     def close(self):
         self.closed = True
+
+
+class _PreviewWidgetStub:
+    def __init__(self):
+        self.document_value = None
+        self.set_calls = []
+
+    def set_document(self, document, path=""):
+        self.document_value = document
+        self.set_calls.append((document, path))
+
+    def clear(self):
+        if self.document_value is not None and hasattr(self.document_value, "close"):
+            self.document_value.close()
+        self.document_value = None
+
+    def document(self):
+        return self.document_value
 
 
 def test_preview_doc_reuse_same_path():
@@ -23,6 +43,7 @@ def test_preview_doc_reuse_same_path():
             self._current_preview_doc = None
             self._current_preview_path = ""
             self._current_preview_password = None
+            self.preview_image = _PreviewWidgetStub()
             self.open_calls = 0
             self.docs = []
 
@@ -51,6 +72,7 @@ def test_preview_doc_reopen_on_path_change():
             self._current_preview_doc = None
             self._current_preview_path = ""
             self._current_preview_password = None
+            self.preview_image = _PreviewWidgetStub()
             self.open_calls = 0
             self.docs = []
 

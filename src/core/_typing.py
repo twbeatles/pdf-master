@@ -16,10 +16,12 @@ class SignalLike:
 class WorkerHost:
     mode: str
     kwargs: dict[str, Any]
+    result_payload: dict[str, Any]
     _cancel_requested: bool
     _last_progress_value: int | None
     _last_progress_emit_ts_ms: float
     progress_signal: Any
+    partial_result_signal: Any
     finished_signal: Any
     error_signal: Any
     cancelled_signal: Any
@@ -28,6 +30,16 @@ class WorkerHost:
         ...
 
     def _atomic_pdf_save(self, doc: Any, output_path: str, **save_kwargs: Any) -> None:
+        ...
+
+    def _atomic_text_save(
+        self,
+        output_path: str,
+        text: str,
+        *,
+        encoding: str = "utf-8",
+        newline: str | None = None,
+    ) -> None:
         ...
 
     def _build_safe_attachment_output_path(
@@ -77,6 +89,15 @@ class WorkerHost:
         ...
 
     def _normalize_mode_kwargs(self) -> None:
+        ...
+
+    def _set_result_payload(self, payload: dict[str, Any] | None = None, **extra: Any) -> None:
+        ...
+
+    def _update_result_payload(self, **payload: Any) -> None:
+        ...
+
+    def _emit_partial_result(self, **payload: Any) -> None:
         ...
 
     def _parse_page_range(self, page_range_str: str, total_pages: int) -> list[int]:

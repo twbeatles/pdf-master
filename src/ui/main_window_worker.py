@@ -12,70 +12,109 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QMessageBox, QWidget
 
 from ..core.i18n import tm
+from ..core.path_utils import normalize_path_key
+from ..core.worker_runtime import get_operation_spec
 from ..core.worker import WorkerThread
+from .tabs_ai.meta import format_ai_meta, is_warning_ai_meta, normalize_ai_meta
 from .widgets import ToastWidget
 from .window_worker import MainWindowWorkerMixin as _MainWindowWorkerMixin
 
 logger = logging.getLogger(__name__)
 
-UNDO_SINGLE_OUTPUT_MUTATION_MODES = frozenset(
-    {
-        "add_annotation",
-        "add_attachment",
-        "add_background",
-        "add_freehand_signature",
-        "add_ink_annotation",
-        "add_link",
-        "add_page_numbers",
-        "add_stamp",
-        "add_sticky_note",
-        "add_text_markup",
-        "compress",
-        "copy_page_between_docs",
-        "crop_pdf",
-        "decrypt_pdf",
-        "delete_pages",
-        "draw_shapes",
-        "fill_form",
-        "highlight_text",
-        "image_watermark",
-        "insert_blank_page",
-        "insert_signature",
-        "insert_textbox",
-        "metadata_update",
-        "protect",
-        "redact_text",
-        "resize_pages",
-        "remove_annotations",
-        "reorder",
-        "replace_page",
-        "reverse_pages",
-        "rotate",
-        "set_bookmarks",
-        "duplicate_page",
-        "watermark",
-    }
-)
-
-
 def _is_undo_eligible_mode(mode, kwargs) -> bool:
-    if mode not in UNDO_SINGLE_OUTPUT_MUTATION_MODES:
+    spec = get_operation_spec(mode)
+    if spec is None or not spec.undo_eligible:
         return False
     return bool(kwargs.get("file_path") and kwargs.get("output_path"))
 
 
 def _normalize_abs_path(path) -> str:
-    if not isinstance(path, str) or not path:
-        return ""
-    return os.path.normcase(os.path.abspath(path))
+    return normalize_path_key(path)
 
 
 def _is_same_path_pdf_mutation(mode, kwargs) -> bool:
+    spec = get_operation_spec(mode)
+    if spec is None or not spec.same_path_safe or spec.output_kind != "pdf" or not spec.refresh_preview:
+        return False
     if not _is_undo_eligible_mode(mode, kwargs):
         return False
     input_path = _normalize_abs_path(kwargs.get("file_path"))
     output_path = _normalize_abs_path(kwargs.get("output_path"))
     return bool(input_path and output_path and input_path == output_path)
+
+
+def _get_operation_description(mode: str) -> str:
+    spec = get_operation_spec(mode)
+    if spec is None:
+        return mode
+    return tm.get(spec.title_key)
+
+
+def _get_worker_payload(worker) -> dict:
+    payload = getattr(worker, "result_payload", None)
+    if isinstance(payload, dict) and payload:
+        return payload
+    kwargs = getattr(worker, "kwargs", None)
+    if not isinstance(kwargs, dict):
+        return {}
+    if "summary_result" in kwargs:
+        return {"title": "", "summary": kwargs.get("summary_result", ""), "key_points": [], "meta": {}}
+    if "answer_result" in kwargs:
+        return {"answer": kwargs.get("answer_result", ""), "meta": {}}
+    if "keywords_result" in kwargs:
+        return {"keywords": kwargs.get("keywords_result", []), "meta": {}}
+    if "result_fields" in kwargs:
+        return {"fields": kwargs.get("result_fields", [])}
+    if "result_attachments" in kwargs:
+        return {"attachments": kwargs.get("result_attachments", [])}
+    if "result_annotations" in kwargs:
+        return {"annotations": kwargs.get("result_annotations", [])}
+    return {}
+
+
+def _coerce_payload_defaults(mode: str, payload: dict) -> dict:
+    spec = get_operation_spec(mode)
+    if spec is None or not spec.result_payload_keys:
+        return payload
+
+    normalized = dict(payload)
+    list_keys = {"key_points", "keywords", "fields", "attachments", "annotations"}
+    dict_keys = {"meta"}
+    missing_keys: list[str] = []
+    for key in spec.result_payload_keys:
+        if key in normalized:
+            continue
+        missing_keys.append(key)
+        normalized[key] = [] if key in list_keys else ({} if key in dict_keys else "")
+
+    if missing_keys:
+        logger.warning("Worker payload for mode '%s' is missing keys: %s", mode, ", ".join(missing_keys))
+    return normalized
+
+
+def _format_summary_payload(payload: dict) -> str:
+    title = str(payload.get("title", "") or "").strip()
+    summary = str(payload.get("summary", "") or "").strip()
+    key_points = payload.get("key_points", [])
+    text_parts: list[str] = []
+    if title:
+        text_parts.append(title)
+    if summary:
+        text_parts.append(summary)
+    if isinstance(key_points, list) and key_points:
+        bullets = "\n".join(f"- {point}" for point in key_points if str(point).strip())
+        if bullets:
+            text_parts.append(bullets)
+    return "\n\n".join(part for part in text_parts if part).strip()
+
+
+def _replace_last_chat_block(chat_history, html: str) -> None:
+    cursor = chat_history.textCursor()
+    cursor.movePosition(cursor.MoveOperation.End)
+    cursor.select(cursor.SelectionType.BlockUnderCursor)
+    cursor.removeSelectedText()
+    cursor.deletePreviousChar()
+    chat_history.append(html)
 
 
 def _delete_undo_backup_file(path: str) -> None:
@@ -86,6 +125,41 @@ def _delete_undo_backup_file(path: str) -> None:
             os.remove(path)
     except Exception:
         logger.debug("Failed to remove undo backup %s", path, exc_info=True)
+
+
+def _set_meta_label(label, meta: dict) -> None:
+    if label is None:
+        return
+    meta_text = format_ai_meta(meta)
+    label.setText(meta_text)
+    warning = is_warning_ai_meta(meta)
+    set_style = getattr(label, "setStyleSheet", None)
+    if callable(set_style):
+        if warning:
+            set_style("color: #b45309;")
+        elif meta_text:
+            set_style("color: #475569;")
+        else:
+            set_style("")
+    set_visible = getattr(label, "setVisible", None)
+    if callable(set_visible):
+        set_visible(bool(meta_text))
+
+
+def _clear_meta_label(label) -> None:
+    if label is None:
+        return
+    clear = getattr(label, "clear", None)
+    if callable(clear):
+        clear()
+    else:
+        label.setText("")
+    set_style = getattr(label, "setStyleSheet", None)
+    if callable(set_style):
+        set_style("")
+    set_visible = getattr(label, "setVisible", None)
+    if callable(set_visible):
+        set_visible(False)
 
 
 class MainWindowWorkerMixin(_MainWindowWorkerMixin):
@@ -104,8 +178,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             "path": kwargs.get("file_path"),
             "page": getattr(self, "_current_preview_page", 0),
             "password": getattr(self, "_current_preview_password", None),
-            "search_query": getattr(self, "_preview_search_query", ""),
-            "search_index": getattr(self, "_preview_search_index", -1),
+            "view_state": self.preview_image.capture_view_state() if hasattr(self, "preview_image") else None,
         }
         self._close_preview_document()
 
@@ -121,11 +194,13 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         restore_page = restore.get("page", 0)
         restore_password = restore.get("password")
-        restore_search_query = restore.get("search_query", "")
-        restore_search_index = restore.get("search_index", -1)
+        restore_view_state = restore.get("view_state")
         self._preview_password_hint = restore_password if isinstance(restore_password, str) else None
         try:
-            self._update_preview(path)
+            if restore_view_state is not None:
+                self._update_preview(path, restore_state=restore_view_state)
+            else:
+                self._update_preview(path)
             total_pages = int(getattr(self, "_preview_total_pages", 0) or 0)
             if total_pages <= 0:
                 return
@@ -134,20 +209,8 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             except (TypeError, ValueError):
                 page_index = 0
             page_index = max(0, min(total_pages - 1, page_index))
-            if page_index != getattr(self, "_current_preview_page", 0):
-                self._current_preview_page = page_index
-                self._render_preview_page()
-            if isinstance(restore_search_query, str) and restore_search_query.strip():
-                preferred_index = restore_search_index
-                try:
-                    preferred_index = int(preferred_index)
-                except (TypeError, ValueError):
-                    preferred_index = -1
-                self._search_preview_text(
-                    restore_search_query,
-                    preferred_index=preferred_index,
-                    restoring=True,
-                )
+            self._current_preview_page = page_index
+            self._render_preview_page()
         finally:
             self._preview_password_hint = None
 
@@ -209,61 +272,6 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         self._prepare_preview_for_same_path_output(mode, kwargs)
 
-        mode_descriptions = {
-            "merge": tm.get("action_merge"),
-            "convert_to_img": tm.get("action_convert_to_img"),
-            "images_to_pdf": tm.get("action_images_to_pdf"),
-            "extract_text": tm.get("action_extract_text"),
-            "split": tm.get("action_split"),
-            "delete_pages": tm.get("action_delete_pages"),
-            "rotate": tm.get("action_rotate"),
-            "add_page_numbers": tm.get("action_add_page_numbers"),
-            "watermark": tm.get("action_watermark"),
-            "image_watermark": tm.get("mode_image_watermark"),
-            "protect": tm.get("action_encrypt"),
-            "compress": tm.get("action_compress"),
-            "metadata_update": tm.get("mode_metadata_update"),
-            "reorder": tm.get("mode_reorder"),
-            "batch": tm.get("mode_batch"),
-            "split_by_pages": tm.get("mode_split_by_pages"),
-            "resize_pages": tm.get("mode_resize_pages"),
-            "add_stamp": tm.get("mode_add_stamp"),
-            "crop_pdf": tm.get("mode_crop_pdf"),
-            "insert_textbox": tm.get("mode_insert_textbox"),
-            "draw_shapes": tm.get("mode_draw_shapes"),
-            "add_link": tm.get("mode_add_link"),
-            "copy_page_between_docs": tm.get("mode_copy_pages"),
-            "insert_signature": tm.get("mode_insert_signature"),
-            "add_freehand_signature": tm.get("mode_add_freehand_signature"),
-            "add_sticky_note": tm.get("mode_add_sticky_note"),
-            "add_ink_annotation": tm.get("mode_add_ink"),
-            "add_text_markup": tm.get("mode_add_text_markup"),
-            "add_background": tm.get("mode_add_background"),
-            "add_attachment": tm.get("mode_add_attachment"),
-            "list_attachments": tm.get("mode_list_attachments"),
-            "extract_attachments": tm.get("mode_extract_attachments"),
-            "get_form_fields": tm.get("mode_get_form_fields"),
-            "fill_form": tm.get("mode_fill_form"),
-            "list_annotations": tm.get("mode_list_annotations"),
-            "remove_annotations": tm.get("mode_remove_annotations"),
-            "extract_images": tm.get("mode_extract_images"),
-            "extract_links": tm.get("mode_extract_links"),
-            "extract_tables": tm.get("mode_extract_tables"),
-            "extract_markdown": tm.get("mode_extract_markdown"),
-            "search_text": tm.get("mode_search_text"),
-            "highlight_text": tm.get("mode_highlight_text"),
-            "get_pdf_info": tm.get("mode_get_pdf_info"),
-            "get_bookmarks": tm.get("mode_get_bookmarks"),
-            "set_bookmarks": tm.get("mode_set_bookmarks"),
-            "replace_page": tm.get("mode_replace_page"),
-            "add_annotation": tm.get("mode_add_annotation"),
-            "decrypt_pdf": tm.get("mode_decrypt_pdf"),
-            "compare_pdfs": tm.get("mode_compare_pdfs"),
-            "ai_summarize": tm.get("mode_ai_summarize"),
-            "ai_ask_question": tm.get("mode_ai_ask"),
-            "ai_extract_keywords": tm.get("mode_ai_keywords"),
-        }
-
         self._pending_undo = None
         if _is_undo_eligible_mode(mode, kwargs):
             source = kwargs.get("file_path", "")
@@ -273,17 +281,21 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                 if backup:
                     self._pending_undo = {
                         "action_type": mode,
-                        "description": mode_descriptions.get(mode, mode),
+                        "description": _get_operation_description(mode),
                         "before_backup_path": backup,
                         "after_backup_path": "",
                         "source_path": source,
                         "output_path": output,
                     }
+                else:
+                    ToastWidget(tm.get("msg_undo_unavailable"), toast_type="warning", duration=3000).show_toast(self)
 
-        description = mode_descriptions.get(mode, tm.get("processing_plain")) + "..."
+        description = _get_operation_description(mode) + "..."
 
         self.worker = WorkerThread(mode, **kwargs)
         self.worker.progress_signal.connect(self._on_progress_update)
+        if hasattr(self.worker, "partial_result_signal"):
+            self.worker.partial_result_signal.connect(self._on_partial_result)
         self.worker.finished_signal.connect(self.on_success)
         self.worker.error_signal.connect(self.on_fail)
         self.worker.cancelled_signal.connect(self.on_cancelled)
@@ -295,6 +307,28 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         self.progress_overlay.show_progress(tm.get("processing"), description)
         self.worker.start()
 
+    def _on_partial_result(self, payload):
+        sender = self.sender()
+        if sender is not None and sender is not self.worker:
+            return
+        if not isinstance(payload, dict):
+            return
+        text = payload.get("text", "")
+        if not isinstance(text, str) or not text:
+            return
+
+        if hasattr(self, "_ai_worker_mode") and self._ai_worker_mode and hasattr(self, "txt_summary_result"):
+            self._summary_partial_text = getattr(self, "_summary_partial_text", "") + text
+            self.txt_summary_result.setPlainText(self._summary_partial_text)
+            return
+
+        if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode and hasattr(self, "txt_chat_history"):
+            self._chat_partial_text = getattr(self, "_chat_partial_text", "") + text
+            _replace_last_chat_block(
+                self.txt_chat_history,
+                f"<b>{tm.get('chat_assistant_prefix')}</b> {self._chat_partial_text}",
+            )
+
     def on_cancelled(self, msg):
         sender = self.sender()
         if sender is not None and sender is not self.worker:
@@ -302,11 +336,19 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         if hasattr(self, "_ai_worker_mode"):
             self._ai_worker_mode = False
+            self._summary_partial_text = ""
+            self._summary_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_summary_meta", None))
         if hasattr(self, "_keyword_worker_mode"):
             self._keyword_worker_mode = False
+            self._keywords_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_keywords_meta", None))
         if hasattr(self, "_chat_worker_mode"):
             self._chat_worker_mode = False
             self._chat_pending_path = None
+            self._chat_partial_text = ""
+            self._chat_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_chat_meta", None))
 
         self._cleanup_cancelled_worker()
         self._discard_pending_undo(delete_backups=True)
@@ -326,41 +368,47 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         self.status_label.setText(tm.get("completed"))
         self.progress_bar.setValue(100)
         self.btn_open_folder.setVisible(bool(getattr(self, "_has_output", False) and self._last_output_path))
+        mode = getattr(self.worker, "mode", "") if self.worker else ""
+        payload = _coerce_payload_defaults(mode, _get_worker_payload(self.worker) if self.worker else {})
 
         if hasattr(self, "_ai_worker_mode") and self._ai_worker_mode:
             self._ai_worker_mode = False
-            if self.worker and hasattr(self.worker, "kwargs"):
-                summary = self.worker.kwargs.get("summary_result", "")
-                if summary and hasattr(self, "txt_summary_result"):
-                    self.txt_summary_result.setPlainText(summary)
+            self._summary_partial_text = ""
+            summary_text = _format_summary_payload(payload)
+            self._summary_result_meta = normalize_ai_meta(payload.get("meta"))
+            _set_meta_label(getattr(self, "lbl_summary_meta", None), self._summary_result_meta)
+            if summary_text and hasattr(self, "txt_summary_result"):
+                self.txt_summary_result.setPlainText(summary_text)
 
         if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode:
             self._chat_worker_mode = False
-            if self.worker and hasattr(self.worker, "kwargs"):
-                answer = self.worker.kwargs.get("answer_result", "")
-                if answer:
-                    pending_path = self._chat_pending_path
-                    if pending_path:
-                        self._record_chat_entry(pending_path, "assistant", answer)
-                        self._save_chat_histories()
-                    if hasattr(self, "txt_chat_history") and pending_path == self.sel_chat_pdf.get_path():
-                        cursor = self.txt_chat_history.textCursor()
-                        cursor.movePosition(cursor.MoveOperation.End)
-                        cursor.select(cursor.SelectionType.BlockUnderCursor)
-                        cursor.removeSelectedText()
-                        cursor.deletePreviousChar()
-                        self.txt_chat_history.append(f"<b>{tm.get('chat_assistant_prefix')}</b> {answer}")
-                        self.txt_chat_history.append("<hr>")
-                self._chat_pending_path = None
+            self._chat_result_meta = normalize_ai_meta(payload.get("meta"))
+            _set_meta_label(getattr(self, "lbl_chat_meta", None), self._chat_result_meta)
+            answer = str(payload.get("answer", "") or "")
+            if answer:
+                pending_path = _normalize_abs_path(self._chat_pending_path)
+                if pending_path:
+                    self._record_chat_entry(pending_path, "assistant", answer)
+                    self._save_chat_histories()
+                selected_chat_path = _normalize_abs_path(self.sel_chat_pdf.get_path()) if hasattr(self, "sel_chat_pdf") else ""
+                if hasattr(self, "txt_chat_history") and pending_path == selected_chat_path:
+                    _replace_last_chat_block(
+                        self.txt_chat_history,
+                        f"<b>{tm.get('chat_assistant_prefix')}</b> {answer}",
+                    )
+                    self.txt_chat_history.append("<hr>")
+            self._chat_pending_path = None
+            self._chat_partial_text = ""
 
         if hasattr(self, "_keyword_worker_mode") and self._keyword_worker_mode:
             self._keyword_worker_mode = False
-            if self.worker and hasattr(self.worker, "kwargs"):
-                keywords = self.worker.kwargs.get("keywords_result", [])
-                if keywords and hasattr(self, "lbl_keywords_result"):
-                    self.lbl_keywords_result.setText(" • ".join(keywords))
-                else:
-                    self.lbl_keywords_result.setText(tm.get("msg_no_keywords"))
+            self._keywords_result_meta = normalize_ai_meta(payload.get("meta"))
+            _set_meta_label(getattr(self, "lbl_keywords_meta", None), self._keywords_result_meta)
+            keywords = payload.get("keywords", [])
+            if keywords and hasattr(self, "lbl_keywords_result"):
+                self.lbl_keywords_result.setText(" • ".join(keywords))
+            else:
+                self.lbl_keywords_result.setText(tm.get("msg_no_keywords"))
 
         if hasattr(self, "_pending_undo") and self._pending_undo:
             undo_info = self._pending_undo
@@ -392,6 +440,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     "Skipping undo registration for %s: after snapshot creation failed",
                     undo_info["action_type"],
                 )
+                ToastWidget(tm.get("msg_undo_unavailable"), toast_type="warning", duration=3000).show_toast(self)
 
         self._restore_preview_after_same_path_output()
 
@@ -399,7 +448,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         if self.worker and hasattr(self.worker, "kwargs"):
             mode = getattr(self.worker, "mode", "")
             if mode == "get_form_fields" and hasattr(self, "form_fields_list"):
-                fields = self.worker.kwargs.get("result_fields", []) or []
+                fields = payload.get("fields", []) or []
                 self.form_fields_list.clear()
                 self._form_field_data = {}
                 from PyQt6.QtCore import Qt
@@ -426,7 +475,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     toast.show_toast(self)
                 custom_dialog_shown = True
             elif mode == "list_attachments":
-                attachments = self.worker.kwargs.get("result_attachments", []) or []
+                attachments = payload.get("attachments", []) or []
                 if not attachments:
                     QMessageBox.information(parent, tm.get("info"), tm.get("msg_no_attachments"))
                 else:
@@ -458,8 +507,13 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         if hasattr(self, "_ai_worker_mode"):
             self._ai_worker_mode = False
+            self._summary_partial_text = ""
+            self._summary_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_summary_meta", None))
         if hasattr(self, "_keyword_worker_mode"):
             self._keyword_worker_mode = False
+            self._keywords_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_keywords_meta", None))
 
         self.set_ui_busy(False)
         self.progress_overlay.hide_progress()
@@ -469,22 +523,26 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode:
             self._chat_worker_mode = False
-            pending_path = self._chat_pending_path
+            raw_pending_path = self._chat_pending_path
+            pending_path = _normalize_abs_path(raw_pending_path)
             self._chat_pending_path = None
-            if pending_path and pending_path in self._chat_histories:
-                history = self._chat_histories.get(pending_path, [])
+            self._chat_partial_text = ""
+            self._chat_result_meta = {}
+            _clear_meta_label(getattr(self, "lbl_chat_meta", None))
+            history_keys = [key for key in (pending_path, raw_pending_path) if isinstance(key, str) and key]
+            seen_history_keys: set[str] = set()
+            for history_key in history_keys:
+                if history_key in seen_history_keys or history_key not in self._chat_histories:
+                    continue
+                seen_history_keys.add(history_key)
+                history = self._chat_histories.get(history_key, [])
                 if history and history[-1].get("role") == "user":
                     history.pop()
                     if not history:
-                        del self._chat_histories[pending_path]
+                        del self._chat_histories[history_key]
                     self._save_chat_histories()
             if hasattr(self, "txt_chat_history"):
-                cursor = self.txt_chat_history.textCursor()
-                cursor.movePosition(cursor.MoveOperation.End)
-                cursor.select(cursor.SelectionType.BlockUnderCursor)
-                cursor.removeSelectedText()
-                cursor.deletePreviousChar()
-                self.txt_chat_history.append(f"<span style='color:#ef4444'>❌ {msg}</span>")
+                _replace_last_chat_block(self.txt_chat_history, f"<span style='color:#ef4444'>❌ {msg}</span>")
 
         self._discard_pending_undo(delete_backups=True)
         self._restore_preview_after_same_path_output()

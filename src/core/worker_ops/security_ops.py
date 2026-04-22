@@ -22,7 +22,7 @@ class WorkerSecurityOpsMixin(WorkerHost):
             if doc.is_encrypted and not doc.authenticate(password):
                 raise ValueError(self._get_msg("err_wrong_password"))
 
-            self._atomic_pdf_save(doc, output_path, garbage=4, deflate=True)
+            self._atomic_pdf_save(doc, output_path, save_profile="compact", garbage=4, deflate=True)
         finally:
             if doc:
                 doc.close()

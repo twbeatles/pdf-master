@@ -7,8 +7,6 @@
 ## Current Behavior Notes
 
 - The main right-side preview now runs through `src/ui/zoomable_preview.py` in real usage, including wheel zoom, drag pan, page navigation, preview print, and resize-triggered rerender.
-- Preview text search is asynchronous and preview-specific: `src/ui/window_preview/search.py` manages state/cache and `src/ui/window_preview/search_worker.py` performs the PDF text search in its own `QThread`.
-- Preview search UI is exposed only in controlled mode; standalone `ZoomablePreviewWidget.load_pdf()` hides the toggle/search bar, while the main window path supports collapse/expand, `Ctrl+F`, `Enter`/`Shift+Enter`, `Esc`, and current-hit highlighting.
 - Preview print now renders through the Qt print pipeline instead of delegating to OS-level `print` commands.
 - AI and rotate thumbnail entry points reuse the preview document/password session, so encrypted thumbnail loading stays aligned with preview behavior.
 - `convert_to_img` and `extract_text` use collision-safe auto output naming (`name`, `name__2`, `name__3`, ...).
@@ -16,7 +14,13 @@
 - `compare_pdfs` uses sequence-based line diffing and can optionally emit a visual diff PDF from the Advanced tab UI.
 - Page-targeted worker modes share a strict page resolver; `-1` last-page sentinel remains only for signature insertion flows.
 - Directory-output cancellation uses `kwargs["created_output_paths"]` so only newly created files are rolled back.
-- Single-input/single-output mutation modes can overwrite the source path safely; preview closes that document before the worker starts and restores it after success/fail/cancel, including preview search query/index context.
+- Single-input/single-output mutation modes can overwrite the source path safely; preview closes that document before the worker starts and restores it after success/fail/cancel.
+- The preview search/bookmark side panel is collapsible, `Ctrl+F` opens the search tab and focuses the query field, and same-path restore reuses the captured preview view state.
+- Preview file watching now follows both the active PDF and its parent directory so external atomic replace flows can auto-reload after a short retry window.
+- Page setup and print preview intentionally use different printer lifecycles: setup persists layout state while each preview run gets a fresh `QPrinter`.
+- Compression is centered on save profiles (`fast`, `compact`, `web`) rather than direct quality-only flags.
+- Markdown extraction supports `auto/native/text` mode plus front matter, page marker, and asset placeholder toggles.
+- Clearing AI chat is scoped to the currently selected PDF and also clears the corresponding in-memory SDK chat session.
 - Output save/folder dialogs reuse `last_output_dir` as their initial directory and update it after successful output selection.
 - Undo/Redo is snapshot-based: restore `before_backup_path` on undo and `after_backup_path` on redo instead of re-running worker logic.
 - Updated AI/batch/annotation/extract worker completion and error messages are expected to come from the i18n catalogs.
@@ -64,6 +68,7 @@ pdf-master/
 ├── main.py
 ├── .editorconfig
 ├── pdf_master.spec
+├── pyproject.toml
 ├── pyrightconfig.json
 ├── requirements-dev.txt
 ├── typings/
@@ -184,7 +189,7 @@ Gemini API를 사용한 AI 서비스 클래스입니다.
 
 ```python
 class AIService:
-    def __init__(self, api_key: str, model: str = "gemini-flash-latest", timeout: int = 30)
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash", timeout: int = 30)
     def summarize_pdf(self, pdf_path: str, language: str = "ko", style: str = "concise")
     def ask_about_pdf(self, pdf_path: str, question: str)
     def extract_keywords(self, pdf_path: str, max_keywords: int = 10, language: str = "ko")  # v4.5
@@ -192,9 +197,9 @@ class AIService:
 ```
 
 **SDK 호환성:**
-- 공식: `google-genai` (추천)
-- 레거시: `google-generativeai` (Deprecated, 2025.11 중단)
-- v4.5.4: 런타임에서는 `importlib.import_module()` 기반 선택적 로딩을 사용하므로, 문서/빌드 설정도 hiddenimports 기준으로 동기화해야 합니다.
+- 공식: `google-genai` only
+- 기본 경로: Gemini File API 업로드 + structured output + streaming partial callbacks
+- 레거시 SDK fallback 없음
 
 **예외 클래스:**
 - `AIServiceError` - 기본 예외
@@ -209,7 +214,6 @@ SETTINGS_FILE = "~/.pdf_master_settings.json"
 
 DEFAULT_SETTINGS = {
     "theme": "dark",
-    "language": "auto",
     "recent_files": [],
     "last_output_dir": "",
     "preview_search_expanded": True,
@@ -239,7 +243,6 @@ def reset_settings() -> bool
 - `src/ui/_typing.py`
   - `MainWindowHost` 계약 정의
   - 분리된 UI 믹스인이 접근하는 공통 위젯/헬퍼 속성 명시
-  - preview search request id / worker / active request / result cache 같은 비동기 preview search 상태 포함
 - 변경 규칙
   - 믹스인에서 `self.<attr>`를 새로 사용하면 대응 `_typing.py` 계약도 같이 갱신
   - 수정 후 `python -m pyright`를 반드시 다시 실행
@@ -338,7 +341,7 @@ class TranslationManager:
 | `Ctrl+O` | 파일 열기 |
 | `Ctrl+Q` | 종료 |
 | `Ctrl+T` | 테마 전환 |
-| `Ctrl+F` | 미리보기 검색창 열기/포커스 |
+| `Ctrl+F` | 미리보기 검색 탭 열기/포커스 |
 | `Ctrl+Z` | 실행 취소 |
 | `Ctrl+Y` | 다시 실행 |
 | `Ctrl+1~8` | 탭 전환 |
@@ -432,33 +435,26 @@ class ThumbnailGridWidget(QWidget):
 ### 12. `src/ui/zoomable_preview.py` - 줌/패닝 미리보기
 
 ```python
-class ZoomableGraphicsView(QGraphicsView):
-    zoomChanged = pyqtSignal(float)
-    viewportResized = pyqtSignal()
-    
-    def set_zoom(zoom: float)
-    def zoom_in() / zoom_out()
-    def fit_in_view()
-
 class ZoomablePreviewWidget(QWidget):
-    def load_pdf(pdf_path: str)
+    zoomChanged = pyqtSignal(float)
+    pageChanged = pyqtSignal(int)
+    printRequested = pyqtSignal()
+    pageSetupRequested = pyqtSignal()
+
+    def set_document(document: QPdfDocument | None, path: str = "")
+    def capture_view_state() -> dict[str, object]
+    def restore_view_state(state: dict[str, object] | None)
     def go_to_page(page_index: int)
-    def set_controlled_mode(enabled: bool = True)
-    def set_preview_pixmap(pixmap, current_page: int | None = None, total_pages: int | None = None)
-    def set_page_state(current_page: int, total_pages: int)
-    def display_size()
 ```
 
-- 메인 미리보기 패널에서 직접 사용하는 실제 런타임 위젯입니다.
-- controlled mode에서는 메인 창이 렌더한 pixmap을 주입하고, 위젯은 zoom/pan/page UI와 resize debounce를 담당합니다.
-- controlled mode에서는 preview search toggle/search bar와 keyboard UX(`Ctrl+F`, `Enter`, `Shift+Enter`, `Esc`)도 함께 담당합니다.
-- standalone mode에서는 위젯이 자체 `fitz` 문서를 열되 preview search UI는 의도적으로 숨깁니다.
-- `renderRequested` 시그널은 splitter 이동/패널 리사이즈 이후 선명한 재렌더를 요청할 때 사용됩니다.
+- `QPdfDocument + QPdfView + QPdfSearchModel + QPdfBookmarkModel + QPdfPageNavigator` 조합을 감싼 실제 런타임 위젯입니다.
+- search/bookmark sidebar, print preview, page setup, page/zoom state restore를 이 위젯이 직접 담당합니다.
+- same-path overwrite restore, encrypted preview password reuse, and external rewrite auto-reload are shared responsibilities between this widget and `window_preview/*`.
+- 예전 pixmap/control-mode 및 `renderRequested` 계약은 제거되었습니다.
 
 ### Packaging note
 
 - `pdf_master.spec` should explicitly keep `src.ui.zoomable_preview` importable because the widget is now part of the main preview runtime path.
-- `pdf_master.spec` should also keep `src.ui.window_preview.search` and `src.ui.window_preview.search_worker` importable because preview search is now part of the runtime preview flow.
 - `src/core/i18n_catalogs/*` are packaged as Python modules, so worker/UI message changes should stay aligned with hiddenimport coverage.
 
 ---
@@ -559,27 +555,36 @@ python main.py
 
 ### 의존성 설치
 ```bash
-pip install PyQt6 PyMuPDF
-pip install -r requirements-dev.txt
-pip install PyInstaller
-pip install google-genai  # AI 기능 (선택)
+pip install -e .[dev]
+pip install -e .[build]
+pip install -e .[ai]
+pip install -e .[secure]
+pip install -r requirements-dev.txt  # compatibility shim
 ```
 
 ### 프로덕션 빌드
 ```bash
 python -m PyInstaller pdf_master.spec --clean
-# 결과: dist/PDF_Master_v4.5.5.exe (~75-80MB, 현재 Python 3.14 / 의존성 기준)
+# 결과: dist/PDF_Master_v4.5.5.exe (~30-40MB)
 ```
 
 ### 정합성 검증 (v4.5.5)
 ```bash
+python -m build
 python -m pyright
 python -m pytest -q
+python -m PyInstaller pdf_master.spec --clean
 ```
 
 - 기준 결과:
+  - `python -m build`
   - `python -m pyright` -> `0 errors`
-  - 현재 환경 `python -m pytest -q` -> `131 passed, 1 warning`
+  - 현재 환경 `python -m pytest -q` -> `120 passed, 1 warning`
+  - `python -m PyInstaller pdf_master.spec --clean`
+  - `tests/test_ai_service_cache.py` -> upload fallback 제한, chat-session clear, text cache 재사용
+  - `tests/test_worker_preflight.py` -> required kwargs preflight 검증
+  - `tests/test_worker_regression_modes.py` -> markdown 옵션 / batch compress save-profile 회귀 검증
+  - `.gitignore` -> `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl` 등 검증/패키징 산출물 제외
   - `pytest` 임시 디렉터리 -> repo-local `.pytest_tmp`
   - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD 회귀 방지
   - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip
@@ -606,12 +611,6 @@ python -m pytest -q
 ---
 
 ## 🚀 버전 히스토리
-
-### v4.5.5 (2026-04-22)
-- preview text search를 preview 전용 async `QThread` worker로 분리하고 request-id 기반 stale result 무시를 추가
-- `(abs_path, mtime_ns, query)` 기반 preview search cache와 display-only highlight overlay 정책을 추가
-- controlled/standalone preview search UI 정책, `Ctrl+F`, `Enter`/`Shift+Enter`/`Esc`, same-path search context restore를 반영
-- `tests/test_preview_search.py`, `tests/test_zoomable_preview_widget.py`, `tests/test_same_path_preview_restore.py`로 회귀 범위를 확대
 
 ### v4.5.5 (2026-04-10)
 - same-path 저장 시 preview-held 문서를 선행 해제하고 success/fail/cancel 후 복원
@@ -699,11 +698,22 @@ python -m pytest -q
 
 ### v4.2
 - google-genai SDK 전환
-- gemini-flash-latest 모델
+- gemini-2.5-flash 모델
 - PDF → Word 기능 제거
 - 리소스 관리 개선
 - 빌드 경량화
 
 ---
 
-*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-22)*
+*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-04-10)*
+
+---
+
+## 2026-04-21 Stability Addendum
+
+- `AIService.summarize_pdf()`, `ask_about_pdf()`, and `extract_keywords()` now return a `meta` dictionary describing `file_api` vs `text_fallback`, truncation, focus limit, fallback page counts, and the 30,000-character cap.
+- AI result presentation now includes meta labels in the tab UI, and summary export prepends a short header when fallback extraction or truncation affected the answer.
+- Uploaded Gemini files are now tracked with remote names so LRU eviction, Clear Chat for the currently selected PDF, and shutdown cleanup can call `client.files.delete(name=...)` on a best-effort basis.
+- Worker/runtime changes now include atomic text saves, case-insensitive batch filename collision avoidance, bidirectional visual diff overlays, and explicit undo-unavailable warnings when snapshot backups fail.
+- Settings persistence is now keyring-first; plaintext fallback storage requires an explicit user confirmation path instead of a silent fallback.
+- Packaging/docs are synced with the current repo contract: `pyproject.toml`, `requirements-dev.txt`, `typings/`, `python -m pyright`, `python -m pytest -q`, `python -m build`, and `python -m PyInstaller pdf_master.spec --clean`.

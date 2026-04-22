@@ -234,6 +234,10 @@ TRANSLATIONS = {
         "ph_password": "비밀번호 입력",
         "btn_encrypt": "🔒 암호화",
         "btn_compress": "📦 압축",
+        "tooltip_compress_profile": "저장 최적화 프로필을 선택합니다.",
+        "save_profile_fast": "빠름",
+        "save_profile_compact": "균형",
+        "save_profile_web": "웹 배포",
         
         
         # Merge Tab
@@ -284,6 +288,13 @@ TRANSLATIONS = {
         "mode_split_range": "범위 지정",
         "ph_split_range": "예: 1-3, 5-7, 10-12",
         "btn_split_pdf": "✂️ PDF 분할 실행",
+        "lbl_markdown_mode": "Markdown 모드:",
+        "markdown_mode_auto": "자동",
+        "markdown_mode_native": "네이티브",
+        "markdown_mode_text": "텍스트 정리",
+        "chk_markdown_front_matter": "YAML front matter 포함",
+        "chk_markdown_page_markers": "페이지 마커 포함",
+        "chk_markdown_asset_placeholders": "이미지/표 placeholder 포함",
         "grp_stamp": "📌 스탬프 추가",
         "lbl_stamp_text": "스탬프:",
         "stamp_confidential": "기밀",
@@ -515,7 +526,12 @@ TRANSLATIONS = {
         
         # Preview Print
         "btn_print_preview": "🖨️ 인쇄",
+        "page_setup": "페이지 설정",
         "tooltip_print_preview": "현재 PDF 인쇄",
+        "preview_search": "검색",
+        "preview_search_placeholder": "미리보기 내 검색...",
+        "preview_search_tab": "검색",
+        "preview_bookmarks_tab": "북마크",
         
         # Folder Drop
         "msg_folder_dropped": "폴더에서 {}개의 PDF 파일을 추가했습니다",
@@ -528,8 +544,8 @@ TRANSLATIONS = {
         "btn_ask_ai": "💬 질문하기",
         "lbl_chat_history": "대화 기록:",
         "msg_ai_thinking": "🤔 AI가 답변을 생성 중...",
-        "msg_chat_cleared": "대화 기록이 삭제되었습니다",
-        "btn_clear_chat": "🧹 대화 삭제",
+        "msg_chat_cleared": "현재 PDF의 대화 기록이 삭제되었습니다",
+        "btn_clear_chat": "🧹 현재 PDF 대화 삭제",
         
         # Keyword Extraction
         "grp_keywords": "🏷️ 키워드 추출",
@@ -548,10 +564,11 @@ TRANSLATIONS = {
         "err_ai_module_not_found": "AI 서비스 모듈을 찾을 수 없습니다.",
         "err_pdf_not_found": "PDF 파일을 찾을 수 없습니다.",
         "err_api_key_required": "Gemini API 키가 필요합니다.\n설정에서 API 키를 입력해주세요.",
-        "err_ai_unavailable": "AI 서비스를 사용할 수 없습니다.\ngoogle-generativeai 패키지를 설치해주세요.",
+        "err_ai_unavailable": "AI 서비스를 사용할 수 없습니다.\ngoogle-genai 패키지를 설치해주세요.",
         "err_question_required": "질문을 입력해주세요.",
         "err_input_file_missing": "입력 파일이 존재하지 않습니다.",
         "err_output_path_missing": "출력 경로가 지정되지 않았습니다.",
+        "err_required_parameter_missing": "필수 옵션이 누락되었습니다: {}",
         "err_no_files_selected": "병합할 파일이 선택되지 않았습니다.",
         "err_no_valid_pdf": "유효한 PDF 파일이 없습니다.",
         "err_pdf_encrypted": "파일이 암호화되어 있습니다: {}",
@@ -758,6 +775,19 @@ TRANSLATIONS = {
         "msg_attachment_added": "✅ 파일 첨부 완료!\n{}",
         "msg_no_attachments_found": "✅ 첨부 파일이 없습니다.",
         "msg_attachments_extracted": "✅ {}개 첨부 파일 추출 완료!",
+        "msg_summary_save_failed": "요약 저장에 실패했습니다.",
+        "ai_meta_file_api": "AI 상태: Gemini File API 사용",
+        "ai_meta_file_api_page_focus": "AI 상태: Gemini File API 사용, 처음 {}페이지 중심",
+        "ai_meta_text_fallback": "AI 상태: 로컬 텍스트 fallback 사용 ({} / {}페이지)",
+        "ai_meta_text_fallback_truncated": "AI 상태: 로컬 텍스트 fallback 사용, {} / {}페이지, {}자 제한으로 잘림",
+        "ai_meta_saved_header": "[AI 처리 메타] {}",
+        "title_api_key_plaintext_confirm": "평문 저장 확인",
+        "msg_api_key_plaintext_confirm": "보안 저장소에 API 키를 저장할 수 없습니다.\n설정 파일에 평문으로 저장할까요?",
+        "msg_api_key_saved_plaintext": "API 키가 설정 파일에 평문 저장되었습니다.",
+        "msg_api_key_plaintext_declined": "API 키를 저장하지 않았습니다.",
+        "msg_undo_unavailable": "이번 작업은 Undo를 사용할 수 없습니다.",
+        "visual_diff_legend_removed": "빨강: file1에만 있음",
+        "visual_diff_legend_added": "파랑: file2에만 있음",
     },
     "en": {
         # General
@@ -1066,6 +1096,10 @@ TRANSLATIONS = {
         "ph_password": "Enter password",
         "btn_encrypt": "🔒 Encrypt",
         "btn_compress": "📦 Compress",
+        "tooltip_compress_profile": "Choose how aggressively the saved PDF should be optimized.",
+        "save_profile_fast": "Fast",
+        "save_profile_compact": "Compact",
+        "save_profile_web": "Web",
         
         
         # Merge Tab
@@ -1116,6 +1150,13 @@ TRANSLATIONS = {
         "mode_split_range": "By Range",
         "ph_split_range": "e.g. 1-3, 5-7, 10-12",
         "btn_split_pdf": "✂️ Split PDF",
+        "lbl_markdown_mode": "Markdown Mode:",
+        "markdown_mode_auto": "Auto",
+        "markdown_mode_native": "Native",
+        "markdown_mode_text": "Text Cleanup",
+        "chk_markdown_front_matter": "Include YAML front matter",
+        "chk_markdown_page_markers": "Include page markers",
+        "chk_markdown_asset_placeholders": "Include image/table placeholders",
         "grp_stamp": "📌 Add Stamp",
         "lbl_stamp_text": "Stamp:",
         "stamp_confidential": "CONFIDENTIAL",
@@ -1272,7 +1313,12 @@ TRANSLATIONS = {
         
         # Preview Print
         "btn_print_preview": "🖨️ Print",
+        "page_setup": "Page Setup",
         "tooltip_print_preview": "Print current PDF",
+        "preview_search": "Search",
+        "preview_search_placeholder": "Search inside preview...",
+        "preview_search_tab": "Search",
+        "preview_bookmarks_tab": "Bookmarks",
         
         # Folder Drop
         "msg_folder_dropped": "Added {} PDF files from folder",
@@ -1285,8 +1331,8 @@ TRANSLATIONS = {
         "btn_ask_ai": "💬 Ask",
         "lbl_chat_history": "Chat History:",
         "msg_ai_thinking": "🤔 AI is generating response...",
-        "msg_chat_cleared": "Chat history cleared",
-        "btn_clear_chat": "🧹 Clear Chat",
+        "msg_chat_cleared": "Chat history for the current PDF was cleared",
+        "btn_clear_chat": "🧹 Clear Current PDF Chat",
         
         # Keyword Extraction
         "grp_keywords": "🏷️ Keyword Extraction",
@@ -1305,10 +1351,11 @@ TRANSLATIONS = {
         "err_ai_module_not_found": "AI service module not found.",
         "err_pdf_not_found": "PDF file not found.",
         "err_api_key_required": "Gemini API key is required.\nPlease enter the API key in settings.",
-        "err_ai_unavailable": "AI service is unavailable.\nPlease install google-generativeai package.",
+        "err_ai_unavailable": "AI service is unavailable.\nPlease install google-genai package.",
         "err_question_required": "Please enter a question.",
         "err_input_file_missing": "Input file does not exist.",
         "err_output_path_missing": "Output path is not specified.",
+        "err_required_parameter_missing": "Required parameter is missing: {}",
         "err_no_files_selected": "No files selected for merge.",
         "err_no_valid_pdf": "No valid PDF files found.",
         "err_pdf_encrypted": "File is encrypted: {}",

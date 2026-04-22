@@ -1,4 +1,8 @@
-from _deps import require_pyqt6, require_pyqt6_and_pymupdf
+import os
+import time
+
+from _deps import require_pyqt6_and_pymupdf
+from src.core.optional_deps import fitz
 
 
 def _make_app():
@@ -18,248 +22,211 @@ def _send_key(widget, key, modifiers=None):
     QApplication.sendEvent(widget, QKeyEvent(QEvent.Type.KeyRelease, key, modifiers))
 
 
-def test_zoomable_preview_widget_controlled_mode_emits_render_requested_on_resize():
-    require_pyqt6()
-    import time
-
-    from PyQt6.QtGui import QColor, QPixmap
-
-    from src.ui.zoomable_preview import ZoomablePreviewWidget
-
-    app = _make_app()
-    widget = ZoomablePreviewWidget()
-    widget.set_controlled_mode(True)
-    widget.resize(420, 640)
-    widget.show()
-
-    pixmap = QPixmap(320, 480)
-    pixmap.fill(QColor("white"))
-    widget.set_preview_pixmap(pixmap, current_page=0, total_pages=3)
-
-    renders = []
-    widget.renderRequested.connect(lambda: renders.append("render"))
-
-    widget.resize(520, 760)
-    time.sleep(0.25)
-    app.processEvents()
-
-    widget.close()
-    assert renders
-
-
-def test_zoomable_preview_widget_updates_page_state_and_emits_navigation():
-    require_pyqt6()
-    from PyQt6.QtGui import QColor, QPixmap
-
-    from src.ui.zoomable_preview import ZoomablePreviewWidget
-
-    app = _make_app()
-    widget = ZoomablePreviewWidget()
-    widget.set_controlled_mode(True)
-    widget.set_navigation_enabled(True)
-    widget.resize(420, 640)
-    widget.show()
-    app.processEvents()
-
-    pixmap = QPixmap(320, 480)
-    pixmap.fill(QColor("white"))
-    widget.set_preview_pixmap(pixmap, current_page=0, total_pages=3)
-    app.processEvents()
-
-    requested_pages = []
-    widget.pageChanged.connect(lambda page: requested_pages.append(page))
-    widget.go_to_page(1, emit_signal=True)
-    app.processEvents()
-
-    assert widget.page_label.text() == "2 / 3"
-    assert requested_pages == [1]
-    widget.close()
-    widget.deleteLater()
-    app.processEvents()
-
-
-def test_zoomable_preview_widget_search_panel_toggle_and_state():
-    require_pyqt6()
-
-    from src.core.i18n import tm
-    from src.ui.zoomable_preview import ZoomablePreviewWidget
-
-    app = _make_app()
-    widget = ZoomablePreviewWidget()
-    widget.set_controlled_mode(True)
-    widget.resize(420, 640)
-    widget.show()
-    app.processEvents()
-
-    assert not widget.search_bar.isVisible()
-
-    widget.set_search_available(True)
-    widget.set_search_panel_visible(True)
-    widget.set_search_query("needle")
-    widget.set_search_result_state(1, 4, query="needle")
-    app.processEvents()
-
-    assert widget.search_bar.isVisible()
-    assert widget.btn_toggle_search.text() == tm.get("btn_preview_search_hide")
-    assert widget.search_status_label.text() == tm.get(
-        "preview_search_status_count", 2, 4
-    )
-    assert widget.btn_search_prev.isEnabled()
-    assert widget.btn_search_next.isEnabled()
-
-    widget.clear_search_state(clear_query=True)
-    app.processEvents()
-
-    assert widget.search_input.text() == ""
-    assert widget.search_status_label.text() == tm.get("preview_search_status_idle")
-    assert not widget.btn_search_prev.isEnabled()
-    assert not widget.btn_search_next.isEnabled()
-
-    widget.close()
-    widget.deleteLater()
-    app.processEvents()
-
-
-def test_preview_panel_buttons_allow_full_label_width():
-    require_pyqt6()
-
-    from src.ui.main_window import PDFMasterApp
-
-    app = _make_app()
-    window = PDFMasterApp()
-    window.show()
-    app.processEvents()
-
-    assert window.btn_prev_page.maximumWidth() >= window.btn_prev_page.sizeHint().width()
-    assert window.btn_next_page.maximumWidth() >= window.btn_next_page.sizeHint().width()
-    assert window.btn_print_preview.maximumWidth() >= window.btn_print_preview.sizeHint().width()
-
-    window.close()
-    window.deleteLater()
-    app.processEvents()
-
-
-def test_zoomable_preview_widget_standalone_load_hides_search_controls(tmp_path):
-    require_pyqt6_and_pymupdf()
-
-    from src.core.optional_deps import fitz
-    from src.ui.zoomable_preview import ZoomablePreviewWidget
-
-    pdf_path = tmp_path / "standalone.pdf"
+def _make_pdf(path):
     doc = fitz.open()
-    doc.new_page(width=200, height=300)
-    doc.save(str(pdf_path))
+    page = doc.new_page(width=300, height=400)
+    page.insert_text((72, 72), "Alpha Beta Alpha")
+    doc.set_toc([[1, "Intro", 1]])
+    doc.save(str(path))
     doc.close()
 
-    app = _make_app()
-    widget = ZoomablePreviewWidget()
-    widget.resize(420, 640)
-    widget.show()
-    widget.load_pdf(str(pdf_path))
-    app.processEvents()
 
-    assert not widget.btn_toggle_search.isVisible()
-    assert not widget.search_bar.isVisible()
+def test_qpdf_preview_widget_updates_page_state_and_zoom(tmp_path):
+    require_pyqt6_and_pymupdf()
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    widget.close()
-    widget.deleteLater()
-    app.processEvents()
-
-
-def test_zoomable_preview_widget_enter_shift_enter_escape_flow():
-    require_pyqt6()
-
-    from PyQt6.QtCore import Qt
+    from PyQt6.QtPdf import QPdfDocument
 
     from src.ui.zoomable_preview import ZoomablePreviewWidget
 
+    pdf_path = tmp_path / "sample.pdf"
+    _make_pdf(pdf_path)
+
     app = _make_app()
     widget = ZoomablePreviewWidget()
-    widget.set_controlled_mode(True)
-    widget.set_search_available(True)
-    widget.set_search_panel_visible(True)
+    doc = QPdfDocument(None)
+    assert doc.load(str(pdf_path)) == QPdfDocument.Error.None_
+    widget.set_document(doc, str(pdf_path))
+    widget.resize(640, 720)
     widget.show()
     app.processEvents()
 
-    search_requests = []
-    step_requests = []
-    cleared = []
-
-    widget.searchRequested.connect(lambda query: search_requests.append(query))
-    widget.searchStepRequested.connect(lambda step: step_requests.append(step))
-    widget.searchCleared.connect(lambda: cleared.append(True))
-
-    widget.search_input.setText("needle")
+    widget.go_to_page(0)
     app.processEvents()
+    widget._set_custom_zoom(1.5)
+    app.processEvents()
+    state = widget.capture_view_state()
+
+    assert widget.page_label.text() == "1 / 1"
+    assert state["zoom_mode"] == "custom"
+    assert state["zoom_factor"] == 1.5
+
+    widget.close()
+
+
+def test_qpdf_preview_widget_populates_search_and_bookmarks(tmp_path):
+    require_pyqt6_and_pymupdf()
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+    from PyQt6.QtCore import QModelIndex
+    from PyQt6.QtPdf import QPdfDocument
+
+    from src.ui.zoomable_preview import ZoomablePreviewWidget
+
+    pdf_path = tmp_path / "sample.pdf"
+    _make_pdf(pdf_path)
+
+    app = _make_app()
+    widget = ZoomablePreviewWidget()
+    doc = QPdfDocument(None)
+    assert doc.load(str(pdf_path)) == QPdfDocument.Error.None_
+    widget.set_document(doc, str(pdf_path))
+    widget.search_input.setText("Alpha")
+    widget._on_search_requested()
+
+    for _ in range(50):
+        app.processEvents()
+        if widget.search_results.count() > 0:
+            break
+        time.sleep(0.02)
+
+    assert widget.search_results.count() > 0
+    assert widget.bookmark_model.rowCount(QModelIndex()) == 1
+
+    widget.close()
+
+
+def test_qpdf_preview_widget_toggle_search_panel_and_restore_state(tmp_path):
+    require_pyqt6_and_pymupdf()
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+    from PyQt6.QtPdf import QPdfDocument
+
+    from src.ui.zoomable_preview import ZoomablePreviewWidget
+
+    pdf_path = tmp_path / "sample.pdf"
+    _make_pdf(pdf_path)
+
+    app = _make_app()
+    widget = ZoomablePreviewWidget()
+    doc = QPdfDocument(None)
+    assert doc.load(str(pdf_path)) == QPdfDocument.Error.None_
+    widget.set_document(doc, str(pdf_path))
+    widget.resize(640, 720)
+    widget.show()
+    app.processEvents()
+
+    widget.set_search_panel_visible(False)
+    state = widget.capture_view_state()
+
+    assert not widget.side_tabs.isVisible()
+    assert state["search_panel_visible"] is False
+
+    widget.restore_view_state(
+        {
+            "page": 0,
+            "zoom_mode": "fit_view",
+            "zoom_factor": 1.0,
+            "search_panel_visible": True,
+            "side_tab_index": 0,
+            "search_query": "Alpha",
+            "search_result_row": 0,
+        }
+    )
+
+    for _ in range(50):
+        app.processEvents()
+        if widget.search_results.count() > 0:
+            break
+        time.sleep(0.02)
+
+    assert widget.side_tabs.isVisible()
+    assert widget.search_input.text() == "Alpha"
+    assert widget.search_results.currentRow() == 0
+
+    widget.close()
+
+
+def test_qpdf_preview_widget_enter_shift_enter_and_escape(tmp_path):
+    require_pyqt6_and_pymupdf()
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtPdf import QPdfDocument
+
+    from src.ui.zoomable_preview import ZoomablePreviewWidget
+
+    pdf_path = tmp_path / "sample.pdf"
+    _make_pdf(pdf_path)
+
+    app = _make_app()
+    widget = ZoomablePreviewWidget()
+    doc = QPdfDocument(None)
+    assert doc.load(str(pdf_path)) == QPdfDocument.Error.None_
+    widget.set_document(doc, str(pdf_path))
+    widget.resize(640, 720)
+    widget.show()
+    app.processEvents()
+
+    widget.focus_search_input()
+    widget.search_input.setText("Alpha")
+    _send_key(widget.search_input, Qt.Key.Key_Return.value)
+
+    for _ in range(50):
+        app.processEvents()
+        if widget.search_results.count() > 1:
+            break
+        time.sleep(0.02)
+
+    assert widget.search_results.count() > 1
+
+    widget.search_results.setCurrentRow(0)
     _send_key(widget.search_input, Qt.Key.Key_Return.value)
     app.processEvents()
+    assert widget.search_results.currentRow() == 1
 
-    assert search_requests == ["needle"]
-    assert step_requests == []
-
-    widget.set_search_result_state(0, 3, query="needle")
-    app.processEvents()
-
-    _send_key(widget.search_input, Qt.Key.Key_Return.value)
-    app.processEvents()
     _send_key(
         widget.search_input,
         Qt.Key.Key_Return.value,
         Qt.KeyboardModifier.ShiftModifier,
     )
     app.processEvents()
-
-    assert step_requests == [1, -1]
+    assert widget.search_results.currentRow() == 0
 
     _send_key(widget.search_input, Qt.Key.Key_Escape.value)
     app.processEvents()
     assert widget.search_input.text() == ""
-    assert cleared
 
     _send_key(widget.search_input, Qt.Key.Key_Escape.value)
     app.processEvents()
-    assert not widget.search_bar.isVisible()
+    assert not widget.side_tabs.isVisible()
 
     widget.close()
-    widget.deleteLater()
-    app.processEvents()
 
 
 def test_main_window_ctrl_f_opens_preview_search_and_focuses_input(tmp_path):
     require_pyqt6_and_pymupdf()
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     from PyQt6.QtCore import Qt
 
-    from src.core.optional_deps import fitz
     from src.ui.main_window import PDFMasterApp
 
-    pdf_path = tmp_path / "preview_shortcut.pdf"
-    doc = fitz.open()
-    page = doc.new_page(width=200, height=300)
-    page.insert_text((72, 72), "shortcut target")
-    doc.save(str(pdf_path))
-    doc.close()
+    pdf_path = tmp_path / "sample.pdf"
+    _make_pdf(pdf_path)
 
     app = _make_app()
     window = PDFMasterApp()
     window.show()
     window._update_preview(str(pdf_path))
     window.preview_image.set_search_panel_visible(False)
-    window.activateWindow()
     app.processEvents()
 
-    assert not window.preview_image.search_bar.isVisible()
-
-    _send_key(
-        window,
-        Qt.Key.Key_F.value,
-        Qt.KeyboardModifier.ControlModifier,
-    )
+    _send_key(window, Qt.Key.Key_F.value, Qt.KeyboardModifier.ControlModifier)
     app.processEvents()
 
-    assert window.preview_image.search_bar.isVisible()
+    assert window.preview_image.side_tabs.isVisible()
+    assert window.preview_image.side_tabs.currentIndex() == 0
     assert window.preview_image.search_input.hasFocus()
 
     window.close()
-    window.deleteLater()
-    app.processEvents()

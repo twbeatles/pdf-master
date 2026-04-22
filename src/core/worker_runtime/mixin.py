@@ -7,8 +7,9 @@ from typing import Any, cast
 
 from .._typing import WorkerHost
 from ..optional_deps import fitz
-from .dispatch import get_handler_method_name
+from .dispatch import get_handler_method_name, get_operation_spec
 from .io import (
+    atomic_text_save,
     atomic_pdf_save,
     build_safe_attachment_output_path,
     build_unique_output_stem,
@@ -40,6 +41,28 @@ except ImportError:
 
 
 class WorkerRuntimeMixin(WorkerHost):
+    def _set_result_payload(self, payload: dict[str, Any] | None = None, **extra: Any) -> None:
+        merged: dict[str, Any] = {}
+        if isinstance(payload, dict):
+            merged.update(payload)
+        if extra:
+            merged.update(extra)
+        self.result_payload = merged
+
+    def _update_result_payload(self, **payload: Any) -> None:
+        if not isinstance(getattr(self, "result_payload", None), dict):
+            self.result_payload = {}
+        self.result_payload.update(payload)
+
+    def _emit_partial_result(self, **payload: Any) -> None:
+        if not payload:
+            return
+        payload.setdefault("mode", self.mode)
+        spec = get_operation_spec(self.mode)
+        if spec is not None:
+            payload.setdefault("result_kind", spec.result_kind)
+        self.partial_result_signal.emit(payload)
+
     def _parse_page_range(self, page_range_str: str, total_pages: int) -> list[int]:
         return parse_page_range(self, page_range_str, total_pages)
 
@@ -131,6 +154,16 @@ class WorkerRuntimeMixin(WorkerHost):
     def _atomic_pdf_save(self, doc: Any, output_path: str, **save_kwargs: Any) -> None:
         atomic_pdf_save(self, doc, output_path, **save_kwargs)
 
+    def _atomic_text_save(
+        self,
+        output_path: str,
+        text: str,
+        *,
+        encoding: str = "utf-8",
+        newline: str | None = None,
+    ) -> None:
+        atomic_text_save(self, output_path, text, encoding=encoding, newline=newline)
+
     def _get_msg(self, key: str, *args: object) -> str:
         return get_message(key, *args)
 
@@ -177,12 +210,14 @@ class WorkerRuntimeMixin(WorkerHost):
         logger.info("Starting task: %s", self.mode)
         try:
             self._normalize_mode_kwargs()
-            handler_name = get_handler_method_name(self.mode)
+            spec = get_operation_spec(self.mode)
+            handler_name = spec.handler if spec is not None else get_handler_method_name(self.mode)
             method = getattr(self, handler_name, None) if handler_name else None
             if method:
                 if not self._preflight_inputs():
                     logger.info("Preflight validation failed: %s", self.mode)
                     return
+                self.result_payload = {}
                 self._last_progress_value = None
                 self._last_progress_emit_ts_ms = 0.0
                 with PerfTimer(f"core.worker.{self.mode}", logger=logger, extra={"mode": self.mode}):

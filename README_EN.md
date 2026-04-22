@@ -10,14 +10,17 @@
 ## Current Behavior Notes
 
 - The right preview panel now uses `src/ui/zoomable_preview.py` directly for wheel zoom, drag pan, page navigation, and preview print.
-- Preview text search is now asynchronous on a preview-dedicated worker, with collapse/expand UI, current-hit highlighting, next/previous navigation, and `Ctrl+F` entry.
 - Preview print now goes through the Qt print pipeline instead of OS-level `print` delegation, so printer/page-range choices are applied to the actual job.
 - AI/rotate thumbnail entry points stay synchronized with the right preview document, and encrypted PDFs reuse the authenticated preview password session for thumbnail loading.
 - Preview rendering is refreshed after splitter moves and panel resize events to avoid stale low-resolution previews.
 - `Resize Pages` keeps the original page aspect ratio and places the source page fit-centered on the target paper size.
 - Auto-generated outputs from `PDF -> Image` and `Extract Text` avoid filename collisions with `__2`, `__3`, and later suffixes.
 - `Compare PDFs` now detects line-order changes and duplicate-count differences, and visual diff PDF generation is optional from the Advanced tab UI.
-- Single-input/single-output PDF mutation modes can save back to the original path; if preview is holding the same file, it is closed before the worker starts and restored after success/fail/cancel, including preview search query/index restoration.
+- Single-input/single-output PDF mutation modes can save back to the original path; if preview is holding the same file, it is closed before the worker starts and restored after success/fail/cancel.
+- The preview search/bookmark side panel can now be collapsed and reopened, and `Ctrl+F` jumps directly to the preview search tab and focuses the query field.
+- The right preview now watches both the active PDF and its parent directory, so external atomic replace flows can auto-reload after a short retry window.
+- **Page Setup** keeps its own printer state, while **Print Preview** creates a fresh `QPrinter` per launch so the previous print range does not leak into the next job.
+- **Clear Chat** now resets only the currently selected PDF's persisted history and SDK chat session; histories for other PDFs stay intact.
 - Output save/folder dialogs reuse `last_output_dir` as their starting directory and update it after successful output selection.
 - Undo/Redo now restores before/after snapshots instead of re-running the worker, and the expanded snapshot flow covers `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
 - Updated worker result/status messages in the touched flows are synchronized through the KO/EN i18n catalogs.
@@ -74,7 +77,7 @@
 | Feature | Description |
 |---------|-------------|
 | **Split PDF** | Split by page or range |
-| **Compress PDF** | High/Medium/Low compression levels |
+| **Compress PDF** | Choose `fast`, `compact`, or `web` save profile |
 | **Crop PDF** | Trim margins |
 | **Edit Metadata** | Modify title, author, subject, keywords |
 | **Compare PDFs** | Analyze text differences including line order/duplicate changes, with optional visual diff PDF |
@@ -102,7 +105,7 @@
 | **Extract Images** | Extract embedded images | Save as PNG/JPG |
 | **Extract Tables** | Extract table data | Save as CSV |
 | **Extract Bookmarks** | Extract outline structure | Save as TXT |
-| **Markdown Convert** | PDF → Markdown | Save as MD |
+| **Markdown Convert** | `auto/native/text` mode with front matter, page marker, and asset placeholder options | Save as MD |
 | **Attachment Manager** | Add/Extract attachments | Various formats |
 
 ### 🤖 AI Features (Gemini API)
@@ -123,9 +126,10 @@
 - **Toast Notifications** - Non-intrusive notifications
 - **Drag & Drop** - Add files, reorder pages
 - **Zoom/Pan Preview** - Mouse wheel zoom, drag move, page navigation, print, and resize-aware rerender
-- **Preview Search** - Collapsible search bar, async text search, current-hit highlight, `Enter`/`Shift+Enter` navigation, and `Ctrl+F` focus
+- **Preview Search/Bookmarks** - Collapsible side panel, `Ctrl+F` focus entry, and same-path restore through captured preview view state
 - **Thumbnail Grid** - View all pages at a glance with preview document/page synchronization
 - **Rotate-tab Page Sync** - Clicking a thumbnail jumps the right preview to the same page
+- **External Rewrite Auto-Reload** - Preview is reloaded if the same PDF is replaced by another app
 - **Undo/Redo** - Undo/Redo across single-output PDF mutation workflows
 - **Same-path Save Safety** - Overwriting the source PDF is allowed for single-input/single-output mutation flows
 - **Remember Output Folder** - Output dialogs reopen from the last successful output directory
@@ -141,20 +145,16 @@
 
 ### Install Dependencies
 ```bash
-# Core packages
-pip install PyQt6 PyMuPDF
+# Canonical manifest (`pyproject.toml`)
+pip install -e .[dev]
 
-# Validation toolchain
+# Optional extras
+pip install -e .[build]
+pip install -e .[ai]
+pip install -e .[secure]
+
+# Compatibility shim for older workflows
 pip install -r requirements-dev.txt
-
-# For builds
-pip install PyInstaller
-
-# For AI features (optional)
-pip install google-genai
-
-# Or legacy SDK (deprecated)
-pip install google-generativeai
 ```
 
 ### Run
@@ -210,6 +210,17 @@ python main.py
 5. Choose Style (Concise/Detailed/Bullet)
 6. Click **AI Summary**
 
+### 6-1. PDF Chat / Clear Chat
+1. In the **AI Summary** tab, select the PDF you want to chat about.
+2. Enter a question and click **Ask**.
+3. **Clear Chat** only clears the currently selected PDF's history and chat session.
+
+### 6-2. Markdown Extraction Options
+1. Open **Advanced > Extract > Markdown**.
+2. Choose `auto`, `native`, or `text` mode.
+3. Enable `YAML front matter`, `page markers`, and `image/table placeholders` if needed.
+4. Run **Extract Markdown**.
+
 ### 7. Reorder Pages
 1. Select **Reorder** tab
 2. Select PDF file (Automatically loads pages)
@@ -255,15 +266,20 @@ python -m PyInstaller pdf_master.spec --clean
 
 ### Build Result
 - Output: `dist/PDF_Master_v4.5.5.exe`
-- Size: ~75-80MB in the current Python 3.14 + dependency set (with UPX enabled)
+- Size: ~30-40MB (UPX Compressed)
 
 ---
 
 ## ✅ Development Validation
 
-- Prepare validation environment: `pip install -r requirements-dev.txt`
+- Canonical dependency/build manifest: `pyproject.toml`
+- Prepare validation environment: `pip install -e .[dev]`
+- Compatibility shim: `requirements-dev.txt` -> `-e .[dev]`
 - Static analysis: `python -m pyright` -> `0 errors`
 - Regression tests: `python -m pytest -q`
+- Package build: `python -m build`
+- Executable build: `python -m PyInstaller pdf_master.spec --clean`
+- `.gitignore` now keeps build/validation artifacts such as `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, and `*.whl` out of the working tree.
 - `pytest` temp files stay inside repo-local `.pytest_tmp`
 - Encoding audit: tracked text files pass UTF-8 decode/BOM/U+FFFD checks
 
@@ -276,8 +292,9 @@ pdf-master/
 ├── .editorconfig
 ├── main.py
 ├── pdf_master.spec
+├── pyproject.toml
 ├── pyrightconfig.json
-├── requirements-dev.txt
+├── requirements-dev.txt       # compatibility shim -> -e .[dev]
 ├── typings/
 ├── README.md
 ├── README_EN.md
@@ -354,12 +371,6 @@ API key storage policy:
 ---
 
 ## 📝 Changelog
-
-### v4.5.5 (2026-04-22) - Preview Search Hardening
-- Moved preview text search to a preview-dedicated async `QThread` worker with request-id stale-result protection.
-- Added preview search result caching keyed by `(abs_path, mtime_ns, query)` and kept search highlights as display-only overlays on the preview pixmap.
-- Added controlled-vs-standalone preview search policy, `Ctrl+F`, `Enter`/`Shift+Enter`/`Esc` keyboard UX, and same-path search context restoration.
-- Added regression coverage for preview search worker flow, preview search keyboard UX, and same-path search-state restore.
 
 ### v4.5.5 (2026-04-10) - Stability Bundle
 - Added safe same-path overwrite handling by closing preview-held documents before worker start and restoring preview after success/fail/cancel.
@@ -463,7 +474,7 @@ API key storage policy:
 ## 🧪 Test and Consistency Status (v4.5.5)
 
 - Static analysis: `python -m pyright` -> `0 errors`
-- Regression tests: `python -m pytest -q` -> `131 passed, 1 warning`
+- Regression tests: `python -m pytest -q` -> `120 passed, 1 warning`
 - Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD regressions
 
 - Added:
@@ -477,7 +488,6 @@ API key storage policy:
   - `tests/test_close_shutdown_flow.py`
   - `tests/test_output_dialog_state.py`
   - `tests/test_same_path_preview_restore.py`
-  - `tests/test_preview_search.py`
   - `tests/test_undo_backup_flow.py`
   - `tests/test_worker_batch_watermark.py`
   - `tests/test_worker_copy_page_range_strict.py`
@@ -504,7 +514,6 @@ API key storage policy:
   - `tests/test_worker_rotate_selection.py`
   - `tests/test_rotate_selection_ui_flow.py`
   - `tests/test_thumbnail_grid_selection.py`
-  - `tests/test_zoomable_preview_widget.py`
 
 ---
 
@@ -513,3 +522,17 @@ API key storage policy:
 MIT License
 
 Copyright (c) 2026 PDF Master
+
+---
+
+## 2026-04-21 Stability And Packaging Audit
+
+- AI summary/chat/keyword flows now expose result metadata that distinguishes `file_api` from `text_fallback`, flags 30,000-character truncation, and records fallback page counts.
+- Saving an AI summary now prepends a short metadata header only when the result came from fallback text extraction or was truncated.
+- Gemini uploaded-file cache entries now track the remote file name and attempt best-effort `client.files.delete(name=...)` cleanup on LRU eviction, Clear Chat for the currently selected PDF, and application shutdown.
+- Batch-generated outputs now use case-insensitive collision-safe stems such as `name_processed.pdf` and `name_processed__2.pdf`, and text/markdown/report outputs use atomic temp-write + replace saves.
+- Visual diff generation now produces a bidirectional overlay PDF: file-1-only blocks are highlighted in red, file-2-only blocks in blue, duplicate text counts are compared with `Counter`, and each diff page includes a legend.
+- When undo snapshots cannot be created, the worker continues but the UI now warns that the current operation cannot be undone.
+- API key persistence now prefers `keyring`; if secure storage is unavailable, the UI asks before allowing plaintext settings-file fallback.
+- `pdf_master.spec` was updated to include the runtime AI meta UI modules (`src.ui.tabs_ai.meta`, `src.ui.tabs_ai.actions_meta`) and its verification note now matches the current stabilization scope.
+- `.gitignore` was re-audited against validation/build outputs. The current entries already cover repo-local test/build artifacts including `.pytest_tmp/`, `build/`, `dist/`, `pip-wheel-metadata/`, `*.whl`, and `*.tar.gz`.

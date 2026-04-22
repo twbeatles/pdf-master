@@ -4,9 +4,17 @@ from _deps import require_pyqt6
 class _LabelStub:
     def __init__(self):
         self.text = ""
+        self.visible = None
+        self.stylesheet = ""
 
     def setText(self, text):
         self.text = text
+
+    def setVisible(self, visible):
+        self.visible = visible
+
+    def setStyleSheet(self, stylesheet):
+        self.stylesheet = stylesheet
 
 
 class _ProgressBarStub:
@@ -81,9 +89,10 @@ class _PathStub:
 
 
 class _WorkerStub:
-    def __init__(self, mode, kwargs):
+    def __init__(self, mode, kwargs, result_payload=None):
         self.mode = mode
         self.kwargs = kwargs
+        self.result_payload = result_payload or {}
 
     def isRunning(self):
         return False
@@ -102,8 +111,11 @@ def _build_dummy(worker):
             self.btn_open_folder = _ButtonStub()
             self.progress_overlay = _OverlayStub()
             self.txt_summary_result = _TextEditStub()
+            self.lbl_summary_meta = _LabelStub()
             self.lbl_keywords_result = _LabelStub()
+            self.lbl_keywords_meta = _LabelStub()
             self.txt_chat_history = _ChatHistoryStub()
+            self.lbl_chat_meta = _LabelStub()
             self.sel_chat_pdf = _PathStub("chat.pdf")
             self._chat_histories = {}
             self.saved_histories = 0
@@ -138,13 +150,31 @@ def test_on_success_updates_summary_result(monkeypatch):
     monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
 
-    worker = _WorkerStub("ai_summarize", {"summary_result": "summary"})
+    worker = _WorkerStub(
+        "ai_summarize",
+        {"summary_result": "summary"},
+        {
+            "title": "Doc",
+            "summary": "summary",
+            "key_points": ["alpha", "beta"],
+            "meta": {
+                "source": "text_fallback",
+                "truncated": True,
+                "fallback_pages_used": 2,
+                "fallback_pages_total": 5,
+                "max_text_chars": 30000,
+            },
+        },
+    )
     dummy = _build_dummy(worker)
     dummy._ai_worker_mode = True
 
     dummy.on_success("done")
 
-    assert dummy.txt_summary_result.value == "summary"
+    assert "summary" in dummy.txt_summary_result.value
+    assert "alpha" in dummy.txt_summary_result.value
+    assert dummy.lbl_summary_meta.visible is True
+    assert "fallback" in dummy.lbl_summary_meta.text.lower()
     assert dummy.status_label.text
 
 
@@ -156,13 +186,18 @@ def test_on_success_updates_keyword_result(monkeypatch):
     monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
 
-    worker = _WorkerStub("ai_extract_keywords", {"keywords_result": ["alpha", "beta"]})
+    worker = _WorkerStub(
+        "ai_extract_keywords",
+        {"keywords_result": ["alpha", "beta"]},
+        {"keywords": ["alpha", "beta"], "meta": {"source": "file_api"}},
+    )
     dummy = _build_dummy(worker)
     dummy._keyword_worker_mode = True
 
     dummy.on_success("done")
 
     assert dummy.lbl_keywords_result.text == "alpha • beta"
+    assert dummy.lbl_keywords_meta.visible is True
 
 
 def test_on_success_appends_chat_answer(monkeypatch):
@@ -174,7 +209,11 @@ def test_on_success_appends_chat_answer(monkeypatch):
     monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
 
-    worker = _WorkerStub("ai_ask_question", {"answer_result": "answer"})
+    worker = _WorkerStub(
+        "ai_ask_question",
+        {"answer_result": "answer"},
+        {"answer": "answer", "meta": {"source": "file_api"}},
+    )
     dummy = _build_dummy(worker)
     dummy._chat_worker_mode = True
     dummy._chat_pending_path = "chat.pdf"
@@ -183,6 +222,7 @@ def test_on_success_appends_chat_answer(monkeypatch):
 
     assert any("answer" in entry for entry in dummy.txt_chat_history.entries)
     assert any(tm.get("chat_assistant_prefix") in entry for entry in dummy.txt_chat_history.entries)
+    assert dummy.lbl_chat_meta.visible is True
     assert dummy.saved_histories == 1
 
 
@@ -211,3 +251,27 @@ class _ToastStub:
 
     def show_toast(self, *_args, **_kwargs):
         return None
+
+
+def test_on_partial_result_streams_summary_and_chat(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_worker as worker_module
+
+    monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
+
+    summary_worker = _WorkerStub("ai_summarize", {}, {})
+    summary_dummy = _build_dummy(summary_worker)
+    summary_dummy.worker = summary_worker
+    summary_dummy._ai_worker_mode = True
+    summary_dummy._on_partial_result({"text": '{"summary":"part'})
+    summary_dummy._on_partial_result({"text": 'ial"}'})
+    assert "partial" in summary_dummy.txt_summary_result.value
+
+    chat_worker = _WorkerStub("ai_ask_question", {}, {})
+    chat_dummy = _build_dummy(chat_worker)
+    chat_dummy.worker = chat_worker
+    chat_dummy._chat_worker_mode = True
+    chat_dummy._chat_pending_path = "chat.pdf"
+    chat_dummy._on_partial_result({"text": '{"answer":"hel'})
+    chat_dummy._on_partial_result({"text": 'lo"}'})
+    assert any("hello" in entry for entry in chat_dummy.txt_chat_history.entries)

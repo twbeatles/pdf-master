@@ -167,3 +167,74 @@ def test_run_worker_skips_pending_undo_for_non_mutating_mode(monkeypatch):
 class _SignalStub:
     def connect(self, *_args, **_kwargs):
         return None
+
+
+def test_run_worker_warns_when_undo_snapshot_unavailable(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_worker as worker_module
+    from src.ui.main_window_worker import MainWindowWorkerMixin
+    from src.core.i18n import tm
+
+    class FakeWorker:
+        def __init__(self, mode, **kwargs):
+            self.mode = mode
+            self.kwargs = kwargs
+            self.progress_signal = _SignalStub()
+            self.finished_signal = _SignalStub()
+            self.error_signal = _SignalStub()
+            self.cancelled_signal = _SignalStub()
+
+        def start(self):
+            return None
+
+        def isRunning(self):
+            return False
+
+        def wait(self, *_args, **_kwargs):
+            return True
+
+        def deleteLater(self):
+            return None
+
+    toasts = []
+
+    class DummyToast:
+        def __init__(self, message, **_kwargs):
+            self.message = message
+
+        def show_toast(self, *_args, **_kwargs):
+            toasts.append(self.message)
+
+    class Dummy(MainWindowWorkerMixin):
+        def __init__(self):
+            self.worker = None
+            self._pending_worker = None
+            self._cancel_pending = False
+            self._cancel_handled = False
+            self._pending_undo = None
+            self.progress_bar = _ProgressBarStub()
+            self.btn_open_folder = _ButtonStub()
+            self.status_label = _LabelStub()
+            self.progress_overlay = _OverlayStub()
+
+        def _create_backup_for_undo(self, source_path):
+            _ = source_path
+            return ""
+
+        def set_ui_busy(self, _busy):
+            return None
+
+        def _finalize_worker(self):
+            return None
+
+        def _run_pending_worker(self):
+            return None
+
+    monkeypatch.setattr(worker_module, "WorkerThread", FakeWorker)
+    monkeypatch.setattr(worker_module, "ToastWidget", DummyToast)
+
+    dummy = Dummy()
+    dummy.run_worker("resize_pages", file_path="src.pdf", output_path="out.pdf", target_size="A4")
+
+    assert dummy._pending_undo is None
+    assert tm.get("msg_undo_unavailable") in toasts

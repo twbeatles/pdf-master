@@ -154,6 +154,11 @@ def setup_ai_tab(self):
     self.txt_summary_result.setReadOnly(True)
     l_summary.addWidget(self.txt_summary_result)
 
+    self.lbl_summary_meta = QLabel("")
+    self.lbl_summary_meta.setWordWrap(True)
+    self.lbl_summary_meta.setVisible(False)
+    l_summary.addWidget(self.lbl_summary_meta)
+
     # 저장 버튼
     btn_save_summary = QPushButton(tm.get("btn_save_summary"))
     btn_save_summary.setObjectName("secondaryBtn")
@@ -218,6 +223,11 @@ def setup_ai_tab(self):
     self.txt_chat_history.setReadOnly(True)
     l_chat.addWidget(self.txt_chat_history)
 
+    self.lbl_chat_meta = QLabel("")
+    self.lbl_chat_meta.setWordWrap(True)
+    self.lbl_chat_meta.setVisible(False)
+    l_chat.addWidget(self.lbl_chat_meta)
+
     # 대화 삭제 버튼
     btn_clear_chat = QPushButton(tm.get("btn_clear_chat"))
     btn_clear_chat.setObjectName("secondaryBtn")
@@ -265,6 +275,11 @@ def setup_ai_tab(self):
         }
     """)
     l_keywords.addWidget(self.lbl_keywords_result)
+
+    self.lbl_keywords_meta = QLabel("")
+    self.lbl_keywords_meta.setWordWrap(True)
+    self.lbl_keywords_meta.setVisible(False)
+    l_keywords.addWidget(self.lbl_keywords_meta)
 
     content_layout.addWidget(grp_keywords)
 

@@ -73,3 +73,30 @@ def test_batch_reports_failed_file_reasons(tmp_path):
     assert tm.get("msg_batch_failed_header").strip() in result
     assert "missing.pdf" in result
 
+
+def test_batch_avoids_output_name_collisions_for_same_basename(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    folder_a = tmp_path / "a"
+    folder_b = tmp_path / "b"
+    folder_a.mkdir()
+    folder_b.mkdir()
+    first = folder_a / "same.pdf"
+    second = folder_b / "same.pdf"
+    _make_pdf(first, "FIRST")
+    _make_pdf(second, "SECOND")
+
+    worker = WorkerThread(
+        "batch",
+        files=[str(first), str(second)],
+        output_dir=str(tmp_path),
+        operation="watermark",
+        option="WM",
+    )
+
+    worker.batch()
+
+    assert (tmp_path / "same_processed.pdf").exists()
+    assert (tmp_path / "same_processed__2.pdf").exists()
+

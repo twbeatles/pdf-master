@@ -160,16 +160,22 @@ def test_cancel_cleanup_keeps_preexisting_batch_outputs(monkeypatch, tmp_path):
     with pytest.raises(CancelledError):
         worker.batch()
 
+    collided_output = out_dir / "existing_processed__2.pdf"
     new_output = out_dir / "new_processed.pdf"
     assert preexisting_output.exists()
+    assert collided_output.exists()
     assert new_output.exists()
-    assert worker.kwargs.get("created_output_paths") == [str(new_output.resolve())]
+    assert worker.kwargs.get("created_output_paths") == [
+        str(collided_output.resolve()),
+        str(new_output.resolve()),
+    ]
 
     host = _CleanupHost(worker, out_dir)
     monkeypatch.setattr(lifecycle, "ToastWidget", _ToastStub)
     lifecycle._cleanup_cancelled_worker(host)
 
     assert preexisting_output.exists()
+    assert not collided_output.exists()
     assert not new_output.exists()
 
 

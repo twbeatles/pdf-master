@@ -12,14 +12,17 @@
 ## 현재 동작 기준 메모
 
 - 우측 미리보기 패널은 이제 `src/ui/zoomable_preview.py`를 직접 사용하며, 마우스 휠 줌, 드래그 패닝, 페이지 이동, 미리보기 인쇄를 함께 처리합니다.
-- 우측 미리보기 검색은 preview 전용 백그라운드 스레드에서 비동기로 실행되며, 검색 패널 접기/펼치기, 현재 결과 하이라이트, 다음/이전 결과 이동, `Ctrl+F` 진입을 지원합니다.
 - 미리보기 인쇄는 OS 기본 인쇄 위임이 아니라 Qt 인쇄 파이프라인으로 현재 PDF 문서를 실제 프린터 설정에 맞춰 출력합니다.
 - AI/회전 썸네일 그리드는 우측 미리보기와 같은 문서를 기준으로 동기화되며, 암호화 PDF도 미리보기에서 인증한 비밀번호를 재사용합니다.
 - 스플리터 이동이나 패널 리사이즈 이후에도 미리보기를 다시 렌더링해서 저해상도 상태로 남지 않도록 보강했습니다.
 - `페이지 크기 변경`은 원본 비율을 유지한 채 대상 용지 중앙에 fit-center 배치하는 방식으로 동작합니다.
 - `PDF -> 이미지`, `텍스트 추출`의 자동 출력 파일명은 `__2`, `__3` 접미사로 충돌을 회피합니다.
 - `PDF 비교`는 이제 줄 순서 변경과 중복 줄 개수 차이까지 감지하며, 시각적 diff PDF 생성은 UI에서 선택적으로 켤 수 있습니다.
-- 단일 입력/단일 출력 PDF 수정 모드에서 원본 경로로 저장해도, preview가 같은 파일을 잡고 있으면 작업 전에 닫고 완료/실패/취소 후 다시 복원하며 검색어/활성 결과 인덱스도 함께 복구합니다.
+- 단일 입력/단일 출력 PDF 수정 모드에서 원본 경로로 저장해도, preview가 같은 파일을 잡고 있으면 작업 전에 닫고 완료/실패/취소 후 다시 복원합니다.
+- 우측 미리보기의 검색/북마크 사이드 패널은 접기/펼치기가 가능하고, `Ctrl+F`로 검색 탭을 열어 바로 포커스할 수 있습니다.
+- 우측 미리보기는 `QFileSystemWatcher`로 현재 PDF와 부모 폴더를 함께 감시하며, 외부 프로그램이 파일을 atomic replace해도 짧은 재시도 후 자동으로 다시 엽니다.
+- 미리보기의 **페이지 설정**은 별도 상태로 유지되고, **인쇄 미리보기**는 매번 fresh `QPrinter`를 만들어 직전 인쇄 범위가 새 작업에 섞이지 않도록 분리되었습니다.
+- AI 채팅의 **대화 삭제**는 이제 현재 선택한 PDF의 기록과 SDK 채팅 세션만 지우며, 다른 PDF 기록은 유지합니다.
 - 출력 관련 저장/폴더 선택 다이얼로그는 `last_output_dir`를 시작 경로로 재사용하고, 성공한 출력 경로를 다시 기억합니다.
 - Undo/Redo는 작업 재실행이 아니라 before/after 스냅샷 복원 기반이며, `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, `copy_page_between_docs`도 같은 규칙으로 포함됩니다.
 - 이번에 정리한 worker 결과/상태 메시지는 KO/EN i18n 카탈로그를 통해 함께 관리됩니다.
@@ -76,7 +79,7 @@
 | 기능 | 설명 |
 |------|------|
 | **PDF 분할** | 각 페이지별 또는 범위별 분리 |
-| **PDF 압축** | 고/중/저 압축률 선택 |
+| **PDF 압축** | `fast` / `compact` / `web` 저장 프로필 선택 |
 | **PDF 크롭** | 여백 자르기 |
 | **메타데이터 편집** | 제목, 저자, 주제, 키워드 수정 |
 | **PDF 비교** | 줄 순서/중복 차이까지 분석 + 선택적 시각 diff PDF 생성 |
@@ -103,7 +106,7 @@
 | **이미지 추출** | 포함된 이미지 추출 | PNG/JPG 저장 |
 | **테이블 추출** | 표 데이터 추출 | CSV 저장 |
 | **북마크 추출** | 목차 구조 추출 | TXT 저장 |
-| **Markdown 변환** | PDF → Markdown | MD 저장 |
+| **Markdown 변환** | `auto/native/text` 모드, front matter, 페이지 마커, asset placeholder 옵션 | MD 저장 |
 | **첨부파일 관리** | 첨부파일 추가/추출 | 다양한 형식 |
 
 ### 🤖 AI 기능 (Gemini API)
@@ -123,9 +126,10 @@
 - **토스트 알림** - 비침습적 알림 시스템
 - **드래그 앤 드롭** - 파일 추가, 페이지 순서 변경
 - **줌/패닝 미리보기** - 마우스 휠 줌, 드래그 이동
-- **미리보기 검색** - 접기/펼치기, 비동기 텍스트 검색, 현재 매치 하이라이트, `Enter`/`Shift+Enter` 결과 이동, `Ctrl+F` 포커스
+- **미리보기 검색/북마크** - 접기/펼치기 가능한 사이드 패널, `Ctrl+F` 포커스, same-path 복원 시 view state 재적용
 - **썸네일 그리드** - 모든 페이지 한눈에 보기 + preview 문서/페이지 동기화
 - **회전 탭 페이지 연동** - 썸네일 클릭 시 오른쪽 미리보기 즉시 동기화
+- **외부 수정 자동 감지** - 같은 PDF가 외부에서 덮어써져도 preview 자동 재로드
 - **Undo/Redo** - 단일 출력 PDF 편집 작업 전반 실행 취소
 - **다국어 지원** - 한국어/영어 자동 감지 및 설정 가능 (v4.4)
 
@@ -139,20 +143,16 @@
 
 ### 의존성 설치
 ```bash
-# 필수 패키지
-pip install PyQt6 PyMuPDF
+# canonical manifest (`pyproject.toml`)
+pip install -e .[dev]
 
-# 개발 검증용 의존성
+# optional extras
+pip install -e .[build]
+pip install -e .[ai]
+pip install -e .[secure]
+
+# 기존 워크플로 호환용 shim
 pip install -r requirements-dev.txt
-
-# 빌드 시
-pip install PyInstaller
-
-# AI 기능 사용 시 (선택)
-pip install google-genai
-
-# 또는 기존 SDK (deprecated)
-pip install google-generativeai
 ```
 
 ### 실행
@@ -217,6 +217,17 @@ python main.py
 5. 요약 스타일 선택 (간결/상세/글머리 기호)
 6. **요약 실행** 클릭
 
+### 6-1. PDF 채팅 / 대화 삭제
+1. **AI 요약** 탭에서 채팅용 PDF 선택
+2. 질문 입력 후 **질문하기** 클릭
+3. **대화 삭제**는 현재 선택한 PDF의 기록만 초기화하며, 다른 PDF 대화는 유지됩니다.
+
+### 6-2. Markdown 추출 옵션
+1. **고급 > 추출 > Markdown 추출** 영역 선택
+2. `auto`, `native`, `text` 중 추출 모드 선택
+3. 필요 시 `YAML front matter`, `페이지 마커`, `이미지/표 placeholder` 옵션을 켭니다.
+4. **Markdown 추출** 실행
+
 ### 7. 페이지 순서 변경
 1. **순서 변경** 탭 선택
 2. PDF 파일 선택 (자동으로 페이지 목록 로드)
@@ -239,7 +250,7 @@ python main.py
 | `Ctrl+O` | 파일 열기 |
 | `Ctrl+Q` | 앱 종료 |
 | `Ctrl+T` | 다크/라이트 테마 전환 |
-| `Ctrl+F` | 우측 미리보기 검색창 열기/포커스 |
+| `Ctrl+F` | 미리보기 검색 탭 열기/포커스 |
 | `Ctrl+Z` | 실행 취소 (Undo) |
 | `Ctrl+Y` | 다시 실행 (Redo) |
 | `Ctrl+1` | 병합 탭 |
@@ -262,7 +273,7 @@ python -m PyInstaller pdf_master.spec --clean
 
 ### 빌드 결과
 - 출력: `dist/PDF_Master_v4.5.5.exe`
-- 크기: ~75-80MB (현재 Python 3.14 / 의존성 기준, UPX 적용)
+- 크기: ~30-40MB (UPX 압축 적용)
 
 ### 빌드 최적화
 - 불필요한 PyQt6 모듈 제외 (WebEngine, Multimedia, 3D 등)
@@ -273,9 +284,14 @@ python -m PyInstaller pdf_master.spec --clean
 
 ## ✅ 개발 검증
 
-- 검증 환경 준비: `pip install -r requirements-dev.txt`
+- 단일 의존성/빌드 manifest: `pyproject.toml`
+- 검증 환경 준비: `pip install -e .[dev]`
+- 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - 정적 분석: `python -m pyright` → `0 errors`
 - 회귀 테스트: `python -m pytest -q`
+- 패키지 빌드: `python -m build`
+- 실행 파일 빌드: `python -m PyInstaller pdf_master.spec --clean`
+- `.gitignore`는 빌드/검증 산출물(`build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl`)이 워크트리를 오염시키지 않도록 정리되어 있습니다.
 - 인코딩 점검: 추적 텍스트 파일 UTF-8 decode/BOM/U+FFFD audit 통과
 
 ---
@@ -287,8 +303,9 @@ pdf-master/
 ├── .editorconfig              # UTF-8/개행 규칙
 ├── main.py                    # 애플리케이션 진입점
 ├── pdf_master.spec            # PyInstaller 빌드 설정
+├── pyproject.toml             # canonical dependency/build manifest
 ├── pyrightconfig.json         # Pyright/Pylance 분석 범위 설정
-├── requirements-dev.txt       # 개발 검증용 의존성
+├── requirements-dev.txt       # compatibility shim -> -e .[dev]
 ├── typings/                   # Pyright용 최소 외부 stub
 ├── README.md                  # 프로젝트 설명서
 ├── README_EN.md               # 영문 문서
@@ -364,12 +381,6 @@ API 키 저장 정책:
 ---
 
 ## 📝 변경 이력
-
-### v4.5.5 (2026-04-22) - Preview Search Hardening
-- ✅ preview 텍스트 검색을 preview 전용 async `QThread` worker로 분리하고 request-id 기반 stale result 무시를 추가
-- ✅ `(abs_path, mtime_ns, query)` 기반 결과 캐시와 display-only 하이라이트 overlay 정책을 추가
-- ✅ controlled/standalone 미리보기 검색 UI 정책, `Ctrl+F`, `Enter`/`Shift+Enter`/`Esc`, same-path 검색 컨텍스트 복원을 반영
-- ✅ `tests/test_preview_search.py`, `tests/test_zoomable_preview_widget.py`, `tests/test_same_path_preview_restore.py` 회귀 추가
 
 ### v4.5.5 (2026-04-10) - Stability Bundle
 - ✅ same-path 저장 시 preview 문서를 선행 해제하고 success/fail/cancel 이후 동일 페이지로 복원
@@ -475,16 +486,16 @@ API 키 저장 정책:
 
 ### v4.2 (2026-01-06)
 - 🔄 **google-genai SDK** - 새 공식 SDK 사용
-- 🧠 **gemini-flash-latest** - 최신 AI 모델
+- 🧠 **gemini-2.5-flash** - 기본 AI 모델
 - ❌ **PDF → Word 기능 제거** - 의존성 간소화
-- 📦 **빌드 경량화** - 현재 기준 약 75-80MB 실행 파일로 패키징
+- 📦 **빌드 경량화** - ~30-40MB
 
 ---
 
 ## 🧪 테스트 및 정합성 현황 (v4.5.5)
 
 - 정적 분석: `python -m pyright` → `0 errors`
-- 회귀 테스트: `python -m pytest -q` → `131 passed, 1 warning`
+- 회귀 테스트: `python -m pytest -q` → `120 passed, 1 warning`
 - 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD 회귀 방지
 
 - 신규 테스트:
@@ -497,9 +508,7 @@ API 키 저장 정책:
   - `tests/test_ai_worker_ui_flow.py` (AI 요약/채팅/키워드 성공/실패 UI 흐름 검증)
   - `tests/test_close_shutdown_flow.py` (종료 시 cooperative cancel/강제 종료 확인 흐름 검증)
   - `tests/test_output_dialog_state.py` (출력 다이얼로그가 `last_output_dir`를 재사용/갱신하는지 검증)
-  - `tests/test_same_path_preview_restore.py` (same-path 저장 전 preview 해제, 저장 후 preview 및 검색 컨텍스트 복원 검증)
-  - `tests/test_preview_search.py` (preview 전용 검색 worker stale result 무시, cache 재사용, clear/focus 흐름 검증)
-  - `tests/test_zoomable_preview_widget.py` (controlled/standalone search UI 정책, 검색 입력 키보드 UX, `Ctrl+F` shortcut 진입 검증)
+  - `tests/test_same_path_preview_restore.py` (same-path 저장 전 preview 해제 및 저장 후 preview 복원 검증)
   - `tests/test_undo_backup_flow.py` (Undo/Redo before/after 스냅샷 복원과 backup cleanup 검증)
   - `tests/test_worker_batch_watermark.py` (배치 워터마크 출력 생성/실패 원인 요약 검증)
   - `tests/test_worker_copy_page_range_strict.py` (페이지 복사 무효 범위 hard-fail 정책 검증)
@@ -559,3 +568,16 @@ furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
+
+---
+
+## 2026-04-21 Stability Update
+
+- AI Summary / Chat / Keyword 결과는 이제 `file_api` / `text_fallback` 메타정보와 truncation 여부를 함께 표시합니다.
+- text fallback 이 발생하면 사용된 페이지 수와 30,000-character limit 여부를 UI 에서 확인할 수 있고, 요약 저장 시 필요한 경우에만 짧은 meta header 가 함께 저장됩니다.
+- Gemini uploaded-file cache 는 현재 선택된 PDF 의 Clear Chat, LRU eviction, 앱 종료 시 remote delete 를 best-effort 로 시도합니다.
+- Batch 출력은 `name_processed.pdf`, `name_processed__2.pdf` 규칙으로 case-insensitive 충돌을 회피하고, TXT/MD/report 저장은 atomic temp-write + replace 로 정리했습니다.
+- Visual diff PDF 는 이제 양방향 overlay 를 사용합니다. file1-only block 은 red, file2-only block 은 blue 로 표시되고 페이지 legend 도 함께 추가됩니다.
+- Undo snapshot backup 이 실패하면 작업은 계속 진행하되 이번 작업은 Undo 불가 경고를 표시합니다.
+- API key 저장은 keyring 우선 정책이며, secure storage 가 불가능한 경우에만 plaintext settings fallback 여부를 사용자에게 다시 확인합니다.
+- `pdf_master.spec` 는 새 AI meta UI 모듈을 hiddenimports 에 반영했고, `.gitignore` 는 `build/`, `dist/`, `.pytest_tmp/`, `pip-wheel-metadata/`, `*.whl`, `*.tar.gz` 등 현재 빌드/검증 산출물을 계속 제외하는 상태를 재확인했습니다.

@@ -15,6 +15,7 @@ class CancelledError(Exception):
 
 class WorkerThread(QThread, WorkerRuntimeMixin, WorkerPdfOpsMixin, WorkerAiOpsMixin):
     progress_signal = pyqtSignal(int)
+    partial_result_signal = pyqtSignal(dict)
     finished_signal = pyqtSignal(str)
     error_signal = pyqtSignal(str)
     cancelled_signal = pyqtSignal(str)
@@ -26,6 +27,7 @@ class WorkerThread(QThread, WorkerRuntimeMixin, WorkerPdfOpsMixin, WorkerAiOpsMi
         if not isinstance(created_output_paths, list):
             kwargs["created_output_paths"] = []
         self.kwargs = kwargs
+        self.result_payload: dict[str, Any] = {}
         self._cancel_requested = False
         self._last_progress_value: int | None = None
         self._last_progress_emit_ts_ms = 0.0

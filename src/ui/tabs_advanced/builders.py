@@ -335,6 +335,28 @@ def _create_extract_subtab(self):
     self.sel_md = FileSelectorWidget()
     self.sel_md.pathChanged.connect(self._update_preview)
     l_md.addWidget(self.sel_md)
+    md_mode_row = QHBoxLayout()
+    md_mode_row.addWidget(QLabel(tm.get("lbl_markdown_mode")))
+    self.cmb_md_mode = QComboBox()
+    markdown_modes = [
+        (tm.get("markdown_mode_auto"), "auto"),
+        (tm.get("markdown_mode_native"), "native"),
+        (tm.get("markdown_mode_text"), "text"),
+    ]
+    for label, value in markdown_modes:
+        self.cmb_md_mode.addItem(label, value)
+    md_mode_row.addWidget(self.cmb_md_mode)
+    md_mode_row.addStretch()
+    l_md.addLayout(md_mode_row)
+    self.chk_md_front_matter = QCheckBox(tm.get("chk_markdown_front_matter"))
+    self.chk_md_front_matter.setChecked(False)
+    l_md.addWidget(self.chk_md_front_matter)
+    self.chk_md_page_markers = QCheckBox(tm.get("chk_markdown_page_markers"))
+    self.chk_md_page_markers.setChecked(True)
+    l_md.addWidget(self.chk_md_page_markers)
+    self.chk_md_asset_placeholders = QCheckBox(tm.get("chk_markdown_asset_placeholders"))
+    self.chk_md_asset_placeholders.setChecked(False)
+    l_md.addWidget(self.chk_md_asset_placeholders)
     b_md = QPushButton(tm.get("btn_extract_md"))
     b_md.setToolTip(tm.get("tooltip_extract_markdown"))
     b_md.clicked.connect(self.action_extract_markdown)

@@ -4,7 +4,7 @@ from ...core.i18n import tm
 
 
 def action_extract_links(self):
-    """PDF 링크 추출"""
+    """PDF 留곹겕 異붿텧"""
     path = self.sel_links.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
@@ -12,8 +12,9 @@ def action_extract_links(self):
     if s:
         self.run_worker("extract_links", file_path=path, output_path=s)
 
+
 def action_extract_images(self):
-    """이미지 추출"""
+    """?대?吏 異붿텧"""
     path = self.sel_extract.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
@@ -21,8 +22,9 @@ def action_extract_images(self):
     if out_dir:
         self.run_worker("extract_images", file_path=path, output_dir=out_dir)
 
+
 def action_get_bookmarks(self):
-    """북마크 추출"""
+    """遺곷쭏??異붿텧"""
     path = self.sel_bm.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
@@ -30,8 +32,9 @@ def action_get_bookmarks(self):
     if s:
         self.run_worker("get_bookmarks", file_path=path, output_path=s)
 
+
 def action_search_text(self):
-    """텍스트 검색"""
+    """?띿뒪??寃??"""
     path = self.sel_search.get_path()
     term = self.inp_search.text().strip()
 
@@ -44,8 +47,9 @@ def action_search_text(self):
     if s:
         self.run_worker("search_text", file_path=path, output_path=s, search_term=term)
 
+
 def action_extract_tables(self):
-    """테이블 추출"""
+    """?뚯씠釉?異붿텧"""
     path = self.sel_table.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
@@ -53,11 +57,20 @@ def action_extract_tables(self):
     if s:
         self.run_worker("extract_tables", file_path=path, output_path=s)
 
+
 def action_extract_markdown(self):
-    """Markdown 추출"""
+    """Markdown 異붿텧"""
     path = self.sel_md.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
     s, _ = self._choose_save_file(tm.get("save"), "output.md", "Markdown (*.md)")
     if s:
-        self.run_worker("extract_markdown", file_path=path, output_path=s)
+        self.run_worker(
+            "extract_markdown",
+            file_path=path,
+            output_path=s,
+            markdown_mode=self.cmb_md_mode.currentData() or "auto",
+            include_front_matter=self.chk_md_front_matter.isChecked(),
+            include_page_markers=self.chk_md_page_markers.isChecked(),
+            include_asset_placeholders=self.chk_md_asset_placeholders.isChecked(),
+        )

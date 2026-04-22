@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdf-master"
+version = "4.5.5"
+description = "Desktop PDF utility built with PyQt6 and PyMuPDF."
+readme = "README_EN.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "PDF Master" }]
+dependencies = [
+  "PyQt6>=6.5",
+  "PyMuPDF>=1.24",
+]
+
+[project.optional-dependencies]
+ai = [
+  "google-genai>=1.13.0",
+]
+build = [
+  "build>=1.2.2",
+  "PyInstaller>=6.0",
+]
+dev = [
+  "pytest>=8.0.0",
+  "pyright>=1.1.0",
+]
+secure = [
+  "keyring>=25.0.0",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
