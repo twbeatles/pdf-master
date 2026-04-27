@@ -110,7 +110,13 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
         refresh_preview=False,
     ),
     "batch": _spec("batch", output_kind="directory", title_key="mode_batch", required_kwargs=("output_dir", "operation")),
-    "compare_pdfs": _spec("compare_pdfs", output_kind="text", result_kind="report", title_key="mode_compare_pdfs"),
+    "compare_pdfs": _spec(
+        "compare_pdfs",
+        output_kind="text",
+        result_kind="report",
+        title_key="mode_compare_pdfs",
+        result_payload_keys=("diff_count", "results", "report_path", "visual_diff_path"),
+    ),
     "compress": _spec("compress", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="action_compress"),
     "convert_to_img": _spec("convert_to_img", output_kind="directory", title_key="action_convert_to_img"),
     "copy_page_between_docs": _spec("copy_page_between_docs", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_copy_pages"),
@@ -171,7 +177,7 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
     "search_text": _spec("search_text", output_kind="text", title_key="mode_search_text"),
     "set_bookmarks": _spec("set_bookmarks", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_set_bookmarks"),
     "split": _spec("split", output_kind="directory", title_key="action_split", required_kwargs=("output_dir", "page_range")),
-    "split_by_pages": _spec("split_by_pages", output_kind="directory", title_key="mode_split_by_pages", required_kwargs=("output_dir", "pages_per_file")),
+    "split_by_pages": _spec("split_by_pages", output_kind="directory", title_key="mode_split_by_pages", required_kwargs=("output_dir",)),
     "watermark": _spec("watermark", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="action_watermark", required_kwargs=("text",)),
 }
 

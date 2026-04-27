@@ -1,45 +1,25 @@
 import logging
-import os
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
-    QComboBox,
-    QDialog,
-    QFileDialog,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QScrollArea,
-    QSpinBox,
-    QTextEdit,
-    QVBoxLayout,
-    QWidget,
-)
-
-from ...core.i18n import tm
-from ...core.path_utils import normalize_path_key
-from ...core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
-from ..main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
-from ..widgets import FileSelectorWidget, ToastWidget, is_pdf_encrypted
+from ...core.path_utils import make_chat_history_key, parse_chat_history_key
+from ...core.settings import save_settings
+from ..main_window_config import MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
 
 logger = logging.getLogger(__name__)
 
 
 def _chat_history_key(path: object) -> str:
-    return normalize_path_key(path)
+    return make_chat_history_key(path)
 
 
 def _load_chat_histories(self):
-    """??λ맂 梨꾪똿 ?덉뒪?좊━ 濡쒕뱶"""
+    """저장된 채팅 히스토리를 로드하고 path+mtime key로 정규화한다."""
     raw = self.settings.get("chat_histories", {})
     if not isinstance(raw, dict):
         return {}
     cleaned = {}
     for path, entries in raw.items():
-        path_key = _chat_history_key(path)
+        base_path, mtime_ns = parse_chat_history_key(path)
+        path_key = make_chat_history_key(base_path, mtime_ns) if mtime_ns is not None else _chat_history_key(path)
         if not path_key or not isinstance(entries, list):
             continue
         cleaned_entries = []
@@ -60,7 +40,7 @@ def _load_chat_histories(self):
 
 
 def _trim_chat_histories(self):
-    """梨꾪똿 ?덉뒪?좊━ ?ш린 ?쒗븳"""
+    """채팅 히스토리 크기를 제한한다."""
     for path, entries in list(self._chat_histories.items()):
         if not isinstance(entries, list) or not entries:
             del self._chat_histories[path]
@@ -72,15 +52,16 @@ def _trim_chat_histories(self):
 
 
 def _save_chat_histories(self):
-    """梨꾪똿 ?덉뒪?좊━ ???"""
+    """채팅 히스토리를 저장한다."""
     self._trim_chat_histories()
     self.settings["chat_histories"] = self._chat_histories
     save_settings(self.settings)
 
 
 def _record_chat_entry(self, path: str, role: str, content: str):
-    """梨꾪똿 湲곕줉 異붽?"""
-    path_key = _chat_history_key(path)
+    """채팅 기록을 추가한다."""
+    base_path, mtime_ns = parse_chat_history_key(path)
+    path_key = make_chat_history_key(base_path, mtime_ns) if mtime_ns is not None else _chat_history_key(path)
     if not path_key or not content:
         return
     history = self._chat_histories.pop(path_key, [])

@@ -146,7 +146,7 @@ class _WorkerPdfOpsBaseMixin(WorkerHost):
             for idx, path in enumerate(valid_files):
                 self._check_cancelled()  # 취소 체크포인트
                 try:
-                    doc = fitz.open(path)
+                    doc = self._open_pdf_document(path)
                     # v4.4: 암호화 PDF 감지
                     if doc.is_encrypted:
                         logger.warning(f"Encrypted PDF skipped: {path}")
@@ -187,7 +187,7 @@ class _WorkerPdfOpsBaseMixin(WorkerHost):
                 continue
             doc = None
             try:
-                doc = fitz.open(file_path)
+                doc = self._open_pdf_document(file_path)
                 base = os.path.splitext(os.path.basename(file_path))[0]
                 unique_stem = self._build_unique_output_stem(
                     output_dir,
@@ -231,7 +231,7 @@ class _WorkerPdfOpsBaseMixin(WorkerHost):
                 continue
             doc = None
             try:
-                doc = fitz.open(file_path)
+                doc = self._open_pdf_document(file_path)
                 text_chunks = []
 
                 for i in range(len(doc)):
@@ -299,7 +299,7 @@ class _WorkerPdfOpsBaseMixin(WorkerHost):
         output_dir = _as_str(self.kwargs.get('output_dir'))
         page_range = _as_str(self.kwargs.get('page_range'))
 
-        doc_src = fitz.open(file_path)
+        doc_src = self._open_pdf_document(file_path)
         doc_final = fitz.open()
         try:
             total_pages = len(doc_src)
@@ -323,7 +323,7 @@ class _WorkerPdfOpsBaseMixin(WorkerHost):
             out = os.path.join(output_dir, f"{base}_extracted.pdf")
             self._check_cancelled()
             self._atomic_pdf_save(doc_final, out)
-            self.finished_signal.emit(f"✅ 추출 완료!\n{len(pages_to_keep)}페이지 추출됨")
+            self.finished_signal.emit(self._get_msg("msg_pages_extracted", len(pages_to_keep)))
         finally:
             doc_src.close()
             doc_final.close()
@@ -334,7 +334,7 @@ class _WorkerPdfOpsBaseMixin(WorkerHost):
         page_range = _as_str(self.kwargs.get('page_range'))
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             total_pages = len(doc)
             pages_to_delete = self._parse_page_range(page_range, total_pages)
             pages_to_delete = sorted(pages_to_delete, reverse=True)
@@ -347,7 +347,7 @@ class _WorkerPdfOpsBaseMixin(WorkerHost):
                 self._emit_progress_if_due(int((idx + 1) / total_to_delete * 90))
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 삭제 완료!\n{len(pages_to_delete)}페이지 삭제됨")
+            self.finished_signal.emit(self._get_msg("msg_pages_deleted", len(pages_to_delete)))
         finally:
             if doc:
                 doc.close()
@@ -358,7 +358,7 @@ class _WorkerPdfOpsBaseMixin(WorkerHost):
         angle = _as_int(self.kwargs.get('angle'))
         raw_page_indices = self.kwargs.get('page_indices')
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             total_pages = len(doc)
             if total_pages <= 0:
@@ -401,7 +401,7 @@ class _WorkerPdfOpsBaseMixin(WorkerHost):
                 page.set_rotation(page.rotation + angle)
                 self._emit_progress_if_due(int((idx + 1) / total_to_rotate * 100))
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 회전 완료!\n{len(page_indices)}페이지 회전됨 ({angle}°)")
+            self.finished_signal.emit(self._get_msg("msg_pages_rotated", len(page_indices), angle))
         finally:
             doc.close()
 
@@ -463,15 +463,8 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         doc1 = None
         doc2 = None
         try:
-            doc1 = fitz.open(file_path1)
-            doc2 = fitz.open(file_path2)
-
-            if doc1.is_encrypted:
-                self.error_signal.emit(self._get_msg("err_compare_pdf1_encrypted", os.path.basename(file_path1)))
-                return
-            if doc2.is_encrypted:
-                self.error_signal.emit(self._get_msg("err_compare_pdf2_encrypted", os.path.basename(file_path2)))
-                return
+            doc1 = self._open_pdf_document(file_path1)
+            doc2 = self._open_pdf_document(file_path2)
 
             results: list[dict[str, Any]] = []
             diff_pages: list[dict[str, Any]] = []
@@ -526,6 +519,14 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                             paired_sample = f"~ {before} -> {after}"
                             if paired_sample not in samples:
                                 samples.append(paired_sample)
+
+                before_page_sample = _sample_diff_text(lines1, 2)
+                after_page_sample = _sample_diff_text(lines2, 2)
+                if before_page_sample != after_page_sample:
+                    page_sample = f"~ {before_page_sample} -> {after_page_sample}"
+                    if page_sample not in samples:
+                        samples.insert(0, page_sample)
+                        samples = samples[:3]
 
                 if first_added_text and len(samples) < 3:
                     samples.append(f"+ {first_added_text}")
@@ -641,6 +642,12 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             self._atomic_text_save(output_path, "\n".join(report_lines))
 
             diff_count = sum(1 for result in results if result["status"] != "same")
+            self._set_result_payload(
+                diff_count=diff_count,
+                results=results,
+                report_path=output_path,
+                visual_diff_path=visual_diff_path or "",
+            )
             self.finished_signal.emit(
                 self._get_msg(
                     "msg_compare_pdfs_done",
@@ -678,11 +685,11 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
 
         actual_fontsize = int(fontsize * scale_percent / 100)
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             # 입력 검증
             if not text:
-                self.error_signal.emit("워터마크 텍스트가 없습니다.")
+                self.error_signal.emit(self._get_msg("err_watermark_text_required"))
                 return
 
             total_pages = max(1, len(doc))
@@ -740,8 +747,8 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                         )
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))
             self._atomic_pdf_save(doc, output_path)
-            layer_name = "배경" if layer == 'background' else "전경"
-            self.finished_signal.emit(f"✅ 워터마크 적용 완료! ({layer_name}, {int(opacity*100)}%)")
+            layer_name = self._get_msg("msg_layer_background" if layer == 'background' else "msg_layer_foreground")
+            self.finished_signal.emit(self._get_msg("msg_watermark_applied", layer_name, int(opacity * 100)))
         finally:
             doc.close()
 
@@ -750,7 +757,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         output_path = _as_str(self.kwargs.get('output_path'))
         new_meta = _as_dict(self.kwargs.get('metadata'))
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             meta = cast(dict[str, Any], doc.metadata or {})
             for k, v in new_meta.items():
@@ -759,7 +766,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             doc.set_metadata(meta)
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 메타데이터 저장 완료!")
+            self.finished_signal.emit(self._get_msg("msg_metadata_saved"))
         finally:
             doc.close()
 
@@ -770,10 +777,10 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         doc = None
         try:
             if not pw:
-                self.error_signal.emit("비밀번호가 설정되지 않았습니다.")
+                self.error_signal.emit(self._get_msg("err_password_required"))
                 return
 
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             perm = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
             self._atomic_pdf_save(
                 doc,
@@ -784,7 +791,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 permissions=perm,
             )
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 암호화 완료!")
+            self.finished_signal.emit(self._get_msg("msg_encryption_success"))
         finally:
             if doc:
                 doc.close()
@@ -797,14 +804,14 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
 
         # 입력 유효성 검사
         if not file_path or not os.path.exists(file_path):
-            self.error_signal.emit("입력 파일이 존재하지 않습니다.")
+            self.error_signal.emit(self._get_msg("err_input_file_missing"))
             return
         if not output_path:
-            self.error_signal.emit("출력 경로가 지정되지 않았습니다.")
+            self.error_signal.emit(self._get_msg("err_output_path_missing"))
             return
 
         original_size = os.path.getsize(file_path)
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             total_pages = len(doc)
             save_profile = normalize_save_profile(
@@ -834,7 +841,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         ratio = (1 - new_size / original_size) * 100 if original_size > 0 else 0
         self._emit_progress_if_due(100)
         self.finished_signal.emit(
-            f"Compression completed ({save_profile})\n{original_size//1024}KB -> {new_size//1024}KB ({ratio:.1f}% reduced)"
+            self._get_msg("msg_compression_done", save_profile, original_size // 1024, new_size // 1024, ratio)
         )
 
     def images_to_pdf(self):
@@ -857,7 +864,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                     img_pdf.close()
                 self._emit_progress_if_due(int((idx + 1) / len(files) * 100))
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 이미지 → PDF 변환 완료!\n{len(files)}개 이미지 → 1개 PDF")
+            self.finished_signal.emit(self._get_msg("msg_images_to_pdf_done", len(files)))
         finally:
             if doc:
                 doc.close()
@@ -871,7 +878,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         doc_src = None
         doc_out = None
         try:
-            doc_src = fitz.open(file_path)
+            doc_src = self._open_pdf_document(file_path)
             doc_out = fitz.open()
 
             for idx, page_num in enumerate(page_order):
@@ -880,7 +887,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((idx + 1) / len(page_order) * 100))
 
             self._atomic_pdf_save(doc_out, output_path)
-            self.finished_signal.emit(f"✅ 페이지 순서 변경 완료!\n{len(page_order)}페이지 재정렬됨")
+            self.finished_signal.emit(self._get_msg("msg_reorder_done", len(page_order)))
         finally:
             if doc_out:
                 doc_out.close()
@@ -896,7 +903,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
 
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             base_name = os.path.splitext(os.path.basename(file_path))[0]
             page_count = len(doc)
 
@@ -914,12 +921,12 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                     finally:
                         new_doc.close()
                     self._emit_progress_if_due(int((i + 1) / page_count * 100))
-                self.finished_signal.emit(f"✅ PDF 분할 완료!\n{page_count}개 파일 생성됨")
+                self.finished_signal.emit(self._get_msg("msg_split_done", page_count))
             else:
                 count = 0
                 range_list = [r.strip() for r in ranges.split(',') if r.strip()]
                 if not range_list:
-                    self.error_signal.emit("분할할 범위가 지정되지 않았습니다.")
+                    self.error_signal.emit(self._get_msg("err_split_ranges_required"))
                     return
 
                 total_ranges = len(range_list)
@@ -964,9 +971,9 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                         continue
 
                 if count == 0:
-                    self.error_signal.emit("유효한 페이지 범위가 없습니다.")
+                    self.error_signal.emit(self._get_msg("err_split_no_valid_ranges"))
                 else:
-                    self.finished_signal.emit(f"✅ PDF 분할 완료!\n{count}개 파일 생성됨")
+                    self.finished_signal.emit(self._get_msg("msg_split_done", count))
         finally:
             if doc:
                 doc.close()
@@ -997,7 +1004,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                     num -= v
             return roman
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             total = len(doc)
 
@@ -1047,8 +1054,10 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((i + 1) / total * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            format_type = "로마 숫자" if use_roman else "아라비아 숫자"
-            self.finished_signal.emit(f"✅ 페이지 번호 삽입 완료! ({format_type})\n{total}페이지")
+            format_type = self._get_msg(
+                "msg_page_number_format_roman" if use_roman else "msg_page_number_format_arabic"
+            )
+            self.finished_signal.emit(self._get_msg("msg_page_numbers_done", format_type, total))
         finally:
             doc.close()
 
@@ -1058,7 +1067,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         output_path = _as_str(self.kwargs.get('output_path'))
         position = _as_int(self.kwargs.get('position'), 0)
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             if position < 0 or position > len(doc):
                 self.error_signal.emit(
@@ -1069,7 +1078,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             doc.insert_page(position, width=width, height=height)
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 빈 페이지 삽입 완료!\n위치: {position + 1}페이지")
+            self.finished_signal.emit(self._get_msg("msg_blank_page_inserted", position + 1))
         finally:
             doc.close()
 
@@ -1081,15 +1090,15 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         target_page = _as_int(self.kwargs.get('target_page'), 1) - 1
         source_page = _as_int(self.kwargs.get('source_page'), 1) - 1
 
-        doc = fitz.open(file_path)
-        replace_doc = fitz.open(replace_path)
+        doc = self._open_pdf_document(file_path)
+        replace_doc = self._open_pdf_document(replace_path)
         try:
             # 입력 검증
             if target_page < 0 or target_page >= len(doc):
-                self.error_signal.emit(f"대상 페이지 번호가 유효하지 않습니다: {target_page + 1}")
+                self.error_signal.emit(self._get_msg("err_target_page_invalid", target_page + 1))
                 return
             if source_page < 0 or source_page >= len(replace_doc):
-                self.error_signal.emit(f"소스 페이지 번호가 유효하지 않습니다: {source_page + 1}")
+                self.error_signal.emit(self._get_msg("err_source_page_invalid", source_page + 1))
                 return
 
             doc.delete_page(target_page)
@@ -1097,7 +1106,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
 
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 페이지 교체 완료!")
+            self.finished_signal.emit(self._get_msg("msg_page_replaced"))
         finally:
             replace_doc.close()
             doc.close()
@@ -1114,7 +1123,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         img_height = _as_int(self.kwargs.get('height'), 150)
         opacity = _as_float(self.kwargs.get('opacity'), 1.0)  # 0.0 ~ 1.0
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             total_pages = len(doc)
             for i in range(total_pages):
@@ -1144,7 +1153,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
 
             self._atomic_pdf_save(doc, output_path)
             opacity_pct = int(opacity * 100) if 0 <= opacity <= 1 else 100
-            self.finished_signal.emit(f"✅ 이미지 워터마크 완료! ({img_width}x{img_height}, {opacity_pct}%)")
+            self.finished_signal.emit(self._get_msg("msg_image_watermark_done", img_width, img_height, opacity_pct))
         finally:
             doc.close()
 
@@ -1154,7 +1163,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         output_path = _as_str(self.kwargs.get('output_path'))
         margins = _as_dict(self.kwargs.get('margins') or {'left': 0, 'top': 0, 'right': 0, 'bottom': 0})
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             total_pages = len(doc)
             for i in range(total_pages):
@@ -1169,7 +1178,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ PDF 자르기 완료!")
+            self.finished_signal.emit(self._get_msg("msg_crop_done"))
         finally:
             doc.close()
 
@@ -1181,7 +1190,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         position = _as_str(self.kwargs.get('position'), 'top-right')
         color = self.kwargs.get('color', (1, 0, 0))  # 빨강
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             total_pages = len(doc)
             for i in range(total_pages):
@@ -1204,7 +1213,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 스탬프 추가 완료!")
+            self.finished_signal.emit(self._get_msg("msg_stamp_done"))
         finally:
             doc.close()
 
@@ -1213,7 +1222,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         file_path = _as_str(self.kwargs.get('file_path'))
         output_path = _as_str(self.kwargs.get('output_path'))
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         all_links = []
         try:
             total_pages = len(doc)
@@ -1231,19 +1240,17 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         finally:
             doc.close()
 
-        # 결과 파일로 저장
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(f"# {os.path.basename(file_path)} - 링크 목록\n\n")
-            for link in all_links:
-                f.write(f"Page {link['page']}: {link['url']}\n")
+        body = [f"# {os.path.basename(file_path)} - Link List", ""]
+        body.extend(f"Page {link['page']}: {link['url']}" for link in all_links)
+        self._atomic_text_save(output_path, "\n".join(body).rstrip() + "\n")
 
-        self.finished_signal.emit(f"✅ 링크 추출 완료!\n{len(all_links)}개 링크 발견")
+        self.finished_signal.emit(self._get_msg("msg_links_extracted", len(all_links)))
 
     def get_form_fields(self):
         """PDF 양식 필드 목록 반환"""
         file_path = _as_str(self.kwargs.get('file_path'))
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         fields = []
 
         try:
@@ -1267,7 +1274,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             # 결과를 kwargs에 저장 (메인 스레드에서 접근)
             self.kwargs['result_fields'] = fields
             self._set_result_payload(fields=fields)
-            self.finished_signal.emit(f"✅ 양식 필드 감지 완료!\n{len(fields)}개 필드 발견")
+            self.finished_signal.emit(self._get_msg("msg_form_fields_done", len(fields)))
         finally:
             doc.close()
 
@@ -1277,7 +1284,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         output_path = _as_str(self.kwargs.get('output_path'))
         field_values = _as_dict(self.kwargs.get('field_values'))
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         filled_count = 0
 
         try:
@@ -1297,195 +1304,13 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             self._check_cancelled()
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 양식 작성 완료!\n{filled_count}개 필드 채움")
+            self.finished_signal.emit(self._get_msg("msg_form_filled", filled_count))
         finally:
             doc.close()
 
     def compare_pdfs(self):
         """두 PDF 비교"""
-        import difflib
-
-        file_path1 = _as_str(self.kwargs.get('file_path1'))
-        file_path2 = _as_str(self.kwargs.get('file_path2'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        generate_visual_diff = _as_bool(self.kwargs.get('generate_visual_diff'), False)  # v3.2: 시각적 diff PDF 생성
-
-        doc1 = None
-        doc2 = None
-
-        try:
-            doc1 = fitz.open(file_path1)
-            doc2 = fitz.open(file_path2)
-
-            # v4.5: 암호화된 PDF 체크
-            if doc1.is_encrypted:
-                self.error_signal.emit(
-                    self._get_msg("err_compare_pdf1_encrypted", os.path.basename(file_path1))
-                )
-                return
-            if doc2.is_encrypted:
-                self.error_signal.emit(
-                    self._get_msg("err_compare_pdf2_encrypted", os.path.basename(file_path2))
-                )
-                return
-
-            results: list[dict[str, Any]] = []
-            diff_pages = []  # v3.2: 차이가 발견된 페이지 정보
-            max_pages = max(len(doc1), len(doc2))
-
-            for i in range(max_pages):
-                self._check_cancelled()  # v4.5: 취소 체크포인트
-                self._emit_progress_if_due(int((i + 1) / max_pages * 100))
-
-                if i >= len(doc1):
-                    results.append({"page": i + 1, "status": "missing_file1"})
-                    continue
-                if i >= len(doc2):
-                    results.append({"page": i + 1, "status": "missing_file2"})
-                    continue
-
-                text1 = _as_str(doc1[i].get_text())
-                text2 = _as_str(doc2[i].get_text())
-
-                if text1 != text2:
-                    lines1 = text1.splitlines()
-                    lines2 = text2.splitlines()
-                    matcher = difflib.SequenceMatcher(a=lines1, b=lines2)
-                    added = 0
-                    deleted = 0
-                    modified = 0
-                    first_added_text = ""
-                    first_deleted_text = ""
-                    samples: list[str] = []
-
-                    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-                        if tag == "equal":
-                            continue
-                        if tag == "insert":
-                            added += j2 - j1
-                            if not first_added_text:
-                                first_added_text = _sample_diff_text(lines2[j1:j2])
-                        elif tag == "delete":
-                            deleted += i2 - i1
-                            if not first_deleted_text:
-                                first_deleted_text = _sample_diff_text(lines1[i1:i2])
-                        elif tag == "replace":
-                            modified += max(i2 - i1, j2 - j1)
-                            if len(samples) < 3:
-                                before = _sample_diff_text(lines1[i1:i2], 2)
-                                after = _sample_diff_text(lines2[j1:j2], 2)
-                                paired_sample = f"~ {before} -> {after}"
-                                if paired_sample not in samples:
-                                    samples.append(paired_sample)
-
-                    if added and deleted and modified == 0 and len(samples) < 3:
-                        paired_sample = f"~ {_sample_diff_text(lines1, 2)} -> {_sample_diff_text(lines2, 2)}"
-                        if paired_sample not in samples:
-                            samples.append(paired_sample)
-
-                    if first_added_text and len(samples) < 3:
-                        added_sample = f"+ {first_added_text}"
-                        if added_sample not in samples:
-                            samples.append(added_sample)
-                    if first_deleted_text and len(samples) < 3:
-                        deleted_sample = f"- {first_deleted_text}"
-                        if deleted_sample not in samples:
-                            samples.append(deleted_sample)
-
-                    if added or deleted or modified:
-                        results.append(
-                            {
-                                "page": i + 1,
-                                "status": "diff",
-                                "added": added,
-                                "deleted": deleted,
-                                "modified": modified,
-                                "samples": samples,
-                            }
-                        )
-                        diff_pages.append(i)
-
-            # v3.2: 시각적 diff PDF 생성
-            visual_diff_path = None
-            if generate_visual_diff and diff_pages:
-                base_output_path, _ = os.path.splitext(output_path)
-                visual_diff_path = f"{base_output_path}_visual_diff.pdf"
-                diff_doc = fitz.open()
-
-                for page_idx in diff_pages:
-                    if page_idx < len(doc1):
-                        page1 = doc1[page_idx]
-                        # 페이지 복사
-                        new_page = diff_doc.new_page(width=page1.rect.width, height=page1.rect.height)
-                        new_page.show_pdf_page(new_page.rect, doc1, page_idx)
-
-                        # 파일2에서 다른 텍스트 영역 찾아서 하이라이트
-                        if page_idx < len(doc2):
-                            text1_blocks = page1.get_text("blocks")
-                            page2 = doc2[page_idx]
-                            text2_blocks_content = set(
-                                b[4] for b in page2.get_text("blocks") if b[6] == 0
-                            )
-
-                            for block in text1_blocks:
-                                if block[6] == 0:  # 텍스트 블록
-                                    block_text = block[4]
-                                    if block_text not in text2_blocks_content:
-                                        # 빨간색 하이라이트 추가
-                                        rect = fitz.Rect(block[:4])
-                                        new_page.draw_rect(rect, color=(1, 0, 0), width=2)
-                                        # 빨간색 반투명 오버레이
-                                        shape = new_page.new_shape()
-                                        shape.draw_rect(rect)
-                                        shape.finish(color=(1, 0, 0), fill=(1, 0.8, 0.8), fill_opacity=0.3)
-                                        shape.commit()
-
-                if len(diff_doc) > 0:
-                    self._atomic_pdf_save(diff_doc, visual_diff_path)
-                diff_doc.close()
-
-            # 결과 저장
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write("# PDF 비교 결과\n\n")
-                f.write(f"파일1: {os.path.basename(file_path1)}\n")
-                f.write(f"파일2: {os.path.basename(file_path2)}\n\n")
-                if results:
-                    for result in results:
-                        page = result["page"]
-                        status = result["status"]
-                        if status == "missing_file1":
-                            f.write(f"## 페이지 {page}\n")
-                            f.write("- 파일1에 페이지가 없습니다.\n\n")
-                        elif status == "missing_file2":
-                            f.write(f"## 페이지 {page}\n")
-                            f.write("- 파일2에 페이지가 없습니다.\n\n")
-                        else:
-                            f.write(f"## 페이지 {page}\n")
-                            f.write(f"- 추가: {result['added']}줄\n")
-                            f.write(f"- 삭제: {result['deleted']}줄\n")
-                            f.write(f"- 변경: {result['modified']}줄\n")
-                            for sample in result.get("samples", []):
-                                f.write(f"- 예시: {sample}\n")
-                            f.write("\n")
-                else:
-                    f.write("두 파일의 텍스트 내용이 동일합니다.\n")
-                if visual_diff_path:
-                    f.write(f"\n📊 시각적 비교 PDF: {os.path.basename(visual_diff_path)}\n")
-
-            diff_count = sum(1 for result in results if result["status"] != "same")
-            self.finished_signal.emit(
-                self._get_msg(
-                    "msg_compare_pdfs_done",
-                    diff_count,
-                    self._get_msg("msg_compare_pdfs_visual_diff_suffix") if visual_diff_path else "",
-                )
-            )
-
-        finally:
-            if doc1:
-                doc1.close()
-            if doc2:
-                doc2.close()
+        return self._legacy_compare_pdfs()
 
     def duplicate_page(self):
         """페이지 복제"""
@@ -1494,7 +1319,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         page_num = _as_int(self.kwargs.get('page_num'), 0)  # 0-indexed
         count = _as_int(self.kwargs.get('count'), 1)
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             resolved_page_num = self._resolve_page_index(page_num, len(doc))
             if resolved_page_num is None:
@@ -1505,7 +1330,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((i + 1) / count * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 페이지 복제 완료!\n{resolved_page_num + 1}페이지를 {count}번 복제")
+            self.finished_signal.emit(self._get_msg("msg_page_duplicated", resolved_page_num + 1, count))
         finally:
             doc.close()
 
@@ -1514,7 +1339,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         file_path = _as_str(self.kwargs.get('file_path'))
         output_path = _as_str(self.kwargs.get('output_path'))
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             page_count = len(doc)
 
@@ -1522,7 +1347,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             if page_count <= 1:
                 self._atomic_pdf_save(doc, output_path)
                 self._emit_progress_if_due(100)
-                self.finished_signal.emit("✅ 역순 정렬 완료!\n1페이지 (변경 없음)")
+                self.finished_signal.emit(self._get_msg("msg_reverse_done_single"))
                 return
 
             # 역순으로 페이지 이동
@@ -1532,7 +1357,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((i + 1) / (page_count - 1) * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 역순 정렬 완료!\n{page_count}페이지")
+            self.finished_signal.emit(self._get_msg("msg_reverse_done", page_count))
         finally:
             doc.close()
 
@@ -1543,7 +1368,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         target_size = _as_str(self.kwargs.get('target_size'), 'A4')
 
         target_w, target_h = PAGE_SIZES.get(target_size, DEFAULT_PAGE_SIZE)
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         resized_doc = fitz.open()
         try:
             metadata = cast(dict[str, Any], doc.metadata or {})
@@ -1586,7 +1411,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         include_info = _as_bool(self.kwargs.get('include_info'), True)  # v3.2: 상세 정보 포함
         deduplicate = _as_bool(self.kwargs.get('deduplicate'), True)  # v3.2: 중복 제거
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         image_count = 0
         image_info_list = []  # v3.2: 이미지 정보 목록
         seen_xrefs = set()  # v3.2: 중복 추적
@@ -1611,11 +1436,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                         image_ext = base_image["ext"]
 
                         image_path = os.path.join(output_dir, f"page{page_num + 1}_img{img_idx + 1}.{image_ext}")
-                        image_path_exists = os.path.exists(image_path)
-                        with open(image_path, "wb") as f:
-                            f.write(image_bytes)
-                        if not image_path_exists:
-                            self._record_created_output_path(image_path)
+                        self._atomic_binary_save(image_path, image_bytes)
 
                         # v3.2: 상세 정보 수집
                         if include_info:
@@ -1641,16 +1462,15 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             # v3.2: 정보 파일 저장
             if include_info and image_info_list:
                 info_path = os.path.join(output_dir, "_images_info.json")
-                info_path_exists = os.path.exists(info_path)
-                with open(info_path, "w", encoding="utf-8") as f:
-                    json.dump(image_info_list, f, indent=2, ensure_ascii=False)
-                if not info_path_exists:
-                    self._record_created_output_path(info_path)
+                self._atomic_text_save(
+                    info_path,
+                    json.dumps(image_info_list, indent=2, ensure_ascii=False) + "\n",
+                )
 
         finally:
             doc.close()
-        dedup_msg = " (중복 제거됨)" if deduplicate else ""
-        self.finished_signal.emit(f"✅ 이미지 추출 완료!{dedup_msg}\n{image_count}개 이미지 저장됨")
+        dedup_msg = self._get_msg("msg_dedup_removed_suffix") if deduplicate else ""
+        self.finished_signal.emit(self._get_msg("msg_images_extracted", dedup_msg, image_count))
 
     def insert_signature(self):
         """전자 서명 이미지 삽입"""
@@ -1663,7 +1483,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         signer_name = _as_str(self.kwargs.get('signer_name'))  # v3.2: 서명자 이름
         add_timestamp = _as_bool(self.kwargs.get('add_timestamp'), False)  # v3.2: 타임스탬프
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             total_pages = len(doc)
             resolved_page_num = self._resolve_page_index(
@@ -1729,10 +1549,12 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             self._atomic_pdf_save(doc, output_path)
             extra_info = ""
             if signer_name:
-                extra_info += f" (서명자: {signer_name})"
+                extra_info += self._get_msg("msg_signature_signer_suffix", signer_name)
             if add_timestamp:
-                extra_info += " +타임스탬프"
-            self.finished_signal.emit(f"✅ 전자 서명 삽입 완료!{extra_info}\n{resolved_page_num + 1}페이지")
+                extra_info += self._get_msg("msg_signature_timestamp_suffix")
+            self.finished_signal.emit(
+                self._get_msg("msg_signature_inserted", extra_info, resolved_page_num + 1)
+            )
         finally:
             doc.close()
 
@@ -1743,7 +1565,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         output_path = _as_str(self.kwargs.get('output_path'))
         color = self.kwargs.get('color', (1, 1, 0))  # 기본 노란색
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         highlight_count = 0
         try:
             total_pages = len(doc)
@@ -1759,7 +1581,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 하이라이트 완료!\n'{search_term}': {highlight_count}개 표시")
+            self.finished_signal.emit(self._get_msg("msg_highlight_done", search_term, highlight_count))
         finally:
             doc.close()
 
@@ -1771,14 +1593,14 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         page_num = _as_int(self.kwargs.get('page_num'), 0)
         shapes = cast(list[dict[str, Any]], self.kwargs.get('shapes') or [])  # [{type, params, color, width}]
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             if not shapes:
-                self.error_signal.emit("도형 데이터가 없습니다.")
+                self.error_signal.emit(self._get_msg("err_shapes_required"))
                 return
             # v4.5: 페이지 번호 유효성 검사
             if page_num < 0 or page_num >= len(doc):
-                self.error_signal.emit(f"페이지 번호 오류: {page_num + 1} (전체 {len(doc)}페이지)")
+                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc))))
                 return
 
             page = doc[page_num]
@@ -1810,7 +1632,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
 
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ {len(shapes)}개 도형 추가 완료!")
+            self.finished_signal.emit(self._get_msg("msg_shapes_added", len(shapes)))
         finally:
             doc.close()
 
@@ -1832,13 +1654,13 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
 
         # v4.5: target 유효성 검사
         if target is None or (isinstance(target, str) and not target.strip()):
-            self.error_signal.emit("링크 대상이 지정되지 않았습니다.")
+            self.error_signal.emit(self._get_msg("err_link_target_required"))
             return
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             if page_num < 0 or page_num >= len(doc):
-                self.error_signal.emit(f"페이지 번호 오류: {page_num + 1}")
+                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc))))
                 return
 
             page = doc[page_num]
@@ -1877,15 +1699,15 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             page.insert_link(link)
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 링크 추가 완료!\n페이지 {page_num + 1}")
+            self.finished_signal.emit(self._get_msg("msg_link_added", page_num + 1))
         finally:
             doc.close()
 
     def list_attachments(self):
         """PDF 첨부 파일 목록"""
-        file_path = self.kwargs.get('file_path')
+        file_path = _as_str(self.kwargs.get('file_path'))
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         attachments = []
 
         try:
@@ -1902,7 +1724,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             self.kwargs['result_attachments'] = attachments
             self._set_result_payload(attachments=attachments)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 첨부 파일 목록!\n{len(attachments)}개 발견")
+            self.finished_signal.emit(self._get_msg("msg_attachments_listed", len(attachments)))
         finally:
             doc.close()
 
@@ -1914,10 +1736,10 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         fill_color = self.kwargs.get('fill_color', (0, 0, 0))  # 검정색 기본
 
         if not search_term:
-            self.error_signal.emit("삭제할 텍스트가 입력되지 않았습니다.")
+            self.error_signal.emit(self._get_msg("err_redact_text_required"))
             return
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             redact_count = 0
             total_pages = len(doc)
@@ -1933,7 +1755,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ {redact_count}개 영역 교정 완료!")
+            self.finished_signal.emit(self._get_msg("msg_redact_done", redact_count))
         finally:
             doc.close()
 
@@ -1948,7 +1770,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         include_page_markers = _as_bool(self.kwargs.get('include_page_markers'), True)
         include_asset_placeholders = _as_bool(self.kwargs.get('include_asset_placeholders'), False)
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         markdown_chunks: list[str] = []
         total_pages = 0
 
@@ -1992,10 +1814,9 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             doc.close()
 
         markdown_text = "".join(markdown_chunks)
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(markdown_text)
+        self._atomic_text_save(output_path, markdown_text)
 
-        self.finished_signal.emit(f"✅ Markdown 추출 완료!\n{total_pages}페이지")
+        self.finished_signal.emit(self._get_msg("msg_markdown_extracted", total_pages))
 
     def copy_page_between_docs(self):
         """다른 PDF에서 페이지 복사"""
@@ -2007,8 +1828,8 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         page_range = self.kwargs.get('page_range', '')
         insert_at = self.kwargs.get('insert_at', -1)  # 삽입 위치 (-1 = 끝)
 
-        source_doc = fitz.open(source_path)
-        target_doc = fitz.open(target_path)
+        source_doc = self._open_pdf_document(source_path)
+        target_doc = self._open_pdf_document(target_path)
 
         try:
             if source_pages is None:
@@ -2061,7 +1882,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((i + 1) / total_to_copy * 100))
 
             self._atomic_pdf_save(target_doc, output_path)
-            self.finished_signal.emit(f"✅ {inserted_count}페이지 복사 완료!")
+            self.finished_signal.emit(self._get_msg("msg_pages_copied", inserted_count))
         finally:
             source_doc.close()
             target_doc.close()
@@ -2079,7 +1900,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             logger.warning(f"Invalid color format, using default")
             color = (1, 1, 0.9)
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             total_pages = len(doc)
             for page_num in range(len(doc)):
@@ -2093,7 +1914,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 배경색 추가 완료!\n{len(doc)}페이지")
+            self.finished_signal.emit(self._get_msg("msg_background_added", len(doc)))
         finally:
             doc.close()
 
@@ -2109,7 +1930,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             self.error_signal.emit(self._get_msg("err_invalid_markup_type", str(markup_type)))
             return
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         count = 0
         try:
             total_pages = len(doc)
@@ -2131,8 +1952,10 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            markup_name = {'underline': '밑줄', 'strikeout': '취소선', 'squiggly': '물결선'}.get(markup_type, markup_type)
-            self.finished_signal.emit(f"✅ {markup_name} 추가 완료!\n'{search_term}': {count}개")
+            markup_name = self._get_msg(f"msg_markup_label_{markup_type}")
+            if markup_name == f"msg_markup_label_{markup_type}":
+                markup_name = markup_type
+            self.finished_signal.emit(self._get_msg("msg_text_markup_added", markup_name, search_term, count))
         finally:
             doc.close()
 
@@ -2148,11 +1971,11 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         color = tuple(self.kwargs.get('color', [0, 0, 0]))
         align = _as_int(self.kwargs.get('align'), 0)  # 0=left, 1=center, 2=right
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             # 유효성 검사 추가
             if page_num < 0 or page_num >= len(doc):
-                self.error_signal.emit(f"페이지 번호 오류: {page_num + 1}")
+                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc))))
                 return
 
             page = doc[page_num]
@@ -2162,7 +1985,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
 
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(f"✅ 텍스트 상자 삽입 완료!\n페이지 {page_num + 1}")
+            self.finished_signal.emit(self._get_msg("msg_textbox_inserted", page_num + 1))
         finally:
             doc.close()
 
@@ -2177,7 +2000,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         title = _as_str(self.kwargs.get('title'), '메모')  # 노트 제목
         icon = _as_str(self.kwargs.get('icon'), 'Note')  # Note, Comment, Key, Help, Insert, Paragraph
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             resolved_page_num = self._resolve_page_index(page_num, len(doc))
             if resolved_page_num is None:
@@ -2194,7 +2017,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
 
             self._emit_progress_if_due(100)
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 스티키 노트 추가 완료!\n페이지 {resolved_page_num + 1}, 아이콘: {icon}")
+            self.finished_signal.emit(self._get_msg("msg_sticky_note_added", resolved_page_num + 1, icon))
         finally:
             doc.close()
 
@@ -2207,7 +2030,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         color = self.kwargs.get('color', (0, 0, 1))  # 기본 파란색
         width = _as_int(self.kwargs.get('width'), 2)  # 선 두께
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             resolved_page_num = self._resolve_page_index(page_num, len(doc))
             if resolved_page_num is None:
@@ -2216,7 +2039,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             page = doc[resolved_page_num]
 
             if not points:
-                self.error_signal.emit("좌표 포인트가 2개 이상 필요합니다.")
+                self.error_signal.emit(self._get_msg("err_ink_points_required"))
                 return
 
             try:
@@ -2239,7 +2062,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             self._emit_progress_if_due(100)
             self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(
-                f"✅ 프리핸드 드로잉 추가 완료!\n페이지 {resolved_page_num + 1}, {len(normalized_points)}개 포인트"
+                self._get_msg("msg_ink_annotation_added", resolved_page_num + 1, len(normalized_points))
             )
         finally:
             doc.close()
@@ -2253,7 +2076,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
         color = self.kwargs.get('color', (0, 0, 0))  # 기본 검정
         width = _as_int(self.kwargs.get('width'), 2)
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         try:
             total_pages = len(doc)
             resolved_page_num = self._resolve_page_index(
@@ -2267,7 +2090,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             page = doc[resolved_page_num]
 
             if not strokes:
-                self.error_signal.emit("드로잉 데이터가 없습니다.")
+                self.error_signal.emit(self._get_msg("msg_stroke_required"))
                 return
 
             all_strokes: list[list[list[float]]] = []
@@ -2280,7 +2103,7 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
                     return
 
             if not all_strokes:
-                self.error_signal.emit("유효한 획이 없습니다.")
+                self.error_signal.emit(self._get_msg("err_no_valid_strokes"))
                 return
 
             try:
@@ -2297,7 +2120,9 @@ class WorkerPdfOpsMixin(_WorkerPdfOpsBaseMixin):
             self._check_cancelled()
             self._emit_progress_if_due(100)
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(f"✅ 프리핸드 서명 추가 완료!\n페이지 {resolved_page_num + 1}, {len(all_strokes)}개 획")
+            self.finished_signal.emit(
+                self._get_msg("msg_freehand_signature_added", resolved_page_num + 1, len(all_strokes))
+            )
         finally:
             doc.close()
 

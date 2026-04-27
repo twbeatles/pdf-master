@@ -18,9 +18,7 @@ class WorkerSecurityOpsMixin(WorkerHost):
         password = _as_str(self.kwargs.get("password"))
         doc = None
         try:
-            doc = fitz.open(file_path)
-            if doc.is_encrypted and not doc.authenticate(password):
-                raise ValueError(self._get_msg("err_wrong_password"))
+            doc = self._open_pdf_document(file_path, password=password)
 
             self._atomic_pdf_save(doc, output_path, save_profile="compact", garbage=4, deflate=True)
         finally:

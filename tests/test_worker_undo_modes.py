@@ -164,6 +164,37 @@ def test_run_worker_skips_pending_undo_for_non_mutating_mode(monkeypatch):
     assert dummy._pending_undo is None
 
 
+def test_worker_password_mapping_is_augmented_from_authenticated_preview(tmp_path):
+    require_pyqt6()
+    from src.core.path_utils import normalize_path_key
+    from src.ui.main_window_worker import MainWindowWorkerMixin
+
+    pdf_path = tmp_path / "locked.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\n")
+    path_key = normalize_path_key(str(pdf_path))
+
+    class Dummy(MainWindowWorkerMixin):
+        def __init__(self):
+            self._current_preview_path = ""
+            self._current_preview_password = ""
+
+    dummy = Dummy()
+    dummy._current_preview_path = str(pdf_path)
+    dummy._current_preview_password = "preview-secret"
+
+    kwargs: dict[str, object] = {"file_path": str(pdf_path)}
+    dummy._augment_worker_passwords_from_preview(kwargs)
+    passwords = kwargs["passwords"]
+    assert isinstance(passwords, dict)
+    assert passwords[path_key] == "preview-secret"
+
+    explicit: dict[str, object] = {"file_path": str(pdf_path), "passwords": {path_key: "explicit-secret"}}
+    dummy._augment_worker_passwords_from_preview(explicit)
+    explicit_passwords = explicit["passwords"]
+    assert isinstance(explicit_passwords, dict)
+    assert explicit_passwords[path_key] == "explicit-secret"
+
+
 class _SignalStub:
     def connect(self, *_args, **_kwargs):
         return None

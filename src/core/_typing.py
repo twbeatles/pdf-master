@@ -42,6 +42,12 @@ class WorkerHost:
     ) -> None:
         ...
 
+    def _atomic_binary_save(self, output_path: str, data: bytes) -> None:
+        ...
+
+    def _open_pdf_document(self, file_path: str, password: str | None = None) -> Any:
+        ...
+
     def _build_safe_attachment_output_path(
         self,
         output_dir: str,

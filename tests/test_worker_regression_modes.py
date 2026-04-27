@@ -75,6 +75,39 @@ def test_protect_and_decrypt_roundtrip(tmp_path):
         decrypted_doc.close()
 
 
+def test_worker_uses_password_mapping_for_encrypted_input(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.path_utils import normalize_path_key
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    encrypted = tmp_path / "encrypted.pdf"
+    rotated = tmp_path / "rotated.pdf"
+    _make_pdf(src, ["PAGE_1"])
+
+    protect_worker = WorkerThread(
+        "protect",
+        file_path=str(src),
+        output_path=str(encrypted),
+        password="secret",
+    )
+    protect_worker.protect()
+
+    rotate_worker = WorkerThread(
+        "rotate",
+        file_path=str(encrypted),
+        output_path=str(rotated),
+        angle=90,
+        passwords={normalize_path_key(str(encrypted)): "secret"},
+    )
+    errors = []
+    rotate_worker.error_signal.connect(lambda msg: errors.append(msg))
+    rotate_worker.rotate()
+
+    assert not errors
+    assert rotated.exists()
+
+
 def test_reorder_rewrites_page_order(tmp_path):
     require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
@@ -116,6 +149,34 @@ def test_split_by_pages_writes_individual_outputs(tmp_path):
     worker.split_by_pages()
 
     outputs = sorted(path.name for path in out_dir.glob("*.pdf"))
+    assert outputs == ["src_page_1.pdf", "src_page_2.pdf"]
+
+
+def test_split_by_pages_worker_run_uses_current_ui_contract(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out_dir = tmp_path / "split_run"
+    out_dir.mkdir()
+    _make_pdf(src, ["ONE", "TWO"])
+
+    worker = WorkerThread(
+        "split_by_pages",
+        file_path=str(src),
+        output_dir=str(out_dir),
+        split_mode="each",
+    )
+    errors = []
+    finished = []
+    worker.error_signal.connect(lambda msg: errors.append(msg))
+    worker.finished_signal.connect(lambda msg: finished.append(msg))
+
+    worker.run()
+
+    outputs = sorted(path.name for path in out_dir.glob("*.pdf"))
+    assert not errors
+    assert finished
     assert outputs == ["src_page_1.pdf", "src_page_2.pdf"]
 
 

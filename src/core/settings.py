@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .constants import MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
 from .optional_deps import KEYRING_AVAILABLE, keyring
-from .path_utils import normalize_path_key
+from .path_utils import make_chat_history_key, normalize_path_key, parse_chat_history_key
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -40,10 +40,17 @@ def _normalize_chat_histories(value) -> dict:
         return {}
     normalized: dict[str, list[dict[str, str]]] = {}
     for raw_path, raw_entries in value.items():
-        path_key = normalize_path_key(raw_path)
-        if not path_key or not isinstance(raw_entries, list):
+        path_key, version_mtime_ns = parse_chat_history_key(raw_path)
+        if not path_key or not isinstance(raw_entries, list) or not os.path.exists(path_key):
             continue
-        cleaned_entries = normalized.setdefault(path_key, [])
+        history_key = (
+            make_chat_history_key(path_key, version_mtime_ns)
+            if version_mtime_ns is not None
+            else make_chat_history_key(path_key)
+        )
+        if not history_key:
+            continue
+        cleaned_entries = normalized.setdefault(history_key, [])
         for entry in raw_entries:
             if not isinstance(entry, dict):
                 continue

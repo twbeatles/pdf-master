@@ -9,6 +9,7 @@ from .._typing import WorkerHost
 from ..optional_deps import fitz
 from .dispatch import get_handler_method_name, get_operation_spec
 from .io import (
+    atomic_binary_save,
     atomic_text_save,
     atomic_pdf_save,
     build_safe_attachment_output_path,
@@ -19,6 +20,7 @@ from .io import (
 from .messages import get_message
 from .normalize import normalize_mode_kwargs
 from .preflight import is_pdf_encrypted, parse_page_range, preflight_inputs, validate_file_size, validate_non_pdf_size
+from ..path_utils import normalize_path_key
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +165,42 @@ class WorkerRuntimeMixin(WorkerHost):
         newline: str | None = None,
     ) -> None:
         atomic_text_save(self, output_path, text, encoding=encoding, newline=newline)
+
+    def _atomic_binary_save(self, output_path: str, data: bytes) -> None:
+        atomic_binary_save(self, output_path, data)
+
+    def _password_for_pdf_path(self, file_path: str) -> str:
+        passwords = self.kwargs.get("passwords")
+        if not isinstance(passwords, dict):
+            return ""
+        path_key = normalize_path_key(file_path)
+        for key in (path_key, file_path):
+            value = passwords.get(key)
+            if isinstance(value, str) and value:
+                return value
+        return ""
+
+    def _open_pdf_document(self, file_path: str, password: str | None = None):
+        doc = fitz.open(file_path)
+        if not getattr(doc, "is_encrypted", False):
+            return doc
+
+        candidates: list[str] = []
+        if isinstance(password, str) and password:
+            candidates.append(password)
+        mapped_password = self._password_for_pdf_path(file_path)
+        if mapped_password and mapped_password not in candidates:
+            candidates.append(mapped_password)
+
+        for candidate in candidates:
+            try:
+                if doc.authenticate(candidate):
+                    return doc
+            except Exception:
+                logger.debug("PDF authentication attempt failed", exc_info=True)
+
+        doc.close()
+        raise ValueError(self._get_msg("err_wrong_password"))
 
     def _get_msg(self, key: str, *args: object) -> str:
         return get_message(key, *args)

@@ -151,9 +151,45 @@ def atomic_text_save(
     """Host-aware atomic text save with cancel checks and created-output tracking."""
     host._check_cancelled()
     created = atomic_text_write(output_path, text, encoding=encoding, newline=newline)
-    host._check_cancelled()
     if created:
         record_created_output_path(host, output_path)
+    host._check_cancelled()
+
+
+def atomic_binary_write(output_path: str, data: bytes) -> bool:
+    """Write bytes atomically and return whether the target file was newly created."""
+    if not output_path:
+        raise ValueError("output_path is required")
+
+    out_dir = os.path.dirname(os.path.abspath(output_path)) or "."
+    os.makedirs(out_dir, exist_ok=True)
+    output_existed = os.path.exists(output_path)
+
+    suffix = os.path.splitext(output_path)[1] or ".bin"
+    fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=f".tmp{suffix}", dir=out_dir)
+    os.close(fd)
+
+    try:
+        with open(tmp_path, "wb") as handle:
+            handle.write(data)
+        os.replace(tmp_path, output_path)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                logger.debug("Failed to remove temporary binary file", exc_info=True)
+
+    return not output_existed
+
+
+def atomic_binary_save(host: Any, output_path: str, data: bytes) -> None:
+    """Host-aware atomic binary save with cancel checks and created-output tracking."""
+    host._check_cancelled()
+    created = atomic_binary_write(output_path, data)
+    if created:
+        record_created_output_path(host, output_path)
+    host._check_cancelled()
 
 
 def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -> None:

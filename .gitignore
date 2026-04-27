@@ -33,7 +33,7 @@ dist/
 
 # App/runtime temp files
 backup/
-.pdf_master_*.tmp.pdf
+.pdf_master_*.tmp*
 
 # Virtual environments
 .venv/

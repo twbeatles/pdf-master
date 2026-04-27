@@ -40,80 +40,49 @@ class MainWindowTabsAiMixin(_MainWindowTabsAiMixin):
         """keyring 우선 경로로 API 키를 로드하고 레거시 값을 1회 마이그레이션."""
         current = get_api_key() or ""
         legacy = self.settings.get("gemini_api_key", "")
-        if legacy:
-            if not current:
+        if not legacy:
+            return current
+
+        if not current:
+            if KEYRING_AVAILABLE:
                 if set_api_key(legacy):
                     current = legacy
-            # keyring 사용 시에만 파일 저장 키 제거
-            if KEYRING_AVAILABLE and "gemini_api_key" in self.settings:
-                self.settings.pop("gemini_api_key", None)
-                save_settings(self.settings)
+            else:
+                current = legacy
+
+        if KEYRING_AVAILABLE and current and "gemini_api_key" in self.settings:
+            self.settings.pop("gemini_api_key", None)
+            save_settings(self.settings)
         return current
 
     def _save_api_key(self):
         """API 키 저장"""
         parent = cast(QWidget, self)
         key = self.txt_api_key.text().strip()
+
         if set_api_key(key):
-            # keyring 사용 시에만 레거시 평문 키 제거
             if KEYRING_AVAILABLE and "gemini_api_key" in self.settings:
                 self.settings.pop("gemini_api_key", None)
                 save_settings(self.settings)
-            toast = ToastWidget(tm.get("msg_key_saved"), toast_type='success', duration=2000)
+            toast = ToastWidget(tm.get("msg_key_saved"), toast_type="success", duration=2000)
             toast.show_toast(self)
-        else:
-            QMessageBox.warning(parent, tm.get("error"), tm.get("msg_key_save_failed"))
+            return
 
+        if key:
+            result = QMessageBox.question(
+                parent,
+                tm.get("title_api_key_plaintext_confirm"),
+                tm.get("msg_api_key_plaintext_confirm"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            if result == QMessageBox.StandardButton.Yes and set_api_key(key, allow_file_fallback=True):
+                self.settings["gemini_api_key"] = key
+                toast = ToastWidget(tm.get("msg_api_key_saved_plaintext"), toast_type="warning", duration=2500)
+                toast.show_toast(self)
+                return
+            if result == QMessageBox.StandardButton.No:
+                QMessageBox.warning(parent, tm.get("warning"), tm.get("msg_api_key_plaintext_declined"))
+                return
 
-def _load_api_key_for_ui_override(self) -> str:
-    current = get_api_key() or ""
-    legacy = self.settings.get("gemini_api_key", "")
-    if not legacy:
-        return current
-
-    if not current:
-        if KEYRING_AVAILABLE:
-            if set_api_key(legacy):
-                current = legacy
-        else:
-            current = legacy
-
-    if KEYRING_AVAILABLE and current and "gemini_api_key" in self.settings:
-        self.settings.pop("gemini_api_key", None)
-        save_settings(self.settings)
-    return current
-
-
-def _save_api_key_override(self):
-    parent = cast(QWidget, self)
-    key = self.txt_api_key.text().strip()
-
-    if set_api_key(key):
-        if KEYRING_AVAILABLE and "gemini_api_key" in self.settings:
-            self.settings.pop("gemini_api_key", None)
-            save_settings(self.settings)
-        toast = ToastWidget(tm.get("msg_key_saved"), toast_type="success", duration=2000)
-        toast.show_toast(self)
+        QMessageBox.warning(parent, tm.get("error"), tm.get("msg_key_save_failed"))
         return
-
-    if key:
-        result = QMessageBox.question(
-            parent,
-            tm.get("title_api_key_plaintext_confirm"),
-            tm.get("msg_api_key_plaintext_confirm"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if result == QMessageBox.StandardButton.Yes and set_api_key(key, allow_file_fallback=True):
-            self.settings["gemini_api_key"] = key
-            toast = ToastWidget(tm.get("msg_api_key_saved_plaintext"), toast_type="warning", duration=2500)
-            toast.show_toast(self)
-            return
-        if result == QMessageBox.StandardButton.No:
-            QMessageBox.warning(parent, tm.get("warning"), tm.get("msg_api_key_plaintext_declined"))
-            return
-
-    QMessageBox.warning(parent, tm.get("error"), tm.get("msg_key_save_failed"))
-
-
-MainWindowTabsAiMixin._load_api_key_for_ui = _load_api_key_for_ui_override
-MainWindowTabsAiMixin._save_api_key = _save_api_key_override

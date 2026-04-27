@@ -2,8 +2,9 @@
 # PDF Master v4.5.5 - PyInstaller Spec File
 # One-file desktop build for the current split-package runtime layout.
 # Python 3.10+ compatible, with explicit optional dependency boundaries.
-# Verified 2026-04-21 after AI fallback visibility, Gemini upload cleanup,
-# bidirectional visual diff, atomic text save rollout, and docs/build validation sync.
+# Verified 2026-04-27 after AI action consolidation, path+mtime chat history,
+# encrypted-PDF password mapping, compare result payloads, atomic text/binary
+# save rollout, worker i18n cleanup, and docs/build validation sync.
 
 import sys
 import os
@@ -83,7 +84,9 @@ hiddenimports += [
     'src.ui.zoomable_preview',  # Runtime-critical preview widget path (main preview panel)
     'src.ui.thumbnail_grid',  # Runtime-loaded thumbnail grid path used by AI/page flows
     'src.ui.tabs_ai.meta',  # AI result meta formatting/warning labels
-    'src.ui.tabs_ai.actions_meta',  # AI tab override actions used at runtime
+    'src.ui.tabs_ai.actions',  # Canonical AI tab actions implementation
+    'src.ui.tabs_ai.actions_meta',  # Compatibility shim for legacy hidden imports
+    'src.ui.tabs_ai.storage',  # Versioned path+mtime chat history storage helpers
 ]
 
 # v4.5.3+: 폴더 기반 모듈 분할(hidden import 보강)

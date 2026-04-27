@@ -12,7 +12,7 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QMessageBox, QWidget
 
 from ..core.i18n import tm
-from ..core.path_utils import normalize_path_key
+from ..core.path_utils import make_chat_history_key, normalize_path_key, parse_chat_history_key
 from ..core.worker_runtime import get_operation_spec
 from ..core.worker import WorkerThread
 from .tabs_ai.meta import format_ai_meta, is_warning_ai_meta, normalize_ai_meta
@@ -30,6 +30,34 @@ def _is_undo_eligible_mode(mode, kwargs) -> bool:
 
 def _normalize_abs_path(path) -> str:
     return normalize_path_key(path)
+
+
+def _chat_history_key_for(path_or_key) -> str:
+    path_key, mtime_ns = parse_chat_history_key(path_or_key)
+    if mtime_ns is not None:
+        return make_chat_history_key(path_key, mtime_ns)
+    return make_chat_history_key(path_or_key)
+
+
+def _collect_payload_input_paths(kwargs: dict) -> set[str]:
+    input_paths: set[str] = set()
+    path_keys = ("file_path", "file_path1", "file_path2", "source_path", "target_path", "replace_path")
+    list_keys = ("files", "file_paths")
+    for key in path_keys:
+        value = kwargs.get(key)
+        if isinstance(value, str):
+            path_key = normalize_path_key(value)
+            if path_key:
+                input_paths.add(path_key)
+    for key in list_keys:
+        values = kwargs.get(key)
+        if isinstance(values, list):
+            for value in values:
+                if isinstance(value, str):
+                    path_key = normalize_path_key(value)
+                    if path_key:
+                        input_paths.add(path_key)
+    return input_paths
 
 
 def _is_same_path_pdf_mutation(mode, kwargs) -> bool:
@@ -78,14 +106,14 @@ def _coerce_payload_defaults(mode: str, payload: dict) -> dict:
         return payload
 
     normalized = dict(payload)
-    list_keys = {"key_points", "keywords", "fields", "attachments", "annotations"}
+    list_keys = {"key_points", "keywords", "fields", "attachments", "annotations", "results"}
     dict_keys = {"meta"}
     missing_keys: list[str] = []
     for key in spec.result_payload_keys:
         if key in normalized:
             continue
         missing_keys.append(key)
-        normalized[key] = [] if key in list_keys else ({} if key in dict_keys else "")
+        normalized[key] = 0 if key == "diff_count" else ([] if key in list_keys else ({} if key in dict_keys else ""))
 
     if missing_keys:
         logger.warning("Worker payload for mode '%s' is missing keys: %s", mode, ", ".join(missing_keys))
@@ -106,6 +134,34 @@ def _format_summary_payload(payload: dict) -> str:
         if bullets:
             text_parts.append(bullets)
     return "\n\n".join(part for part in text_parts if part).strip()
+
+
+def _format_compare_summary(payload: dict) -> str:
+    diff_count = int(payload.get("diff_count") or 0)
+    report_path = str(payload.get("report_path", "") or "")
+    visual_diff_path = str(payload.get("visual_diff_path", "") or "")
+    results = payload.get("results", [])
+    lines = [tm.get("compare_summary_header", diff_count)]
+    if report_path:
+        lines.append(tm.get("compare_summary_report", report_path))
+    if visual_diff_path:
+        lines.append(tm.get("compare_summary_visual", visual_diff_path))
+    if isinstance(results, list) and results:
+        lines.append("")
+        lines.append(tm.get("compare_summary_pages"))
+        for result in results[:8]:
+            if not isinstance(result, dict):
+                continue
+            page = result.get("page", "?")
+            status = str(result.get("status", "diff"))
+            samples = result.get("samples", [])
+            sample_text = ""
+            if isinstance(samples, list) and samples:
+                sample_text = f" - {samples[0]}"
+            lines.append(tm.get("compare_summary_page_row", page, status, sample_text))
+        if len(results) > 8:
+            lines.append(tm.get("compare_summary_more", len(results) - 8))
+    return "\n".join(lines)
 
 
 def _replace_last_chat_block(chat_history, html: str) -> None:
@@ -222,6 +278,19 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         _delete_undo_backup_file(undo_info.get("before_backup_path", ""))
         _delete_undo_backup_file(undo_info.get("after_backup_path", ""))
 
+    def _augment_worker_passwords_from_preview(self, kwargs: dict) -> None:
+        preview_password = getattr(self, "_current_preview_password", None)
+        if not isinstance(preview_password, str) or not preview_password:
+            return
+        preview_path = normalize_path_key(getattr(self, "_current_preview_path", ""))
+        if not preview_path or preview_path not in _collect_payload_input_paths(kwargs):
+            return
+        passwords = kwargs.get("passwords")
+        if not isinstance(passwords, dict):
+            passwords = {}
+            kwargs["passwords"] = passwords
+        passwords.setdefault(preview_path, preview_password)
+
     def run_worker(self, mode, output_path=None, **kwargs):
         """작업 스레드 실행 (안전한 동시 작업 처리)"""
         parent = cast(QWidget, self)
@@ -271,6 +340,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             self._has_output = False
 
         self._prepare_preview_for_same_path_output(mode, kwargs)
+        self._augment_worker_passwords_from_preview(kwargs)
 
         self._pending_undo = None
         if _is_undo_eligible_mode(mode, kwargs):
@@ -386,11 +456,11 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             _set_meta_label(getattr(self, "lbl_chat_meta", None), self._chat_result_meta)
             answer = str(payload.get("answer", "") or "")
             if answer:
-                pending_path = _normalize_abs_path(self._chat_pending_path)
+                pending_path = _chat_history_key_for(self._chat_pending_path)
                 if pending_path:
                     self._record_chat_entry(pending_path, "assistant", answer)
                     self._save_chat_histories()
-                selected_chat_path = _normalize_abs_path(self.sel_chat_pdf.get_path()) if hasattr(self, "sel_chat_pdf") else ""
+                selected_chat_path = _chat_history_key_for(self.sel_chat_pdf.get_path()) if hasattr(self, "sel_chat_pdf") else ""
                 if hasattr(self, "txt_chat_history") and pending_path == selected_chat_path:
                     _replace_last_chat_block(
                         self.txt_chat_history,
@@ -489,6 +559,13 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                         tm.get("msg_attachment_list_body", len(attachments), "\n".join(rows)),
                     )
                 custom_dialog_shown = True
+            elif mode == "compare_pdfs":
+                QMessageBox.information(
+                    parent,
+                    tm.get("compare_summary_title"),
+                    _format_compare_summary(payload),
+                )
+                custom_dialog_shown = True
 
         toast = ToastWidget(tm.get("completed"), toast_type="success", duration=4000)
         toast.show_toast(self)
@@ -524,7 +601,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode:
             self._chat_worker_mode = False
             raw_pending_path = self._chat_pending_path
-            pending_path = _normalize_abs_path(raw_pending_path)
+            pending_path = _chat_history_key_for(raw_pending_path)
             self._chat_pending_path = None
             self._chat_partial_text = ""
             self._chat_result_meta = {}

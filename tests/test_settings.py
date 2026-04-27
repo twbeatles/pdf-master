@@ -52,13 +52,14 @@ def test_load_settings_type_defense(tmp_path, monkeypatch):
 
 def test_load_settings_preserves_valid_normalized_values(tmp_path, monkeypatch):
     from src.core import settings as st
-    from src.core.path_utils import normalize_path_key
+    from src.core.path_utils import make_chat_history_key, normalize_path_key
 
     settings_file = tmp_path / "settings.json"
     monkeypatch.setattr(st, "SETTINGS_FILE", str(settings_file))
     existing_pdf = tmp_path / "a.pdf"
     existing_pdf.write_text("pdf", encoding="utf-8")
     normalized_path = normalize_path_key(str(existing_pdf))
+    chat_key = make_chat_history_key(str(existing_pdf))
 
     settings_file.write_text(
         json.dumps(
@@ -79,7 +80,7 @@ def test_load_settings_preserves_valid_normalized_values(tmp_path, monkeypatch):
     loaded = st.load_settings()
     assert loaded["theme"] == "light"
     assert loaded["recent_files"] == [normalized_path]
-    assert loaded["chat_histories"] == {normalized_path: [{"role": "user", "content": "hi"}]}
+    assert loaded["chat_histories"] == {chat_key: [{"role": "user", "content": "hi"}]}
     assert loaded["splitter_sizes"] == [100, 200]
     assert loaded["language"] == "en"
     assert loaded["window_geometry"] == {"x": 10, "y": 20, "width": 100, "height": 200}
@@ -89,7 +90,7 @@ def test_load_settings_preserves_valid_normalized_values(tmp_path, monkeypatch):
 
 def test_load_settings_merges_duplicate_normalized_chat_history_keys(tmp_path, monkeypatch):
     from src.core import settings as st
-    from src.core.path_utils import normalize_path_key
+    from src.core.path_utils import make_chat_history_key, normalize_path_key
 
     settings_file = tmp_path / "settings.json"
     monkeypatch.setattr(st, "SETTINGS_FILE", str(settings_file))
@@ -97,6 +98,7 @@ def test_load_settings_merges_duplicate_normalized_chat_history_keys(tmp_path, m
     existing_pdf = tmp_path / "chat.pdf"
     existing_pdf.write_text("pdf", encoding="utf-8")
     normalized_path = normalize_path_key(str(existing_pdf))
+    chat_key = make_chat_history_key(str(existing_pdf))
 
     settings_file.write_text(
         json.dumps(
@@ -115,11 +117,28 @@ def test_load_settings_merges_duplicate_normalized_chat_history_keys(tmp_path, m
 
     assert loaded["recent_files"] == [normalized_path]
     assert loaded["chat_histories"] == {
-        normalized_path: [
+        chat_key: [
             {"role": "user", "content": "one"},
             {"role": "assistant", "content": "two"},
         ]
     }
+
+
+def test_chat_history_key_changes_when_same_path_file_is_replaced(tmp_path):
+    import os
+
+    from src.core.path_utils import make_chat_history_key, parse_chat_history_key
+
+    pdf_path = tmp_path / "same.pdf"
+    pdf_path.write_text("old", encoding="utf-8")
+    first_key = make_chat_history_key(str(pdf_path))
+
+    first_mtime = parse_chat_history_key(first_key)[1]
+    assert first_mtime is not None
+    os.utime(pdf_path, ns=(first_mtime + 10_000_000, first_mtime + 10_000_000))
+    second_key = make_chat_history_key(str(pdf_path))
+
+    assert first_key != second_key
 
 
 def test_load_settings_corrupt_file_creates_backup(tmp_path, monkeypatch):

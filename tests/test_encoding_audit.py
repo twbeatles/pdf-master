@@ -37,6 +37,7 @@ REPLACEMENT_GUARD_FILENAMES = {
     ".editorconfig",
     ".gitignore",
 }
+MOJIBAKE_PATTERNS = ("\uf9e2", "\u6e32", "?\u0080", "?\ub369", "?\uc397", "\u00c3", "\u00c2")
 
 
 def _is_tracked_text_file(path: Path) -> bool:
@@ -84,5 +85,10 @@ def test_tracked_text_files_use_utf8_without_bom_or_replacement_chars():
 
         if _should_forbid_replacement_chars(path) and "\ufffd" in text:
             violations.append(f"{rel}: contains U+FFFD replacement character")
+
+        for pattern in MOJIBAKE_PATTERNS:
+            if pattern in text:
+                violations.append(f"{rel}: contains mojibake marker {pattern!r}")
+                break
 
     assert not violations, "Encoding audit failures:\n" + "\n".join(violations)

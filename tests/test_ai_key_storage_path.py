@@ -22,6 +22,18 @@ def _dummy_ai():
     return Dummy()
 
 
+def test_ai_mixin_binds_consolidated_actions_and_api_key_override():
+    require_pyqt6()
+    import inspect
+
+    from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
+
+    assert MainWindowTabsAiMixin._save_summary_result.__module__ == "src.ui.tabs_ai.actions"
+    assert MainWindowTabsAiMixin._ask_ai_question.__module__ == "src.ui.tabs_ai.actions"
+    assert MainWindowTabsAiMixin._save_api_key.__module__ == "src.ui.main_window_tabs_ai"
+    assert "atomic_text_write" in inspect.getsource(MainWindowTabsAiMixin._save_summary_result)
+
+
 def test_load_api_key_no_keyring_keeps_legacy_key(monkeypatch):
     require_pyqt6()
     import src.ui.main_window_tabs_ai as ai_module

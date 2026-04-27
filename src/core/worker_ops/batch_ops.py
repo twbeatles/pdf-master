@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class WorkerBatchOpsMixin(WorkerHost):
-    compare_pdfs = _LegacyWorkerPdfOpsMixin.compare_pdfs
+    compare_pdfs = _LegacyWorkerPdfOpsMixin._legacy_compare_pdfs
 
     def batch(self):
         """일괄 처리"""
@@ -38,7 +38,7 @@ class WorkerBatchOpsMixin(WorkerHost):
                 )
                 out_path = os.path.join(output_dir, f"{unique_stem}.pdf")
 
-                doc = fitz.open(file_path)
+                doc = self._open_pdf_document(file_path)
 
                 if operation == "compress":
                     self._atomic_pdf_save(

@@ -33,7 +33,7 @@ class WorkerAnnotationOpsMixin(WorkerHost):
         rect = cast(list[float], self.kwargs.get("rect") or [100, 100, 300, 150])
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             if page_num < 0 or page_num >= len(doc):
                 self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc))))
                 return
@@ -65,7 +65,7 @@ class WorkerAnnotationOpsMixin(WorkerHost):
         count = 0
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             for page in doc:
                 annot = page.first_annot
                 while annot:

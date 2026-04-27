@@ -281,7 +281,7 @@ python -m PyInstaller pdf_master.spec --clean
 - Executable build: `python -m PyInstaller pdf_master.spec --clean`
 - `.gitignore` now keeps build/validation artifacts such as `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, and `*.whl` out of the working tree.
 - `pytest` temp files stay inside repo-local `.pytest_tmp`
-- Encoding audit: tracked text files pass UTF-8 decode/BOM/U+FFFD checks
+- Encoding audit: tracked text files pass UTF-8 decode/BOM/U+FFFD/mojibake marker checks
 
 ---
 
@@ -367,10 +367,21 @@ API key storage policy:
 - `keyring` unavailable: settings-file fallback (`gemini_api_key`)
 - Legacy plain key is migrated/cleaned when keyring path is active
 - `load_settings()` normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`, and `preview_search_expanded` during load.
+- `chat_histories` are stored with `v2:{mtime_ns}:{normalized_path}` keys so replacing a PDF at the same path does not mix old conversations into the new document context.
 
 ---
 
 ## 📝 Changelog
+
+### v4.5.5 (2026-04-27) - Worker/AI/Compare Contract Stabilization
+- Aligned the `split_by_pages` preflight contract with the actual UI payload (`output_dir`, `split_mode`, `ranges`) and removed the unsupported `pages_per_file` requirement.
+- Consolidated AI tab action implementations into `src.ui.tabs_ai.actions`; `actions_meta.py` is now a compatibility shim.
+- Versioned stored AI chat histories by `path + mtime_ns` and migrated legacy path-only entries once on load.
+- Added encrypted-PDF Worker open helpers and optional `passwords={normalized_path: password}` mapping so preview-authenticated passwords can be reused.
+- Added `compare_pdfs` result payloads (`diff_count`, `results`, `report_path`, `visual_diff_path`) and a completion summary dialog.
+- Added atomic binary save and cancellation rollback tracking for image and attachment extraction.
+- Expanded Worker i18n smoke coverage to all worker ops and f-string emits, and added mojibake-marker encoding audit coverage.
+- Re-audited `pdf_master.spec`, `.gitignore`, README/guide/review documents for consistency.
 
 ### v4.5.5 (2026-04-10) - Stability Bundle
 - Added safe same-path overwrite handling by closing preview-held documents before worker start and restoring preview after success/fail/cancel.
@@ -474,8 +485,8 @@ API key storage policy:
 ## 🧪 Test and Consistency Status (v4.5.5)
 
 - Static analysis: `python -m pyright` -> `0 errors`
-- Regression tests: `python -m pytest -q` -> `120 passed, 1 warning`
-- Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD regressions
+- Regression tests: `python -m pytest -q` full-pass baseline
+- Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD/mojibake marker regressions
 
 - Added:
   - `tests/test_ai_thumbnail_grid_flow.py`
@@ -536,3 +547,13 @@ Copyright (c) 2026 PDF Master
 - API key persistence now prefers `keyring`; if secure storage is unavailable, the UI asks before allowing plaintext settings-file fallback.
 - `pdf_master.spec` was updated to include the runtime AI meta UI modules (`src.ui.tabs_ai.meta`, `src.ui.tabs_ai.actions_meta`) and its verification note now matches the current stabilization scope.
 - `.gitignore` was re-audited against validation/build outputs. The current entries already cover repo-local test/build artifacts including `.pytest_tmp/`, `build/`, `dist/`, `pip-wheel-metadata/`, `*.whl`, and `*.tar.gz`.
+
+## 2026-04-27 Worker/AI/Compare Stabilization Addendum
+
+- `split_by_pages` preflight now matches the current UI payload and is centered on `output_dir`.
+- Stored AI chat histories use versioned `path + mtime_ns` keys, with legacy path-only histories migrated once on load.
+- `actions_meta.py` is a compatibility shim; the canonical AI tab implementation lives in `src.ui.tabs_ai.actions`.
+- Workers accept `passwords={normalized_path: password}` so encrypted-PDF passwords authenticated by preview can be reused.
+- `compare_pdfs` provides `diff_count`, `results`, `report_path`, and `visual_diff_path`, and the UI shows a completion summary dialog.
+- Image and attachment extraction use atomic binary saves and cancellation rollback tracking.
+- `.gitignore` excludes `.pdf_master_*.tmp*` to cover atomic PDF/text/binary temp files.

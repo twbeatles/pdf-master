@@ -23,6 +23,14 @@ def _make_multi_page_pdf(path, pages):
     doc.close()
 
 
+def _make_pdf_with_attachment(path):
+    doc = fitz.open()
+    doc.new_page(width=400, height=400)
+    doc.embfile_add("data.bin", b"complete")
+    doc.save(str(path))
+    doc.close()
+
+
 class _OverlayStub:
     def hide_progress(self):
         return None
@@ -121,6 +129,42 @@ def test_cancel_cleanup_removes_only_created_convert_outputs(monkeypatch, tmp_pa
     lifecycle._cleanup_cancelled_worker(host)
 
     assert keep_file.exists()
+    assert not created_file.exists()
+
+
+def test_cancel_cleanup_removes_binary_output_after_post_write_cancel(monkeypatch, tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import CancelledError, WorkerThread
+    import src.ui.window_worker.lifecycle as lifecycle
+
+    src = tmp_path / "with_attachment.pdf"
+    out_dir = tmp_path / "attachments"
+    _make_pdf_with_attachment(src)
+
+    worker = WorkerThread("extract_attachments", file_path=str(src), output_dir=str(out_dir))
+    calls = {"count": 0}
+
+    def _cancel_after_binary_write():
+        calls["count"] += 1
+        if calls["count"] >= 3:
+            raise CancelledError("cancel")
+
+    worker._check_cancelled = _cancel_after_binary_write
+
+    with pytest.raises(CancelledError):
+        worker.extract_attachments()
+
+    created_paths = worker.kwargs.get("created_output_paths", [])
+    assert len(created_paths) == 1
+    created_file = Path(created_paths[0])
+    assert created_file.exists()
+    assert created_file.read_bytes() == b"complete"
+    assert not list(out_dir.glob(".pdf_master_*"))
+
+    host = _CleanupHost(worker, out_dir)
+    monkeypatch.setattr(lifecycle, "ToastWidget", _ToastStub)
+    lifecycle._cleanup_cancelled_worker(host)
+
     assert not created_file.exists()
 
 

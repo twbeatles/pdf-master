@@ -88,6 +88,12 @@ class _PathStub:
         return self._path
 
 
+def _history_key(path="chat.pdf"):
+    from src.core.path_utils import make_chat_history_key
+
+    return make_chat_history_key(path)
+
+
 class _WorkerStub:
     def __init__(self, mode, kwargs, result_payload=None):
         self.mode = mode
@@ -222,6 +228,7 @@ def test_on_success_appends_chat_answer(monkeypatch):
 
     assert any("answer" in entry for entry in dummy.txt_chat_history.entries)
     assert any(tm.get("chat_assistant_prefix") in entry for entry in dummy.txt_chat_history.entries)
+    assert dummy._chat_histories[_history_key()] == [{"role": "assistant", "content": "answer"}]
     assert dummy.lbl_chat_meta.visible is True
     assert dummy.saved_histories == 1
 
@@ -237,11 +244,12 @@ def test_on_fail_cleans_pending_chat_history_and_appends_error(monkeypatch):
     dummy = _build_dummy(worker)
     dummy._chat_worker_mode = True
     dummy._chat_pending_path = "chat.pdf"
-    dummy._chat_histories = {"chat.pdf": [{"role": "user", "content": "question"}]}
+    history_key = _history_key()
+    dummy._chat_histories = {history_key: [{"role": "user", "content": "question"}]}
 
     dummy.on_fail("boom")
 
-    assert "chat.pdf" not in dummy._chat_histories
+    assert history_key not in dummy._chat_histories
     assert any("boom" in entry for entry in dummy.txt_chat_history.entries)
 
 
@@ -275,3 +283,41 @@ def test_on_partial_result_streams_summary_and_chat(monkeypatch):
     chat_dummy._on_partial_result({"text": '{"answer":"hel'})
     chat_dummy._on_partial_result({"text": 'lo"}'})
     assert any("hello" in entry for entry in chat_dummy.txt_chat_history.entries)
+
+
+def test_on_success_shows_compare_summary_dialog(monkeypatch):
+    require_pyqt6()
+    import src.ui.main_window_worker as worker_module
+
+    dialogs = []
+    monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
+    monkeypatch.setattr(
+        worker_module.QMessageBox,
+        "information",
+        lambda _parent, title, text: dialogs.append((title, text)),
+    )
+    monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+
+    worker = _WorkerStub(
+        "compare_pdfs",
+        {},
+        {
+            "diff_count": 2,
+            "results": [
+                {"page": 1, "status": "different", "samples": ["alpha"]},
+                {"page": 3, "status": "different", "samples": ["beta"]},
+            ],
+            "report_path": "comparison.txt",
+            "visual_diff_path": "comparison_visual_diff.pdf",
+        },
+    )
+    dummy = _build_dummy(worker)
+
+    dummy.on_success("done")
+
+    assert len(dialogs) == 1
+    title, text = dialogs[0]
+    assert "comparison" in title.lower() or "비교" in title
+    assert "comparison.txt" in text
+    assert "comparison_visual_diff.pdf" in text
+    assert "alpha" in text

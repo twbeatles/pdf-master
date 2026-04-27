@@ -230,6 +230,7 @@ def reset_settings() -> bool
 ```
 
 - `load_settings()` normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`, and `preview_search_expanded` on load.
+- Stored UI chat history keys use `v2:{mtime_ns}:{normalized_path}` so a replaced PDF at the same path gets a separate conversation history.
 
 ### 타입 계약 파일 (v4.5.4)
 
@@ -237,6 +238,7 @@ def reset_settings() -> bool
   - `WorkerHost` 계약 정의
   - `WorkerPdfOpsMixin`, `WorkerAiOpsMixin`이 기대하는 signal/helper 속성 명시
   - v4.5.4 validation follow-up: `_resolve_page_index()` / `_record_created_output_path()` helper 계약 포함
+  - v4.5.5 2026-04-27 follow-up: `_atomic_binary_save()` / `_open_pdf_document()` helper 계약 포함
 - `src/core/optional_deps.py`
   - `fitz`, `keyring` optional import 경계
   - 미설치 환경에서는 proxy/fallback으로 import-time 오류를 막고, 실제 사용 시점에만 실패하게 함
@@ -579,14 +581,14 @@ python -m PyInstaller pdf_master.spec --clean
 - 기준 결과:
   - `python -m build`
   - `python -m pyright` -> `0 errors`
-  - 현재 환경 `python -m pytest -q` -> `120 passed, 1 warning`
+  - 현재 환경 `python -m pytest -q` -> 전체 통과 기준
   - `python -m PyInstaller pdf_master.spec --clean`
   - `tests/test_ai_service_cache.py` -> upload fallback 제한, chat-session clear, text cache 재사용
   - `tests/test_worker_preflight.py` -> required kwargs preflight 검증
   - `tests/test_worker_regression_modes.py` -> markdown 옵션 / batch compress save-profile 회귀 검증
   - `.gitignore` -> `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl` 등 검증/패키징 산출물 제외
   - `pytest` 임시 디렉터리 -> repo-local `.pytest_tmp`
-  - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD 회귀 방지
+  - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD/mojibake marker 회귀 방지
   - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip
 
 ---
@@ -717,3 +719,13 @@ python -m PyInstaller pdf_master.spec --clean
 - Worker/runtime changes now include atomic text saves, case-insensitive batch filename collision avoidance, bidirectional visual diff overlays, and explicit undo-unavailable warnings when snapshot backups fail.
 - Settings persistence is now keyring-first; plaintext fallback storage requires an explicit user confirmation path instead of a silent fallback.
 - Packaging/docs are synced with the current repo contract: `pyproject.toml`, `requirements-dev.txt`, `typings/`, `python -m pyright`, `python -m pytest -q`, `python -m build`, and `python -m PyInstaller pdf_master.spec --clean`.
+
+## 2026-04-27 Worker/AI/Compare Stabilization Addendum
+
+- `split_by_pages` preflight is now aligned to the UI contract and no longer requires unsupported page-count chunking options.
+- Stored AI chat histories use `path + mtime_ns` versioned keys; legacy path-only histories migrate once on load.
+- AI tab actions are consolidated in `src.ui.tabs_ai.actions`; `actions_meta.py` remains only for compatibility.
+- Worker PDF opening supports explicit password args plus `passwords={normalized_path: password}` mapping for preview password reuse.
+- `compare_pdfs` now returns structured payload data and the UI presents a summary dialog after completion.
+- Worker/runtime changes now include atomic binary saves for image/attachment extraction and rollback tracking on cancellation.
+- Packaging/docs and `.gitignore` are synced to cover `.pdf_master_*.tmp*` atomic-save temporary files.

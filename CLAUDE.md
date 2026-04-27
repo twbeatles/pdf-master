@@ -241,12 +241,14 @@ DEFAULT_SETTINGS = {
 ```
 
 - `load_settings()` now normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir` on load.
+- Stored UI chat history keys use `v2:{mtime_ns}:{normalized_path}` so a replaced PDF at the same path gets a separate conversation history.
 
 ### 타입 계약 파일 (v4.5.4)
 
 - `src/core/_typing.py`
   - Worker 믹스인이 기대하는 signal/helper surface를 정의합니다.
   - v4.5.4 validation follow-up: `_resolve_page_index()` / `_record_created_output_path()` 계약이 포함됩니다.
+  - v4.5.5 2026-04-27 follow-up: `_atomic_binary_save()` / `_open_pdf_document()` 계약이 포함됩니다.
 - `src/core/optional_deps.py`
   - `fitz`, `keyring` optional import를 중앙화하고, 미설치 환경에서는 proxy/fallback으로 import-time 실패를 막습니다.
 - `src/ui/_typing.py`
@@ -487,7 +489,7 @@ class ZoomablePreviewWidget(QWidget):
 - `python -m build`
 - `python -m PyInstaller pdf_master.spec --clean`
 - `.gitignore`는 `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl` 같은 검증/패키징 산출물을 기본적으로 제외합니다.
-- UTF-8/BOM/U+FFFD 회귀는 `tests/test_encoding_audit.py`가 검사
+- UTF-8/BOM/U+FFFD/mojibake marker 회귀는 `tests/test_encoding_audit.py`가 검사
 - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행
 
 - `tests/test_ai_thumbnail_grid_flow.py`
@@ -570,7 +572,7 @@ class ZoomablePreviewWidget(QWidget):
   - README/가이드/spec/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest -q`: `120 passed, 1 warning`
+- 현재 워크트리 기준 `python -m pytest -q`: 전체 통과 기준
 
 ---
 
@@ -663,3 +665,13 @@ for i, page in enumerate(pages):
 - Worker-side text outputs now use atomic saves, batch outputs avoid case-insensitive filename collisions, and compare visual diff PDFs now show bidirectional block overlays with a legend.
 - Undo snapshot failures are surfaced as "undo unavailable" warnings instead of silent degradation, and API key saves now require explicit consent before plaintext settings-file fallback.
 - `pdf_master.spec`, `README.md`, `README_EN.md`, `CLAUDE.md`, and `GEMINI.md` are aligned around `pyproject.toml`, `requirements-dev.txt`, `python -m pyright`, `python -m pytest -q`, `python -m build`, and `python -m PyInstaller pdf_master.spec --clean`.
+
+## 2026-04-27 Worker/AI/Compare Stabilization Addendum
+
+- `split_by_pages` preflight is now aligned to the UI contract and no longer requires unsupported page-count chunking options.
+- Stored AI chat histories use `path + mtime_ns` versioned keys; legacy path-only histories migrate once on load.
+- AI tab actions are consolidated in `src.ui.tabs_ai.actions`; `actions_meta.py` remains only for compatibility.
+- Worker PDF opening supports explicit password args plus `passwords={normalized_path: password}` mapping for preview password reuse.
+- `compare_pdfs` now returns structured payload data and the UI presents a summary dialog after completion.
+- Worker-side binary outputs now use atomic saves for image/attachment extraction and rollback tracking on cancellation.
+- Packaging/docs and `.gitignore` are synced to cover `.pdf_master_*.tmp*` atomic-save temporary files.

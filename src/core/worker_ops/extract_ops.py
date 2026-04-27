@@ -38,7 +38,7 @@ class _WorkerExtractOpsBaseMixin(WorkerHost):
         output_path = _as_str(self.kwargs.get("output_path"))
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             page_count = len(doc)
 
             for i in range(page_count):
@@ -77,7 +77,7 @@ class _WorkerExtractOpsBaseMixin(WorkerHost):
         doc = None
         toc: list[list[Any]] = []
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             toc = cast(list[list[Any]], doc.get_toc() or [])
 
             with open(output_path, "w", encoding="utf-8") as handle:
@@ -102,7 +102,7 @@ class _WorkerExtractOpsBaseMixin(WorkerHost):
         bookmarks = cast(list[list[Any]], self.kwargs.get("bookmarks") or [])
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             doc.set_toc(bookmarks)
             self._atomic_pdf_save(doc, output_path)
         finally:
@@ -120,7 +120,7 @@ class _WorkerExtractOpsBaseMixin(WorkerHost):
         results: list[dict[str, Any]] = []
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
                 page = doc[page_num]
@@ -160,7 +160,7 @@ class _WorkerExtractOpsBaseMixin(WorkerHost):
         all_tables: list[dict[str, Any]] = []
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
                 page = doc[page_num]
@@ -198,7 +198,7 @@ class _WorkerExtractOpsBaseMixin(WorkerHost):
         all_annots: list[dict[str, Any]] = []
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
                 page = doc[page_num]
@@ -243,7 +243,7 @@ class _WorkerExtractOpsBaseMixin(WorkerHost):
         attach_path = _as_str(self.kwargs.get("attach_path"))
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             with open(attach_path, "rb") as handle:
                 data = handle.read()
 
@@ -266,7 +266,7 @@ class _WorkerExtractOpsBaseMixin(WorkerHost):
         used_names: set[str] = set()
         try:
             os.makedirs(output_dir, exist_ok=True)
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             total = doc.embfile_count()
 
             if total == 0:
@@ -275,15 +275,12 @@ class _WorkerExtractOpsBaseMixin(WorkerHost):
                 return
 
             for i in range(total):
+                self._check_cancelled()
                 info = _as_dict(doc.embfile_info(i))
                 data = doc.embfile_get(i)
                 raw_name = info.get("name", f"attachment_{i + 1}")
                 out_path, _saved_name = self._build_safe_attachment_output_path(output_dir, raw_name, i, used_names)
-                out_path_exists = os.path.exists(out_path)
-                with open(out_path, "wb") as handle:
-                    handle.write(data)
-                if not out_path_exists:
-                    self._record_created_output_path(out_path)
+                self._atomic_binary_save(out_path, data)
                 count += 1
                 self._emit_progress_if_due(int((i + 1) / total * 100))
         finally:
@@ -313,7 +310,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
                 continue
             doc = None
             try:
-                doc = fitz.open(file_path)
+                doc = self._open_pdf_document(file_path)
                 text_chunks: list[str] = []
                 for page_index in range(len(doc)):
                     page = doc[page_index]
@@ -364,7 +361,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
     def extract_links(self):
         file_path = _as_str(self.kwargs.get("file_path"))
         output_path = _as_str(self.kwargs.get("output_path"))
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         all_links: list[dict[str, Any]] = []
         try:
             total_pages = max(1, len(doc))
@@ -381,7 +378,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         body = [f"# {os.path.basename(file_path)} - Link List", ""]
         body.extend(f"Page {link['page']}: {link['url']}" for link in all_links)
         self._atomic_text_save(output_path, "\n".join(body).rstrip() + "\n")
-        self.finished_signal.emit(f"✅ 링크 추출 완료!\n{len(all_links)}개 링크 발견")
+        self.finished_signal.emit(self._get_msg("msg_links_extracted", len(all_links)))
 
     def get_pdf_info(self):
         total_chars = 0
@@ -393,7 +390,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         doc = None
         meta: dict[str, Any] = {}
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             page_count = len(doc)
 
             for i in range(page_count):
@@ -434,7 +431,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         toc: list[list[Any]] = []
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             toc = cast(list[list[Any]], doc.get_toc() or [])
         finally:
             if doc:
@@ -460,7 +457,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         results: list[dict[str, Any]] = []
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
                 page = doc[page_num]
@@ -497,7 +494,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         all_tables: list[dict[str, Any]] = []
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
                 page = doc[page_num]
@@ -536,7 +533,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         all_annots: list[dict[str, Any]] = []
         doc = None
         try:
-            doc = fitz.open(file_path)
+            doc = self._open_pdf_document(file_path)
             total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
                 page = doc[page_num]
@@ -581,7 +578,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         include_page_markers = bool(self.kwargs.get("include_page_markers", True))
         include_asset_placeholders = bool(self.kwargs.get("include_asset_placeholders", False))
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         markdown_chunks: list[str] = []
         total_pages = 0
         try:
@@ -623,7 +620,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
             doc.close()
 
         self._atomic_text_save(output_path, "".join(markdown_chunks))
-        self.finished_signal.emit(f"✅ Markdown 추출 완료!\n{total_pages}페이지")
+        self.finished_signal.emit(self._get_msg("msg_markdown_extracted", total_pages))
 
     def extract_images(self):
         file_path = _as_str(self.kwargs.get("file_path"))
@@ -631,7 +628,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         include_info = bool(self.kwargs.get("include_info", True))
         deduplicate = bool(self.kwargs.get("deduplicate", True))
 
-        doc = fitz.open(file_path)
+        doc = self._open_pdf_document(file_path)
         image_count = 0
         image_info_list: list[dict[str, Any]] = []
         seen_xrefs: set[int] = set()
@@ -650,11 +647,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
                         image_bytes = base_image["image"]
                         image_ext = base_image["ext"]
                         image_path = os.path.join(output_dir, f"page{page_num + 1}_img{img_idx + 1}.{image_ext}")
-                        image_path_exists = os.path.exists(image_path)
-                        with open(image_path, "wb") as handle:
-                            handle.write(image_bytes)
-                        if not image_path_exists:
-                            self._record_created_output_path(image_path)
+                        self._atomic_binary_save(image_path, image_bytes)
                         if include_info:
                             image_info_list.append(
                                 {
@@ -683,5 +676,5 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         finally:
             doc.close()
 
-        dedup_msg = " (중복 제거)" if deduplicate else ""
-        self.finished_signal.emit(f"✅ 이미지 추출 완료!{dedup_msg}\n{image_count}개 이미지 저장됨")
+        dedup_msg = self._get_msg("msg_dedup_removed_suffix") if deduplicate else ""
+        self.finished_signal.emit(self._get_msg("msg_images_extracted", dedup_msg, image_count))

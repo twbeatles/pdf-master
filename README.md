@@ -292,7 +292,7 @@ python -m PyInstaller pdf_master.spec --clean
 - 패키지 빌드: `python -m build`
 - 실행 파일 빌드: `python -m PyInstaller pdf_master.spec --clean`
 - `.gitignore`는 빌드/검증 산출물(`build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl`)이 워크트리를 오염시키지 않도록 정리되어 있습니다.
-- 인코딩 점검: 추적 텍스트 파일 UTF-8 decode/BOM/U+FFFD audit 통과
+- 인코딩 점검: 추적 텍스트 파일 UTF-8 decode/BOM/U+FFFD/mojibake marker audit 통과
 
 ---
 
@@ -377,10 +377,21 @@ API 키 저장 정책:
 - `keyring` 미사용: 설정 파일(`gemini_api_key`) 폴백
 - 레거시 평문 키는 keyring 경로 사용 시 자동 마이그레이션/정리
 - `load_settings()`는 `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`, `preview_search_expanded`를 로드 시 정규화합니다.
+- `chat_histories`는 `v2:{mtime_ns}:{normalized_path}` key로 저장되어 같은 경로의 PDF가 교체되어도 이전 대화가 새 문서 문맥에 섞이지 않습니다.
 
 ---
 
 ## 📝 변경 이력
+
+### v4.5.5 (2026-04-27) - Worker/AI/Compare Contract Stabilization
+- ✅ `split_by_pages` preflight 계약을 실제 UI 동작(`output_dir`, `split_mode`, `ranges`)과 일치시키고 unsupported `pages_per_file` 요구 제거
+- ✅ AI 탭 액션 구현을 `src.ui.tabs_ai.actions`로 통합하고 `actions_meta.py`는 compatibility shim으로 축소
+- ✅ 저장된 AI 채팅 기록을 `path + mtime_ns` versioned key로 분리하고 legacy path-only 기록 1회 마이그레이션
+- ✅ 암호화 PDF Worker 열기 helper와 `passwords={normalized_path: password}` mapping 지원으로 preview 인증 비밀번호 재사용
+- ✅ `compare_pdfs` 결과 payload(`diff_count`, `results`, `report_path`, `visual_diff_path`)와 완료 요약 다이얼로그 추가
+- ✅ 이미지/첨부 추출의 atomic binary save 및 취소 rollback 추적 보강
+- ✅ Worker i18n smoke를 전체 worker ops와 f-string emit까지 확대하고 mojibake marker 인코딩 감사 추가
+- ✅ `pdf_master.spec`, `.gitignore`, README/가이드/리뷰 문서 정합성 재점검
 
 ### v4.5.5 (2026-04-10) - Stability Bundle
 - ✅ same-path 저장 시 preview 문서를 선행 해제하고 success/fail/cancel 이후 동일 페이지로 복원
@@ -495,8 +506,8 @@ API 키 저장 정책:
 ## 🧪 테스트 및 정합성 현황 (v4.5.5)
 
 - 정적 분석: `python -m pyright` → `0 errors`
-- 회귀 테스트: `python -m pytest -q` → `120 passed, 1 warning`
-- 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD 회귀 방지
+- 회귀 테스트: `python -m pytest -q` 전체 통과 기준
+- 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD/mojibake marker 회귀 방지
 
 - 신규 테스트:
   - `tests/test_ai_thumbnail_grid_flow.py` (AI 썸네일 grid의 preview 동기화/암호 세션 재사용 검증)
@@ -581,3 +592,13 @@ copies or substantial portions of the Software.
 - Undo snapshot backup 이 실패하면 작업은 계속 진행하되 이번 작업은 Undo 불가 경고를 표시합니다.
 - API key 저장은 keyring 우선 정책이며, secure storage 가 불가능한 경우에만 plaintext settings fallback 여부를 사용자에게 다시 확인합니다.
 - `pdf_master.spec` 는 새 AI meta UI 모듈을 hiddenimports 에 반영했고, `.gitignore` 는 `build/`, `dist/`, `.pytest_tmp/`, `pip-wheel-metadata/`, `*.whl`, `*.tar.gz` 등 현재 빌드/검증 산출물을 계속 제외하는 상태를 재확인했습니다.
+
+## 2026-04-27 Worker/AI/Compare Stabilization Addendum
+
+- `split_by_pages` preflight 계약은 현재 UI payload와 동일하게 `output_dir` 중심으로 정리되었습니다.
+- 저장된 AI 채팅 기록은 `path + mtime_ns` 기반 versioned key를 사용하고, legacy path-only 기록은 로드 시 1회 마이그레이션합니다.
+- `actions_meta.py`는 compatibility shim이며, 실제 AI 탭 구현은 `src.ui.tabs_ai.actions`로 통합되었습니다.
+- Worker는 `passwords={normalized_path: password}` mapping을 받아 preview에서 인증된 암호화 PDF 비밀번호를 재사용할 수 있습니다.
+- `compare_pdfs`는 `diff_count`, `results`, `report_path`, `visual_diff_path` payload를 제공하고 UI는 완료 요약 다이얼로그를 표시합니다.
+- 이미지/첨부 추출은 atomic binary save와 취소 rollback 추적을 사용합니다.
+- `.gitignore`는 `.pdf_master_*.tmp*`를 제외해 atomic PDF/text/binary 임시 파일을 모두 덮습니다.
