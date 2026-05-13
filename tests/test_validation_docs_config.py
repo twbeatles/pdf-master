@@ -30,6 +30,9 @@ def test_docs_reference_validation_manifest_and_commands():
         assert "python -m pytest -q" in text
         assert "python -m build" in text
         assert "python -m PyInstaller pdf_master.spec --clean" in text
+        assert "scripts/package_smoke.ps1" in text
+        assert "main.py --smoke" in text
+        assert "src/core/ai/" in text or "src.core.ai" in text
         assert "google-genai" in text
         assert "google-generativeai" not in text
         assert "auto/native/text" in text
@@ -51,6 +54,7 @@ def test_docs_reference_validation_manifest_and_commands():
     assert "typings/" in readme_en
     assert "typings/" in claude
     assert "typings/" in gemini
+    assert Path("FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-13.md").exists()
     assert "python -m PyInstaller pdf_master.spec --clean" in spec_text
     assert ".pytest_tmp/" in gitignore
     assert "build/" in gitignore

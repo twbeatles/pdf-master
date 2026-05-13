@@ -101,6 +101,77 @@ def test_preflight_rejects_too_small_pdf(tmp_path):
     assert not out.exists()
 
 
+def test_preflight_rejects_non_pdf_header_before_run(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    fake_pdf = tmp_path / "fake.pdf"
+    fake_pdf.write_bytes(b"not a pdf\n" + b"x" * 256)
+    out = tmp_path / "out.pdf"
+
+    worker = WorkerThread(
+        "rotate",
+        file_path=str(fake_pdf),
+        output_path=str(out),
+        angle=90,
+    )
+    errors = []
+    worker.error_signal.connect(lambda msg: errors.append(msg))
+
+    worker.run()
+
+    assert errors
+    assert any(("format" in m.lower()) or ("형식" in m) or ("손상" in m) for m in errors)
+    assert not out.exists()
+
+
+def test_preflight_rejects_missing_output_path_before_handler(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    _make_pdf(src)
+
+    worker = WorkerThread(
+        "rotate",
+        file_path=str(src),
+        angle=90,
+    )
+    errors = []
+    worker.error_signal.connect(lambda msg: errors.append(msg))
+
+    worker.run()
+
+    assert errors
+    assert any(("output" in m.lower()) or ("출력" in m) for m in errors)
+
+
+def test_preflight_accepts_extract_text_output_dir_contract(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out_dir = tmp_path / "text"
+    out_dir.mkdir()
+    _make_pdf(src)
+
+    worker = WorkerThread(
+        "extract_text",
+        file_paths=[str(src)],
+        output_dir=str(out_dir),
+    )
+    errors = []
+    finished = []
+    worker.error_signal.connect(lambda msg: errors.append(msg))
+    worker.finished_signal.connect(lambda msg: finished.append(msg))
+
+    worker.run()
+
+    assert not errors
+    assert finished
+    assert (out_dir / "src.txt").exists()
+
+
 def test_preflight_rejects_missing_required_kwargs(tmp_path):
     require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread

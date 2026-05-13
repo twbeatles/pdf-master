@@ -26,6 +26,9 @@
 - 출력 관련 저장/폴더 선택 다이얼로그는 `last_output_dir`를 시작 경로로 재사용하고, 성공한 출력 경로를 다시 기억합니다.
 - Undo/Redo는 작업 재실행이 아니라 before/after 스냅샷 복원 기반이며, `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, `copy_page_between_docs`도 같은 규칙으로 포함됩니다.
 - 이번에 정리한 worker 결과/상태 메시지는 KO/EN i18n 카탈로그를 통해 함께 관리됩니다.
+- Worker preflight는 파일 출력 mode의 `output_path`/`output_dir` 계약과 공용 PDF header 검증을 먼저 확인합니다.
+- frozen runtime 검증은 `main.py --smoke`와 `scripts/package_smoke.ps1`로 자동 실행할 수 있습니다.
+- 2026-05-13 구조 분할 후에도 기존 public import 경로는 유지됩니다. `ai_service.py`, `_pdf_impl.py`, `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, `tabs_advanced/builders.py`는 compatibility facade로 남아 있습니다.
 
 ---
 
@@ -271,6 +274,11 @@ python main.py
 python -m PyInstaller pdf_master.spec --clean
 ```
 
+### 패키지 smoke
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
+```
+
 ### 빌드 결과
 - 출력: `dist/PDF_Master_v4.5.5.exe`
 - 크기: ~30-40MB (UPX 압축 적용)
@@ -291,6 +299,9 @@ python -m PyInstaller pdf_master.spec --clean
 - 회귀 테스트: `python -m pytest -q`
 - 패키지 빌드: `python -m build`
 - 실행 파일 빌드: `python -m PyInstaller pdf_master.spec --clean`
+- clean `PYTHONPATH` frozen smoke: `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1`
+- 앱 초기화 smoke: `python main.py --smoke`
+- Gemini File API 실연동 smoke: `PDF_MASTER_GEMINI_FILE_API_SMOKE=1`과 `GEMINI_API_KEY`가 있을 때 `tests/test_ai_service_gemini_smoke.py` 실행
 - `.gitignore`는 빌드/검증 산출물(`build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl`)이 워크트리를 오염시키지 않도록 정리되어 있습니다.
 - 인코딩 점검: 추적 텍스트 파일 UTF-8 decode/BOM/U+FFFD/mojibake marker audit 통과
 
@@ -306,6 +317,8 @@ pdf-master/
 ├── pyproject.toml             # canonical dependency/build manifest
 ├── pyrightconfig.json         # Pyright/Pylance 분석 범위 설정
 ├── requirements-dev.txt       # compatibility shim -> -e .[dev]
+├── scripts/
+│   └── package_smoke.ps1      # clean env PyInstaller + EXE --smoke 검증
 ├── typings/                   # Pyright용 최소 외부 stub
 ├── README.md                  # 프로젝트 설명서
 ├── README_EN.md               # 영문 문서
@@ -313,17 +326,27 @@ pdf-master/
 ├── GEMINI.md                  # Gemini AI 가이드
 └── src/
     ├── core/
-    │   ├── ai_service.py
+    │   ├── ai/                    # Gemini service client/cache/schema/session/prompt 구현
+    │   ├── ai_service.py          # compatibility facade
     │   ├── _typing.py              # Worker 믹스인 host 계약
     │   ├── constants.py
     │   ├── i18n.py                 # TranslationManager facade
-    │   ├── i18n_catalogs/          # 번역 카탈로그 저장소
+    │   ├── i18n_catalogs/          # KO/EN base catalog + facade
     │   ├── optional_deps.py        # fitz/keyring optional dependency 경계
+    │   ├── pdf_validation.py       # PDF size/header 공용 검증
     │   ├── settings.py
     │   ├── undo_manager.py
     │   ├── worker.py               # QThread facade
     │   ├── worker_runtime/         # 공통 runtime/dispatch/preflight
     │   └── worker_ops/             # 실제 Worker 기능 분할
+    │       ├── _pdf_impl.py        # compatibility shim
+    │       ├── page_ops.py
+    │       ├── compare_ops.py
+    │       ├── form_ops.py
+    │       ├── extract_ops.py
+    │       ├── annotation_ops.py
+    │       ├── compose_ops.py
+    │       ├── transform_ops.py
     │       ├── pdf_ops.py          # compatibility shim
     │       └── ai_ops.py
     └── ui/
@@ -339,7 +362,12 @@ pdf-master/
         ├── main_window_undo.py           # 호환 shim
         ├── tabs_basic/                   # 기본 탭 분할 구현
         ├── tabs_advanced/                # 고급 탭 분할 구현
+        │   └── tab_builders/             # advanced tab UI builders
         ├── tabs_ai/                      # AI 탭 분할 구현
+        ├── common_widgets/               # widgets.py facade backing modules
+        ├── preview_widget/               # zoomable_preview.py facade backing modules
+        ├── thumbnail/                    # thumbnail_grid.py facade backing modules
+        ├── theme/                        # styles.py facade backing modules
         ├── window_core/                  # 코어 UI 분할 구현
         ├── window_preview/               # 미리보기 분할 구현
         ├── window_worker/                # Worker UI 분할 구현
@@ -351,7 +379,7 @@ pdf-master/
         └── zoomable_preview.py
 ```
 
-참고: `main_window_*.py`는 기존 import 경로 호환을 위한 shim이며, `worker.py`는 공개 `QThread` facade입니다. 실제 Worker runtime/작업 구현은 하위 폴더 모듈에 있습니다.
+참고: `main_window_*.py`, `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, `tabs_advanced/builders.py`, `ai_service.py`, `_pdf_impl.py`는 기존 import 경로 호환을 위한 shim/facade입니다. 실제 Worker runtime/작업 구현과 AI/UI 세부 구현은 하위 폴더 모듈에 있습니다.
 참고: `src/core/optional_deps.py`가 `fitz`/`keyring` optional import를 중앙화하여, 의존성이 없는 IDE에서도 `Pylance`/`Pyright` 진단이 깨지지 않도록 유지합니다.
 참고: `PyMuPDF` 미설치 환경에서는 해당 엔진이 필요한 테스트만 skip되고, 나머지 회귀 테스트는 계속 실행됩니다.
 
@@ -382,6 +410,15 @@ API 키 저장 정책:
 ---
 
 ## 📝 변경 이력
+
+### v4.5.5 (2026-05-13) - Functional Audit Follow-up
+- ✅ `OperationSpec.required_any_kwargs`와 preflight fail-fast로 PDF/text/directory 출력 계약 명시
+- ✅ UI와 Worker preflight가 `src/core/pdf_validation.py`의 공용 PDF size/header 검증을 공유
+- ✅ `progress_overlay.py`, `widgets.py` 사용자 문구와 tooltip을 KO/EN i18n key로 이동하고 smoke 제외 제거
+- ✅ `actions_extract.py` mojibake docstring 정리 및 encoding audit marker 확장
+- ✅ Gemini File API opt-in smoke, `main.py --smoke`, `scripts/package_smoke.ps1` 추가
+- ✅ `_pdf_impl.py`에서 `metadata_update`, `compress`, `crop_pdf`, `resize_pages`를 `transform_ops.py`로 이동하고 line budget 회귀 테스트 추가
+- ✅ 후속 구조 분할: Worker handler를 page/compare/form/extract/annotation/compose/transform domain module로 이동, `src/core/ai/*`와 UI 하위 패키지(`common_widgets`, `preview_widget`, `thumbnail`, `theme`, `tab_builders`) 추가, 기존 facade 유지
 
 ### v4.5.5 (2026-04-27) - Worker/AI/Compare Contract Stabilization
 - ✅ `split_by_pages` preflight 계약을 실제 UI 동작(`output_dir`, `split_mode`, `ranges`)과 일치시키고 unsupported `pages_per_file` 요구 제거
@@ -530,6 +567,10 @@ API 키 저장 정책:
   - `tests/test_advanced_new_modes_ui_flow.py` (신규 UI 모드 3종 액션/파라미터 흐름 검증)
   - `tests/test_worker_param_compat.py` (고급 기능 kwargs 호환 검증)
   - `tests/test_worker_preflight.py` (실행 전 입력 검증 fail-fast 검증)
+  - `tests/test_i18n_runtime_widgets.py` (progress overlay/file widgets English runtime 문자열 검증)
+  - `tests/test_ai_service_gemini_smoke.py` (Gemini File API opt-in summary/chat/keyword smoke)
+  - `tests/test_main_smoke.py` (`main.py --smoke` 초기화 종료 검증)
+  - `tests/test_worker_structure_budget.py` (legacy facade line budget, public import path, Worker legacy alias 회귀 방지)
   - `tests/test_i18n.py` (시스템 언어 감지 경로 검증)
   - `tests/test_i18n_catalogs.py` (`i18n_catalogs` 키 집합 및 facade re-export 검증)
   - `tests/test_worker_markup_validation.py` (`add_text_markup` 유효/무효 입력 검증)
@@ -602,3 +643,12 @@ copies or substantial portions of the Software.
 - `compare_pdfs`는 `diff_count`, `results`, `report_path`, `visual_diff_path` payload를 제공하고 UI는 완료 요약 다이얼로그를 표시합니다.
 - 이미지/첨부 추출은 atomic binary save와 취소 rollback 추적을 사용합니다.
 - `.gitignore`는 `.pdf_master_*.tmp*`를 제외해 atomic PDF/text/binary 임시 파일을 모두 덮습니다.
+
+## 2026-05-13 Functional Audit Follow-up
+
+- File-writing Worker modes now fail fast through `required_any_kwargs`; `ai_summarize` remains output-file optional because the UI can consume the in-memory result.
+- `src/core/pdf_validation.py` is the shared PDF size/header validator used by both Worker preflight and UI file widgets.
+- Progress overlay and common file widget strings are covered by the runtime UI i18n hardcoded-string smoke.
+- `main.py --smoke` initializes the app and exits with code 0, and `scripts/package_smoke.ps1` clears `PYTHONPATH`, rebuilds the PyInstaller EXE, and runs the EXE smoke.
+- Gemini File API live validation is opt-in through `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` plus `GEMINI_API_KEY`.
+- Worker handlers now live in domain modules under `src/core/worker_ops/`, `AIService` lives under `src/core/ai/`, and long UI/style/catalog files are split behind compatibility facades; public Worker/import paths remain unchanged.

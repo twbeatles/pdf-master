@@ -13,6 +13,7 @@ class OperationSpec:
     result_kind: str
     title_key: str
     required_kwargs: tuple[str, ...]
+    required_any_kwargs: tuple[tuple[str, ...], ...]
     result_payload_keys: tuple[str, ...]
     refresh_preview: bool
     cancel_cleanup: str
@@ -46,6 +47,7 @@ def _spec(
     result_kind: str = "message",
     title_key: str | None = None,
     required_kwargs: tuple[str, ...] = (),
+    required_any_kwargs: tuple[tuple[str, ...], ...] | None = None,
     result_payload_keys: tuple[str, ...] = (),
     refresh_preview: bool | None = None,
     cancel_cleanup: str | None = None,
@@ -55,6 +57,15 @@ def _spec(
     resolved_cancel_cleanup = cancel_cleanup or _default_cancel_cleanup(output_kind, same_path_safe)
     if resolved_cancel_cleanup not in {"none", "created_outputs", "same_path_restore"}:
         raise ValueError(f"Invalid cancel_cleanup policy: {resolved_cancel_cleanup}")
+    if required_any_kwargs is None:
+        if output_kind in {"pdf", "text"}:
+            resolved_required_any_kwargs = (("output_path",),)
+        elif output_kind == "directory":
+            resolved_required_any_kwargs = (("output_dir",),)
+        else:
+            resolved_required_any_kwargs = ()
+    else:
+        resolved_required_any_kwargs = required_any_kwargs
     return OperationSpec(
         mode=mode,
         handler=handler or mode,
@@ -64,6 +75,7 @@ def _spec(
         result_kind=result_kind,
         title_key=title_key or mode,
         required_kwargs=required_kwargs,
+        required_any_kwargs=resolved_required_any_kwargs,
         result_payload_keys=result_payload_keys,
         refresh_preview=resolved_refresh_preview,
         cancel_cleanup=resolved_cancel_cleanup,
@@ -106,6 +118,7 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
         result_kind="summary",
         title_key="mode_ai_summarize",
         required_kwargs=("api_key",),
+        required_any_kwargs=(),
         result_payload_keys=("title", "summary", "key_points", "meta"),
         refresh_preview=False,
     ),
@@ -130,7 +143,12 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
     "extract_links": _spec("extract_links", output_kind="text", title_key="mode_extract_links"),
     "extract_markdown": _spec("extract_markdown", output_kind="text", title_key="mode_extract_markdown", output_extensions=(".md",)),
     "extract_tables": _spec("extract_tables", output_kind="text", title_key="mode_extract_tables"),
-    "extract_text": _spec("extract_text", output_kind="text", title_key="action_extract_text"),
+    "extract_text": _spec(
+        "extract_text",
+        output_kind="text",
+        title_key="action_extract_text",
+        required_any_kwargs=(("output_path", "output_dir"),),
+    ),
     "fill_form": _spec("fill_form", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_fill_form"),
     "get_bookmarks": _spec("get_bookmarks", output_kind="text", title_key="mode_get_bookmarks"),
     "get_form_fields": _spec(
@@ -153,6 +171,7 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
         output_kind="memory",
         result_kind="annotations",
         title_key="mode_list_annotations",
+        required_any_kwargs=(("output_path",),),
         result_payload_keys=("annotations",),
         refresh_preview=False,
     ),

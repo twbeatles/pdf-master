@@ -36,6 +36,61 @@ def test_metadata_update_writes_updated_title(tmp_path):
         doc.close()
 
 
+def test_compress_writes_output_pdf(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "compressed.pdf"
+    _make_pdf(src, ["PAGE_1"])
+
+    worker = WorkerThread(
+        "compress",
+        file_path=str(src),
+        output_path=str(out),
+        save_profile="fast",
+    )
+    errors = []
+    worker.error_signal.connect(lambda msg: errors.append(msg))
+
+    worker.compress()
+
+    assert not errors
+    assert out.exists()
+    assert out.read_bytes().startswith(b"%PDF-")
+
+
+def test_crop_pdf_updates_cropbox(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "cropped.pdf"
+    _make_pdf(src, ["PAGE_1"])
+
+    worker = WorkerThread(
+        "crop_pdf",
+        file_path=str(src),
+        output_path=str(out),
+        margins={"left": 10, "top": 20, "right": 30, "bottom": 40},
+    )
+    errors = []
+    worker.error_signal.connect(lambda msg: errors.append(msg))
+
+    worker.crop_pdf()
+
+    assert not errors
+    doc = fitz.open(str(out))
+    try:
+        page = doc[0]
+        assert round(page.cropbox.x0) == 10
+        assert round(page.cropbox.y0) == 20
+        assert round(page.cropbox.x1) == 270
+        assert round(page.cropbox.y1) == 360
+    finally:
+        doc.close()
+
+
 def test_protect_and_decrypt_roundtrip(tmp_path):
     require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread

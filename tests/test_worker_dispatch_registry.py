@@ -34,18 +34,30 @@ def test_worker_dispatch_specs_expose_extended_metadata():
     assert compress.refresh_preview is True
     assert compress.cancel_cleanup == "same_path_restore"
     assert compress.output_extensions == (".pdf",)
+    assert compress.required_any_kwargs == (("output_path",),)
 
     markdown = get_operation_spec("extract_markdown")
     assert markdown is not None
     assert markdown.output_extensions == (".md",)
     assert markdown.cancel_cleanup == "created_outputs"
+    assert markdown.required_any_kwargs == (("output_path",),)
+
+    extract_text = get_operation_spec("extract_text")
+    assert extract_text is not None
+    assert extract_text.required_any_kwargs == (("output_path", "output_dir"),)
+
+    convert_to_img = get_operation_spec("convert_to_img")
+    assert convert_to_img is not None
+    assert convert_to_img.required_any_kwargs == (("output_dir",),)
 
     ai_summary = get_operation_spec("ai_summarize")
     assert ai_summary is not None
+    assert ai_summary.required_any_kwargs == ()
     assert ai_summary.result_payload_keys == ("title", "summary", "key_points", "meta")
     assert ai_summary.refresh_preview is False
 
     batch = get_operation_spec("batch")
     assert batch is not None
     assert batch.required_kwargs == ("output_dir", "operation")
+    assert batch.required_any_kwargs == (("output_dir",),)
     assert batch.cancel_cleanup == "created_outputs"

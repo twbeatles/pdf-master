@@ -5,15 +5,17 @@ from .._typing import WorkerHost
 from ..optional_deps import fitz
 from ..worker_runtime.args import _as_list, _as_str
 from ..worker_runtime.save_profiles import DEFAULT_COMPRESSION_SAVE_PROFILE, normalize_save_profile
-from ._pdf_impl import FITZ_PDF_ENCRYPT_AES_256, FITZ_PDF_PERM_ACCESSIBILITY, FITZ_PDF_PERM_COPY, FITZ_PDF_PERM_PRINT
-from ._pdf_impl import WorkerPdfOpsMixin as _LegacyWorkerPdfOpsMixin
+from .security_ops import (
+    FITZ_PDF_ENCRYPT_AES_256,
+    FITZ_PDF_PERM_ACCESSIBILITY,
+    FITZ_PDF_PERM_COPY,
+    FITZ_PDF_PERM_PRINT,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class WorkerBatchOpsMixin(WorkerHost):
-    compare_pdfs = _LegacyWorkerPdfOpsMixin._legacy_compare_pdfs
-
     def batch(self):
         """일괄 처리"""
         files = [path for path in _as_list(self.kwargs.get("files")) if isinstance(path, str)]

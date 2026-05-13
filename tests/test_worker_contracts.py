@@ -24,7 +24,7 @@ def test_ui_run_worker_calls_satisfy_static_required_kwargs():
 
             mode = node.args[0].value
             spec = OPERATION_SPECS.get(mode)
-            if spec is None or not spec.required_kwargs:
+            if spec is None or (not spec.required_kwargs and not spec.required_any_kwargs):
                 continue
 
             if any(keyword.arg is None for keyword in node.keywords):
@@ -35,6 +35,10 @@ def test_ui_run_worker_calls_satisfy_static_required_kwargs():
                 supplied.add("output_path")
 
             missing = sorted(set(spec.required_kwargs) - supplied)
+            for group in spec.required_any_kwargs:
+                if any(key in supplied for key in group):
+                    continue
+                missing.append(" or ".join(group))
             if missing:
                 violations.append(f"{path}:{node.lineno}: {mode} missing {missing}")
 

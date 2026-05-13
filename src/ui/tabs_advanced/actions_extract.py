@@ -4,7 +4,7 @@ from ...core.i18n import tm
 
 
 def action_extract_links(self):
-    """PDF 留곹겕 異붿텧"""
+    """PDF link extraction."""
     path = self.sel_links.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
@@ -14,7 +14,7 @@ def action_extract_links(self):
 
 
 def action_extract_images(self):
-    """?대?吏 異붿텧"""
+    """Image extraction."""
     path = self.sel_extract.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
@@ -24,7 +24,7 @@ def action_extract_images(self):
 
 
 def action_get_bookmarks(self):
-    """遺곷쭏??異붿텧"""
+    """Bookmark extraction."""
     path = self.sel_bm.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
@@ -34,7 +34,7 @@ def action_get_bookmarks(self):
 
 
 def action_search_text(self):
-    """?띿뒪??寃??"""
+    """Text search."""
     path = self.sel_search.get_path()
     term = self.inp_search.text().strip()
 
@@ -49,7 +49,7 @@ def action_search_text(self):
 
 
 def action_extract_tables(self):
-    """?뚯씠釉?異붿텧"""
+    """Table extraction."""
     path = self.sel_table.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
@@ -59,7 +59,7 @@ def action_extract_tables(self):
 
 
 def action_extract_markdown(self):
-    """Markdown 異붿텧"""
+    """Markdown extraction."""
     path = self.sel_md.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))

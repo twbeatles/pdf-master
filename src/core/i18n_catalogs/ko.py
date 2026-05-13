@@ -1,5 +1,5 @@
-from .shared import TRANSLATIONS as _TRANSLATIONS
+from __future__ import annotations
 
-TRANSLATIONS = _TRANSLATIONS["ko"]
+from .ko_base import TRANSLATIONS
 
 __all__ = ["TRANSLATIONS"]

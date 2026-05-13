@@ -1,304 +1,50 @@
+from __future__ import annotations
+
 import csv
 import io
 import json
 import logging
 import os
+from collections import Counter
 from typing import Any, cast
 
 from .._typing import WorkerHost
+from ..constants import (
+    DEFAULT_PAGE_SIZE,
+    PAGE_SIZES,
+    WATERMARK_DEFAULTS,
+    WATERMARK_TILE_SPACING_X,
+    WATERMARK_TILE_SPACING_Y,
+)
 from ..optional_deps import fitz
-from ..worker_runtime.args import _as_dict, _as_int, _as_list, _as_str
-from ._pdf_impl import (
-    WorkerPdfOpsMixin as _LegacyWorkerPdfOpsMixin,
+from ..worker_runtime.args import (
+    _as_bool,
+    _as_dict,
+    _as_float,
+    _as_int,
+    _as_list,
+    _as_str,
+)
+from ._pdf_helpers import (
     _extract_page_markdown,
     _fallback_markdown_from_text,
     _markdown_front_matter,
+    _normalize_stroke_points,
     _page_asset_placeholders,
+    _sample_diff_text,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class _WorkerExtractOpsBaseMixin(WorkerHost):
-    extract_links = _LegacyWorkerPdfOpsMixin.extract_links
-    get_form_fields = _LegacyWorkerPdfOpsMixin.get_form_fields
-    fill_form = _LegacyWorkerPdfOpsMixin.fill_form
-    list_attachments = _LegacyWorkerPdfOpsMixin.list_attachments
-    extract_markdown = _LegacyWorkerPdfOpsMixin.extract_markdown
-    extract_images = _LegacyWorkerPdfOpsMixin.extract_images
-    extract_text = _LegacyWorkerPdfOpsMixin.extract_text
-
-    def get_pdf_info(self):
-        """PDF 정보 및 통계 추출"""
-        total_chars = 0
-        total_images = 0
-        fonts_used: set[str] = set()
-        page_count = 0
-        file_path = _as_str(self.kwargs.get("file_path"))
-        output_path = _as_str(self.kwargs.get("output_path"))
-        doc = None
-        try:
-            doc = self._open_pdf_document(file_path)
-            page_count = len(doc)
-
-            for i in range(page_count):
-                page = doc[i]
-                total_chars += len(page.get_text())
-                total_images += len(page.get_images())
-                for font in page.get_fonts():
-                    fonts_used.add(font[3] if len(font) > 3 else font[0])
-                self._emit_progress_if_due(int((i + 1) / max(1, page_count) * 100))
-
-            meta = cast(dict[str, Any], doc.metadata or {})
-            with open(output_path, "w", encoding="utf-8") as handle:
-                handle.write(f"# PDF 정보: {os.path.basename(file_path)}\n\n")
-                handle.write("## 기본 정보\n")
-                handle.write(f"- 페이지 수: {page_count}\n")
-                handle.write(f"- 파일 크기: {os.path.getsize(file_path) / 1024:.1f} KB\n")
-                handle.write(f"- 제목: {meta.get('title', '-')}\n")
-                handle.write(f"- 작성자: {meta.get('author', '-')}\n")
-                handle.write(f"- 생성일: {meta.get('creationDate', '-')}\n\n")
-                handle.write("## 통계\n")
-                handle.write(f"- 총 글자 수: {total_chars:,}\n")
-                handle.write(f"- 총 이미지 수: {total_images}\n")
-                handle.write(f"- 사용 폰트: {', '.join(fonts_used) if fonts_used else '없음'}\n")
-        finally:
-            if doc:
-                doc.close()
-
-        self.finished_signal.emit(
-            self._get_msg("msg_pdf_info_done", page_count, total_chars, total_images)
-        )
-
-    def get_bookmarks(self):
-        """PDF 북마크(목차) 추출"""
-        file_path = _as_str(self.kwargs.get("file_path"))
-        output_path = _as_str(self.kwargs.get("output_path"))
-        doc = None
-        toc: list[list[Any]] = []
-        try:
-            doc = self._open_pdf_document(file_path)
-            toc = cast(list[list[Any]], doc.get_toc() or [])
-
-            with open(output_path, "w", encoding="utf-8") as handle:
-                handle.write(f"# 북마크: {os.path.basename(file_path)}\n\n")
-                if toc:
-                    for item in toc:
-                        level, title, page = item[0], item[1], item[2]
-                        indent = "  " * (level - 1)
-                        handle.write(f"{indent}- [{title}] → 페이지 {page}\n")
-                else:
-                    handle.write("북마크가 없습니다.\n")
-        finally:
-            if doc:
-                doc.close()
-        self._emit_progress_if_due(100)
-        self.finished_signal.emit(self._get_msg("msg_bookmarks_extracted", len(toc)))
-
-    def set_bookmarks(self):
-        """PDF 북마크(목차) 설정"""
-        file_path = _as_str(self.kwargs.get("file_path"))
-        output_path = _as_str(self.kwargs.get("output_path"))
-        bookmarks = cast(list[list[Any]], self.kwargs.get("bookmarks") or [])
-        doc = None
-        try:
-            doc = self._open_pdf_document(file_path)
-            doc.set_toc(bookmarks)
-            self._atomic_pdf_save(doc, output_path)
-        finally:
-            if doc:
-                doc.close()
-
-        self._emit_progress_if_due(100)
-        self.finished_signal.emit(self._get_msg("msg_bookmarks_set", len(bookmarks)))
-
-    def search_text(self):
-        """PDF 내 텍스트 검색"""
-        file_path = _as_str(self.kwargs.get("file_path"))
-        search_term = _as_str(self.kwargs.get("search_term"))
-        output_path = _as_str(self.kwargs.get("output_path"))
-        results: list[dict[str, Any]] = []
-        doc = None
-        try:
-            doc = self._open_pdf_document(file_path)
-            total_pages = max(1, len(doc))
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-                text_instances = page.search_for(search_term)
-                if text_instances:
-                    results.append(
-                        {
-                            "page": page_num + 1,
-                            "count": len(text_instances),
-                            "positions": [(r.x0, r.y0) for r in text_instances[:5]],
-                        }
-                    )
-                self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
-
-            with open(output_path, "w", encoding="utf-8") as handle:
-                handle.write(f"# 검색 결과: '{search_term}'\n")
-                handle.write(f"파일: {os.path.basename(file_path)}\n\n")
-                if results:
-                    total = sum(r["count"] for r in results)
-                    handle.write(f"총 {total}개 발견 ({len(results)}페이지)\n\n")
-                    for item in results:
-                        handle.write(f"## 페이지 {item['page']}: {item['count']}개\n")
-                else:
-                    handle.write("검색 결과가 없습니다.\n")
-        finally:
-            if doc:
-                doc.close()
-        total_found = sum(r["count"] for r in results) if results else 0
-        self.finished_signal.emit(
-            self._get_msg("msg_search_text_done", search_term, total_found)
-        )
-
-    def extract_tables(self):
-        """PDF에서 테이블 데이터 추출"""
-        file_path = _as_str(self.kwargs.get("file_path"))
-        output_path = _as_str(self.kwargs.get("output_path"))
-        all_tables: list[dict[str, Any]] = []
-        doc = None
-        try:
-            doc = self._open_pdf_document(file_path)
-            total_pages = max(1, len(doc))
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-                try:
-                    find_tables = getattr(page, "find_tables", None)
-                    tables = _as_list(find_tables() if callable(find_tables) else [])
-                    for idx, table in enumerate(tables):
-                        all_tables.append(
-                            {
-                                "page": page_num + 1,
-                                "table_idx": idx + 1,
-                                "data": table.extract(),
-                            }
-                        )
-                except Exception as exc:
-                    logger.error("Page %s table extraction error: %s", page_num + 1, exc)
-                self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
-
-            with open(output_path, "w", encoding="utf-8", newline="") as handle:
-                writer = csv.writer(handle)
-                for table in all_tables:
-                    writer.writerow([f"--- Page {table['page']}, Table {table['table_idx']} ---"])
-                    for row in table["data"]:
-                        writer.writerow([str(cell) if cell else "" for cell in row])
-                    writer.writerow([])
-        finally:
-            if doc:
-                doc.close()
-        self.finished_signal.emit(self._get_msg("msg_tables_extracted", len(all_tables)))
-
-    def list_annotations(self):
-        """PDF 주석 목록 추출"""
-        file_path = _as_str(self.kwargs.get("file_path"))
-        output_path = _as_str(self.kwargs.get("output_path"))
-        all_annots: list[dict[str, Any]] = []
-        doc = None
-        try:
-            doc = self._open_pdf_document(file_path)
-            total_pages = max(1, len(doc))
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-                annots = page.annots()
-                if annots:
-                    for annot in annots:
-                        annot_info = cast(dict[str, Any], annot.info or {})
-                        all_annots.append(
-                            {
-                                "page": page_num + 1,
-                                "type": annot.type[1] if annot.type else "Unknown",
-                                "content": annot_info.get("content", ""),
-                                "title": annot_info.get("title", ""),
-                                "rect": [annot.rect.x0, annot.rect.y0, annot.rect.x1, annot.rect.y1],
-                            }
-                        )
-                self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
-
-            with open(output_path, "w", encoding="utf-8") as handle:
-                handle.write(f"# 주석 목록: {os.path.basename(file_path)}\n\n")
-                handle.write(f"총 {len(all_annots)}개 주석\n\n")
-                for annot in all_annots:
-                    handle.write(f"## 페이지 {annot['page']} - {annot['type']}\n")
-                    if annot["title"]:
-                        handle.write(f"작성자: {annot['title']}\n")
-                    if annot["content"]:
-                        handle.write(f"내용: {annot['content']}\n")
-                    handle.write("\n")
-        finally:
-            if doc:
-                doc.close()
-        self.kwargs["result_annotations"] = all_annots
-        self._set_result_payload(annotations=all_annots)
-        self.finished_signal.emit(
-            self._get_msg("msg_annotations_extracted", len(all_annots))
-        )
-
-    def add_attachment(self):
-        """PDF에 파일 첨부"""
-        file_path = _as_str(self.kwargs.get("file_path"))
-        output_path = _as_str(self.kwargs.get("output_path"))
-        attach_path = _as_str(self.kwargs.get("attach_path"))
-        doc = None
-        try:
-            doc = self._open_pdf_document(file_path)
-            with open(attach_path, "rb") as handle:
-                data = handle.read()
-
-            doc.embfile_add(os.path.basename(attach_path), data)
-            self._atomic_pdf_save(doc, output_path)
-        finally:
-            if doc:
-                doc.close()
-        self._emit_progress_if_due(100)
-        self.finished_signal.emit(
-            self._get_msg("msg_attachment_added", os.path.basename(attach_path))
-        )
-
-    def extract_attachments(self):
-        """PDF 첨부 파일 추출"""
-        file_path = _as_str(self.kwargs.get("file_path"))
-        output_dir = _as_str(self.kwargs.get("output_dir"))
-        doc = None
-        count = 0
-        used_names: set[str] = set()
-        try:
-            os.makedirs(output_dir, exist_ok=True)
-            doc = self._open_pdf_document(file_path)
-            total = doc.embfile_count()
-
-            if total == 0:
-                self._emit_progress_if_due(100)
-                self.finished_signal.emit(self._get_msg("msg_no_attachments_found"))
-                return
-
-            for i in range(total):
-                self._check_cancelled()
-                info = _as_dict(doc.embfile_info(i))
-                data = doc.embfile_get(i)
-                raw_name = info.get("name", f"attachment_{i + 1}")
-                out_path, _saved_name = self._build_safe_attachment_output_path(output_dir, raw_name, i, used_names)
-                self._atomic_binary_save(out_path, data)
-                count += 1
-                self._emit_progress_if_due(int((i + 1) / total * 100))
-        finally:
-            if doc:
-                doc.close()
-        self.finished_signal.emit(self._get_msg("msg_attachments_extracted", count))
-
-
-class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
+class WorkerExtractOpsMixin(WorkerHost):
     def extract_text(self):
-        file_paths = [
-            path
-            for path in (_as_list(self.kwargs.get("file_paths")) or [_as_str(self.kwargs.get("file_path"))])
-            if isinstance(path, str) and path
-        ]
-        output_path = _as_str(self.kwargs.get("output_path"))
-        output_dir = _as_str(self.kwargs.get("output_dir"))
-        include_details = bool(self.kwargs.get("include_details", False))
+        # 다중 파일 지원
+        file_paths = [path for path in (_as_list(self.kwargs.get('file_paths')) or [_as_str(self.kwargs.get('file_path'))]) if isinstance(path, str) and path]
+        output_path = _as_str(self.kwargs.get('output_path'))
+        output_dir = _as_str(self.kwargs.get('output_dir'))
+        include_details = _as_bool(self.kwargs.get('include_details'), False)  # v3.2: 상세 정보 포함 옵션
+
         total_files = len(file_paths)
         used_output_stems: set[str] = set()
 
@@ -311,43 +57,58 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
             doc = None
             try:
                 doc = self._open_pdf_document(file_path)
-                text_chunks: list[str] = []
-                for page_index in range(len(doc)):
-                    page = doc[page_index]
-                    self._check_cancelled()
-                    text_chunks.append(f"\n--- Page {page_index + 1} ---\n")
+                text_chunks = []
+
+                for i in range(len(doc)):
+                    page = doc[i]
+                    self._check_cancelled()  # 취소 체크포인트
+                    text_chunks.append(f"\n--- Page {i+1} ---\n")
+
                     if include_details:
+                        # v3.2: 상세 정보 추출 (폰트, 크기, 색상)
                         text_dict = _as_dict(page.get_text("dict"))
                         blocks = cast(list[dict[str, Any]], text_dict.get("blocks", []))
                         for block in blocks:
-                            if block.get("type") != 0:
-                                continue
-                            for line in cast(list[dict[str, Any]], block.get("lines", [])):
-                                for span in cast(list[dict[str, Any]], line.get("spans", [])):
-                                    text = span.get("text", "")
-                                    font = span.get("font", "unknown")
-                                    size = span.get("size", 0)
-                                    color = span.get("color", 0)
-                                    r = (color >> 16) & 0xFF
-                                    g = (color >> 8) & 0xFF
-                                    b = color & 0xFF
-                                    text_chunks.append(
-                                        f"[Font: {font}, Size: {size:.1f}pt, Color: RGB({r},{g},{b})] {text}\n"
-                                    )
+                            if block.get("type") == 0:  # 텍스트 블록
+                                for line in cast(list[dict[str, Any]], block.get("lines", [])):
+                                    for span in cast(list[dict[str, Any]], line.get("spans", [])):
+                                        text = span.get("text", "")
+                                        font = span.get("font", "unknown")
+                                        size = span.get("size", 0)
+                                        color = span.get("color", 0)
+                                        # RGB로 변환
+                                        r = (color >> 16) & 0xFF
+                                        g = (color >> 8) & 0xFF
+                                        b = color & 0xFF
+                                        text_chunks.append(
+                                            f"[Font: {font}, Size: {size:.1f}pt, Color: RGB({r},{g},{b})] {text}\n"
+                                        )
                     else:
                         text_chunks.append(page.get_text())
             finally:
                 if doc:
                     doc.close()
 
+            # 출력 경로 결정
             if output_dir:
                 base = os.path.splitext(os.path.basename(file_path))[0]
-                unique_stem = self._build_unique_output_stem(output_dir, base, ".txt", used_output_stems)
+                unique_stem = self._build_unique_output_stem(
+                    output_dir,
+                    base,
+                    ".txt",
+                    used_output_stems,
+                )
                 out_path = os.path.join(output_dir, f"{unique_stem}.txt")
             else:
                 out_path = output_path
 
-            self._atomic_text_save(out_path, "".join(text_chunks))
+            full_text = "".join(text_chunks)
+            out_path_exists = os.path.exists(out_path)
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(full_text)
+            if output_dir and not out_path_exists:
+                self._record_created_output_path(out_path)
+
             self._emit_progress_if_due(int((file_idx + 1) / max(1, total_files) * 100))
 
         self.finished_signal.emit(
@@ -357,28 +118,6 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
                 self._get_msg("msg_extract_text_detail_suffix") if include_details else "",
             )
         )
-
-    def extract_links(self):
-        file_path = _as_str(self.kwargs.get("file_path"))
-        output_path = _as_str(self.kwargs.get("output_path"))
-        doc = self._open_pdf_document(file_path)
-        all_links: list[dict[str, Any]] = []
-        try:
-            total_pages = max(1, len(doc))
-            for page_index in range(len(doc)):
-                page = doc[page_index]
-                self._check_cancelled()
-                for link in page.get_links():
-                    if "uri" in link:
-                        all_links.append({"page": page_index + 1, "url": link["uri"]})
-                self._emit_progress_if_due(int((page_index + 1) / total_pages * 100))
-        finally:
-            doc.close()
-
-        body = [f"# {os.path.basename(file_path)} - Link List", ""]
-        body.extend(f"Page {link['page']}: {link['url']}" for link in all_links)
-        self._atomic_text_save(output_path, "\n".join(body).rstrip() + "\n")
-        self.finished_signal.emit(self._get_msg("msg_links_extracted", len(all_links)))
 
     def get_pdf_info(self):
         total_chars = 0
@@ -449,6 +188,23 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         self._atomic_text_save(output_path, "\n".join(lines))
         self._emit_progress_if_due(100)
         self.finished_signal.emit(self._get_msg("msg_bookmarks_extracted", len(toc)))
+
+    def set_bookmarks(self):
+        """PDF 북마크(목차) 설정"""
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        bookmarks = cast(list[list[Any]], self.kwargs.get("bookmarks") or [])
+        doc = None
+        try:
+            doc = self._open_pdf_document(file_path)
+            doc.set_toc(bookmarks)
+            self._atomic_pdf_save(doc, output_path)
+        finally:
+            if doc:
+                doc.close()
+
+        self._emit_progress_if_due(100)
+        self.finished_signal.emit(self._get_msg("msg_bookmarks_set", len(bookmarks)))
 
     def search_text(self):
         file_path = _as_str(self.kwargs.get("file_path"))
@@ -568,19 +324,127 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
         self._set_result_payload(annotations=all_annots)
         self.finished_signal.emit(self._get_msg("msg_annotations_extracted", len(all_annots)))
 
-    def extract_markdown(self):
+    def extract_links(self):
+        """PDF에서 모든 링크 추출"""
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+
+        doc = self._open_pdf_document(file_path)
+        all_links = []
+        try:
+            total_pages = len(doc)
+            for i in range(total_pages):
+                page = doc[i]
+                self._check_cancelled()  # 취소 체크포인트
+                links = page.get_links()
+                for link in links:
+                    if 'uri' in link:
+                        all_links.append({
+                            'page': i + 1,
+                            'url': link['uri']
+                        })
+                self._emit_progress_if_due(int((i + 1) / total_pages * 100))
+        finally:
+            doc.close()
+
+        body = [f"# {os.path.basename(file_path)} - Link List", ""]
+        body.extend(f"Page {link['page']}: {link['url']}" for link in all_links)
+        self._atomic_text_save(output_path, "\n".join(body).rstrip() + "\n")
+
+        self.finished_signal.emit(self._get_msg("msg_links_extracted", len(all_links)))
+
+    def list_attachments(self):
+        """PDF 첨부 파일 목록"""
+        file_path = _as_str(self.kwargs.get('file_path'))
+
+        doc = self._open_pdf_document(file_path)
+        attachments = []
+
+        try:
+            count = doc.embfile_count()
+            for i in range(count):
+                info = doc.embfile_info(i)
+                attachments.append({
+                    'index': i,
+                    'name': info.get('name', 'Unknown'),
+                    'size': info.get('size', 0),
+                    'created': info.get('creationDate', ''),
+                })
+
+            self.kwargs['result_attachments'] = attachments
+            self._set_result_payload(attachments=attachments)
+            self._emit_progress_if_due(100)
+            self.finished_signal.emit(self._get_msg("msg_attachments_listed", len(attachments)))
+        finally:
+            doc.close()
+
+    def add_attachment(self):
+        """PDF에 파일 첨부"""
         file_path = _as_str(self.kwargs.get("file_path"))
         output_path = _as_str(self.kwargs.get("output_path"))
-        markdown_mode = _as_str(self.kwargs.get("markdown_mode"), "auto")
-        if markdown_mode not in {"auto", "native", "text"}:
-            markdown_mode = "auto"
-        include_front_matter = bool(self.kwargs.get("include_front_matter", False))
-        include_page_markers = bool(self.kwargs.get("include_page_markers", True))
-        include_asset_placeholders = bool(self.kwargs.get("include_asset_placeholders", False))
+        attach_path = _as_str(self.kwargs.get("attach_path"))
+        doc = None
+        try:
+            doc = self._open_pdf_document(file_path)
+            with open(attach_path, "rb") as handle:
+                data = handle.read()
+
+            doc.embfile_add(os.path.basename(attach_path), data)
+            self._atomic_pdf_save(doc, output_path)
+        finally:
+            if doc:
+                doc.close()
+        self._emit_progress_if_due(100)
+        self.finished_signal.emit(
+            self._get_msg("msg_attachment_added", os.path.basename(attach_path))
+        )
+
+    def extract_attachments(self):
+        """PDF 첨부 파일 추출"""
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_dir = _as_str(self.kwargs.get("output_dir"))
+        doc = None
+        count = 0
+        used_names: set[str] = set()
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+            doc = self._open_pdf_document(file_path)
+            total = doc.embfile_count()
+
+            if total == 0:
+                self._emit_progress_if_due(100)
+                self.finished_signal.emit(self._get_msg("msg_no_attachments_found"))
+                return
+
+            for i in range(total):
+                self._check_cancelled()
+                info = _as_dict(doc.embfile_info(i))
+                data = doc.embfile_get(i)
+                raw_name = info.get("name", f"attachment_{i + 1}")
+                out_path, _saved_name = self._build_safe_attachment_output_path(output_dir, raw_name, i, used_names)
+                self._atomic_binary_save(out_path, data)
+                count += 1
+                self._emit_progress_if_due(int((i + 1) / total * 100))
+        finally:
+            if doc:
+                doc.close()
+        self.finished_signal.emit(self._get_msg("msg_attachments_extracted", count))
+
+    def extract_markdown(self):
+        """PDF를 Markdown으로 추출"""
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_path = _as_str(self.kwargs.get('output_path'))
+        markdown_mode = _as_str(self.kwargs.get('markdown_mode'), 'auto')
+        if markdown_mode not in {'auto', 'native', 'text'}:
+            markdown_mode = 'auto'
+        include_front_matter = _as_bool(self.kwargs.get('include_front_matter'), False)
+        include_page_markers = _as_bool(self.kwargs.get('include_page_markers'), True)
+        include_asset_placeholders = _as_bool(self.kwargs.get('include_asset_placeholders'), False)
 
         doc = self._open_pdf_document(file_path)
         markdown_chunks: list[str] = []
         total_pages = 0
+
         try:
             total_pages = len(doc)
             if include_front_matter:
@@ -593,6 +457,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
             for page_num in range(total_pages):
                 page = doc[page_num]
                 self._check_cancelled()
+
                 if page_num > 0:
                     markdown_chunks.append("\n")
                 if include_page_markers:
@@ -603,7 +468,7 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
                         markdown_chunks.append("\n".join(placeholders))
                         markdown_chunks.append("\n\n")
 
-                if markdown_mode == "text":
+                if markdown_mode == 'text':
                     markdown_text = _fallback_markdown_from_text(page)
                 else:
                     try:
@@ -615,66 +480,80 @@ class WorkerExtractOpsMixin(_WorkerExtractOpsBaseMixin):
                 if markdown_text:
                     markdown_chunks.append(markdown_text)
                     markdown_chunks.append("\n\n")
-                self._emit_progress_if_due(int((page_num + 1) / max(1, total_pages) * 100))
+                self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
         finally:
             doc.close()
 
-        self._atomic_text_save(output_path, "".join(markdown_chunks))
+        markdown_text = "".join(markdown_chunks)
+        self._atomic_text_save(output_path, markdown_text)
+
         self.finished_signal.emit(self._get_msg("msg_markdown_extracted", total_pages))
 
     def extract_images(self):
-        file_path = _as_str(self.kwargs.get("file_path"))
-        output_dir = _as_str(self.kwargs.get("output_dir"))
-        include_info = bool(self.kwargs.get("include_info", True))
-        deduplicate = bool(self.kwargs.get("deduplicate", True))
+        """PDF에서 모든 이미지 추출"""
+        import json
+        file_path = _as_str(self.kwargs.get('file_path'))
+        output_dir = _as_str(self.kwargs.get('output_dir'))
+        include_info = _as_bool(self.kwargs.get('include_info'), True)  # v3.2: 상세 정보 포함
+        deduplicate = _as_bool(self.kwargs.get('deduplicate'), True)  # v3.2: 중복 제거
 
         doc = self._open_pdf_document(file_path)
         image_count = 0
-        image_info_list: list[dict[str, Any]] = []
-        seen_xrefs: set[int] = set()
+        image_info_list = []  # v3.2: 이미지 정보 목록
+        seen_xrefs = set()  # v3.2: 중복 추적
+
         try:
-            total_pages = max(1, len(doc))
+            total_pages = len(doc)
             for page_num in range(len(doc)):
                 page = doc[page_num]
-                self._check_cancelled()
-                for img_idx, img in enumerate(page.get_images()):
+                self._check_cancelled()  # 취소 체크포인트
+                images = page.get_images()
+                for img_idx, img in enumerate(images):
                     xref = img[0]
+
+                    # v3.2: 중복 제거
                     if deduplicate and xref in seen_xrefs:
                         continue
                     seen_xrefs.add(xref)
+
                     try:
                         base_image = doc.extract_image(xref)
                         image_bytes = base_image["image"]
                         image_ext = base_image["ext"]
+
                         image_path = os.path.join(output_dir, f"page{page_num + 1}_img{img_idx + 1}.{image_ext}")
                         self._atomic_binary_save(image_path, image_bytes)
+
+                        # v3.2: 상세 정보 수집
                         if include_info:
-                            image_info_list.append(
-                                {
-                                    "filename": os.path.basename(image_path),
-                                    "page": page_num + 1,
-                                    "xref": xref,
-                                    "width": base_image.get("width", 0),
-                                    "height": base_image.get("height", 0),
-                                    "colorspace": str(base_image.get("colorspace", "unknown")),
-                                    "bpc": base_image.get("bpc", 0),
-                                    "size_bytes": len(image_bytes),
-                                    "format": image_ext,
-                                }
-                            )
+                            info = {
+                                "filename": os.path.basename(image_path),
+                                "page": page_num + 1,
+                                "xref": xref,
+                                "width": base_image.get("width", 0),
+                                "height": base_image.get("height", 0),
+                                "colorspace": str(base_image.get("colorspace", "unknown")),
+                                "bpc": base_image.get("bpc", 0),  # bits per component
+                                "size_bytes": len(image_bytes),
+                                "format": image_ext
+                            }
+                            image_info_list.append(info)
+
                         image_count += 1
-                    except Exception as exc:
-                        logger.error("Image extraction error on page %s: %s", page_num + 1, exc)
+                    except Exception as e:
+                        logger.error(f"Image extraction error on page {page_num + 1}: {e}")
+
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
 
+            # v3.2: 정보 파일 저장
             if include_info and image_info_list:
                 info_path = os.path.join(output_dir, "_images_info.json")
                 self._atomic_text_save(
                     info_path,
                     json.dumps(image_info_list, indent=2, ensure_ascii=False) + "\n",
                 )
+
         finally:
             doc.close()
-
         dedup_msg = self._get_msg("msg_dedup_removed_suffix") if deduplicate else ""
         self.finished_signal.emit(self._get_msg("msg_images_extracted", dedup_msg, image_count))

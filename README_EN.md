@@ -24,6 +24,9 @@
 - Output save/folder dialogs reuse `last_output_dir` as their starting directory and update it after successful output selection.
 - Undo/Redo now restores before/after snapshots instead of re-running the worker, and the expanded snapshot flow covers `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
 - Updated worker result/status messages in the touched flows are synchronized through the KO/EN i18n catalogs.
+- Worker preflight enforces one-of output contracts and validates PDF headers through `src/core/pdf_validation.py`.
+- Frozen/runtime validation is automated through `main.py --smoke` and `scripts/package_smoke.ps1`.
+- Compatibility facades remain stable after the 2026-05-13 split: `ai_service.py`, `_pdf_impl.py`, `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, and `tabs_advanced/builders.py` re-export smaller implementation packages.
 
 ---
 
@@ -264,6 +267,11 @@ python main.py
 python -m PyInstaller pdf_master.spec --clean
 ```
 
+### Package Smoke
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
+```
+
 ### Build Result
 - Output: `dist/PDF_Master_v4.5.5.exe`
 - Size: ~30-40MB (UPX Compressed)
@@ -279,6 +287,9 @@ python -m PyInstaller pdf_master.spec --clean
 - Regression tests: `python -m pytest -q`
 - Package build: `python -m build`
 - Executable build: `python -m PyInstaller pdf_master.spec --clean`
+- Clean `PYTHONPATH` frozen smoke: `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1`
+- App initialization smoke: `python main.py --smoke`
+- Gemini File API live smoke: run `tests/test_ai_service_gemini_smoke.py` only with `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` and `GEMINI_API_KEY`
 - `.gitignore` now keeps build/validation artifacts such as `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, and `*.whl` out of the working tree.
 - `pytest` temp files stay inside repo-local `.pytest_tmp`
 - Encoding audit: tracked text files pass UTF-8 decode/BOM/U+FFFD/mojibake marker checks
@@ -295,6 +306,8 @@ pdf-master/
 ├── pyproject.toml
 ├── pyrightconfig.json
 ├── requirements-dev.txt       # compatibility shim -> -e .[dev]
+├── scripts/
+│   └── package_smoke.ps1      # clean env PyInstaller + EXE --smoke validation
 ├── typings/
 ├── README.md
 ├── README_EN.md
@@ -302,17 +315,27 @@ pdf-master/
 ├── GEMINI.md
 └── src/
     ├── core/
-    │   ├── ai_service.py
+    │   ├── ai/                    # Gemini service client/cache/schema/session/prompt modules
+    │   ├── ai_service.py          # compatibility facade
     │   ├── _typing.py              # worker mixin host contracts
     │   ├── constants.py
     │   ├── i18n.py                 # TranslationManager facade
-    │   ├── i18n_catalogs/          # translation catalog storage
+    │   ├── i18n_catalogs/          # KO/EN base catalogs + facade
     │   ├── optional_deps.py        # fitz/keyring optional dependency boundary
+    │   ├── pdf_validation.py       # shared PDF size/header validation
     │   ├── settings.py
     │   ├── undo_manager.py
     │   ├── worker.py               # QThread facade
     │   ├── worker_runtime/         # shared runtime/dispatch/preflight
     │   └── worker_ops/             # split worker implementations
+    │       ├── _pdf_impl.py        # compatibility shim
+    │       ├── page_ops.py
+    │       ├── compare_ops.py
+    │       ├── form_ops.py
+    │       ├── extract_ops.py
+    │       ├── annotation_ops.py
+    │       ├── compose_ops.py
+    │       ├── transform_ops.py
     │       ├── pdf_ops.py          # compatibility shim
     │       └── ai_ops.py
     └── ui/
@@ -328,7 +351,12 @@ pdf-master/
         ├── main_window_undo.py           # compatibility shim
         ├── tabs_basic/                   # split basic-tab modules
         ├── tabs_advanced/                # split advanced-tab modules
+        │   └── tab_builders/             # advanced tab UI builders
         ├── tabs_ai/                      # split AI-tab modules
+        ├── common_widgets/               # widgets.py facade backing modules
+        ├── preview_widget/               # zoomable_preview.py facade backing modules
+        ├── thumbnail/                    # thumbnail_grid.py facade backing modules
+        ├── theme/                        # styles.py facade backing modules
         ├── window_core/                  # split core-window modules
         ├── window_preview/               # split preview modules
         ├── window_worker/                # split worker-UI modules
@@ -340,7 +368,7 @@ pdf-master/
         └── zoomable_preview.py
 ```
 
-Note: `main_window_*.py` remains a compatibility shim layer, while `worker.py` is the public `QThread` facade. Runtime worker flow and implementations now live in the folder modules.
+Note: `main_window_*.py`, `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, `tabs_advanced/builders.py`, `ai_service.py`, and `_pdf_impl.py` remain compatibility facades. Runtime worker flow, AI service internals, UI widgets, thumbnail/preview widgets, themes, and tab builders live in the smaller package modules.
 Note: `src/core/optional_deps.py` centralizes `fitz`/`keyring` optional imports so `Pylance`/`Pyright` stays clean even when those packages are absent.
 Note: `typings/` provides the minimal external stubs used by `pyrightconfig.json` so repository-level `python -m pyright` stays reproducible.
 Note: when `PyMuPDF` is missing, only PDF-engine-dependent tests are skipped; the remaining regression tests still run.
@@ -372,6 +400,13 @@ API key storage policy:
 ---
 
 ## 📝 Changelog
+
+### v4.5.5 (2026-05-13) - Functional Audit Follow-up
+- Added explicit Worker output contracts through `OperationSpec.required_any_kwargs`; file-output modes now fail fast before handler execution.
+- Shared PDF size/header validation through `src/core/pdf_validation.py` for Worker preflight and UI file widgets.
+- Moved progress overlay and common file widget strings/tooltips into KO/EN i18n catalogs and expanded hardcoded-string smoke coverage.
+- Added opt-in Gemini File API smoke, `main.py --smoke`, and `scripts/package_smoke.ps1`.
+- Split Worker handlers into page/compare/form/extract/annotation/compose/transform modules, moved `AIService` internals into `src/core/ai/*`, and split long UI/style/catalog files behind compatibility facades.
 
 ### v4.5.5 (2026-04-27) - Worker/AI/Compare Contract Stabilization
 - Aligned the `split_by_pages` preflight contract with the actual UI payload (`output_dir`, `split_mode`, `ranges`) and removed the unsupported `pages_per_file` requirement.
@@ -557,3 +592,12 @@ Copyright (c) 2026 PDF Master
 - `compare_pdfs` provides `diff_count`, `results`, `report_path`, and `visual_diff_path`, and the UI shows a completion summary dialog.
 - Image and attachment extraction use atomic binary saves and cancellation rollback tracking.
 - `.gitignore` excludes `.pdf_master_*.tmp*` to cover atomic PDF/text/binary temp files.
+
+## 2026-05-13 Functional Audit Follow-up
+
+- File-writing Worker modes now fail fast through `required_any_kwargs`; `ai_summarize` remains output-file optional because the UI can consume in-memory results.
+- `src/core/pdf_validation.py` is the shared PDF size/header validator used by Worker preflight and UI file widgets.
+- Progress overlay and common file widget strings are covered by runtime UI i18n hardcoded-string smoke tests.
+- `main.py --smoke` initializes the app and exits with code 0; `scripts/package_smoke.ps1` clears `PYTHONPATH`, rebuilds the PyInstaller EXE, and runs the EXE smoke.
+- Gemini File API live validation is opt-in through `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` plus `GEMINI_API_KEY`.
+- Worker handlers now live in domain modules under `src/core/worker_ops/`, `AIService` lives under `src/core/ai/`, and long UI/style/catalog files are split behind compatibility facades; public Worker/import paths remain unchanged.

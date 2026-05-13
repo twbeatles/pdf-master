@@ -4,9 +4,7 @@ from pathlib import Path
 
 
 EXCLUDED_UI_FILES = {
-    "src/ui/progress_overlay.py",
     "src/ui/styles.py",
-    "src/ui/widgets.py",
 }
 
 

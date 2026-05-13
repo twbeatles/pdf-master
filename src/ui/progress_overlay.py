@@ -8,12 +8,13 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QColor, QResizeEvent
+from ..core.i18n import tm
 
 
 class ProgressOverlayWidget(QFrame):
     """
     풀스크린 오버레이 진행 다이얼로그
-    
+
     Features:
         - 반투명 배경
         - 중앙 정렬된 카드 UI
@@ -21,64 +22,64 @@ class ProgressOverlayWidget(QFrame):
         - 작업 설명 표시
     """
     cancelled = pyqtSignal()
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._is_dark_theme = True
         self._setup_ui()
         self.hide()
-    
+
     def _setup_ui(self):
         # 전체 오버레이 배경
         self.setStyleSheet("background: rgba(0, 0, 0, 0.7);")
-        
+
         main_layout = QVBoxLayout(self)
         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
+
         # 중앙 카드
         self.card = QFrame()
         self.card.setFixedSize(420, 200)
         self.card.setObjectName("progressCard")
         self._apply_card_style()
-        
+
         # 그림자 효과
         shadow = QGraphicsDropShadowEffect(self.card)
         shadow.setBlurRadius(30)
         shadow.setColor(QColor(0, 0, 0, 120))
         shadow.setOffset(0, 8)
         self.card.setGraphicsEffect(shadow)
-        
+
         card_layout = QVBoxLayout(self.card)
         card_layout.setContentsMargins(30, 25, 30, 25)
         card_layout.setSpacing(16)
-        
+
         # 아이콘 + 타이틀
         header_layout = QHBoxLayout()
         self.icon_label = QLabel("⏳")
         self.icon_label.setStyleSheet("font-size: 28px; background: transparent;")
         header_layout.addWidget(self.icon_label)
-        
-        self.title_label = QLabel("작업 처리 중...")
+
+        self.title_label = QLabel(tm.get("progress_title"))
         self.title_label.setStyleSheet("""
-            font-size: 18px; 
-            font-weight: 700; 
-            color: #f0f4f8; 
+            font-size: 18px;
+            font-weight: 700;
+            color: #f0f4f8;
             background: transparent;
         """)
         header_layout.addWidget(self.title_label)
         header_layout.addStretch()
         card_layout.addLayout(header_layout)
-        
+
         # 설명
-        self.desc_label = QLabel("잠시만 기다려 주세요...")
+        self.desc_label = QLabel(tm.get("progress_desc"))
         self.desc_label.setStyleSheet("""
-            font-size: 13px; 
-            color: #94a3b8; 
+            font-size: 13px;
+            color: #94a3b8;
             background: transparent;
         """)
         self.desc_label.setWordWrap(True)
         card_layout.addWidget(self.desc_label)
-        
+
         # 진행바
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedHeight(10)
@@ -96,23 +97,23 @@ class ProgressOverlayWidget(QFrame):
             }
         """)
         card_layout.addWidget(self.progress_bar)
-        
+
         # 진행률 텍스트
         self.progress_text = QLabel("0%")
         self.progress_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.progress_text.setStyleSheet("""
-            font-size: 12px; 
-            color: #64748b; 
+            font-size: 12px;
+            color: #64748b;
             font-weight: 600;
             background: transparent;
         """)
         card_layout.addWidget(self.progress_text)
-        
+
         # 취소 버튼
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        
-        self.cancel_btn = QPushButton("✕ 취소")
+
+        self.cancel_btn = QPushButton(tm.get("progress_cancel"))
         self.cancel_btn.setFixedSize(100, 36)
         self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.cancel_btn.setStyleSheet("""
@@ -133,12 +134,12 @@ class ProgressOverlayWidget(QFrame):
         """)
         self.cancel_btn.clicked.connect(self._on_cancel)
         btn_layout.addWidget(self.cancel_btn)
-        
+
         btn_layout.addStretch()
         card_layout.addLayout(btn_layout)
-        
+
         main_layout.addWidget(self.card)
-    
+
     def _apply_card_style(self):
         if self._is_dark_theme:
             self.card.setStyleSheet("""
@@ -159,14 +160,14 @@ class ProgressOverlayWidget(QFrame):
                 }
             """)
             self.title_label.setStyleSheet("""
-                font-size: 18px; 
-                font-weight: 700; 
-                color: #1e293b; 
+                font-size: 18px;
+                font-weight: 700;
+                color: #1e293b;
                 background: transparent;
             """)
             self.desc_label.setStyleSheet("""
-                font-size: 13px; 
-                color: #64748b; 
+                font-size: 13px;
+                color: #64748b;
                 background: transparent;
             """)
             self.progress_bar.setStyleSheet("""
@@ -182,12 +183,12 @@ class ProgressOverlayWidget(QFrame):
                 }
             """)
             self.progress_text.setStyleSheet("""
-                font-size: 12px; 
-                color: #94a3b8; 
+                font-size: 12px;
+                color: #94a3b8;
                 font-weight: 600;
                 background: transparent;
             """)
-    
+
     def set_theme(self, is_dark: bool):
         """테마 설정"""
         self._is_dark_theme = is_dark
@@ -201,48 +202,48 @@ class ProgressOverlayWidget(QFrame):
         parent = self.parent()
         if isinstance(parent, QWidget):
             self.setGeometry(parent.rect())
-    
-    def show_progress(self, title: str = "작업 처리 중...", description: str = ""):
+
+    def show_progress(self, title: str | None = None, description: str = ""):
         """오버레이 표시"""
-        self.title_label.setText(title)
-        self.desc_label.setText(description or "잠시만 기다려 주세요...")
+        self.title_label.setText(title or tm.get("progress_title"))
+        self.desc_label.setText(description or tm.get("progress_desc"))
         self.progress_bar.setValue(0)
         self.progress_text.setText("0%")
         self.icon_label.setText("⏳")
         self.cancel_btn.setEnabled(True)
-        self.cancel_btn.setText("✕ 취소")
-        
+        self.cancel_btn.setText(tm.get("progress_cancel"))
+
         # 부모 크기에 맞게 조절
         self._sync_to_parent_geometry()
-        
+
         self.show()
         self.raise_()
-    
+
     def update_progress(self, value: int, description: str | None = None):
         """진행률 업데이트"""
         self.progress_bar.setValue(value)
         self.progress_text.setText(f"{value}%")
         if description:
             self.desc_label.setText(description)
-        
+
         # 진행 상태에 따른 아이콘 변경
         if value >= 100:
             self.icon_label.setText("✅")
-            self.title_label.setText("완료!")
+            self.title_label.setText(tm.get("progress_complete"))
         elif value >= 50:
             self.icon_label.setText("🔄")
-    
+
     def hide_progress(self):
         """오버레이 숨기기"""
         self.hide()
-    
+
     def _on_cancel(self):
         """취소 버튼 클릭"""
         self.cancel_btn.setEnabled(False)
-        self.cancel_btn.setText("취소 중...")
-        self.desc_label.setText("작업을 취소하는 중입니다...")
+        self.cancel_btn.setText(tm.get("progress_cancelling"))
+        self.desc_label.setText(tm.get("progress_cancelling_desc"))
         self.cancelled.emit()
-    
+
     def resizeEvent(self, a0: QResizeEvent | None):
         """부모 크기 변경 시 오버레이도 조절"""
         super().resizeEvent(a0)
@@ -259,24 +260,24 @@ class LoadingSpinner(QLabel):
         self.setText("⏳")
         self.setStyleSheet("font-size: 24px; background: transparent;")
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
+
         self._frames = ["⏳", "⌛"]
         self._current_frame = 0
-        
+
         from PyQt6.QtCore import QTimer
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._animate)
-    
+
     def start(self):
         """애니메이션 시작"""
         self._timer.start(500)
         self.show()
-    
+
     def stop(self):
         """애니메이션 중지"""
         self._timer.stop()
         self.hide()
-    
+
     def _animate(self):
         """프레임 전환"""
         self._current_frame = (self._current_frame + 1) % len(self._frames)

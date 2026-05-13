@@ -2,9 +2,9 @@
 # PDF Master v4.5.5 - PyInstaller Spec File
 # One-file desktop build for the current split-package runtime layout.
 # Python 3.10+ compatible, with explicit optional dependency boundaries.
-# Verified 2026-04-27 after AI action consolidation, path+mtime chat history,
-# encrypted-PDF password mapping, compare result payloads, atomic text/binary
-# save rollout, worker i18n cleanup, and docs/build validation sync.
+# Verified 2026-05-13 after Worker/AI/UI split-package refactoring,
+# output-contract preflight, shared PDF header validation, i18n runtime
+# cleanup, main.py --smoke, and isolated package_smoke EXE validation.
 
 import sys
 import os
@@ -60,7 +60,7 @@ except Exception:
 hiddenimports += [
     'PyQt6.sip',
     'PyQt6.QtCore',
-    'PyQt6.QtGui', 
+    'PyQt6.QtGui',
     'PyQt6.QtWidgets',
     'PyQt6.QtPrintSupport',  # v4.5: 인쇄 기능
     'PyQt6.QtPdf',
@@ -93,10 +93,16 @@ hiddenimports += [
 for package_name in [
     'src.core.worker_ops',
     'src.core.worker_runtime',
+    'src.core.ai',
     'src.core.i18n_catalogs',
+    'src.ui.common_widgets',
     'src.ui.tabs_basic',
     'src.ui.tabs_advanced',
+    'src.ui.tabs_advanced.tab_builders',
     'src.ui.tabs_ai',
+    'src.ui.preview_widget',
+    'src.ui.thumbnail',
+    'src.ui.theme',
     'src.ui.window_core',
     'src.ui.window_preview',
     'src.ui.window_worker',
@@ -142,7 +148,7 @@ if _module_exists('google.genai'):
         'google.genai.models',
         'google.genai.errors',
     ]
-    
+
     # google-genai 의존성
     ai_hiddenimports += [
         'google.auth',
@@ -160,7 +166,7 @@ if _module_exists('google.genai'):
         'h11',
         'certifi',
     ]
-    
+
     # submodules 자동 수집
     try:
         ai_hiddenimports += collect_submodules('google.genai')
@@ -169,7 +175,7 @@ if _module_exists('google.genai'):
 
     # v4.5.3: 테스트/미설치 모듈 정리
     ai_hiddenimports = _prune_hiddenimports(ai_hiddenimports)
-    
+
     hiddenimports += ai_hiddenimports
     print(f"[OK] google-genai SDK detected ({len(ai_hiddenimports)} imports)")
 else:
@@ -189,13 +195,13 @@ excludes = [
     'matplotlib', 'scipy', 'pandas', 'sklearn', 'numpy',
     'cv2', 'tensorflow', 'torch', 'keras',
     'IPython', 'notebook', 'jupyter',
-    
+
     # PDF to Word 관련 (사용 안함)
     'pdf2docx', 'docx', 'pdfplumber', 'pdfminer',
-    
+
     # GUI 프레임워크
     'tkinter', 'tk', 'wx', 'kivy', 'PySide6',
-    
+
     # PyQt6 불필요 모듈
     'PyQt6.QtWebEngine', 'PyQt6.QtWebEngineCore', 'PyQt6.QtWebEngineWidgets',
     'PyQt6.QtWebChannel', 'PyQt6.QtWebSockets',
@@ -211,14 +217,14 @@ excludes = [
     'PyQt6.QtCharts', 'PyQt6.QtDataVisualization',
     'PyQt6.Qt3DCore', 'PyQt6.Qt3DRender', 'PyQt6.Qt3DInput',
     'PyQt6.Qt3DLogic', 'PyQt6.Qt3DAnimation', 'PyQt6.Qt3DExtras',
-    'PyQt6.QtQuick', 'PyQt6.QtQuick3D', 'PyQt6.QtQuickWidgets', 
+    'PyQt6.QtQuick', 'PyQt6.QtQuick3D', 'PyQt6.QtQuickWidgets',
     'PyQt6.QtQml', 'PyQt6.QtQmlCore', 'PyQt6.QtQmlModels',
     'PyQt6.QtRemoteObjects', 'PyQt6.QtTextToSpeech',
     'PyQt6.QtVirtualKeyboard',
-    
+
     # 표준 라이브러리 (개발용)
     'unittest', 'test', 'tests', 'pytest',
-    'xmlrpc', 'pydoc', 'doctest', 
+    'xmlrpc', 'pydoc', 'doctest',
     'lib2to3', 'idlelib', 'ensurepip',
     'venv', 'pdb', 'cProfile', 'profile',
 ]

@@ -37,7 +37,21 @@ REPLACEMENT_GUARD_FILENAMES = {
     ".editorconfig",
     ".gitignore",
 }
-MOJIBAKE_PATTERNS = ("\uf9e2", "\u6e32", "?\u0080", "?\ub369", "?\uc397", "\u00c3", "\u00c2")
+MOJIBAKE_PATTERNS = (
+    "\uf9e2",
+    "\uf9cd",
+    "\u6e32",
+    "?\u0080",
+    "?\ub369",
+    "?\uc397",
+    "\u00c3",
+    "\u00c2",
+    "\u7570",
+    "\u907a",
+    "\u5bc3",
+    "\ub6af",
+    "\ub77f",
+)
 
 
 def _is_tracked_text_file(path: Path) -> bool:

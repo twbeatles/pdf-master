@@ -1,8 +1,4 @@
-"""Compatibility shim for worker UI mixin.
-
-Keeps the original import path stable while delegating lifecycle helpers
-to the folder-based window_worker package.
-"""
+from __future__ import annotations
 
 import logging
 import os
@@ -12,285 +8,33 @@ from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QMessageBox, QWidget
 
 from ..core.i18n import tm
-from ..core.path_utils import make_chat_history_key, normalize_path_key, parse_chat_history_key
-from ..core.worker_runtime import get_operation_spec
 from ..core.worker import WorkerThread
-from .tabs_ai.meta import format_ai_meta, is_warning_ai_meta, normalize_ai_meta
+from .tabs_ai.meta import normalize_ai_meta
 from .widgets import ToastWidget
 from .window_worker import MainWindowWorkerMixin as _MainWindowWorkerMixin
+from .window_worker.helpers import (
+    _chat_history_key_for,
+    _collect_payload_input_paths,
+    _delete_undo_backup_file,
+    _get_operation_description,
+    _is_same_path_pdf_mutation,
+    _is_undo_eligible_mode,
+    _normalize_abs_path,
+)
+from .window_worker.results import (
+    _clear_meta_label,
+    _coerce_payload_defaults,
+    _format_compare_summary,
+    _format_summary_payload,
+    _get_worker_payload,
+    _replace_last_chat_block,
+    _set_meta_label,
+)
 
 logger = logging.getLogger(__name__)
 
-def _is_undo_eligible_mode(mode, kwargs) -> bool:
-    spec = get_operation_spec(mode)
-    if spec is None or not spec.undo_eligible:
-        return False
-    return bool(kwargs.get("file_path") and kwargs.get("output_path"))
-
-
-def _normalize_abs_path(path) -> str:
-    return normalize_path_key(path)
-
-
-def _chat_history_key_for(path_or_key) -> str:
-    path_key, mtime_ns = parse_chat_history_key(path_or_key)
-    if mtime_ns is not None:
-        return make_chat_history_key(path_key, mtime_ns)
-    return make_chat_history_key(path_or_key)
-
-
-def _collect_payload_input_paths(kwargs: dict) -> set[str]:
-    input_paths: set[str] = set()
-    path_keys = ("file_path", "file_path1", "file_path2", "source_path", "target_path", "replace_path")
-    list_keys = ("files", "file_paths")
-    for key in path_keys:
-        value = kwargs.get(key)
-        if isinstance(value, str):
-            path_key = normalize_path_key(value)
-            if path_key:
-                input_paths.add(path_key)
-    for key in list_keys:
-        values = kwargs.get(key)
-        if isinstance(values, list):
-            for value in values:
-                if isinstance(value, str):
-                    path_key = normalize_path_key(value)
-                    if path_key:
-                        input_paths.add(path_key)
-    return input_paths
-
-
-def _is_same_path_pdf_mutation(mode, kwargs) -> bool:
-    spec = get_operation_spec(mode)
-    if spec is None or not spec.same_path_safe or spec.output_kind != "pdf" or not spec.refresh_preview:
-        return False
-    if not _is_undo_eligible_mode(mode, kwargs):
-        return False
-    input_path = _normalize_abs_path(kwargs.get("file_path"))
-    output_path = _normalize_abs_path(kwargs.get("output_path"))
-    return bool(input_path and output_path and input_path == output_path)
-
-
-def _get_operation_description(mode: str) -> str:
-    spec = get_operation_spec(mode)
-    if spec is None:
-        return mode
-    return tm.get(spec.title_key)
-
-
-def _get_worker_payload(worker) -> dict:
-    payload = getattr(worker, "result_payload", None)
-    if isinstance(payload, dict) and payload:
-        return payload
-    kwargs = getattr(worker, "kwargs", None)
-    if not isinstance(kwargs, dict):
-        return {}
-    if "summary_result" in kwargs:
-        return {"title": "", "summary": kwargs.get("summary_result", ""), "key_points": [], "meta": {}}
-    if "answer_result" in kwargs:
-        return {"answer": kwargs.get("answer_result", ""), "meta": {}}
-    if "keywords_result" in kwargs:
-        return {"keywords": kwargs.get("keywords_result", []), "meta": {}}
-    if "result_fields" in kwargs:
-        return {"fields": kwargs.get("result_fields", [])}
-    if "result_attachments" in kwargs:
-        return {"attachments": kwargs.get("result_attachments", [])}
-    if "result_annotations" in kwargs:
-        return {"annotations": kwargs.get("result_annotations", [])}
-    return {}
-
-
-def _coerce_payload_defaults(mode: str, payload: dict) -> dict:
-    spec = get_operation_spec(mode)
-    if spec is None or not spec.result_payload_keys:
-        return payload
-
-    normalized = dict(payload)
-    list_keys = {"key_points", "keywords", "fields", "attachments", "annotations", "results"}
-    dict_keys = {"meta"}
-    missing_keys: list[str] = []
-    for key in spec.result_payload_keys:
-        if key in normalized:
-            continue
-        missing_keys.append(key)
-        normalized[key] = 0 if key == "diff_count" else ([] if key in list_keys else ({} if key in dict_keys else ""))
-
-    if missing_keys:
-        logger.warning("Worker payload for mode '%s' is missing keys: %s", mode, ", ".join(missing_keys))
-    return normalized
-
-
-def _format_summary_payload(payload: dict) -> str:
-    title = str(payload.get("title", "") or "").strip()
-    summary = str(payload.get("summary", "") or "").strip()
-    key_points = payload.get("key_points", [])
-    text_parts: list[str] = []
-    if title:
-        text_parts.append(title)
-    if summary:
-        text_parts.append(summary)
-    if isinstance(key_points, list) and key_points:
-        bullets = "\n".join(f"- {point}" for point in key_points if str(point).strip())
-        if bullets:
-            text_parts.append(bullets)
-    return "\n\n".join(part for part in text_parts if part).strip()
-
-
-def _format_compare_summary(payload: dict) -> str:
-    diff_count = int(payload.get("diff_count") or 0)
-    report_path = str(payload.get("report_path", "") or "")
-    visual_diff_path = str(payload.get("visual_diff_path", "") or "")
-    results = payload.get("results", [])
-    lines = [tm.get("compare_summary_header", diff_count)]
-    if report_path:
-        lines.append(tm.get("compare_summary_report", report_path))
-    if visual_diff_path:
-        lines.append(tm.get("compare_summary_visual", visual_diff_path))
-    if isinstance(results, list) and results:
-        lines.append("")
-        lines.append(tm.get("compare_summary_pages"))
-        for result in results[:8]:
-            if not isinstance(result, dict):
-                continue
-            page = result.get("page", "?")
-            status = str(result.get("status", "diff"))
-            samples = result.get("samples", [])
-            sample_text = ""
-            if isinstance(samples, list) and samples:
-                sample_text = f" - {samples[0]}"
-            lines.append(tm.get("compare_summary_page_row", page, status, sample_text))
-        if len(results) > 8:
-            lines.append(tm.get("compare_summary_more", len(results) - 8))
-    return "\n".join(lines)
-
-
-def _replace_last_chat_block(chat_history, html: str) -> None:
-    cursor = chat_history.textCursor()
-    cursor.movePosition(cursor.MoveOperation.End)
-    cursor.select(cursor.SelectionType.BlockUnderCursor)
-    cursor.removeSelectedText()
-    cursor.deletePreviousChar()
-    chat_history.append(html)
-
-
-def _delete_undo_backup_file(path: str) -> None:
-    if not path:
-        return
-    try:
-        if os.path.exists(path):
-            os.remove(path)
-    except Exception:
-        logger.debug("Failed to remove undo backup %s", path, exc_info=True)
-
-
-def _set_meta_label(label, meta: dict) -> None:
-    if label is None:
-        return
-    meta_text = format_ai_meta(meta)
-    label.setText(meta_text)
-    warning = is_warning_ai_meta(meta)
-    set_style = getattr(label, "setStyleSheet", None)
-    if callable(set_style):
-        if warning:
-            set_style("color: #b45309;")
-        elif meta_text:
-            set_style("color: #475569;")
-        else:
-            set_style("")
-    set_visible = getattr(label, "setVisible", None)
-    if callable(set_visible):
-        set_visible(bool(meta_text))
-
-
-def _clear_meta_label(label) -> None:
-    if label is None:
-        return
-    clear = getattr(label, "clear", None)
-    if callable(clear):
-        clear()
-    else:
-        label.setText("")
-    set_style = getattr(label, "setStyleSheet", None)
-    if callable(set_style):
-        set_style("")
-    set_visible = getattr(label, "setVisible", None)
-    if callable(set_visible):
-        set_visible(False)
-
 
 class MainWindowWorkerMixin(_MainWindowWorkerMixin):
-    def _prepare_preview_for_same_path_output(self, mode, kwargs):
-        self._same_path_preview_restore = None
-        if not _is_same_path_pdf_mutation(mode, kwargs):
-            return
-
-        preview_path = _normalize_abs_path(getattr(self, "_current_preview_path", ""))
-        input_path = _normalize_abs_path(kwargs.get("file_path"))
-        preview_doc = getattr(self, "_current_preview_doc", None)
-        if not preview_doc or not preview_path or preview_path != input_path:
-            return
-
-        self._same_path_preview_restore = {
-            "path": kwargs.get("file_path"),
-            "page": getattr(self, "_current_preview_page", 0),
-            "password": getattr(self, "_current_preview_password", None),
-            "view_state": self.preview_image.capture_view_state() if hasattr(self, "preview_image") else None,
-        }
-        self._close_preview_document()
-
-    def _restore_preview_after_same_path_output(self):
-        restore = getattr(self, "_same_path_preview_restore", None)
-        self._same_path_preview_restore = None
-        if not restore:
-            return
-
-        path = restore.get("path")
-        if not isinstance(path, str) or not path or not os.path.exists(path):
-            return
-
-        restore_page = restore.get("page", 0)
-        restore_password = restore.get("password")
-        restore_view_state = restore.get("view_state")
-        self._preview_password_hint = restore_password if isinstance(restore_password, str) else None
-        try:
-            if restore_view_state is not None:
-                self._update_preview(path, restore_state=restore_view_state)
-            else:
-                self._update_preview(path)
-            total_pages = int(getattr(self, "_preview_total_pages", 0) or 0)
-            if total_pages <= 0:
-                return
-            try:
-                page_index = int(restore_page)
-            except (TypeError, ValueError):
-                page_index = 0
-            page_index = max(0, min(total_pages - 1, page_index))
-            self._current_preview_page = page_index
-            self._render_preview_page()
-        finally:
-            self._preview_password_hint = None
-
-    def _discard_pending_undo(self, delete_backups: bool = False):
-        undo_info = getattr(self, "_pending_undo", None)
-        self._pending_undo = None
-        if not undo_info or not delete_backups:
-            return
-        _delete_undo_backup_file(undo_info.get("before_backup_path", ""))
-        _delete_undo_backup_file(undo_info.get("after_backup_path", ""))
-
-    def _augment_worker_passwords_from_preview(self, kwargs: dict) -> None:
-        preview_password = getattr(self, "_current_preview_password", None)
-        if not isinstance(preview_password, str) or not preview_password:
-            return
-        preview_path = normalize_path_key(getattr(self, "_current_preview_path", ""))
-        if not preview_path or preview_path not in _collect_payload_input_paths(kwargs):
-            return
-        passwords = kwargs.get("passwords")
-        if not isinstance(passwords, dict):
-            passwords = {}
-            kwargs["passwords"] = passwords
-        passwords.setdefault(preview_path, preview_password)
-
     def run_worker(self, mode, output_path=None, **kwargs):
         """작업 스레드 실행 (안전한 동시 작업 처리)"""
         parent = cast(QWidget, self)
@@ -630,3 +374,26 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         QMessageBox.critical(parent, tm.get("error"), tm.get("msg_worker_error", msg))
         self._finalize_worker()
         self._run_pending_worker()
+
+
+__all__ = [
+    "MainWindowWorkerMixin",
+    "_chat_history_key_for",
+    "_collect_payload_input_paths",
+    "_delete_undo_backup_file",
+    "_get_operation_description",
+    "_get_worker_payload",
+    "_coerce_payload_defaults",
+    "_format_compare_summary",
+    "_format_summary_payload",
+    "_is_same_path_pdf_mutation",
+    "_is_undo_eligible_mode",
+    "_normalize_abs_path",
+    "_replace_last_chat_block",
+    "_set_meta_label",
+    "_clear_meta_label",
+    "QMessageBox",
+    "QTimer",
+    "ToastWidget",
+    "WorkerThread",
+]

@@ -4,8 +4,9 @@ import logging
 import os
 from typing import Any
 
-from ..constants import MAX_FILE_SIZE, MAX_PAGE_RANGE_LENGTH, MIN_PDF_SIZE
+from ..constants import MAX_FILE_SIZE, MAX_PAGE_RANGE_LENGTH
 from ..optional_deps import fitz
+from ..pdf_validation import validate_pdf_file
 from .dispatch import get_operation_spec
 
 logger = logging.getLogger(__name__)
@@ -54,28 +55,37 @@ def parse_page_range(host: Any, page_range_str: str, total_pages: int) -> list[i
 
 
 def validate_file_size(host: Any, file_path: str, emit_error: bool = True) -> bool:
-    """v4.5: 파일 크기 검증 헬퍼."""
-    if not file_path or not os.path.exists(file_path):
-        return False
-    try:
-        file_size = os.path.getsize(file_path)
-        if file_size > MAX_FILE_SIZE:
-            size_gb = file_size / (1024**3)
-            max_gb = MAX_FILE_SIZE / (1024**3)
-            if emit_error:
-                host.error_signal.emit(
-                    host._get_msg("err_file_too_large", f"{size_gb:.2f}GB", f"{max_gb:.0f}GB")
-                )
-            logger.warning("File too large: %s (%.2fGB)", file_path, size_gb)
-            return False
-        if file_size < MIN_PDF_SIZE:
-            if emit_error:
-                host.error_signal.emit(host._get_msg("err_file_too_small"))
-            return False
+    """PDF existence, size, and header validation helper."""
+    result = validate_pdf_file(file_path)
+    if result.ok:
         return True
-    except OSError as exc:
-        logger.error("File size check failed: %s", exc)
+
+    if result.reason == "missing":
         return False
+
+    if result.reason == "too_large":
+        size_gb = result.size / (1024**3)
+        max_gb = MAX_FILE_SIZE / (1024**3)
+        if emit_error:
+            host.error_signal.emit(
+                host._get_msg("err_file_too_large", f"{size_gb:.2f}GB", f"{max_gb:.0f}GB")
+            )
+        logger.warning("File too large: %s (%.2fGB)", file_path, size_gb)
+        return False
+
+    if result.reason == "too_small":
+        if emit_error:
+            host.error_signal.emit(host._get_msg("err_file_too_small"))
+        return False
+
+    if result.reason == "invalid_header":
+        if emit_error:
+            host.error_signal.emit(host._get_msg("err_pdf_corrupted"))
+        logger.warning("Invalid PDF header: %s", file_path)
+        return False
+
+    logger.error("PDF validation failed for %s: %s", file_path, result.reason)
+    return False
 
 
 def validate_non_pdf_size(host: Any, file_path: str, emit_error: bool = True) -> bool:
@@ -126,6 +136,14 @@ def preflight_inputs(host: Any) -> bool:
             if _has_required_value(kwargs.get(key)):
                 continue
             host.error_signal.emit(host._get_msg("err_required_parameter_missing", key))
+            return False
+        for choices in spec.required_any_kwargs:
+            if any(_has_required_value(kwargs.get(key)) for key in choices):
+                continue
+            if choices == ("output_path",):
+                host.error_signal.emit(host._get_msg("err_output_path_missing"))
+            else:
+                host.error_signal.emit(host._get_msg("err_required_parameter_missing", " or ".join(choices)))
             return False
 
     for key in ("file_path", "file_path1", "file_path2", "source_path", "target_path", "replace_path"):

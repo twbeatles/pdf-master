@@ -18,10 +18,10 @@ def setup_logging():
         encoding='utf-8'
     )
     file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-    
+
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-    
+
     logging.basicConfig(
         level=logging.INFO,
         handlers=[file_handler, stream_handler]
@@ -39,7 +39,6 @@ else:
 sys.path.insert(0, base_path)
 
 from PyQt6.QtWidgets import QApplication, QMessageBox
-from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QGuiApplication, QFont
 # Explicit imports to ensure PyInstaller bundles them
 import src.ui.styles
@@ -53,39 +52,46 @@ def global_exception_handler(exc_type, exc_value, exc_tb):
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_tb)
         return
-    
+
     error_msg = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
     logger.critical(f"Uncaught exception:\n{error_msg}")
-    
+
     # 사용자에게 오류 알림 (QApplication이 존재하는 경우)
     app = QApplication.instance()
     if app:
         QMessageBox.critical(
-            None, 
+            None,
             "오류 발생",
             f"예상치 못한 오류가 발생했습니다.\n\n{exc_value}\n\n상세 로그: {LOG_FILE}"
         )
 
-def main():
+def main() -> int:
     # 전역 예외 핸들러 설정
     sys.excepthook = global_exception_handler
-    
+    smoke_mode = "--smoke" in sys.argv
+    app_argv = [arg for arg in sys.argv if arg != "--smoke"]
+
     # HiDPI 지원 활성화
     os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
     os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
-    
+
     logger.info("PDF Master starting...")
-    
+
     try:
-        app = QApplication(sys.argv)
+        app = QApplication(app_argv)
         app.setFont(QFont("Segoe UI", 9))  # Windows 기본 폰트 크기 설정
         window = PDFMasterApp()
+        if smoke_mode:
+            app.processEvents()
+            window.close()
+            logger.info("PDF Master smoke initialization succeeded")
+            return 0
         window.show()
         logger.info("PDF Master ready")
-        sys.exit(app.exec())
+        return int(app.exec())
     except Exception as e:
         logger.critical(f"Failed to start application: {e}")
         raise
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
