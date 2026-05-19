@@ -39,6 +39,8 @@ TRANSLATIONS["ko"].update(
         "msg_encryption_success": "✅ 암호화 완료!",
         "msg_compression_done": "✅ 압축 완료 ({})\n{}KB -> {}KB ({:.1f}% 감소)",
         "msg_images_to_pdf_done": "✅ 이미지 → PDF 변환 완료!\n{}개 이미지 → 1개 PDF",
+        "msg_merge_done": "✅ 병합 완료!\n{}개 파일 → 1개 PDF",
+        "msg_merge_skipped": "\n⚠️ {}개 파일 건너뜀",
         "msg_reorder_done": "✅ 페이지 순서 변경 완료!\n{}페이지 재정렬됨",
         "msg_split_done": "✅ PDF 분할 완료!\n{}개 파일 생성됨",
         "err_split_ranges_required": "분할할 범위가 지정되지 않았습니다.",
@@ -85,6 +87,7 @@ TRANSLATIONS["ko"].update(
         "msg_ink_annotation_added": "✅ 프리핸드 드로잉 추가 완료!\n페이지 {}, {}개 포인트",
         "err_no_valid_strokes": "유효한 획이 없습니다.",
         "msg_freehand_signature_added": "✅ 프리핸드 서명 추가 완료!\n페이지 {}, {}개 획",
+        "msg_batch_failed_row": "\n- {}: {}",
     }
 )
 
@@ -121,6 +124,8 @@ TRANSLATIONS["en"].update(
         "msg_encryption_success": "✅ PDF encrypted!",
         "msg_compression_done": "✅ Compression complete ({})\n{}KB -> {}KB ({:.1f}% reduced)",
         "msg_images_to_pdf_done": "✅ Image to PDF conversion complete!\n{} image(s) -> 1 PDF",
+        "msg_merge_done": "✅ Merge complete!\n{} file(s) -> 1 PDF",
+        "msg_merge_skipped": "\n⚠️ Skipped {} file(s)",
         "msg_reorder_done": "✅ Page reorder complete!\n{} page(s) reordered",
         "msg_split_done": "✅ PDF split complete!\n{} file(s) created",
         "err_split_ranges_required": "No split ranges were provided.",
@@ -167,6 +172,7 @@ TRANSLATIONS["en"].update(
         "msg_ink_annotation_added": "✅ Freehand drawing added!\nPage {}, {} point(s)",
         "err_no_valid_strokes": "No valid strokes were found.",
         "msg_freehand_signature_added": "✅ Freehand signature added!\nPage {}, {} stroke(s)",
+        "msg_batch_failed_row": "\n- {}: {}",
     }
 )
 

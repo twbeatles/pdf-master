@@ -75,9 +75,9 @@ class WorkerComposeOpsMixin(WorkerHost):
 
             self._atomic_pdf_save(doc_merged, output_path)
 
-            result_msg = f"✅ 병합 완료!\n{len(valid_files) - skipped_count}개 파일 → 1개 PDF"
+            result_msg = self._get_msg("msg_merge_done", len(valid_files) - skipped_count)
             if skipped_count > 0:
-                result_msg += f"\n⚠️ {skipped_count}개 파일 건너뜀"
+                result_msg += self._get_msg("msg_merge_skipped", skipped_count)
             self.finished_signal.emit(result_msg)
         finally:
             doc_merged.close()

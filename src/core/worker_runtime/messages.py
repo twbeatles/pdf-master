@@ -44,6 +44,8 @@ FALLBACK_MESSAGES = {
     "msg_encryption_success": "✅ 암호화 완료!",
     "msg_compression_done": "✅ 압축 완료 ({})\n{}KB -> {}KB ({:.1f}% 감소)",
     "msg_images_to_pdf_done": "✅ 이미지 → PDF 변환 완료!\n{}개 이미지 → 1개 PDF",
+    "msg_merge_done": "✅ 병합 완료!\n{}개 파일 → 1개 PDF",
+    "msg_merge_skipped": "\n⚠️ {}개 파일 건너뜀",
     "msg_reorder_done": "✅ 페이지 순서 변경 완료!\n{}페이지 재정렬됨",
     "msg_split_done": "✅ PDF 분할 완료!\n{}개 파일 생성됨",
     "msg_page_number_format_roman": "로마 숫자",
@@ -83,6 +85,7 @@ FALLBACK_MESSAGES = {
     "msg_stroke_required": "드로잉 데이터가 없습니다.",
     "msg_invalid_stroke_format": "획 좌표 형식이 올바르지 않습니다.",
     "msg_freehand_signature_added": "✅ 프리핸드 서명 추가 완료!\n페이지 {}, {}개 획",
+    "msg_batch_failed_row": "\n- {}: {}",
 }
 
 

@@ -61,6 +61,14 @@ def validate_file_size(host: Any, file_path: str, emit_error: bool = True) -> bo
         return True
 
     if result.reason == "missing":
+        if emit_error:
+            host.error_signal.emit(host._get_msg("err_pdf_not_found"))
+        return False
+
+    if result.reason == "inaccessible":
+        if emit_error:
+            host.error_signal.emit(host._get_msg("err_file_access_denied", file_path))
+        logger.warning("PDF is inaccessible: %s", file_path)
         return False
 
     if result.reason == "too_large":
@@ -85,6 +93,8 @@ def validate_file_size(host: Any, file_path: str, emit_error: bool = True) -> bo
         return False
 
     logger.error("PDF validation failed for %s: %s", file_path, result.reason)
+    if emit_error:
+        host.error_signal.emit(host._get_msg("err_operation_failed", result.reason or "validation failed"))
     return False
 
 
@@ -108,6 +118,8 @@ def validate_non_pdf_size(host: Any, file_path: str, emit_error: bool = True) ->
         return True
     except OSError as exc:
         logger.error("Non-PDF file size check failed: %s", exc)
+        if emit_error:
+            host.error_signal.emit(host._get_msg("err_file_access_denied", file_path))
         return False
 
 

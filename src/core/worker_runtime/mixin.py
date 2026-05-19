@@ -10,8 +10,9 @@ from ..optional_deps import fitz
 from .dispatch import get_handler_method_name, get_operation_spec
 from .io import (
     atomic_binary_save,
-    atomic_text_save,
+    atomic_pixmap_save,
     atomic_pdf_save,
+    atomic_text_save,
     build_safe_attachment_output_path,
     build_unique_output_stem,
     record_created_output_path,
@@ -168,6 +169,9 @@ class WorkerRuntimeMixin(WorkerHost):
 
     def _atomic_binary_save(self, output_path: str, data: bytes) -> None:
         atomic_binary_save(self, output_path, data)
+
+    def _atomic_pixmap_save(self, pixmap: Any, output_path: str) -> None:
+        atomic_pixmap_save(self, pixmap, output_path)
 
     def _password_for_pdf_path(self, file_path: str) -> str:
         passwords = self.kwargs.get("passwords")

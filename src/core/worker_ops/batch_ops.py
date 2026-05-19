@@ -106,7 +106,7 @@ class WorkerBatchOpsMixin(WorkerHost):
             if failed_files:
                 result_msg += self._get_msg("msg_batch_failed_header")
                 for name, reason in failed_files[:3]:
-                    result_msg += f"\n- {name}: {reason}"
+                    result_msg += self._get_msg("msg_batch_failed_row", name, reason)
                 if len(failed_files) > 3:
                     result_msg += self._get_msg("msg_batch_failed_more", len(failed_files) - 3)
         self.finished_signal.emit(result_msg)

@@ -192,6 +192,35 @@ def atomic_binary_save(host: Any, output_path: str, data: bytes) -> None:
     host._check_cancelled()
 
 
+def atomic_pixmap_save(host: Any, pixmap: Any, output_path: str) -> None:
+    """Host-aware atomic pixmap save using a same-directory temp file."""
+    if not output_path:
+        raise ValueError("output_path is required")
+
+    out_dir = os.path.dirname(os.path.abspath(output_path)) or "."
+    os.makedirs(out_dir, exist_ok=True)
+    output_existed = os.path.exists(output_path)
+    ext = os.path.splitext(output_path)[1] or ".png"
+
+    fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=f".tmp{ext}", dir=out_dir)
+    os.close(fd)
+
+    try:
+        host._check_cancelled()
+        pixmap.save(tmp_path)
+        host._check_cancelled()
+        os.replace(tmp_path, output_path)
+        if not output_existed:
+            record_created_output_path(host, output_path)
+        host._check_cancelled()
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                logger.debug("Failed to remove temporary pixmap file", exc_info=True)
+
+
 def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -> None:
     """
     원자적 PDF 저장.

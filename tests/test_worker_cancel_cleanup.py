@@ -111,7 +111,7 @@ def test_cancel_cleanup_removes_only_created_convert_outputs(monkeypatch, tmp_pa
 
     def _cancel_after_first_output():
         calls["count"] += 1
-        if calls["count"] >= 2:
+        if calls["count"] >= 4:
             raise CancelledError("cancel")
 
     worker._check_cancelled = _cancel_after_first_output

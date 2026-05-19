@@ -77,6 +77,74 @@ def test_preflight_rejects_oversized_non_pdf_input(tmp_path, monkeypatch):
     assert not out.exists()
 
 
+def test_preflight_emits_error_for_inaccessible_pdf(tmp_path, monkeypatch):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "out.pdf"
+    _make_pdf(src)
+
+    real_getsize = os.path.getsize
+
+    def fake_getsize(path):
+        if str(path) == str(src):
+            raise OSError("locked")
+        return real_getsize(path)
+
+    monkeypatch.setattr(os.path, "getsize", fake_getsize)
+
+    worker = WorkerThread(
+        "rotate",
+        file_path=str(src),
+        output_path=str(out),
+        angle=90,
+    )
+    errors = []
+    worker.error_signal.connect(lambda msg: errors.append(msg))
+
+    worker.run()
+
+    assert errors
+    assert any(("access" in m.lower()) or ("권한" in m) for m in errors)
+    assert not out.exists()
+
+
+def test_preflight_emits_error_for_inaccessible_non_pdf_input(tmp_path, monkeypatch):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    pdf = tmp_path / "src.pdf"
+    sig = tmp_path / "sig.png"
+    out = tmp_path / "out.pdf"
+    _make_pdf(pdf)
+    _make_png(sig)
+
+    real_getsize = os.path.getsize
+
+    def fake_getsize(path):
+        if str(path) == str(sig):
+            raise OSError("locked")
+        return real_getsize(path)
+
+    monkeypatch.setattr(os.path, "getsize", fake_getsize)
+
+    worker = WorkerThread(
+        "insert_signature",
+        file_path=str(pdf),
+        signature_path=str(sig),
+        output_path=str(out),
+    )
+    errors = []
+    worker.error_signal.connect(lambda msg: errors.append(msg))
+
+    worker.run()
+
+    assert errors
+    assert any(("access" in m.lower()) or ("권한" in m) for m in errors)
+    assert not out.exists()
+
+
 def test_preflight_rejects_too_small_pdf(tmp_path):
     require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread

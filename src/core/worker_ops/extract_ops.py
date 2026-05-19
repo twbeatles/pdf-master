@@ -103,11 +103,7 @@ class WorkerExtractOpsMixin(WorkerHost):
                 out_path = output_path
 
             full_text = "".join(text_chunks)
-            out_path_exists = os.path.exists(out_path)
-            with open(out_path, "w", encoding="utf-8") as f:
-                f.write(full_text)
-            if output_dir and not out_path_exists:
-                self._record_created_output_path(out_path)
+            self._atomic_text_save(out_path, full_text)
 
             self._emit_progress_if_due(int((file_idx + 1) / max(1, total_files) * 100))
 

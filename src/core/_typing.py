@@ -45,6 +45,9 @@ class WorkerHost:
     def _atomic_binary_save(self, output_path: str, data: bytes) -> None:
         ...
 
+    def _atomic_pixmap_save(self, pixmap: Any, output_path: str) -> None:
+        ...
+
     def _open_pdf_document(self, file_path: str, password: str | None = None) -> Any:
         ...
 

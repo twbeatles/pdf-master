@@ -73,10 +73,7 @@ class WorkerTransformOpsMixin(WorkerHost):
                     self._check_cancelled()  # 취소 체크포인트
                     pix = page.get_pixmap(matrix=mat)
                     save_path = os.path.join(output_dir, f"{unique_stem}_p{i+1:03d}.{fmt}")
-                    save_path_exists = os.path.exists(save_path)
-                    pix.save(save_path)
-                    if not save_path_exists:
-                        self._record_created_output_path(save_path)
+                    self._atomic_pixmap_save(pix, save_path)
             finally:
                 if doc:
                     doc.close()
