@@ -513,7 +513,7 @@ class ZoomablePreviewWidget(QWidget):
 - 검증 환경 준비: `pip install -e .[dev]`
 - 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - `python -m pyright` -> `0 errors`
-- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용
+- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 179 collected / 178 passed / 1 opt-in Gemini smoke skipped
 - `python -m build`
 - `python -m PyInstaller pdf_master.spec --clean`
 - `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1` -> clean `PYTHONPATH` PyInstaller + EXE `--smoke`
@@ -529,7 +529,7 @@ class ZoomablePreviewWidget(QWidget):
 - `tests/test_preview_print.py`
   - Qt 인쇄 페이지 범위 해석 및 렌더 경로 검증
 - `tests/test_ai_service_cache.py`
-  - File API fallback 제한, chat session clear, 텍스트 캐시 재사용 검증
+  - File API fallback 제한, upload cache/chat session reuse, structured JSON parsing, fake SDK 계약, 텍스트 캐시 재사용 검증
 - `tests/test_worker_preflight.py`
   - required kwargs/one-of output contract/PDF header 기반 preflight 검증
 - `tests/test_i18n_runtime_widgets.py`
@@ -543,7 +543,7 @@ class ZoomablePreviewWidget(QWidget):
 - `tests/test_worker_regression_modes.py`
   - Markdown 옵션 및 batch compress save profile 회귀 검증
 - `tests/test_worker_cancel_regression.py`
-  - `split`/양식/프리핸드 서명 취소 체크 회귀 검증
+  - `split`/양식/프리핸드 서명/추출·검색 page loop 취소 체크와 취소 시 출력 파일 미생성 회귀 검증
 - `tests/test_worker_undo_modes.py`
   - Undo 대상 모드 확장과 비대상 모드 제외 검증
 - `tests/test_output_dialog_state.py`
@@ -607,10 +607,10 @@ class ZoomablePreviewWidget(QWidget):
 - `tests/test_worker_cancel_cleanup.py`
   - 디렉터리 출력 rollback + same-path/preexisting output 보호 검증
 - `tests/test_validation_docs_config.py`
-  - README/가이드/spec/검증 설정 정합성 검증
+  - README/가이드/spec/감사 문서/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest -q`: 전체 통과 기준
+- 현재 워크트리 기준 `python -m pytest -q`: 179 collected / 178 passed / 1 opt-in Gemini smoke skipped
 
 ---
 
@@ -694,7 +694,7 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-05-13)*
+*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-05-22)*
 
 ---
 
@@ -725,3 +725,12 @@ for i, page in enumerate(pages):
 - `main.py --smoke` provides app initialization smoke coverage, and `scripts/package_smoke.ps1` performs clean `PYTHONPATH` PyInstaller build plus EXE smoke.
 - `tests/test_ai_service_gemini_smoke.py` is opt-in and exercises Gemini File API summary, chat, and keyword payloads when `GEMINI_API_KEY` is provided.
 - Worker handlers now live in domain modules, `AIService` lives under `src/core/ai/*`, and long UI/style/catalog files are split behind compatibility facades; public Worker mode names and import paths are unchanged.
+
+## 2026-05-22 Audit Follow-up Hardening
+
+- `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md` is the current repo-local audit document; docs tests now reject maintained docs that reference missing functional-audit files.
+- `get_pdf_info`, `search_text`, `extract_tables`, and `list_annotations` check `_check_cancelled()` at each page-loop start before writing output files.
+- `tests/test_worker_cancel_regression.py` covers those four modes and asserts cancelled runs do not leave result files behind.
+- `tests/test_ai_service_cache.py` uses fake `google-genai` objects to validate upload cache reuse, generate/stream calls, chat creation/reuse, structured JSON parsing, and upload fallback without credentials.
+- `pdf_master.spec`, README/README_EN/CLAUDE/GEMINI/roadmap, and `.gitignore` coverage were rechecked against the current codebase; no `.gitignore` rule change was required.
+- Compare/report UI expansion and OCR engine support remain future product tasks, not implemented in this hardening pass.

@@ -1,3 +1,6 @@
+from typing import cast
+
+
 def test_extract_text_cache_reuses_pdf_open(tmp_path, monkeypatch):
     from src.core import ai_service as ai
     from src.core.ai_service import AIService
@@ -209,3 +212,178 @@ def test_shutdown_executor_deletes_cached_remote_uploads():
     assert AIService._uploaded_file_cache == {}
     assert AIService._chat_sessions == {}
     assert client.files.deleted == ["files/a", "files/b"]
+
+
+class _FakeResponse:
+    def __init__(self, text="", parsed=None):
+        self.text = text
+        self.parsed = parsed
+
+
+class _FakeUploadedFile:
+    name = "files/fake-upload"
+
+
+class _FakeFilesApi:
+    def __init__(self):
+        self.uploads = []
+
+    def upload(self, *, file):
+        self.uploads.append(file)
+        return _FakeUploadedFile()
+
+
+class _FakeModelsApi:
+    def __init__(self):
+        self.generate_calls = []
+        self.stream_calls = []
+
+    def generate_content(self, *, model, contents, config):
+        self.generate_calls.append((model, contents, config))
+        return _FakeResponse(text='{"answer": "generated"}')
+
+    def generate_content_stream(self, *, model, contents, config):
+        self.stream_calls.append((model, contents, config))
+        return [
+            _FakeResponse(text='{"answer": "stream'),
+            _FakeResponse(text='ed"}'),
+        ]
+
+
+class _FakeChat:
+    pass
+
+
+class _FakeChatsApi:
+    def __init__(self):
+        self.created = []
+
+    def create(self, *, model, history):
+        chat = _FakeChat()
+        self.created.append((model, history, chat))
+        return chat
+
+
+class _FakeClient:
+    def __init__(self):
+        self.files = _FakeFilesApi()
+        self.models = _FakeModelsApi()
+        self.chats = _FakeChatsApi()
+
+
+class _FakePart:
+    @staticmethod
+    def from_text(*, text):
+        return {"text": text}
+
+
+class _FakeContent:
+    def __init__(self, *, role, parts):
+        self.role = role
+        self.parts = parts
+
+
+class _FakeTypes:
+    Part = _FakePart
+    Content = _FakeContent
+
+    @staticmethod
+    def GenerateContentConfig(**kwargs):
+        return dict(kwargs)
+
+
+def _fake_available_service(monkeypatch):
+    import src.core.ai.service as service_module
+    from src.core.ai_service import AIService
+
+    monkeypatch.setattr(service_module, "GENAI_AVAILABLE", True)
+    AIService._uploaded_file_cache.clear()
+    AIService._chat_sessions.clear()
+    service = AIService(api_key="")
+    service._client = _FakeClient()
+    service._types = _FakeTypes
+    service._configured = True
+    return service
+
+
+def test_upload_pdf_file_uses_file_api_cache(tmp_path, monkeypatch):
+    service = _fake_available_service(monkeypatch)
+    client = cast(_FakeClient, service._client)
+    pdf_path = tmp_path / "sample.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\n")
+
+    first = service._upload_pdf_file(str(pdf_path))
+    second = service._upload_pdf_file(str(pdf_path))
+
+    assert first is second
+    assert client.files.uploads == [str(pdf_path)]
+
+
+def test_generate_content_uses_config_and_parses_json(monkeypatch):
+    service = _fake_available_service(monkeypatch)
+
+    payload = service._generate_content(
+        contents=["prompt", _FakeUploadedFile()],
+        schema=service._make_answer_schema(),
+    )
+
+    assert payload == {"answer": "generated"}
+    client = cast(_FakeClient, service._client)
+    model, contents, config = client.models.generate_calls[0]
+    assert model == service.DEFAULT_MODEL
+    assert contents[0] == "prompt"
+    assert config["response_mime_type"] == "application/json"
+
+
+def test_stream_generate_content_emits_partials_and_parses_joined_json(monkeypatch):
+    service = _fake_available_service(monkeypatch)
+    partials = []
+
+    payload = service._stream_generate_content(
+        contents=["prompt", _FakeUploadedFile()],
+        schema=service._make_answer_schema(),
+        partial_callback=partials.append,
+    )
+
+    assert payload == {"answer": "streamed"}
+    assert partials == ['{"answer": "stream', 'ed"}']
+    client = cast(_FakeClient, service._client)
+    assert len(client.models.stream_calls) == 1
+
+
+def test_get_or_create_chat_uploads_pdf_and_reuses_cached_chat(tmp_path, monkeypatch):
+    service = _fake_available_service(monkeypatch)
+    pdf_path = tmp_path / "chat.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\n")
+
+    first = service._get_or_create_chat(
+        str(pdf_path),
+        [{"role": "assistant", "content": "Prior answer"}],
+    )
+    second = service._get_or_create_chat(str(pdf_path), [])
+
+    assert first is second
+    client = cast(_FakeClient, service._client)
+    assert len(client.chats.created) == 1
+    model, history, _chat = client.chats.created[0]
+    assert model == service.DEFAULT_MODEL
+    assert history[0].role == "user"
+    assert history[0].parts[1].name == "files/fake-upload"
+    assert history[1].role == "model"
+    assert history[1].parts == [{"text": "Prior answer"}]
+
+
+def test_structured_response_accepts_parsed_model_dump(monkeypatch):
+    service = _fake_available_service(monkeypatch)
+
+    class ParsedPayload:
+        def model_dump(self):
+            return {"answer": "parsed"}
+
+    payload = service._parse_structured_response(
+        _FakeResponse(parsed=ParsedPayload()),
+        "",
+        service._make_answer_schema(),
+    )
+
+    assert payload == {"answer": "parsed"}

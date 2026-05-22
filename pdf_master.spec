@@ -2,9 +2,10 @@
 # PDF Master v4.5.5 - PyInstaller Spec File
 # One-file desktop build for the current split-package runtime layout.
 # Python 3.10+ compatible, with explicit optional dependency boundaries.
-# Verified 2026-05-13 after Worker/AI/UI split-package refactoring,
-# output-contract preflight, shared PDF header validation, i18n runtime
-# cleanup, main.py --smoke, and isolated package_smoke EXE validation.
+# Verified 2026-05-22 after Worker/AI/UI split-package refactoring,
+# output-contract preflight, shared PDF header validation, worker page-loop
+# cancellation coverage, fake Gemini File API contract tests, main.py --smoke,
+# and isolated package_smoke EXE validation.
 
 import sys
 import os

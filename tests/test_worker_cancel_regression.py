@@ -106,3 +106,71 @@ def test_add_freehand_signature_checks_cancellation_before_save(tmp_path):
         worker.add_freehand_signature()
 
     assert not out.exists()
+
+
+def test_get_pdf_info_checks_cancellation_inside_page_loop(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import CancelledError, WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "info.txt"
+    _make_pdf(src, page_count=4)
+
+    worker = WorkerThread("get_pdf_info", file_path=str(src), output_path=str(out))
+    worker._check_cancelled = _cancel_after(2)
+
+    with pytest.raises(CancelledError):
+        worker.get_pdf_info()
+
+    assert not out.exists()
+
+
+def test_search_text_checks_cancellation_inside_page_loop(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import CancelledError, WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "search.txt"
+    _make_pdf(src, page_count=4)
+
+    worker = WorkerThread("search_text", file_path=str(src), output_path=str(out), search_term="PAGE")
+    worker._check_cancelled = _cancel_after(2)
+
+    with pytest.raises(CancelledError):
+        worker.search_text()
+
+    assert not out.exists()
+
+
+def test_extract_tables_checks_cancellation_inside_page_loop(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import CancelledError, WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "tables.csv"
+    _make_pdf(src, page_count=4)
+
+    worker = WorkerThread("extract_tables", file_path=str(src), output_path=str(out))
+    worker._check_cancelled = _cancel_after(2)
+
+    with pytest.raises(CancelledError):
+        worker.extract_tables()
+
+    assert not out.exists()
+
+
+def test_list_annotations_checks_cancellation_inside_page_loop(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import CancelledError, WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "annotations.txt"
+    _make_pdf(src, page_count=4)
+
+    worker = WorkerThread("list_annotations", file_path=str(src), output_path=str(out))
+    worker._check_cancelled = _cancel_after(2)
+
+    with pytest.raises(CancelledError):
+        worker.list_annotations()
+
+    assert not out.exists()

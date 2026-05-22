@@ -607,12 +607,13 @@ python main.py --smoke
 - 기준 결과:
   - `python -m build`
   - `python -m pyright` -> `0 errors`
-  - 현재 환경 `python -m pytest -q` -> 전체 통과 기준
+  - 현재 환경 `python -m pytest -q` -> 179 collected / 178 passed / 1 opt-in Gemini smoke skipped
   - `python -m PyInstaller pdf_master.spec --clean`
   - `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1` -> clean `PYTHONPATH` PyInstaller + EXE `--smoke`
   - `python main.py --smoke` -> 앱/핵심 위젯 초기화 후 종료
   - `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` + `GEMINI_API_KEY` -> Gemini File API 실연동 smoke opt-in
-  - `tests/test_ai_service_cache.py` -> upload fallback 제한, chat-session clear, text cache 재사용
+  - `tests/test_ai_service_cache.py` -> upload fallback 제한, fake SDK File API 계약, chat-session reuse, structured parsing, text cache 재사용
+  - `tests/test_worker_cancel_regression.py` -> 추출/검색 page loop 취소 체크와 취소 시 출력 파일 미생성
   - `tests/test_worker_preflight.py` -> required kwargs preflight 검증
   - `tests/test_worker_regression_modes.py` -> markdown 옵션 / batch compress save-profile 회귀 검증
   - `.gitignore` -> `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl` 등 검증/패키징 산출물 제외
@@ -668,6 +669,13 @@ python main.py --smoke
 - Worker handler를 page/compare/form/extract/annotation/compose/transform domain module로 이동하고 `_pdf_impl.py`를 compatibility shim으로 축소
 - `AIService` 실제 구현을 `src/core/ai/*`로 분리하고 `ai_service.py` facade 유지
 - `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, `tabs_advanced/builders.py`를 compatibility facade로 유지하면서 실제 구현을 하위 패키지로 분리
+
+### v4.5.5 (2026-05-22)
+- `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md`를 최신 감사 문서 계약으로 고정하고, 유지 문서가 삭제된 감사 파일을 참조하지 않는지 테스트로 검증
+- `get_pdf_info`, `search_text`, `extract_tables`, `list_annotations` page loop에 취소 체크와 출력 파일 미생성 회귀 테스트 추가
+- credential 없이 Gemini File API upload cache, generate/stream, chat reuse, structured JSON parsing, fallback 경로를 fake SDK로 검증
+- `pdf_master.spec`, README/README_EN/CLAUDE/GEMINI/roadmap, `.gitignore` 산출물 제외 범위 재점검
+- 비교 리포트 UI 확장과 OCR 엔진 도입은 후속 제품 과제로 유지
 
 ### v4.5.5 (2026-04-10)
 - same-path 저장 시 preview-held 문서를 선행 해제하고 success/fail/cancel 후 복원
@@ -762,7 +770,7 @@ python main.py --smoke
 
 ---
 
-*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-05-13)*
+*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-05-22)*
 
 ---
 
@@ -793,3 +801,12 @@ python main.py --smoke
 - Gemini File API live validation is opt-in through `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` plus `GEMINI_API_KEY`.
 - Worker handlers now live in domain modules under `src/core/worker_ops/`, `AIService` lives under `src/core/ai/`, and long UI/style/catalog files are split behind compatibility facades; public Worker/import paths remain unchanged.
 - Packaging/docs and `.gitignore` are synced to cover `.pdf_master_*.tmp*` atomic-save temporary files.
+
+## 2026-05-22 Audit Follow-up Hardening
+
+- `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md` is the current repo-local audit document; docs tests reject maintained docs that reference missing functional-audit files.
+- `get_pdf_info`, `search_text`, `extract_tables`, and `list_annotations` now check cancellation inside page loops before writing output files.
+- `tests/test_worker_cancel_regression.py` covers those four modes and asserts cancelled runs leave no result files behind.
+- `tests/test_ai_service_cache.py` validates Gemini File API upload caching, generate/stream calls, chat reuse, structured JSON parsing, and upload fallback with fake SDK objects and no credentials.
+- `pdf_master.spec`, README/README_EN/CLAUDE/GEMINI/roadmap, and `.gitignore` coverage were rechecked against the current codebase; no `.gitignore` rule change was required.
+- Compare/report UI expansion and OCR engine support remain future product tasks outside this pass.

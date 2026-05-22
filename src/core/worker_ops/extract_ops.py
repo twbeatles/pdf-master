@@ -129,6 +129,7 @@ class WorkerExtractOpsMixin(WorkerHost):
             page_count = len(doc)
 
             for i in range(page_count):
+                self._check_cancelled()
                 page = doc[i]
                 total_chars += len(page.get_text())
                 total_images += len(page.get_images())
@@ -212,6 +213,7 @@ class WorkerExtractOpsMixin(WorkerHost):
             doc = self._open_pdf_document(file_path)
             total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
+                self._check_cancelled()
                 page = doc[page_num]
                 text_instances = page.search_for(search_term)
                 if text_instances:
@@ -249,6 +251,7 @@ class WorkerExtractOpsMixin(WorkerHost):
             doc = self._open_pdf_document(file_path)
             total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
+                self._check_cancelled()
                 page = doc[page_num]
                 try:
                     find_tables = getattr(page, "find_tables", None)
@@ -288,6 +291,7 @@ class WorkerExtractOpsMixin(WorkerHost):
             doc = self._open_pdf_document(file_path)
             total_pages = max(1, len(doc))
             for page_num in range(len(doc)):
+                self._check_cancelled()
                 page = doc[page_num]
                 annots = page.annots()
                 if annots:

@@ -284,7 +284,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 - Prepare validation environment: `pip install -e .[dev]`
 - Compatibility shim: `requirements-dev.txt` -> `-e .[dev]`
 - Static analysis: `python -m pyright` -> `0 errors`
-- Regression tests: `python -m pytest -q`
+- Regression tests: `python -m pytest -q` -> current baseline 179 collected, 178 passed, 1 opt-in Gemini smoke skipped
 - Package build: `python -m build`
 - Executable build: `python -m PyInstaller pdf_master.spec --clean`
 - Clean `PYTHONPATH` frozen smoke: `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1`
@@ -408,6 +408,13 @@ API key storage policy:
 - Added opt-in Gemini File API smoke, `main.py --smoke`, and `scripts/package_smoke.ps1`.
 - Split Worker handlers into page/compare/form/extract/annotation/compose/transform modules, moved `AIService` internals into `src/core/ai/*`, and split long UI/style/catalog files behind compatibility facades.
 
+### v4.5.5 (2026-05-22) - Audit Follow-up Hardening
+- Anchored the latest audit contract to `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md` and added a docs test that rejects references to deleted audit files.
+- Added cancellation checks and no-output-on-cancel regression coverage for `get_pdf_info`, `search_text`, `extract_tables`, and `list_annotations`.
+- Added credential-free fake SDK tests for Gemini File API upload caching, generate/stream paths, chat reuse, structured JSON parsing, and fallback behavior.
+- Rechecked `pdf_master.spec`, README/README_EN/CLAUDE/GEMINI/roadmap, and generated-output ignore coverage.
+- Left richer compare/report UI and OCR engine support as future product work outside this pass.
+
 ### v4.5.5 (2026-04-27) - Worker/AI/Compare Contract Stabilization
 - Aligned the `split_by_pages` preflight contract with the actual UI payload (`output_dir`, `split_mode`, `ranges`) and removed the unsupported `pages_per_file` requirement.
 - Consolidated AI tab action implementations into `src.ui.tabs_ai.actions`; `actions_meta.py` is now a compatibility shim.
@@ -520,14 +527,14 @@ API key storage policy:
 ## 🧪 Test and Consistency Status (v4.5.5)
 
 - Static analysis: `python -m pyright` -> `0 errors`
-- Regression tests: `python -m pytest -q` full-pass baseline
+- Regression tests: `python -m pytest -q` current baseline 179 collected, 178 passed, 1 opt-in Gemini smoke skipped
 - Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD/mojibake marker regressions
 
 - Added:
   - `tests/test_ai_thumbnail_grid_flow.py`
   - `tests/test_thumbnail_grid_runtime.py`
   - `tests/test_preview_print.py`
-  - `tests/test_worker_cancel_regression.py`
+  - `tests/test_worker_cancel_regression.py` (including extract/search page-loop cancellation and no output file after cancel)
   - `tests/test_worker_undo_modes.py`
   - `tests/test_worker_regression_modes.py`
   - `tests/test_ai_worker_ui_flow.py`
@@ -554,6 +561,8 @@ API key storage policy:
   - `tests/test_worker_ink_signature_runtime.py`
   - `tests/test_worker_page_validation.py`
   - `tests/test_worker_cancel_cleanup.py`
+  - `tests/test_ai_service_cache.py` (fake Gemini File API contract, upload cache/chat reuse/structured parsing/fallback coverage)
+  - `tests/test_validation_docs_config.py` (README/guide/spec/current audit document consistency)
   - `tests/test_validation_docs_config.py`
   - `tests/test_page_index_policy.py`
   - `tests/test_i18n_ui_hardcoded_smoke.py`
@@ -601,3 +610,12 @@ Copyright (c) 2026 PDF Master
 - `main.py --smoke` initializes the app and exits with code 0; `scripts/package_smoke.ps1` clears `PYTHONPATH`, rebuilds the PyInstaller EXE, and runs the EXE smoke.
 - Gemini File API live validation is opt-in through `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` plus `GEMINI_API_KEY`.
 - Worker handlers now live in domain modules under `src/core/worker_ops/`, `AIService` lives under `src/core/ai/`, and long UI/style/catalog files are split behind compatibility facades; public Worker/import paths remain unchanged.
+
+## 2026-05-22 Audit Follow-up Hardening
+
+- `tests/test_validation_docs_config.py` now requires at least one `FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md`, treats `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md` as latest, and rejects maintained docs that point at missing audit files.
+- `get_pdf_info`, `search_text`, `extract_tables`, and `list_annotations` now check cancellation inside page loops before writing output files; regression tests assert cancelled runs leave no result files.
+- `tests/test_ai_service_cache.py` uses fake `google-genai` client objects to validate File API upload caching, generation/streaming, chat reuse, structured JSON parsing, and upload fallback without credentials.
+- `python -m pyright`, `python -m pytest -q`, `python main.py --smoke`, `python -m build`, and `scripts/package_smoke.ps1` are the current green validation/build baseline.
+- `.gitignore` was rechecked with `git check-ignore -v`; generated build, package, pytest, egg-info, wheel/sdist, `__pycache__`, and `.pdf_master_*.tmp*` outputs are already covered.
+- Richer compare/report UI and OCR engine support remain planned product work outside this hardening pass.

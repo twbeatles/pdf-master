@@ -296,7 +296,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 - 검증 환경 준비: `pip install -e .[dev]`
 - 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - 정적 분석: `python -m pyright` → `0 errors`
-- 회귀 테스트: `python -m pytest -q`
+- 회귀 테스트: `python -m pytest -q` → 현재 기준 179 collected, 178 passed, 1 opt-in Gemini smoke skipped
 - 패키지 빌드: `python -m build`
 - 실행 파일 빌드: `python -m PyInstaller pdf_master.spec --clean`
 - clean `PYTHONPATH` frozen smoke: `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1`
@@ -419,6 +419,13 @@ API 키 저장 정책:
 - ✅ Gemini File API opt-in smoke, `main.py --smoke`, `scripts/package_smoke.ps1` 추가
 - ✅ `_pdf_impl.py`에서 `metadata_update`, `compress`, `crop_pdf`, `resize_pages`를 `transform_ops.py`로 이동하고 line budget 회귀 테스트 추가
 - ✅ 후속 구조 분할: Worker handler를 page/compare/form/extract/annotation/compose/transform domain module로 이동, `src/core/ai/*`와 UI 하위 패키지(`common_widgets`, `preview_widget`, `thumbnail`, `theme`, `tab_builders`) 추가, 기존 facade 유지
+
+### v4.5.5 (2026-05-22) - Audit Follow-up Hardening
+- ✅ 최신 감사 문서 기준을 `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md`로 고정하고, 유지보수 문서가 삭제된 감사 파일을 참조하지 않는지 테스트로 검증
+- ✅ `get_pdf_info`, `search_text`, `extract_tables`, `list_annotations` page loop 취소 체크와 출력 파일 미생성 회귀 테스트 추가
+- ✅ credential 없이 Gemini File API upload cache, generate/stream, chat reuse, structured JSON parsing, fallback 경로를 fake SDK로 검증
+- ✅ `pdf_master.spec`, README/README_EN/CLAUDE/GEMINI/roadmap, `.gitignore` 산출물 제외 범위 재점검
+- ✅ 비교 리포트 UI 확장과 OCR 엔진 도입은 이번 범위 밖의 후속 제품 과제로 문서화
 
 ### v4.5.5 (2026-04-27) - Worker/AI/Compare Contract Stabilization
 - ✅ `split_by_pages` preflight 계약을 실제 UI 동작(`output_dir`, `split_mode`, `ranges`)과 일치시키고 unsupported `pages_per_file` 요구 제거
@@ -543,14 +550,14 @@ API 키 저장 정책:
 ## 🧪 테스트 및 정합성 현황 (v4.5.5)
 
 - 정적 분석: `python -m pyright` → `0 errors`
-- 회귀 테스트: `python -m pytest -q` 전체 통과 기준
+- 회귀 테스트: `python -m pytest -q` 현재 기준 179 collected, 178 passed, 1 opt-in Gemini smoke skipped
 - 텍스트 인코딩 점검: `tests/test_encoding_audit.py`로 UTF-8 decode/BOM/U+FFFD/mojibake marker 회귀 방지
 
 - 신규 테스트:
   - `tests/test_ai_thumbnail_grid_flow.py` (AI 썸네일 grid의 preview 동기화/암호 세션 재사용 검증)
   - `tests/test_thumbnail_grid_runtime.py` (암호화 PDF grid 로딩/완료 시그널/loader 정리 검증)
   - `tests/test_preview_print.py` (Qt 인쇄 페이지 범위 해석 및 렌더 경로 검증)
-  - `tests/test_worker_cancel_regression.py` (`split`/양식/프리핸드 서명 취소 체크 회귀 검증)
+  - `tests/test_worker_cancel_regression.py` (`split`/양식/프리핸드 서명/추출·검색 page loop 취소 체크와 취소 시 출력 파일 미생성 검증)
   - `tests/test_worker_undo_modes.py` (Undo 대상 모드 확장과 비대상 모드 제외 검증)
   - `tests/test_worker_regression_modes.py` (`metadata_update`/`protect`/`decrypt_pdf`/`reorder`/`split_by_pages`/`extract_markdown` 검증)
   - `tests/test_ai_worker_ui_flow.py` (AI 요약/채팅/키워드 성공/실패 UI 흐름 검증)
@@ -569,6 +576,7 @@ API 키 저장 정책:
   - `tests/test_worker_preflight.py` (실행 전 입력 검증 fail-fast 검증)
   - `tests/test_i18n_runtime_widgets.py` (progress overlay/file widgets English runtime 문자열 검증)
   - `tests/test_ai_service_gemini_smoke.py` (Gemini File API opt-in summary/chat/keyword smoke)
+  - `tests/test_ai_service_cache.py` (Gemini File API fake SDK 계약, upload cache/chat reuse/structured parsing/fallback 검증)
   - `tests/test_main_smoke.py` (`main.py --smoke` 초기화 종료 검증)
   - `tests/test_worker_structure_budget.py` (legacy facade line budget, public import path, Worker legacy alias 회귀 방지)
   - `tests/test_i18n.py` (시스템 언어 감지 경로 검증)
@@ -586,7 +594,7 @@ API 키 저장 정책:
   - `tests/test_worker_ink_signature_runtime.py` (잉크/프리핸드 서명 실제 저장 및 sentinel 정책 검증)
   - `tests/test_worker_page_validation.py` (sticky note/blank page/duplicate strict page validation 검증)
   - `tests/test_worker_cancel_cleanup.py` (디렉터리 출력 rollback + same-path/preexisting output 보호 검증)
-  - `tests/test_validation_docs_config.py` (README/가이드/spec/검증 설정 정합성 검증)
+  - `tests/test_validation_docs_config.py` (README/가이드/spec/감사 문서/검증 설정 정합성 검증)
 
 ---
 
@@ -652,3 +660,12 @@ copies or substantial portions of the Software.
 - `main.py --smoke` initializes the app and exits with code 0, and `scripts/package_smoke.ps1` clears `PYTHONPATH`, rebuilds the PyInstaller EXE, and runs the EXE smoke.
 - Gemini File API live validation is opt-in through `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` plus `GEMINI_API_KEY`.
 - Worker handlers now live in domain modules under `src/core/worker_ops/`, `AIService` lives under `src/core/ai/`, and long UI/style/catalog files are split behind compatibility facades; public Worker/import paths remain unchanged.
+
+## 2026-05-22 Audit Follow-up Hardening
+
+- `tests/test_validation_docs_config.py` now requires at least one `FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md`, treats `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md` as the latest audit file, and rejects maintained docs that point at missing audit files.
+- `get_pdf_info`, `search_text`, `extract_tables`, and `list_annotations` now check cancellation inside page loops before writing output files; regression tests assert cancelled runs do not leave result files behind.
+- `tests/test_ai_service_cache.py` uses fake `google-genai` client objects to validate File API upload caching, generation/streaming, chat reuse, structured JSON parsing, and upload fallback without credentials.
+- `python -m pyright`, `python -m pytest -q`, `python main.py --smoke`, `python -m build`, and `scripts/package_smoke.ps1` are the current green validation/build baseline.
+- `.gitignore` was rechecked with `git check-ignore -v`; generated build, package, pytest, egg-info, wheel/sdist, `__pycache__`, and `.pdf_master_*.tmp*` outputs are already covered.
+- Richer compare/report UI and OCR engine support remain planned product work, not part of this hardening pass.
