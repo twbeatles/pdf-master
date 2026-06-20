@@ -1,32 +1,13 @@
 # PDF Master v4.5.5
 
-📑 **All-in-One PDF Editor** - PyQt6 based Desktop Application
+📑 **All-in-One PDF Editor** — PyQt6 Desktop Application
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![PyQt6](https://img.shields.io/badge/PyQt6-6.5+-green)
 ![PyMuPDF](https://img.shields.io/badge/PyMuPDF-fitz-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-## Current Behavior Notes
-
-- The right preview panel now uses `src/ui/zoomable_preview.py` directly for wheel zoom, drag pan, page navigation, and preview print.
-- Preview print now goes through the Qt print pipeline instead of OS-level `print` delegation, so printer/page-range choices are applied to the actual job.
-- AI/rotate thumbnail entry points stay synchronized with the right preview document, and encrypted PDFs reuse the authenticated preview password session for thumbnail loading.
-- Preview rendering is refreshed after splitter moves and panel resize events to avoid stale low-resolution previews.
-- `Resize Pages` keeps the original page aspect ratio and places the source page fit-centered on the target paper size.
-- Auto-generated outputs from `PDF -> Image` and `Extract Text` avoid filename collisions with `__2`, `__3`, and later suffixes.
-- `Compare PDFs` now detects line-order changes and duplicate-count differences, and visual diff PDF generation is optional from the Advanced tab UI.
-- Single-input/single-output PDF mutation modes can save back to the original path; if preview is holding the same file, it is closed before the worker starts and restored after success/fail/cancel.
-- The preview search/bookmark side panel can now be collapsed and reopened, and `Ctrl+F` jumps directly to the preview search tab and focuses the query field.
-- The right preview now watches both the active PDF and its parent directory, so external atomic replace flows can auto-reload after a short retry window.
-- **Page Setup** keeps its own printer state, while **Print Preview** creates a fresh `QPrinter` per launch so the previous print range does not leak into the next job.
-- **Clear Chat** now resets only the currently selected PDF's persisted history and SDK chat session; histories for other PDFs stay intact.
-- Output save/folder dialogs reuse `last_output_dir` as their starting directory and update it after successful output selection.
-- Undo/Redo now restores before/after snapshots instead of re-running the worker, and the expanded snapshot flow covers `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
-- Updated worker result/status messages in the touched flows are synchronized through the KO/EN i18n catalogs.
-- Worker preflight enforces one-of output contracts and validates PDF headers through `src/core/pdf_validation.py`.
-- Frozen/runtime validation is automated through `main.py --smoke` and `scripts/package_smoke.ps1`.
-- Compatibility facades remain stable after the 2026-05-13 split: `ai_service.py`, `_pdf_impl.py`, `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, and `tabs_advanced/builders.py` re-export smaller implementation packages.
+[🇰🇷 한국어 README](README.md) | [🇺🇸 English](#)
 
 ---
 
@@ -35,10 +16,9 @@
 - [Key Features](#-key-features)
 - [Installation & Run](#-installation--run)
 - [Usage](#-usage)
-- [Shortcuts](#-shortcuts)
+- [Shortcuts](#️-shortcuts)
+- [Known Limitations](#️-known-limitations)
 - [Build](#-build-pyinstaller)
-- [Development Validation](#-development-validation)
-- [Project Structure](#-project-structure)
 - [Changelog](#-changelog)
 
 ---
@@ -46,35 +26,35 @@
 ## ✨ Key Features
 
 ### 📄 PDF Merge & Convert
-| Feature | Description | Supported Formats |
-|---------|-------------|-------------------|
+| Feature | Description | Formats |
+|---------|-------------|---------|
 | **PDF Merge** | Merge multiple PDFs into one | Drag & Drop supported |
-| **PDF → Image** | Convert pages to images with collision-safe auto filenames | PNG, JPG, WEBP, BMP, TIFF |
+| **PDF → Image** | Convert pages to images | PNG, JPG, WEBP, BMP, TIFF |
 | **Image → PDF** | Combine images into PDF | PNG, JPG, BMP, GIF, WEBP |
-| **Extract Text** | Extract text from PDF with collision-safe TXT output naming | Save as TXT |
+| **Extract Text** | Extract text from PDF | Save as TXT |
 
 ### ✂️ Page Editing
 | Feature | Description |
 |---------|-------------|
-| **Extract Pages** | Extract specific pages (e.g., 1-3, 5, 7-10) |
+| **Extract Pages** | Pull out specific pages (e.g., `1-3, 5, 7-10`) |
 | **Delete Pages** | Remove selected pages |
-| **Rotate Pages** | Rotate 90°, 180°, 270° or only the selected pages |
-| **Reorder Pages** | Rearrange pages via drag & drop |
-| **Page Numbers** | Custom position/format/font (Page 1 of N, 1/N, etc.) |
-| **Insert Blank Page** | Add blank page at desired position |
+| **Rotate Pages** | 90°, 180°, 270° — full doc or selected pages only |
+| **Reorder Pages** | Drag & drop to rearrange |
+| **Page Numbers** | Custom position, format, and font (`Page 1 of N`, `1/N`, etc.) |
+| **Insert Blank Page** | Add a blank page anywhere |
 | **Duplicate Page** | Copy selected page |
-| **Reverse Order** | Reverse page order |
-| **Resize Pages** | Fit-center into A4, A3, Letter, Legal, etc. while preserving aspect ratio |
-| **Replace Page** | Replace target page with a page from another PDF (v4.5.3) |
+| **Reverse Order** | Flip the entire page order |
+| **Resize Pages** | Convert to A4, A3, Letter, Legal, etc. (aspect ratio preserved) |
+| **Replace Page** | Swap a page with one from another PDF |
 
 ### 🔒 Security & Protection
 | Feature | Description |
 |---------|-------------|
 | **Encrypt PDF** | Set AES-256 password |
 | **Decrypt PDF** | Remove password |
-| **Watermark** | Text/Tile watermark (custom opacity, rotation, position) |
-| **Image Watermark** | Position(9), Scale, Opacity controls (v4.5 enhanced) |
-| **Add Stamp** | Confidential, Approved, Draft, etc. |
+| **Text Watermark** | Custom opacity, rotation, and position |
+| **Image Watermark** | 9 positions, custom scale and opacity |
+| **Add Stamp** | Confidential, Approved, Draft, Copy, etc. |
 
 ### 🔧 Advanced Editing
 | Feature | Description |
@@ -83,85 +63,76 @@
 | **Compress PDF** | Choose `fast`, `compact`, or `web` save profile |
 | **Crop PDF** | Trim margins |
 | **Edit Metadata** | Modify title, author, subject, keywords |
-| **Compare PDFs** | Analyze text differences including line order/duplicate changes, with optional visual diff PDF |
-| **Set Bookmarks** | Save outline via `level|title|page` lines (v4.5.3) |
+| **Compare PDFs** | Line-level diff with optional visual diff PDF |
+| **Set Bookmarks** | Define outline structure manually |
 
 ### 📝 Annotation & Markup
 | Feature | Description |
 |---------|-------------|
 | **Highlight Text** | Highlighter effect |
 | **Sticky Note** | Add memo notes |
-| **Basic Annotation** | Add text/freetext annotation (v4.5.3) |
-| **Underline/Strike** | Text markup |
-| **Draw Shapes** | Add rectangles, circles, lines (v4.5) |
-| **Add Hyperlinks** | URL or page navigation links (v4.5) |
-| **Insert Textbox** | Add text directly to PDF (v4.5) |
-| **Copy Pages** | Copy pages from another PDF (v4.5) |
-| **Redact Text** | Permanently remove sensitive info |
+| **Add Annotation** | Text or freetext annotation |
+| **Underline / Strikethrough** | Text markup |
+| **Draw Shapes** | Add rectangles, circles, lines |
+| **Add Hyperlinks** | URL or page navigation links |
+| **Insert Textbox** | Type text directly on the PDF |
+| **Redact Text** | Permanently remove sensitive content |
 | **Add Background** | Change page background color |
-| **Freehand Ink** | Insert handwritten signature/drawing |
+| **Freehand Signature** | Draw and embed a handwritten signature |
 
 ### 📊 Data Extraction
 | Feature | Description | Output |
 |---------|-------------|--------|
-| **Extract Links** | List URLs inside document | Save as TXT |
-| **Extract Images** | Extract embedded images | Save as PNG/JPG |
-| **Extract Tables** | Extract table data | Save as CSV |
-| **Extract Bookmarks** | Extract outline structure | Save as TXT |
-| **Markdown Convert** | `auto/native/text` mode with front matter, page marker, and asset placeholder options | Save as MD |
-| **Attachment Manager** | Add/Extract attachments | Various formats |
+| **Extract Links** | List all URLs in the document | TXT |
+| **Extract Images** | Pull out embedded images | PNG / JPG |
+| **Extract Tables** | Export table data | CSV |
+| **Extract Bookmarks** | Export outline structure | TXT |
+| **Markdown Convert** | `auto/native/text` mode | MD |
+| **Attachment Manager** | Add / extract file attachments | Various |
 
-### 🤖 AI Features (Gemini API)
+### 🤖 AI Features (Google Gemini)
 | Feature | Description |
 |---------|-------------|
-| **PDF Summary** | AI-based document summary (Korean/English) |
-| **PDF Chat** | Ask questions about PDF content to AI (v4.5) |
-| **Keyword Extraction** | AI-based keyword extraction (v4.5) |
-| **Summary Style** | Concise/Detailed/Bullet points |
-| **Page Limit** | Set max pages to summarize |
+| **PDF Summary** | AI-generated summary in Korean or English |
+| **PDF Chat** | Ask questions about the PDF content |
+| **Keyword Extraction** | Automatically identify key terms |
+| **Summary Style** | Concise / Detailed / Bullet points |
 
-> **Note**: AI features require `google-genai` package and a Gemini API key.
+> AI features require a **Gemini API key** from [Google AI Studio](https://aistudio.google.com/) and the `google-genai` package. The AI service implementation lives under `src/core/ai/`.
 
 ### 🎨 UI/UX
-- **Multilingual Support** - English & Korean (Auto-detect & Manual switch)
-- **Dark/Light Theme** - Premium Glassmorphism Design
-- **Progress Overlay** - Full-screen dialog with cancellation
-- **Toast Notifications** - Non-intrusive notifications
-- **Drag & Drop** - Add files, reorder pages
-- **Zoom/Pan Preview** - Mouse wheel zoom, drag move, page navigation, print, and resize-aware rerender
-- **Preview Search/Bookmarks** - Collapsible side panel, `Ctrl+F` focus entry, and same-path restore through captured preview view state
-- **Thumbnail Grid** - View all pages at a glance with preview document/page synchronization
-- **Rotate-tab Page Sync** - Clicking a thumbnail jumps the right preview to the same page
-- **External Rewrite Auto-Reload** - Preview is reloaded if the same PDF is replaced by another app
-- **Undo/Redo** - Undo/Redo across single-output PDF mutation workflows
-- **Same-path Save Safety** - Overwriting the source PDF is allowed for single-input/single-output mutation flows
-- **Remember Output Folder** - Output dialogs reopen from the last successful output directory
-- **Preview Print** - Print the current PDF through Qt print pipeline (v4.5)
+- **Dark / Light Theme** — Glassmorphism design
+- **Zoom / Pan Preview** — Mouse wheel zoom, drag move, print
+- **Preview Search / Bookmarks** — Collapsible side panel (`Ctrl+F`)
+- **Thumbnail Grid** — View all pages at a glance
+- **Drag & Drop** — Add files, reorder pages
+- **Undo / Redo** — Undo and redo major editing operations
+- **Progress Overlay** — Full-screen cancellable progress dialog
+- **External File Watching** — Detects changes via `QFileSystemWatcher`; preview auto-reloads when the PDF is replaced externally
+- **Batch Processing** — Apply one operation to many files at once
+- **Multilingual** — Korean / English (auto-detect + manual switch)
 
 ---
 
 ## 🚀 Installation & Run
 
-### Requirements
-- Python 3.10 or higher
-- Windows / macOS / Linux
+### Use the Prebuilt Executable (Windows)
 
-### Install Dependencies
+Run `dist/PDF_Master_v4.5.5.exe` directly — no installation required.
+
+### Run from Source
+
+**Requires:** Python 3.10 or higher
+
 ```bash
-# Canonical manifest (`pyproject.toml`)
+# 1. Install dependencies (pyproject.toml)
 pip install -e .[dev]
+# or compatibility shim: pip install -r requirements-dev.txt
 
-# Optional extras
-pip install -e .[build]
+# For AI features
 pip install -e .[ai]
-pip install -e .[secure]
 
-# Compatibility shim for older workflows
-pip install -r requirements-dev.txt
-```
-
-### Run
-```bash
+# 2. Launch
 python main.py
 ```
 
@@ -169,453 +140,185 @@ python main.py
 
 ## 📖 Usage
 
-### 1. Merge PDF
-1. Select **Merge** tab
+### 1. Merge PDFs
+1. Select the **Merge** tab
 2. Drag & drop files or click **Add Files**
-3. Reorder list (Drag to move)
-4. Click **Merge PDF** → Select save location
+3. Reorder the list as needed (drag to move)
+4. Click **Merge** → choose a save location
 
 ### 2. PDF → Image
-1. Select **Convert** tab
-2. Select PDF file
-3. Choose output format (PNG, JPG, WEBP, etc.)
-4. Set DPI (Default: 150)
-5. **Convert** → Select output folder
+1. Select the **Convert** tab
+2. Select a PDF file
+3. Choose an output format (PNG, JPG, WEBP, etc.)
+4. Set DPI (default: 150 / recommended for high quality: 200–300)
+5. Click **Convert** → choose an output folder
 
-### 3. Page Operations (Extract/Delete/Rotate)
-1. Select **Page** tab
-2. Select PDF file
-3. For extract/delete, enter a page range (e.g., `1-3, 5, 7-10`)
-4. For rotate, choose an angle and then choose the target scope:
-   - `All pages`: rotate the whole document
-   - `Selected pages`: rotate only pages chosen in the rotate-section thumbnails with `Ctrl`/`Shift`
-5. A normal thumbnail click moves the right preview to the same page immediately
-6. **Execute** → Select save location
+### 3. Page Operations (Extract / Delete / Rotate)
+1. Select the **Page** tab
+2. Select a PDF file
+3. Extract / Delete: enter a page range (e.g., `1-3, 5, 7-10`)
+4. Rotate: pick an angle and choose the scope:
+   - **All pages** — rotate the entire document
+   - **Selected pages** — `Ctrl` / `Shift`-click thumbnails to choose specific pages
+5. Click **Run** → choose a save location
 
 ### 4. Add Watermark
-1. Select **Edit/Sec** tab
-2. Select PDF file
+1. Select the **Security** tab
+2. Select a PDF file
 3. Enter watermark text
-4. Set options (Opacity, Size, Angle, Position)
+4. Adjust opacity, font size, rotation, and position (center or tile)
 5. Click **Add Watermark**
 
-### 5. Encrypt PDF
-1. Select **Edit/Sec** tab
-2. Select PDF file
-3. Enter password
-4. Click **Encrypt**
+### 5. Encrypt / Decrypt PDF
+1. Select the **Security** tab
+2. Select a PDF file
+3. Enter a password (encrypt) or the current password (decrypt)
+4. Click **Encrypt** or **Decrypt**
 
-### 6. AI Summary (Gemini API)
-1. Select **AI Summary** tab
-2. Enter API Key and click **Save**
-3. Select PDF file
-4. Choose Language (Korean/English)
-5. Choose Style (Concise/Detailed/Bullet)
-6. Click **AI Summary**
+### 6. AI Summary & Chat (Gemini API)
+1. Select the **AI** tab
+2. Enter your Gemini API key and click **Save** (first time only)
+3. Select a PDF file
+4. Choose an action:
+   - **Summary**: pick language (Korean/English) and style (Concise/Detailed/Bullets) → **Summarize**
+   - **Chat**: type a question → **Ask**
+   - **Keywords**: click **Extract Keywords**
 
-### 6-1. PDF Chat / Clear Chat
-1. In the **AI Summary** tab, select the PDF you want to chat about.
-2. Enter a question and click **Ask**.
-3. **Clear Chat** only clears the currently selected PDF's history and chat session.
+> **Clear Chat** resets only the conversation history for the currently selected PDF.
 
-### 6-2. Markdown Extraction Options
-1. Open **Advanced > Extract > Markdown**.
-2. Choose `auto`, `native`, or `text` mode.
-3. Enable `YAML front matter`, `page markers`, and `image/table placeholders` if needed.
-4. Run **Extract Markdown**.
-
-### 7. Reorder Pages
-1. Select **Reorder** tab
-2. Select PDF file (Automatically loads pages)
-3. Drag pages to reorder
-4. Click **Save**
+### 7. Markdown Extraction
+1. Go to **Advanced** tab → **Extract** section → **Markdown**
+2. Choose extraction mode (`auto` / `native` / `text`)
+3. Enable YAML front matter, page markers, or image/table placeholders as needed
+4. Click **Extract Markdown**
 
 ### 8. Batch Processing
-1. Select **Batch** tab
+1. Select the **Batch** tab
 2. Add multiple PDF files
-3. Select operation (Compress, Watermark, Encrypt, etc.)
-4. Set common options
-5. Click **Batch Run**
+3. Choose an operation (compress, watermark, encrypt, etc.)
+4. Set shared options and click **Batch Run**
+
+### Change Language
+Menu bar → **Language** (🌐) → **Korean** or **English** → restart the app to apply
 
 ---
 
 ## ⌨️ Shortcuts
 
-| Shortcut | Function |
-|----------|----------|
-| `Ctrl+O` | Open File |
-| `Ctrl+Q` | Exit App |
-| `Ctrl+T` | Toggle Theme |
-| `Ctrl+F` | Open/Focus Preview Search |
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+O` | Open file |
+| `Ctrl+Q` | Quit |
+| `Ctrl+T` | Toggle dark / light theme |
+| `Ctrl+F` | Open preview search |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` | Redo |
-| `Ctrl+1` | Merge Tab |
-| `Ctrl+2` | Convert Tab |
-| `Ctrl+3` | Page Tab |
-| `Ctrl+4` | Edit/Sec Tab |
-| `Ctrl+5` | Reorder Tab |
-| `Ctrl+6` | Batch Tab |
-| `Ctrl+7` | Advanced Tab |
-| `Ctrl+8` | AI Tab |
+| `Ctrl+1` | Merge tab |
+| `Ctrl+2` | Convert tab |
+| `Ctrl+3` | Page tab |
+| `Ctrl+4` | Security tab |
+| `Ctrl+5` | Reorder tab |
+| `Ctrl+6` | Batch tab |
+| `Ctrl+7` | Advanced tab |
+| `Ctrl+8` | AI tab |
+
+---
+
+## ⚠️ Known Limitations
+
+| Item | Limit |
+|------|-------|
+| AI summary text | 30,000 characters max |
+| Image rendering | 8,000 px max |
+| File size | 2 GB max |
+| Encrypted PDFs | Some operations require decryption first |
 
 ---
 
 ## 📦 Build (PyInstaller)
 
-### Run Build
-```bash
-python -m PyInstaller pdf_master.spec --clean
-```
+To build the Windows executable from source:
 
-### Package Smoke
-```powershell
+```bash
+# Install build tools
+pip install -e .[build]
+
+# Static analysis
+python -m pyright
+
+# Run tests
+python -m pytest -q
+
+# Package build
+python -m build
+
+# Executable build
+python -m PyInstaller pdf_master.spec --clean
+
+# App initialization smoke check
+python main.py --smoke
+
+# Package smoke (clean PYTHONPATH)
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-### Build Result
-- Output: `dist/PDF_Master_v4.5.5.exe`
-- Size: ~30-40MB (UPX Compressed)
+Output: `dist/PDF_Master_v4.5.5.exe` (~30–40 MB)
 
----
-
-## ✅ Development Validation
-
-- Canonical dependency/build manifest: `pyproject.toml`
-- Prepare validation environment: `pip install -e .[dev]`
-- Compatibility shim: `requirements-dev.txt` -> `-e .[dev]`
-- Static analysis: `python -m pyright` -> `0 errors`
-- Regression tests: `python -m pytest -q` -> current baseline 179 collected, 178 passed, 1 opt-in Gemini smoke skipped
-- Package build: `python -m build`
-- Executable build: `python -m PyInstaller pdf_master.spec --clean`
-- Clean `PYTHONPATH` frozen smoke: `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1`
-- App initialization smoke: `python main.py --smoke`
-- Gemini File API live smoke: run `tests/test_ai_service_gemini_smoke.py` only with `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` and `GEMINI_API_KEY`
-- `.gitignore` now keeps build/validation artifacts such as `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, and `*.whl` out of the working tree.
-- `pytest` temp files stay inside repo-local `.pytest_tmp`
-- Encoding audit: tracked text files pass UTF-8 decode/BOM/U+FFFD/mojibake marker checks
-
----
-
-## 📁 Project Structure
-
-```
-pdf-master/
-├── .editorconfig
-├── main.py
-├── pdf_master.spec
-├── pyproject.toml
-├── pyrightconfig.json
-├── requirements-dev.txt       # compatibility shim -> -e .[dev]
-├── scripts/
-│   └── package_smoke.ps1      # clean env PyInstaller + EXE --smoke validation
-├── typings/
-├── README.md
-├── README_EN.md
-├── CLAUDE.md
-├── GEMINI.md
-└── src/
-    ├── core/
-    │   ├── ai/                    # Gemini service client/cache/schema/session/prompt modules
-    │   ├── ai_service.py          # compatibility facade
-    │   ├── _typing.py              # worker mixin host contracts
-    │   ├── constants.py
-    │   ├── i18n.py                 # TranslationManager facade
-    │   ├── i18n_catalogs/          # KO/EN base catalogs + facade
-    │   ├── optional_deps.py        # fitz/keyring optional dependency boundary
-    │   ├── pdf_validation.py       # shared PDF size/header validation
-    │   ├── settings.py
-    │   ├── undo_manager.py
-    │   ├── worker.py               # QThread facade
-    │   ├── worker_runtime/         # shared runtime/dispatch/preflight
-    │   └── worker_ops/             # split worker implementations
-    │       ├── _pdf_impl.py        # compatibility shim
-    │       ├── page_ops.py
-    │       ├── compare_ops.py
-    │       ├── form_ops.py
-    │       ├── extract_ops.py
-    │       ├── annotation_ops.py
-    │       ├── compose_ops.py
-    │       ├── transform_ops.py
-    │       ├── pdf_ops.py          # compatibility shim
-    │       └── ai_ops.py
-    └── ui/
-        ├── main_window.py
-        ├── _typing.py                   # UI mixin host contracts
-        ├── main_window_config.py
-        ├── main_window_tabs_basic.py     # compatibility shim
-        ├── main_window_tabs_advanced.py  # compatibility shim
-        ├── main_window_tabs_ai.py        # compatibility shim
-        ├── main_window_core.py           # compatibility shim
-        ├── main_window_preview.py        # compatibility shim
-        ├── main_window_worker.py         # compatibility shim
-        ├── main_window_undo.py           # compatibility shim
-        ├── tabs_basic/                   # split basic-tab modules
-        ├── tabs_advanced/                # split advanced-tab modules
-        │   └── tab_builders/             # advanced tab UI builders
-        ├── tabs_ai/                      # split AI-tab modules
-        ├── common_widgets/               # widgets.py facade backing modules
-        ├── preview_widget/               # zoomable_preview.py facade backing modules
-        ├── thumbnail/                    # thumbnail_grid.py facade backing modules
-        ├── theme/                        # styles.py facade backing modules
-        ├── window_core/                  # split core-window modules
-        ├── window_preview/               # split preview modules
-        ├── window_worker/                # split worker-UI modules
-        ├── window_undo/                  # split undo modules
-        ├── progress_overlay.py
-        ├── styles.py
-        ├── thumbnail_grid.py
-        ├── widgets.py
-        └── zoomable_preview.py
-```
-
-Note: `main_window_*.py`, `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, `tabs_advanced/builders.py`, `ai_service.py`, and `_pdf_impl.py` remain compatibility facades. Runtime worker flow, AI service internals, UI widgets, thumbnail/preview widgets, themes, and tab builders live in the smaller package modules.
-Note: `src/core/optional_deps.py` centralizes `fitz`/`keyring` optional imports so `Pylance`/`Pyright` stays clean even when those packages are absent.
-Note: `typings/` provides the minimal external stubs used by `pyrightconfig.json` so repository-level `python -m pyright` stays reproducible.
-Note: when `PyMuPDF` is missing, only PDF-engine-dependent tests are skipped; the remaining regression tests still run.
-
----
-
-## 🔧 Config File
-
-Location: `~/.pdf_master_settings.json`
-
-```json
-{
-  "theme": "dark",
-  "language": "auto",
-  "recent_files": [],
-  "last_output_dir": "",
-  "preview_search_expanded": true,
-  "window_geometry": "..."
-}
-```
-
-API key storage policy:
-- `keyring` available: keyring-first save/load
-- `keyring` unavailable: settings-file fallback (`gemini_api_key`)
-- Legacy plain key is migrated/cleaned when keyring path is active
-- `load_settings()` normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`, and `preview_search_expanded` during load.
-- `chat_histories` are stored with `v2:{mtime_ns}:{normalized_path}` keys so replacing a PDF at the same path does not mix old conversations into the new document context.
+Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
 ---
 
 ## 📝 Changelog
 
-### v4.5.5 (2026-05-13) - Functional Audit Follow-up
-- Added explicit Worker output contracts through `OperationSpec.required_any_kwargs`; file-output modes now fail fast before handler execution.
-- Shared PDF size/header validation through `src/core/pdf_validation.py` for Worker preflight and UI file widgets.
-- Moved progress overlay and common file widget strings/tooltips into KO/EN i18n catalogs and expanded hardcoded-string smoke coverage.
-- Added opt-in Gemini File API smoke, `main.py --smoke`, and `scripts/package_smoke.ps1`.
-- Split Worker handlers into page/compare/form/extract/annotation/compose/transform modules, moved `AIService` internals into `src/core/ai/*`, and split long UI/style/catalog files behind compatibility facades.
+### v4.5.5
+- Preview zoom, pan, and print stability (Qt print pipeline)
+- Encrypted PDF thumbnails reuse the preview password session
+- Expanded Undo/Redo coverage (signature, highlight, sticky note, page copy, etc.)
+- PDF comparison — detect line-order and duplicate-count changes; bidirectional visual diff PDF
+- AI summary results now show source info and whether text was truncated
+- Output dialogs remember and reuse the last output folder
+- Batch output filenames auto-avoid collisions (`__2`, `__3` suffixes)
+- Preview auto-reloads when an external app replaces the open PDF
+- `Resize Pages` preserves aspect ratio and centers the source content
+- Markdown extraction modes (`auto / native / text`, front matter, page markers)
+- **Clear Chat** now resets only the current PDF's history
 
-### v4.5.5 (2026-05-22) - Audit Follow-up Hardening
-- Anchored the latest audit contract to `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md` and added a docs test that rejects references to deleted audit files.
-- Added cancellation checks and no-output-on-cancel regression coverage for `get_pdf_info`, `search_text`, `extract_tables`, and `list_annotations`.
-- Added credential-free fake SDK tests for Gemini File API upload caching, generate/stream paths, chat reuse, structured JSON parsing, and fallback behavior.
-- Rechecked `pdf_master.spec`, README/README_EN/CLAUDE/GEMINI/roadmap, and generated-output ignore coverage.
-- Left richer compare/report UI and OCR engine support as future product work outside this pass.
+### v4.5.4
+- Dedicated thumbnail list inside the rotate section
+- Partial rotation — rotate only `Ctrl` / `Shift`-selected pages
+- Rotate thumbnail clicks sync the right-side preview instantly
 
-### v4.5.5 (2026-04-27) - Worker/AI/Compare Contract Stabilization
-- Aligned the `split_by_pages` preflight contract with the actual UI payload (`output_dir`, `split_mode`, `ranges`) and removed the unsupported `pages_per_file` requirement.
-- Consolidated AI tab action implementations into `src.ui.tabs_ai.actions`; `actions_meta.py` is now a compatibility shim.
-- Versioned stored AI chat histories by `path + mtime_ns` and migrated legacy path-only entries once on load.
-- Added encrypted-PDF Worker open helpers and optional `passwords={normalized_path: password}` mapping so preview-authenticated passwords can be reused.
-- Added `compare_pdfs` result payloads (`diff_count`, `results`, `report_path`, `visual_diff_path`) and a completion summary dialog.
-- Added atomic binary save and cancellation rollback tracking for image and attachment extraction.
-- Expanded Worker i18n smoke coverage to all worker ops and f-string emits, and added mojibake-marker encoding audit coverage.
-- Re-audited `pdf_master.spec`, `.gitignore`, README/guide/review documents for consistency.
+### v4.5.3
+- Added UI for `Replace Page`, `Set Bookmarks`, `Add Annotation`
+- Fixed batch watermark failure; added per-file error summaries
+- Hardened attachment extraction (filename sanitization, path traversal guard)
 
-### v4.5.5 (2026-04-10) - Stability Bundle
-- Added safe same-path overwrite handling by closing preview-held documents before worker start and restoring preview after success/fail/cancel.
-- Reworked Undo/Redo to restore explicit before/after snapshots rather than re-running worker logic.
-- Expanded Undo coverage to include `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
-- Wired all output save/folder dialogs to `last_output_dir`.
-- Moved `thumbnail_grid.py` user-facing strings into i18n and widened the runtime UI hardcoded-string smoke scan.
-- Added regression coverage for output dialog state, same-path preview restore, and undo snapshot cleanup.
+### v4.5.2
+- Freehand signature UI
+- Expanded PDF → Image output formats (WEBP, BMP, TIFF)
+- Stricter annotation input validation
 
-### v4.5.5 (2026-04-02) - Preview/Thumbnail/Undo Hardening
-- Synced AI/rotate thumbnail flows to the active preview document before page jumps.
-- Reused preview password sessions for encrypted thumbnail loading instead of prompting from the grid itself.
-- Replaced OS print delegation with Qt print rendering so selected printer/page ranges affect the real output.
-- Added cancellation checkpoints to `split`, `get_form_fields`, `fill_form`, and `add_freehand_signature`.
-- Made app shutdown wait cooperatively before any forced worker termination.
-- Expanded Undo coverage to single-source/single-output PDF mutation modes.
-- Synced README/README_EN/CLAUDE/GEMINI/spec/.gitignore and added 8 regression suites for the new contracts.
+### v4.5
+- Draw shapes (rectangle, circle, line)
+- Add hyperlinks (URL / page navigation)
+- Insert textbox
+- Copy pages from another PDF
+- AI PDF chat and keyword extraction
 
-### v4.5.4 (2026-03-18 addendum) - Rotate UX Upgrade
-- Added a dedicated thumbnail list inside the Page tab rotate section.
-- Added explicit `All pages` / `Selected pages` rotate scope toggle.
-- Added partial rotation for Ctrl/Shift-selected pages only.
-- Synced rotate thumbnails with the right-side preview navigation without clearing the selected rotate targets.
-- Added focused regression tests for rotate selection and thumbnail state behavior.
+### v4.4
+- Korean / English multilingual support (auto-detect system language)
+- Manual language switching
 
-### v4.5.4 (2026-03-25 validation follow-up) - Worker, Docs, and Build Consistency
-- Fixed `add_ink_annotation` / `add_freehand_signature` persistence failures.
-- Centralized strict page validation for page-targeted worker modes; only signature flows keep `-1` last-page sentinel support.
-- Cancelled directory-output jobs now roll back only files created by the current run.
-- Improved `compare_pdfs` sample output with paired before/after diff lines.
-- Added `requirements-dev.txt`, `typings/`, and repo-local `.pytest_tmp` validation guidance.
+### v4.3
+- Undo / Redo
+- Cancellable progress overlay
 
-### v4.5.4 (2026-03-18 core refactor) - Core Module Split Consistency
-- Reduced `src/core/worker.py` to the public facade and moved shared execution flow into `src/core/worker_runtime/*`.
-- Reorganized `src/core/worker_ops` into responsibility-based mixins (`compose/transform/annotation/extract/security/batch`).
-- Kept `src/core/worker_ops/pdf_ops.py` as a compatibility shim so old imports continue to work.
-- Kept runtime i18n APIs in `src/core/i18n.py` and moved translation catalogs into `src/core/i18n_catalogs/*`.
-- Added regression coverage for worker dispatch registry, i18n catalog facade, and resource-cleanup structure checks.
-- Synced `pdf_master.spec`, `.gitignore`, and repository docs with the new core layout.
-
-### v4.5.4 (2026-03-09) - Typing, Encoding, and Build Consistency
-- Added `pyrightconfig.json` and reached `python -m pyright` -> `0 errors` across the repository.
-- Added `src/core/_typing.py` and `src/ui/_typing.py` to make worker/UI mixin host contracts explicit.
-- Hardened optional SDK loading in `ai_service`, worker layers, and Qt widgets to remove latent Pylance issues without changing user flows.
-- Completed UTF-8 text scan and mojibake check (decode failures `0`, U+FFFD hits `0`).
-- Synced `pdf_master.spec` with importlib-based optional Gemini SDK loading and the new `_typing` modules.
-- Expanded `.gitignore` for Python validation, coverage, and packaging artifacts.
-
-### v4.5.3 (2026-02-26) - PDF Editor Core Risk Fixes + Module Refactor
-- Fixed `batch(operation=watermark)` runtime failure (`insert_text` -> `insert_textbox`) and added per-file failure summaries.
-- Applied strict range policy to `copy_page_between_docs` (invalid/missing range now hard-fails).
-- Hardened `extract_attachments` (filename sanitization, path traversal guard, duplicate suffixing).
-- Unified `fitz.open()` cleanup (`try/finally`) for selected worker methods.
-- Unified `add_link(goto)` policy to 0-based target at worker boundary.
-- Exposed basic UI for `replace_page`, `set_bookmarks`, `add_annotation`.
-- Refactored large UI/worker files into folder-based modules (`tabs_*`, `window_*`, `worker_ops`) with compatibility shims.
-- Updated `pdf_master.spec` hiddenimports to include split packages.
-
-### v4.5.2 (2026-02-25) - Implementation Risk Fix Pack
-- Strengthened `add_text_markup` input validation (`markup_type` whitelist + crash guard)
-- Switched form field / attachment listing to worker path (`get_form_fields`, `list_attachments`)
-- Expanded PDF→Image format options to `png/jpg/webp/bmp/tiff` with legacy preset fallback
-- Added Freehand Signature UI and connected worker mode (`add_freehand_signature`)
-- Unified AI key storage through `settings.get_api_key/set_api_key`
-- Unified page index policy (1-based UI, normalized before worker call)
-- Replaced major UI hardcoded strings with i18n keys and synced translation maps
-- Added regression tests for each risk area
-
-### v4.5.1 (2026-02-19) - Stability/Compatibility
-- Added worker input preflight validation (existence/size checks before execution)
-- Added bidirectional kwargs normalization for advanced actions:
-  `draw_shapes`, `add_link`, `insert_textbox`, `copy_page_between_docs`, `image_watermark`
-- Fixed advanced action behavior mismatch between UI inputs and worker execution
-- Fixed Undo registration typo for `duplicate_page`
-- Improved folder opening compatibility on Linux/macOS via Qt `QDesktopServices`
-- Replaced deprecated locale detection path in i18n (`getlocale + env fallback`)
-- Added regression tests for worker compat/preflight/i18n
-
-### v4.5 (2026-01-22)
-- 📐 **Draw Shapes** - Add rectangles, circles, lines (position, size, color)
-- 🔗 **Add Hyperlinks** - Insert URL links or page navigation links
-- 📝 **Insert Textbox** - Add text directly to PDF (position, font, color)
-- 📋 **Copy Pages** - Copy specific pages from another PDF
-- 🖼️ **Image Watermark Enhanced** - 9 positions, scale (10-200%), opacity
-- 🖨️ **Preview Print** - Print directly from preview panel
-- 💬 **PDF Chat** - Ask questions about PDF content to AI
-- 🏷️ **Keyword Extraction** - AI-based keyword extraction
-- 🌐 **i18n Expansion** - 88 new translation keys
-
-### v4.4 (2026-01-16)
-- 🌐 **Internationalization (i18n)** - English & Korean support
-- 🔄 **Language Setting** - Auto-detect & Manual switch available
-
-### v4.3 (2026-01-16)
-- 🔄 **Undo/Redo** - Support for page delete, rotate, compress, etc.
-- 💾 **Auto Save Settings** - Window geometry, theme
-- 🎨 **Progress Overlay** - Full-screen modal with cancel
-
----
-
-## 🧪 Test and Consistency Status (v4.5.5)
-
-- Static analysis: `python -m pyright` -> `0 errors`
-- Regression tests: `python -m pytest -q` current baseline 179 collected, 178 passed, 1 opt-in Gemini smoke skipped
-- Text encoding audit: `tests/test_encoding_audit.py` guards UTF-8 decode/BOM/U+FFFD/mojibake marker regressions
-
-- Added:
-  - `tests/test_ai_thumbnail_grid_flow.py`
-  - `tests/test_thumbnail_grid_runtime.py`
-  - `tests/test_preview_print.py`
-  - `tests/test_worker_cancel_regression.py` (including extract/search page-loop cancellation and no output file after cancel)
-  - `tests/test_worker_undo_modes.py`
-  - `tests/test_worker_regression_modes.py`
-  - `tests/test_ai_worker_ui_flow.py`
-  - `tests/test_close_shutdown_flow.py`
-  - `tests/test_output_dialog_state.py`
-  - `tests/test_same_path_preview_restore.py`
-  - `tests/test_undo_backup_flow.py`
-  - `tests/test_worker_batch_watermark.py`
-  - `tests/test_worker_copy_page_range_strict.py`
-  - `tests/test_worker_attachment_extract_security.py`
-  - `tests/test_worker_resource_management_structure.py`
-  - `tests/test_worker_dispatch_registry.py`
-  - `tests/test_link_index_policy.py`
-  - `tests/test_advanced_new_modes_ui_flow.py`
-  - `tests/test_worker_param_compat.py`
-  - `tests/test_worker_preflight.py`
-  - `tests/test_i18n.py`
-  - `tests/test_i18n_catalogs.py`
-  - `tests/test_worker_markup_validation.py`
-  - `tests/test_worker_form_attachment_modes.py`
-  - `tests/test_convert_format_options.py`
-  - `tests/test_freehand_signature_ui_flow.py`
-  - `tests/test_ai_key_storage_path.py`
-  - `tests/test_worker_ink_signature_runtime.py`
-  - `tests/test_worker_page_validation.py`
-  - `tests/test_worker_cancel_cleanup.py`
-  - `tests/test_ai_service_cache.py` (fake Gemini File API contract, upload cache/chat reuse/structured parsing/fallback coverage)
-  - `tests/test_validation_docs_config.py` (README/guide/spec/current audit document consistency)
-  - `tests/test_validation_docs_config.py`
-  - `tests/test_page_index_policy.py`
-  - `tests/test_i18n_ui_hardcoded_smoke.py`
-  - `tests/test_worker_rotate_selection.py`
-  - `tests/test_rotate_selection_ui_flow.py`
-  - `tests/test_thumbnail_grid_selection.py`
+### v4.2
+- Switched to Google Gemini API (google-genai)
+- Lightweight build (~30–40 MB)
 
 ---
 
 ## 📄 License
 
-MIT License
-
-Copyright (c) 2026 PDF Master
-
----
-
-## 2026-04-21 Stability And Packaging Audit
-
-- AI summary/chat/keyword flows now expose result metadata that distinguishes `file_api` from `text_fallback`, flags 30,000-character truncation, and records fallback page counts.
-- Saving an AI summary now prepends a short metadata header only when the result came from fallback text extraction or was truncated.
-- Gemini uploaded-file cache entries now track the remote file name and attempt best-effort `client.files.delete(name=...)` cleanup on LRU eviction, Clear Chat for the currently selected PDF, and application shutdown.
-- Batch-generated outputs now use case-insensitive collision-safe stems such as `name_processed.pdf` and `name_processed__2.pdf`, and text/markdown/report outputs use atomic temp-write + replace saves.
-- Visual diff generation now produces a bidirectional overlay PDF: file-1-only blocks are highlighted in red, file-2-only blocks in blue, duplicate text counts are compared with `Counter`, and each diff page includes a legend.
-- When undo snapshots cannot be created, the worker continues but the UI now warns that the current operation cannot be undone.
-- API key persistence now prefers `keyring`; if secure storage is unavailable, the UI asks before allowing plaintext settings-file fallback.
-- `pdf_master.spec` was updated to include the runtime AI meta UI modules (`src.ui.tabs_ai.meta`, `src.ui.tabs_ai.actions_meta`) and its verification note now matches the current stabilization scope.
-- `.gitignore` was re-audited against validation/build outputs. The current entries already cover repo-local test/build artifacts including `.pytest_tmp/`, `build/`, `dist/`, `pip-wheel-metadata/`, `*.whl`, and `*.tar.gz`.
-
-## 2026-04-27 Worker/AI/Compare Stabilization Addendum
-
-- `split_by_pages` preflight now matches the current UI payload and is centered on `output_dir`.
-- Stored AI chat histories use versioned `path + mtime_ns` keys, with legacy path-only histories migrated once on load.
-- `actions_meta.py` is a compatibility shim; the canonical AI tab implementation lives in `src.ui.tabs_ai.actions`.
-- Workers accept `passwords={normalized_path: password}` so encrypted-PDF passwords authenticated by preview can be reused.
-- `compare_pdfs` provides `diff_count`, `results`, `report_path`, and `visual_diff_path`, and the UI shows a completion summary dialog.
-- Image and attachment extraction use atomic binary saves and cancellation rollback tracking.
-- `.gitignore` excludes `.pdf_master_*.tmp*` to cover atomic PDF/text/binary temp files.
-
-## 2026-05-13 Functional Audit Follow-up
-
-- File-writing Worker modes now fail fast through `required_any_kwargs`; `ai_summarize` remains output-file optional because the UI can consume in-memory results.
-- `src/core/pdf_validation.py` is the shared PDF size/header validator used by Worker preflight and UI file widgets.
-- Progress overlay and common file widget strings are covered by runtime UI i18n hardcoded-string smoke tests.
-- `main.py --smoke` initializes the app and exits with code 0; `scripts/package_smoke.ps1` clears `PYTHONPATH`, rebuilds the PyInstaller EXE, and runs the EXE smoke.
-- Gemini File API live validation is opt-in through `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` plus `GEMINI_API_KEY`.
-- Worker handlers now live in domain modules under `src/core/worker_ops/`, `AIService` lives under `src/core/ai/`, and long UI/style/catalog files are split behind compatibility facades; public Worker/import paths remain unchanged.
-
-## 2026-05-22 Audit Follow-up Hardening
-
-- `tests/test_validation_docs_config.py` now requires at least one `FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md`, treats `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md` as latest, and rejects maintained docs that point at missing audit files.
-- `get_pdf_info`, `search_text`, `extract_tables`, and `list_annotations` now check cancellation inside page loops before writing output files; regression tests assert cancelled runs leave no result files.
-- `tests/test_ai_service_cache.py` uses fake `google-genai` client objects to validate File API upload caching, generation/streaming, chat reuse, structured JSON parsing, and upload fallback without credentials.
-- `python -m pyright`, `python -m pytest -q`, `python main.py --smoke`, `python -m build`, and `scripts/package_smoke.ps1` are the current green validation/build baseline.
-- `.gitignore` was rechecked with `git check-ignore -v`; generated build, package, pytest, egg-info, wheel/sdist, `__pycache__`, and `.pdf_master_*.tmp*` outputs are already covered.
-- Richer compare/report UI and OCR engine support remain planned product work outside this hardening pass.
+MIT License — Copyright (c) 2026 PDF Master

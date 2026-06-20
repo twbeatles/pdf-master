@@ -1,40 +1,13 @@
-# GEMINI.md - PDF Master v4.5.5 AI 가이드
+# GEMINI.md — PDF Master v4.5.5 개발 가이드
 
-이 문서는 AI 어시스턴트(Gemini)가 PDF Master 프로젝트를 이해하고 개발을 지원하기 위한 가이드입니다.
-
----
-
-## Current Behavior Notes
-
-- The main right-side preview now runs through `src/ui/zoomable_preview.py` in real usage, including wheel zoom, drag pan, page navigation, preview print, and resize-triggered rerender.
-- Preview print now renders through the Qt print pipeline instead of delegating to OS-level `print` commands.
-- AI and rotate thumbnail entry points reuse the preview document/password session, so encrypted thumbnail loading stays aligned with preview behavior.
-- `convert_to_img` and `extract_text` use collision-safe auto output naming (`name`, `name__2`, `name__3`, ...).
-- `resize_pages` preserves aspect ratio and fit-centers the source page on the requested paper size instead of changing only the mediabox.
-- `compare_pdfs` uses sequence-based line diffing and can optionally emit a visual diff PDF from the Advanced tab UI.
-- Page-targeted worker modes share a strict page resolver; `-1` last-page sentinel remains only for signature insertion flows.
-- Directory-output cancellation uses `kwargs["created_output_paths"]` so only newly created files are rolled back.
-- Single-input/single-output mutation modes can overwrite the source path safely; preview closes that document before the worker starts and restores it after success/fail/cancel.
-- The preview search/bookmark side panel is collapsible, `Ctrl+F` opens the search tab and focuses the query field, and same-path restore reuses the captured preview view state.
-- Preview file watching now follows both the active PDF and its parent directory so external atomic replace flows can auto-reload after a short retry window.
-- Page setup and print preview intentionally use different printer lifecycles: setup persists layout state while each preview run gets a fresh `QPrinter`.
-- Compression is centered on save profiles (`fast`, `compact`, `web`) rather than direct quality-only flags.
-- Markdown extraction supports `auto/native/text` mode plus front matter, page marker, and asset placeholder toggles.
-- Clearing AI chat is scoped to the currently selected PDF and also clears the corresponding in-memory SDK chat session.
-- Output save/folder dialogs reuse `last_output_dir` as their initial directory and update it after successful output selection.
-- Undo/Redo is snapshot-based: restore `before_backup_path` on undo and `after_backup_path` on redo instead of re-running worker logic.
-- Updated AI/batch/annotation/extract worker completion and error messages are expected to come from the i18n catalogs.
-- Worker preflight now enforces one-of output contracts through `required_any_kwargs` and rejects non-PDF headers through shared validation.
-- Frozen/package verification uses `main.py --smoke` and `scripts/package_smoke.ps1`; Gemini File API live testing remains opt-in through environment variables.
-- Compatibility facades remain stable after the 2026-05-13 split: `ai_service.py`, `_pdf_impl.py`, `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, and `tabs_advanced/builders.py` re-export smaller implementation packages.
+AI 어시스턴트(Gemini)가 PDF Master 코드베이스를 이해하고 개발을 지원하기 위한 레퍼런스 문서입니다.
+현재 동작 기준 메모 및 전체 구현 계약은 `CLAUDE.md`를 참조하세요.
 
 ---
 
 ## 📋 프로젝트 개요
 
 **PDF Master**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
-
-### 기본 정보
 
 | 항목 | 내용 |
 |------|------|
@@ -46,21 +19,14 @@
 | **빌드 도구** | PyInstaller |
 | **라이선스** | MIT |
 
-### 주요 기능
+### 주요 기능 요약
 
-- PDF 병합/분할
-- PDF ↔ 이미지 변환
-- 텍스트 추출
-- 페이지 편집 (삭제, 회전, 순서변경)
-- 워터마크/스탬프 추가
-- 페이지 번호 삽입
-- PDF 암호화/복호화
-- PDF 압축
-- AI 기반 PDF 요약
-- AI PDF 채팅 (v4.5)
-- AI 키워드 추출 (v4.5)
-- 다크/라이트 테마
-- Undo/Redo 지원
+- PDF 병합 / 분할 / 변환 (이미지·텍스트)
+- 페이지 편집 (삭제, 회전, 순서 변경, 복제, 크기 변경)
+- 워터마크, 스탬프, 암호화 / 복호화, 압축
+- 주석 · 마크업 (하이라이트, 도형, 링크, 서명)
+- AI 요약, 채팅, 키워드 추출 (Gemini)
+- 다크 / 라이트 테마, Undo / Redo, 다국어(KO/EN)
 
 ---
 
@@ -69,7 +35,6 @@
 ```
 pdf-master/
 ├── main.py
-├── .editorconfig
 ├── pdf_master.spec
 ├── pyproject.toml
 ├── pyrightconfig.json
@@ -77,26 +42,22 @@ pdf-master/
 ├── scripts/
 │   └── package_smoke.ps1
 ├── typings/
-├── README.md
-├── README_EN.md
-├── CLAUDE.md
-├── GEMINI.md
 └── src/
     ├── core/
-    │   ├── ai/                    # Gemini service client/cache/schema/session/prompt 구현
+    │   ├── ai/                    # Gemini client/cache/schema/session/prompt 구현
     │   ├── ai_service.py          # compatibility facade
-    │   ├── optional_deps.py
-    │   ├── _typing.py
+    │   ├── optional_deps.py       # fitz/keyring optional import 경계
+    │   ├── _typing.py             # Worker 믹스인 host 계약
     │   ├── constants.py
-    │   ├── i18n.py                 # TranslationManager facade
-    │   ├── i18n_catalogs/          # KO/EN base catalog + facade
-    │   ├── pdf_validation.py       # PDF size/header 공용 검증
+    │   ├── i18n.py                # TranslationManager facade
+    │   ├── i18n_catalogs/         # KO/EN base catalog
+    │   ├── pdf_validation.py      # PDF size/header 공용 검증
     │   ├── settings.py
     │   ├── undo_manager.py
-    │   ├── worker.py               # QThread facade
-    │   ├── worker_runtime/         # 공통 runtime/dispatch/preflight
-    │   └── worker_ops/             # Worker 기능 분할 구현
-    │       ├── _pdf_impl.py        # compatibility shim
+    │   ├── worker.py              # QThread facade
+    │   ├── worker_runtime/        # 공통 runtime/dispatch/preflight
+    │   └── worker_ops/            # Worker 기능 domain module 분할
+    │       ├── _pdf_impl.py       # compatibility shim
     │       ├── page_ops.py
     │       ├── compare_ops.py
     │       ├── form_ops.py
@@ -104,19 +65,13 @@ pdf-master/
     │       ├── annotation_ops.py
     │       ├── compose_ops.py
     │       ├── transform_ops.py
-    │       ├── pdf_ops.py          # compatibility shim
+    │       ├── pdf_ops.py         # compatibility shim
     │       └── ai_ops.py
     └── ui/
         ├── _typing.py
         ├── main_window.py
         ├── main_window_config.py
-        ├── main_window_tabs_basic.py     # 호환 shim
-        ├── main_window_tabs_advanced.py  # 호환 shim
-        ├── main_window_tabs_ai.py        # 호환 shim
-        ├── main_window_core.py           # 호환 shim
-        ├── main_window_preview.py        # 호환 shim
-        ├── main_window_worker.py         # 호환 shim
-        ├── main_window_undo.py           # 호환 shim
+        ├── main_window_*.py       # 호환 shim 계열
         ├── tabs_basic/
         ├── tabs_advanced/
         │   └── tab_builders/
@@ -140,7 +95,7 @@ pdf-master/
 
 ## 🔑 핵심 모듈 상세
 
-### 1. `src/core/worker.py` - WorkerThread
+### 1. `src/core/worker.py` — WorkerThread
 
 PDF 작업을 백그라운드에서 처리하는 QThread 기반 워커입니다.
 
@@ -153,11 +108,11 @@ error_signal = pyqtSignal(str)        # 에러 메시지
 
 **작업 모드 (mode 파라미터):**
 
-| 모드 | 설명 | 필수 파라미터 |
+| 모드 | 설명 | 주요 파라미터 |
 |------|------|--------------|
 | `merge` | PDF 병합 | `files`, `output_path` |
-| `convert_to_img` | PDF → 이미지 | `file_path` 또는 `file_paths`, `output_dir`, `fmt`, `dpi` |
-| `extract_text` | 텍스트 추출 | `file_path` 또는 `file_paths`, `output_path` 또는 `output_dir` |
+| `convert_to_img` | PDF → 이미지 | `file_path`, `output_dir`, `fmt`, `dpi` |
+| `extract_text` | 텍스트 추출 | `file_path`, `output_path` 또는 `output_dir` |
 | `split` | PDF 분할 (범위) | `file_path`, `page_range`, `output_dir` |
 | `split_by_pages` | 페이지별 분할 | `file_path`, `output_dir` |
 | `delete_pages` | 페이지 삭제 | `file_path`, `page_range`, `output_path` |
@@ -165,75 +120,61 @@ error_signal = pyqtSignal(str)        # 에러 메시지
 | `watermark` | 텍스트 워터마크 | `file_path`, `text`, `output_path` |
 | `image_watermark` | 이미지 워터마크 | `file_path`, `image_path`, `output_path` |
 | `add_page_numbers` | 페이지 번호 | `file_path`, `position`, `format`, `output_path` |
-| `compress` | PDF 압축 | `file_path`, `quality`, `output_path` |
+| `compress` | PDF 압축 (`fast`/`compact`/`web` 프로필) | `file_path`, `quality`, `output_path` |
 | `protect` | PDF 암호화 | `file_path`, `password`, `output_path` |
 | `images_to_pdf` | 이미지 → PDF | `files`, `output_path` |
-| `reorder` | 페이지 순서변경 | `file_path`, `page_order`, `output_path` |
+| `reorder` | 페이지 순서 변경 | `file_path`, `page_order`, `output_path` |
 | `add_stamp` | 스탬프 추가 | `file_path`, `stamp_text`, `position`, `output_path` |
 | `ai_summarize` | AI 요약 | `file_path`, `api_key` |
-| `ai_ask_question` | AI PDF 채팅 (v4.5) | `file_path`, `api_key`, `question` |
-| `ai_extract_keywords` | AI 키워드 추출 (v4.5) | `file_path`, `api_key`, `max_keywords` |
-| `draw_shapes` | 도형 그리기 (v4.5) | `file_path`, `shape_type` 또는 `shapes`, `output_path` |
-| `add_link` | 하이퍼링크 추가 (v4.5) | `file_path`, `link_type`, `target`, `rect`, `output_path` |
-| `insert_textbox` | 텍스트 상자 (v4.5) | `file_path`, `text`, `rect` 또는 `x/y`, `output_path` |
-| `copy_page_between_docs` | 페이지 복사 (v4.5) | `file_path`, `source_path`, `page_range` |
+| `ai_ask_question` | AI PDF 채팅 | `file_path`, `api_key`, `question` |
+| `ai_extract_keywords` | AI 키워드 추출 | `file_path`, `api_key`, `max_keywords` |
+| `draw_shapes` | 도형 그리기 | `file_path`, `shapes` 또는 `shape_type/x/y/…`, `output_path` |
+| `add_link` | 하이퍼링크 | `file_path`, `link_type`, `target`, `rect`, `output_path` |
+| `insert_textbox` | 텍스트 상자 | `file_path`, `text`, `rect` 또는 `x/y`, `output_path` |
+| `copy_page_between_docs` | 페이지 복사 | `file_path`, `source_path`, `page_range` |
+| `replace_page` | 페이지 교체 | `file_path`, `source_path`, `page_index`, `output_path` |
+| `set_bookmarks` | 북마크 설정 | `file_path`, `bookmarks`, `output_path` |
+| `add_annotation` | 주석 추가 | `file_path`, `annot_type`, `rect`, `output_path` |
 
-> 참고 (v4.5.1): `WorkerThread`는 `_normalize_mode_kwargs()`를 통해 UI/레거시 kwargs를 정규화하여 양방향 호환을 보장합니다.
+**주요 정책:**
+- `run()` 시작 시 `_preflight_inputs()`로 입력 파일 존재/크기 사전 검증 (fail-fast)
+- `_normalize_mode_kwargs()`로 UI/레거시 kwargs 양방향 정규화
+- `add_link(goto)` — Worker 경계는 0-based 페이지 인덱스만 허용
+- `copy_page_between_docs` — 무효/누락 `page_range`는 hard-fail (묵시 폴백 없음)
+- `ai_summarize` — `output_path`는 선택사항 (UI에서 메모리 결과 소비 가능)
+- `-1` last-page sentinel은 서명 계열 모드에만 예약됨
 
-### Worker kwargs 계약 보강 (v4.5.1)
+### 2. `src/core/ai_service.py` + `src/core/ai/*` — AIService
 
-- `draw_shapes`
-  - 단일 입력(`shape_type/x/y/width/height/line_color/fill_color`)도 내부 `shapes=[...]`로 정규화됨
-- `add_link`
-  - `link_type`로 `url/page` 별칭 허용 (`uri/goto`로 매핑)
-  - `target`은 Worker 경계에서 0-based만 허용 (UI에서 1-based 입력을 사전 정규화)
-- `insert_textbox`
-  - `rect` 미지정 시 `x,y,width,height`로 자동 사각형 생성 (기본 200x50)
-- `copy_page_between_docs`
-  - `target_path`가 없으면 `file_path`를 대상 문서로 사용
-  - `source_pages`가 없으면 `page_range`를 파싱하여 사용
-- `image_watermark`
-  - `scale` 입력 시 원본 이미지 기준으로 `width/height` 계산
-  - 위치 별칭 `top-center`, `bottom-center` 허용
-
-### 입력 사전검증 (v4.5.1)
-
-- `run()` 시작 시 `_preflight_inputs()` 수행
-- PDF 입력은 존재/크기(최소/최대) 선검증
-- 비-PDF 입력(`image_path`, `signature_path`, `attach_path`)은 존재/최대 크기 선검증
-- 검증 실패 시 작업 실행 전 `error_signal`로 즉시 종료 (fail-fast)
-
-### 2. `src/core/ai_service.py` + `src/core/ai/*` - AIService
-
-`src/core/ai_service.py`는 기존 import 경로를 유지하는 facade입니다. 실제 Gemini API 구현은 `src/core/ai/client.py`, `config.py`, `cache.py`, `schemas.py`, `prompts.py`, `session.py`, `generation.py`, `service.py`, `errors.py`로 분리되어 있습니다.
+`ai_service.py`는 기존 import 경로를 유지하는 facade입니다. 실제 구현은 `src/core/ai/` 하위 모듈에 분리되어 있습니다.
 
 ```python
 class AIService:
     def __init__(self, api_key: str, model: str = "gemini-2.5-flash", timeout: int = 30)
     def summarize_pdf(self, pdf_path: str, language: str = "ko", style: str = "concise")
     def ask_about_pdf(self, pdf_path: str, question: str)
-    def extract_keywords(self, pdf_path: str, max_keywords: int = 10, language: str = "ko")  # v4.5
+    def extract_keywords(self, pdf_path: str, max_keywords: int = 10, language: str = "ko")
     def validate_api_key(self) -> tuple[bool, str]
+    def clear_chat_session(self, pdf_path: str) -> None   # clears the currently selected PDF's session
 ```
 
-**SDK 호환성:**
-- 공식: `google-genai` only
-- 기본 경로: Gemini File API 업로드 + structured output + streaming partial callbacks
-- 레거시 SDK fallback 없음
+- SDK: `google-genai` only (레거시 SDK 없음)
+- 기본 경로: Gemini File API 업로드 + structured output + streaming
+- 반환 결과에 `meta` 딕셔너리 포함 (`source`, `truncated`, `page_focus_limit`, 등)
+- 업로드된 Gemini 파일은 LRU eviction / Clear Chat / 앱 종료 시 best-effort remote delete
 
 **예외 클래스:**
-- `AIServiceError` - 기본 예외
-- `APIKeyError` - API 키 오류
-- `APITimeoutError` - 타임아웃
-- `APIRateLimitError` - Rate limit 초과
+- `AIServiceError` — 기본 예외
+- `APIKeyError` — API 키 오류
+- `APITimeoutError` — 타임아웃
+- `APIRateLimitError` — Rate limit 초과
 
-### 3. `src/core/settings.py` - 설정 관리
+### 3. `src/core/settings.py` — 설정 관리
 
 ```python
-SETTINGS_FILE = "~/.pdf_master_settings.json"
-
 DEFAULT_SETTINGS = {
     "theme": "dark",
+    "language": "auto",
     "recent_files": [],
     "last_output_dir": "",
     "preview_search_expanded": True,
@@ -241,71 +182,36 @@ DEFAULT_SETTINGS = {
     "window_geometry": None,
 }
 
-# 함수
 def load_settings() -> dict
 def save_settings(settings: dict) -> bool
-def get_api_key() -> str     # keyring 우선, 파일 폴백
+def get_api_key() -> str          # keyring 우선, 설정 파일 폴백
 def set_api_key(api_key: str) -> bool
 def reset_settings() -> bool
 ```
 
-- `load_settings()` normalizes `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`, and `preview_search_expanded` on load.
-- Stored UI chat history keys use `v2:{mtime_ns}:{normalized_path}` so a replaced PDF at the same path gets a separate conversation history.
+- `load_settings()`는 `recent_files`, `chat_histories`, `splitter_sizes`, `theme`, `language`, `window_geometry`, `last_output_dir`, `preview_search_expanded`를 로드 시 정규화
+- AI 채팅 기록 key: `v2:{mtime_ns}:{normalized_path}` (같은 경로 PDF 교체 시 기록 분리)
+- API 키 저장: keyring 우선; secure storage 불가 시 사용자 확인 후 plaintext fallback
 
-### 타입 계약 파일 (v4.5.4)
-
-- `src/core/_typing.py`
-  - `WorkerHost` 계약 정의
-  - `WorkerPdfOpsMixin`, `WorkerAiOpsMixin`이 기대하는 signal/helper 속성 명시
-  - v4.5.4 validation follow-up: `_resolve_page_index()` / `_record_created_output_path()` helper 계약 포함
-  - v4.5.5 2026-04-27 follow-up: `_atomic_binary_save()` / `_open_pdf_document()` helper 계약 포함
-- `src/core/optional_deps.py`
-  - `fitz`, `keyring` optional import 경계
-  - 미설치 환경에서는 proxy/fallback으로 import-time 오류를 막고, 실제 사용 시점에만 실패하게 함
-- `src/ui/_typing.py`
-  - `MainWindowHost` 계약 정의
-  - 분리된 UI 믹스인이 접근하는 공통 위젯/헬퍼 속성 명시
-- 변경 규칙
-  - 믹스인에서 `self.<attr>`를 새로 사용하면 대응 `_typing.py` 계약도 같이 갱신
-  - 수정 후 `python -m pyright`를 반드시 다시 실행
-  - `fitz`/`keyring` 직접 import 대신 `src/core/optional_deps.py`를 우선 사용
-
-### 4. `src/core/constants.py` - 상수
+### 4. `src/core/constants.py` — 상수
 
 ```python
-# 페이지 크기 (포인트)
-PAGE_SIZES = {
-    'A4': (595, 842),
-    'A3': (842, 1191),
-    'A5': (420, 595),
-    'Letter': (612, 792),
-    'Legal': (612, 1008),
-}
+PAGE_SIZES = {'A4': (595, 842), 'A3': (842, 1191), 'Letter': (612, 792), ...}
 
-# 이미지 설정
 DEFAULT_DPI = 200
 THUMBNAIL_SIZE = 150
-SUPPORTED_IMAGE_FORMATS = ('png', 'jpg', 'jpeg', 'bmp', 'gif', 'tiff', 'webp')
+MAX_RENDER_DIMENSION = 8000
 
-# 제한값
-MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024  # 2GB
+MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024   # 2GB
 MIN_PDF_SIZE = 100
 MAX_PAGE_RANGE_LENGTH = 1000
 
-# 압축 설정
-COMPRESSION_SETTINGS = {
-    'low': {'garbage': 4, 'deflate': True, 'deflate_images': True, 'deflate_fonts': True, 'clean': True},
-    'medium': {'garbage': 3, 'deflate': True, 'deflate_images': True},
-    'high': {'garbage': 2, 'deflate': True},
-}
-
-# AI 서비스
 AI_DEFAULT_TIMEOUT = 30
 AI_MAX_TEXT_LENGTH = 30000
 AI_MAX_RETRIES = 3
 ```
 
-### 5. `src/core/undo_manager.py` - UndoManager
+### 5. `src/core/undo_manager.py` — UndoManager
 
 ```python
 @dataclass
@@ -313,148 +219,35 @@ class ActionRecord:
     action_type: str
     description: str
     timestamp: datetime
-    before_state: dict
-    after_state: dict
+    before_state: dict    # before_backup_path, target_path
+    after_state: dict     # after_backup_path
     undo_callback: Optional[Callable]
     redo_callback: Optional[Callable]
 
 class UndoManager:
-    def __init__(self, max_history: int = 50)
     def push(self, action_type, description, before_state, after_state, undo_callback, redo_callback)
     def undo(self) -> Optional[ActionRecord]
     def redo(self) -> Optional[ActionRecord]
-    def can_undo -> bool
-    def can_redo -> bool
+    @property can_undo -> bool
+    @property can_redo -> bool
 ```
 
-- Current UI integration stores `before_backup_path`, `after_backup_path`, and `target_path`.
-- Undo coverage includes the expanded single-input/single-output mutation set used by `main_window_worker.py`, including `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, and `copy_page_between_docs`.
+Undo 대상 모드: `resize_pages`, `insert_signature`, `highlight_text`, `add_sticky_note`, `add_ink_annotation`, `copy_page_between_docs` 포함.
+스냅샷 백업 실패 시 작업은 계속되고 UI에 "Undo 불가" 경고 표시.
 
-### 6. `src/core/i18n.py` - TranslationManager
+### 6. `src/core/i18n.py` — TranslationManager
 
 ```python
-class TranslationManager:
-    def __init__(self)  # Singleton
+class TranslationManager:   # Singleton
     def get(self, key: str, *args) -> str
+    active_lang_code: str
 ```
 
-**특징:**
-- 한국어/영어 지원 (`ko`, `en`)
-- `locale` 모듈을 통한 시스템 언어 자동 감지
-  - v4.5.1: `locale.getdefaultlocale()` 대신 `getlocale + 환경변수 fallback`
-- `TranslationManager().get("key")`로 사용
-- `active_lang_code` 속성으로 현재 언어 확인
-```
+- 한국어 / 영어 지원
+- `locale.getlocale()` + 환경변수 fallback으로 시스템 언어 자동 감지
+- 번역 데이터는 `src/core/i18n_catalogs/ko_base.py`, `en_base.py`에 분리
 
-### 7. `src/ui/main_window.py` - PDFMasterApp
-
-메인 애플리케이션 윈도우입니다.
-
-**믹스인 구성 (UI 분리 구조):**
-- `main_window.py`: QMainWindow 구성, `__init__`, `closeEvent`
-- `main_window_config.py`: 앱 상수/AI 가용성
-- `main_window_*.py`: 기존 import 경로 호환 shim
-- `tabs_basic`, `tabs_advanced`, `tabs_ai`: 탭 기능 실제 구현
-- `window_core`, `window_preview`, `window_worker`, `window_undo`: 공통 UI 동작 실제 구현
-
-**단축키:**
-| 단축키 | 기능 |
-|--------|------|
-| `Ctrl+O` | 파일 열기 |
-| `Ctrl+Q` | 종료 |
-| `Ctrl+T` | 테마 전환 |
-| `Ctrl+F` | 미리보기 검색 탭 열기/포커스 |
-| `Ctrl+Z` | 실행 취소 |
-| `Ctrl+Y` | 다시 실행 |
-| `Ctrl+1~8` | 탭 전환 |
-
-**주요 메서드:**
-```python
-def run_worker(self, mode, output_path=None, **kwargs)  # 작업 실행
-def _toggle_theme(self)  # 테마 전환
-def _apply_theme(self)   # 테마 적용
-def _update_preview(self, path)  # 미리보기 업데이트
-```
-
-추가 반영 (v4.5.1):
-- `_open_last_folder()`에서 비-Windows 환경은 Qt `QDesktopServices` 기반으로 폴더 열기 처리
-
-### 8. `src/ui/styles.py` - ThemeColors
-
-```python
-class ThemeColors:
-    # 브랜드 색상
-    PRIMARY = "#4f8cff"
-    PRIMARY_LIGHT = "#7fb3ff"
-    PRIMARY_DARK = "#3a7ae8"
-    PRIMARY_GLOW = "rgba(79, 140, 255, 0.4)"
-
-    # 상태 색상
-    SUCCESS = "#10b981"
-    WARNING = "#f59e0b"
-    ERROR = "#ef4444"
-
-    # 다크 테마
-    DARK_BG = "#0a0e14"
-    DARK_CARD = "#141922"
-    DARK_BORDER = "#2d3748"
-    DARK_TEXT = "#f0f4f8"
-
-    # 라이트 테마
-    LIGHT_BG = "#f8fafc"
-    LIGHT_CARD = "#ffffff"
-    LIGHT_BORDER = "#e2e8f0"
-    LIGHT_TEXT = "#1e293b"
-```
-
-### 9. `src/ui/widgets.py` - 커스텀 위젯
-
-| 클래스 | 용도 |
-|--------|------|
-| `is_valid_pdf(file_path)` | PDF 유효성 검사 |
-| `WheelEventFilter` | 휠 이벤트 필터 |
-| `EmptyStateWidget` | 빈 상태 안내 UI |
-| `DropZoneWidget` | 드래그 앤 드롭 영역 |
-| `FileSelectorWidget` | 파일 선택 위젯 |
-| `FileListWidget` | 파일 목록 위젯 |
-| `DraggableListWidget` | 드래그 가능 리스트 |
-
-### 10. `src/ui/progress_overlay.py` - 진행 오버레이
-
-```python
-class ProgressOverlayWidget(QWidget):
-    cancelled = pyqtSignal()
-
-    def show_progress(title: str, description: str)
-    def update_progress(value: int, description: str)
-    def hide_progress()
-    def set_theme(is_dark: bool)
-
-class LoadingSpinner(QLabel):
-    # 이모지 기반 애니메이션
-```
-
-### 11. `src/ui/thumbnail_grid.py` - 썸네일 그리드
-
-```python
-class ThumbnailLoaderThread(QThread):
-    thumbnail_ready = pyqtSignal(int, QPixmap)
-    loading_complete = pyqtSignal()
-
-class ThumbnailGridWidget(QWidget):
-    pageSelected = pyqtSignal(int)
-    selectedPagesChanged = pyqtSignal(list)
-
-    def load_pdf(pdf_path: str)
-    def select_page(index: int)
-    def set_active_page(index: int, emit_signal: bool = False)
-    def get_selected_pages() -> list[int]
-```
-
-- `thumbnail_grid.py` user-facing runtime strings should come from `tm.get(...)`.
-- Runtime UI hardcoded-string smoke tests now scan `src/ui` broadly with a small allowlist for known exceptions.
-
-### 12. `src/ui/zoomable_preview.py` - 줌/패닝 미리보기
+### 7. `src/ui/zoomable_preview.py` — ZoomablePreviewWidget
 
 ```python
 class ZoomablePreviewWidget(QWidget):
@@ -469,15 +262,26 @@ class ZoomablePreviewWidget(QWidget):
     def go_to_page(page_index: int)
 ```
 
-- `QPdfDocument + QPdfView + QPdfSearchModel + QPdfBookmarkModel + QPdfPageNavigator` 조합을 감싼 실제 런타임 위젯입니다.
-- search/bookmark sidebar, print preview, page setup, page/zoom state restore를 이 위젯이 직접 담당합니다.
-- same-path overwrite restore, encrypted preview password reuse, and external rewrite auto-reload are shared responsibilities between this widget and `window_preview/*`.
-- 예전 pixmap/control-mode 및 `renderRequested` 계약은 제거되었습니다.
+- `QPdfDocument + QPdfView + QPdfSearchModel + QPdfBookmarkModel + QPdfPageNavigator` 조합 래퍼
+- 검색/북마크 사이드바, 인쇄 미리보기, 페이지 설정, view state 저장/복원 담당
+- same-path overwrite 복원, 암호화 PDF 비밀번호 재사용, external rewrite auto-reload는 `window_preview/*`와 공동 책임
+- 예전 pixmap/control-mode 및 `renderRequested` 계약은 제거됨
 
-### Packaging note
+### 8. `src/ui/thumbnail_grid.py` — ThumbnailGridWidget
 
-- `pdf_master.spec` should explicitly keep `src.ui.zoomable_preview` importable because the widget is now part of the main preview runtime path.
-- `src/core/i18n_catalogs/*` are packaged as Python modules, so worker/UI message changes should stay aligned with hiddenimport coverage.
+```python
+class ThumbnailGridWidget(QWidget):
+    pageSelected = pyqtSignal(int)
+    selectedPagesChanged = pyqtSignal(list)
+
+    def load_pdf(pdf_path: str, password: str | None = None)
+    def select_page(index: int)
+    def set_active_page(index: int, emit_signal: bool = False)
+    def get_selected_pages() -> list[int]
+```
+
+- `active page`(미리보기 동기화)와 `selected pages`(회전 대상 등)를 분리 관리
+- 암호화 PDF 로딩 시 preview에서 인증한 `password`를 재사용 (별도 프롬프트 없음)
 
 ---
 
@@ -486,7 +290,7 @@ class ZoomablePreviewWidget(QWidget):
 ### PDF 작업 추가하기
 
 1. `src/core/worker_runtime/dispatch.py`의 `MODE_TO_HANDLER`에 모드 추가
-2. 새 메서드 구현:
+2. 적절한 domain module(`page_ops.py`, `annotation_ops.py` 등)에 메서드 구현:
 
 ```python
 def new_operation(self):
@@ -494,132 +298,39 @@ def new_operation(self):
         file_path = self.kwargs["file_path"]
         output_path = self.kwargs["output_path"]
         doc = fitz.open(file_path)
-
         try:
             for i, page in enumerate(doc):
                 self._check_cancelled()
                 # 작업 수행...
                 self._emit_progress_if_due(int((i + 1) / len(doc) * 100))
-
             self._atomic_pdf_save(doc, output_path, garbage=4, deflate=True)
-            self.finished_signal.emit(f"완료: {output_path}")
+            self.finished_signal.emit(tm.get("op_done"))
         finally:
-            doc.close()  # 중요: 반드시 리소스 해제
-
+            doc.close()
     except CancelledError:
-        self.finished_signal.emit("취소됨")
+        self.finished_signal.emit(tm.get("op_cancelled"))
     except Exception as e:
         self.error_signal.emit(str(e))
 ```
 
-### UI 위젯 추가하기
+3. `src/core/worker_runtime/preflight.py`의 `OperationSpec`에 출력 계약 추가 (`required_any_kwargs` 포함)
+4. 믹스인 host 계약 변경 시 `src/core/_typing.py` 업데이트 후 `python -m pyright` 재실행
 
-1. `ThemeColors` 상수 사용
-2. `set_theme(is_dark: bool)` 메서드 구현
-3. 스크롤 가능 위젯에 `WheelEventFilter` 적용
+### UI 위젯 추가 시 체크리스트
 
-### 테마 대응
+- `ThemeColors` 상수 사용
+- `set_theme(is_dark: bool)` 메서드 구현
+- 스크롤 가능 위젯에 `WheelEventFilter` 적용
+- 사용자 문자열은 `tm.get(...)` 경유 (하드코딩 금지)
+- `src/ui/_typing.py`에 접근하는 공통 속성 추가
 
-```python
-def set_theme(self, is_dark: bool):
-    self._is_dark = is_dark
-    self._apply_theme_style()
+### 코딩 규칙
 
-def _apply_theme_style(self):
-    if self._is_dark:
-        bg = ThemeColors.DARK_CARD
-        text = ThemeColors.DARK_TEXT
-    else:
-        bg = ThemeColors.LIGHT_CARD
-        text = ThemeColors.LIGHT_TEXT
-
-    self.setStyleSheet(f"background: {bg}; color: {text};")
-```
-
----
-
-## ⚠️ 주의사항
-
-### 1. 리소스 관리
-```python
-doc = fitz.open(path)
-try:
-    # 작업 수행
-finally:
-    doc.close()  # 반드시!
-```
-
-### 2. 스레드 안전
-- UI 업데이트는 시그널/슬롯만 사용
-- `WorkerThread`에서 직접 UI 조작 금지
-
-### 3. 취소 지원
-- 장시간 작업에서 `_check_cancelled()` 호출
-- `CancelledError` 예외 처리
-
-### 4. 에러 처리
-```python
-try:
-    # 작업
-except Exception as e:
-    logger.error(f"Failed: {e}")
-    self.error_signal.emit(str(e))
-```
-
----
-
-## 🔧 빌드 및 실행
-
-### 개발 실행
-```bash
-python main.py
-```
-
-### 의존성 설치
-```bash
-pip install -e .[dev]
-pip install -e .[build]
-pip install -e .[ai]
-pip install -e .[secure]
-pip install -r requirements-dev.txt  # compatibility shim
-```
-
-### 프로덕션 빌드
-```bash
-python -m PyInstaller pdf_master.spec --clean
-# 결과: dist/PDF_Master_v4.5.5.exe (~30-40MB)
-```
-
-### 패키지 smoke
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
-```
-
-### 정합성 검증 (v4.5.5)
-```bash
-python -m build
-python -m pyright
-python -m pytest -q
-python -m PyInstaller pdf_master.spec --clean
-python main.py --smoke
-```
-
-- 기준 결과:
-  - `python -m build`
-  - `python -m pyright` -> `0 errors`
-  - 현재 환경 `python -m pytest -q` -> 179 collected / 178 passed / 1 opt-in Gemini smoke skipped
-  - `python -m PyInstaller pdf_master.spec --clean`
-  - `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1` -> clean `PYTHONPATH` PyInstaller + EXE `--smoke`
-  - `python main.py --smoke` -> 앱/핵심 위젯 초기화 후 종료
-  - `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` + `GEMINI_API_KEY` -> Gemini File API 실연동 smoke opt-in
-  - `tests/test_ai_service_cache.py` -> upload fallback 제한, fake SDK File API 계약, chat-session reuse, structured parsing, text cache 재사용
-  - `tests/test_worker_cancel_regression.py` -> 추출/검색 page loop 취소 체크와 취소 시 출력 파일 미생성
-  - `tests/test_worker_preflight.py` -> required kwargs preflight 검증
-  - `tests/test_worker_regression_modes.py` -> markdown 옵션 / batch compress save-profile 회귀 검증
-  - `.gitignore` -> `build/`, `dist/`, `.pytest_tmp/`, `*.egg-info/`, `*.whl` 등 검증/패키징 산출물 제외
-  - `pytest` 임시 디렉터리 -> repo-local `.pytest_tmp`
-  - `tests/test_encoding_audit.py` -> UTF-8 decode/BOM/U+FFFD/mojibake marker 회귀 방지
-  - `PyMuPDF` 미설치 환경에서는 PDF 엔진 의존 테스트만 skip
+- PDF 문서는 반드시 `try/finally`로 닫기
+- Worker에서 UI 직접 조작 금지 — 시그널/슬롯만 사용
+- 장시간 루프 내 `_check_cancelled()` 호출
+- `fitz` / `keyring` 직접 import 대신 `src/core/optional_deps.py` 사용
+- 바이너리 출력은 `_atomic_binary_save()`, PDF 출력은 `_atomic_pdf_save()` 사용
 
 ---
 
@@ -627,186 +338,65 @@ python main.py --smoke
 
 | 경로 | 역할 |
 |------|------|
-| `src/core/worker.py` | Worker QThread facade 및 공개 진입점 |
-| `src/core/worker_runtime/*` | dispatch/preflight/i18n message/atomic save 공통 로직 |
+| `src/core/worker.py` | Worker QThread facade |
+| `src/core/worker_runtime/*` | dispatch / preflight / atomic save 공통 로직 |
 | `src/core/pdf_validation.py` | Worker/UI 공용 PDF size/header 검증 |
 | `src/core/ai_service.py` | AIService compatibility facade |
-| `src/core/ai/*` | Gemini client/cache/schema/session/prompt/service 구현 |
-| `src/core/i18n_catalogs/ko_base.py`, `en_base.py` | KO/EN base translation catalog |
-| `src/core/worker_ops/_pdf_impl.py` | PDF worker mixin compatibility shim |
-| `src/core/worker_ops/pdf_ops.py` | PDF worker mixin compatibility shim |
-| `src/core/worker_ops/ai_ops.py` | AI 요약/질의/키워드 작업 구현 |
-| `src/core/worker_ops/page_ops.py` | split/reorder/page insert/replace/duplicate/reverse/page-number 계열 |
-| `src/core/worker_ops/compare_ops.py` | PDF compare worker |
-| `src/core/worker_ops/form_ops.py` | form field 조회/채우기 |
-| `src/core/worker_ops/extract_ops.py` | text/image/link/info/bookmark/markdown/attachment 추출 |
-| `src/core/worker_ops/annotation_ops.py` | highlight/redact/shape/link/textbox/sticky/ink annotation |
-| `src/core/worker_ops/compose_ops.py` | merge/images-to-PDF/copy-page 계열 |
-| `src/core/worker_ops/transform_ops.py` | metadata/compress/crop/resize transform 계열 |
-| `src/ui/main_window_*.py` | UI 호환 shim |
-| `src/ui/tabs_basic/*` | 기본 탭(병합/변환/페이지/보안/순서/배치) |
-| `src/ui/tabs_advanced/*` | 고급 탭(편집/추출/마크업/기타) |
-| `src/ui/tabs_advanced/tab_builders/*` | Advanced tab builder 실제 구현 |
-| `src/ui/tabs_ai/*` | AI 탭/스토리지/액션 |
-| `src/ui/common_widgets/*` | `widgets.py` facade backing widgets |
-| `src/ui/preview_widget/*` | `zoomable_preview.py` facade backing widget/search modules |
-| `src/ui/thumbnail/*` | `thumbnail_grid.py` facade backing loader/tile/grid/document modules |
-| `src/ui/theme/*` | `styles.py` facade backing color/QSS modules |
-| `src/ui/window_core/*` | 메뉴/테마/단축키/상태 |
-| `src/ui/window_preview/*` | 미리보기/문서/네비게이션 |
+| `src/core/ai/*` | Gemini client/cache/schema/session/prompt 구현 |
+| `src/core/i18n_catalogs/ko_base.py`, `en_base.py` | KO/EN 번역 카탈로그 |
+| `src/core/worker_ops/page_ops.py` | split / reorder / insert / replace / duplicate |
+| `src/core/worker_ops/annotation_ops.py` | highlight / redact / shape / link / textbox / ink |
+| `src/core/worker_ops/compose_ops.py` | merge / images-to-PDF / copy-page |
+| `src/core/worker_ops/transform_ops.py` | metadata / compress / crop / resize |
+| `src/core/worker_ops/extract_ops.py` | text / image / link / bookmark / markdown (`auto/native/text`) / attachment |
+| `src/core/worker_ops/compare_ops.py` | PDF 비교 |
+| `src/core/worker_ops/form_ops.py` | 양식 필드 조회/채우기 |
+| `src/core/worker_ops/ai_ops.py` | AI 요약/채팅/키워드 |
+| `src/ui/tabs_basic/*` | 병합/변환/페이지/보안/순서/배치 탭 |
+| `src/ui/tabs_advanced/*` | 고급 탭 (편집/추출/마크업) |
+| `src/ui/tabs_ai/*` | AI 탭 / 스토리지 / 액션 |
+| `src/ui/window_core/*` | 메뉴 / 테마 / 단축키 / 상태 |
+| `src/ui/window_preview/*` | 미리보기 / 문서 / 네비게이션 |
 | `src/ui/window_worker/*` | Worker UI 수명주기 |
-| `src/ui/window_undo/*` | Undo/Redo/백업 정리 |
+| `src/ui/window_undo/*` | Undo/Redo / 백업 정리 |
 
 ---
 
-## 🚀 버전 히스토리
+## 🔧 빌드 및 검증
 
-### v4.5.5 (2026-05-13)
-- `OperationSpec.required_any_kwargs`로 output path/directory one-of 계약을 명시하고 Worker preflight에서 fail-fast 처리
-- `src/core/pdf_validation.py`로 Worker/UI PDF header 검증 공용화
-- `progress_overlay.py`, common file widgets 문구/tooltip을 KO/EN i18n catalog로 이동
-- `main.py --smoke`, `scripts/package_smoke.ps1`, opt-in Gemini File API smoke 추가
-- Worker handler를 page/compare/form/extract/annotation/compose/transform domain module로 이동하고 `_pdf_impl.py`를 compatibility shim으로 축소
-- `AIService` 실제 구현을 `src/core/ai/*`로 분리하고 `ai_service.py` facade 유지
-- `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, `tabs_advanced/builders.py`를 compatibility facade로 유지하면서 실제 구현을 하위 패키지로 분리
+```bash
+# 개발 실행
+python main.py
 
-### v4.5.5 (2026-05-22)
-- `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md`를 최신 감사 문서 계약으로 고정하고, 유지 문서가 삭제된 감사 파일을 참조하지 않는지 테스트로 검증
-- `get_pdf_info`, `search_text`, `extract_tables`, `list_annotations` page loop에 취소 체크와 출력 파일 미생성 회귀 테스트 추가
-- credential 없이 Gemini File API upload cache, generate/stream, chat reuse, structured JSON parsing, fallback 경로를 fake SDK로 검증
-- `pdf_master.spec`, README/README_EN/CLAUDE/GEMINI/roadmap, `.gitignore` 산출물 제외 범위 재점검
-- 비교 리포트 UI 확장과 OCR 엔진 도입은 후속 제품 과제로 유지
+# 의존성 설치
+pip install -e .[dev]
+pip install -e .[ai]      # AI 기능
+pip install -e .[build]   # 빌드 도구
 
-### v4.5.5 (2026-04-10)
-- same-path 저장 시 preview-held 문서를 선행 해제하고 success/fail/cancel 후 복원
-- Undo/Redo를 before/after snapshot restore 구조로 재설계
-- `resize_pages` / `insert_signature` / `highlight_text` / `add_sticky_note` / `add_ink_annotation` / `copy_page_between_docs`를 Undo 대상에 포함
-- 출력 관련 다이얼로그에 `last_output_dir` 실제 연동
-- `thumbnail_grid.py` 하드코딩 사용자 문자열 i18n 치환 및 runtime UI 하드코딩 스모크 범위 확대
-- `tests/test_output_dialog_state.py`, `tests/test_same_path_preview_restore.py`, `tests/test_undo_backup_flow.py` 추가
+# 정적 분석
+python -m pyright          # 0 errors 목표
 
-### v4.5.5 (2026-04-02)
-- preview/thumbnail 동기화 계약을 강화하고 암호화 PDF 썸네일 로딩을 preview 비밀번호 세션 재사용 기준으로 통일
-- 미리보기 인쇄를 Qt 인쇄 파이프라인으로 전환하여 실제 프린터/페이지 범위를 반영
-- `split`, `get_form_fields`, `fill_form`, `add_freehand_signature` 취소 체크포인트 강화
-- 단일 입력/단일 출력 PDF 수정 모드 전반으로 Undo 확장
-- `.gitignore`, `pdf_master.spec`, README 계열 문서와 신규 회귀 테스트 8종 동기화
+# 테스트
+python -m pytest -q        # 179 collected / 178 passed / 1 opt-in skipped
 
-### v4.5.4 (2026-03-09)
-- `pyrightconfig.json` 추가 및 저장소 전체 `python -m pyright` 통과
-- `src/core/_typing.py`, `src/ui/_typing.py` 추가로 믹스인 host 계약 문서화
-- `ai_service`의 optional Gemini SDK 로딩을 importlib 기반 런타임/빌드 계약으로 정리
-- Qt 위젯/Worker 계층 optional narrowing 정리 및 UTF-8 인코딩 점검 완료
-- `.gitignore`, `pdf_master.spec`, README 계열 문서 동기화
+# 패키지 빌드
+python -m build
 
-### v4.5.4 (2026-03-25 validation follow-up)
-- strict page validation helper와 `created_output_paths` 기반 cancel rollback 계약을 Worker 공통 helper로 정리
-- `add_ink_annotation` / `add_freehand_signature` stroke 저장 형식을 PyMuPDF 런타임 요구사항에 맞게 수정
-- `compare_pdfs` 결과 샘플을 paired diff 형태로 보강
-- `requirements-dev.txt`, `typings/`, repo-local `.pytest_tmp` 기준 검증/문서/빌드 명령 동기화
+# 실행 파일 빌드
+python -m PyInstaller pdf_master.spec --clean
 
-### v4.5.4 (2026-03-18 addendum)
-- 페이지 탭 회전 섹션에 전용 썸네일 목록 추가
-- `rotate`가 선택적 `page_indices`를 받아 선택 페이지 부분 회전을 지원
-- `ThumbnailGridWidget`이 `active page`와 `selected pages`를 분리 지원
-- 오른쪽 미리보기 이동 시 회전 섹션 활성 페이지를 동기화
+# 앱 초기화 smoke
+python main.py --smoke
 
-### v4.5.4 (2026-03-18 core refactor)
-- `src/core/worker.py`를 공개 facade로 축소하고 공통 실행 로직을 `src/core/worker_runtime/*`로 분리
-- `src/core/worker_ops`를 책임별 mixin 구조로 재편
-- `src/core/worker_ops/pdf_ops.py`는 compatibility shim으로 유지
-- `src/core/i18n.py`는 런타임 API만 유지하고 번역 카탈로그는 `src/core/i18n_catalogs/*`로 분리
-- Worker dispatch registry / i18n catalog facade / resource cleanup 구조 테스트 추가
+# 패키지 smoke (clean PYTHONPATH)
+powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
-### v4.5.3 (2026-02-26)
-- 배치 워터마크 런타임 실패 수정 및 파일별 실패 원인 요약
-- 페이지 복사 strict range 정책 적용(무효 범위 hard-fail)
-- 첨부 추출 파일명 정규화/경로 탈출 차단 강화
-- Worker 링크 페이지 정책을 0-based 단일 정책으로 통일
-- `replace_page`/`set_bookmarks`/`add_annotation` UI 기본 노출
-- UI/Worker 대형 파일을 폴더 기반 모듈로 분할(`tabs_*`, `window_*`, `worker_ops`)
-
-### v4.5 (현재)
-- 도형 그리기 UI (draw_shapes)
-- 하이퍼링크 추가 UI (add_link)
-- 텍스트 상자 삽입 (insert_textbox)
-- 페이지 복사 (copy_page_between_docs)
-- 이미지 워터마크 개선 (위치/크기/투명도 파라미터 적용)
-- 미리보기 인쇄 버튼
-- AI PDF 채팅 (ai_ask_question)
-- AI 키워드 추출 (ai_extract_keywords)
-- AI 싱글톤 스레드 안전성 (Double-check locking)
-- i18n 88개 키 추가 + 하드코딩 메시지 제거
-
-### v4.5.1 (2026-02-19) - 안정화
-- Worker kwargs 정규화 레이어 추가 (`_normalize_mode_kwargs`)
-- Worker 실행 전 입력 사전검증 추가 (`_preflight_inputs`)
-- 고급 기능 5종 UI/Worker 계약 불일치 수정
-- Undo 등록 모드 오타 수정 (`duplicate_page`)
-- Linux/macOS 폴더 열기 호환 개선 (Qt `QDesktopServices`)
-- i18n 로케일 감지 비권장 경로 제거
-- 테스트 추가:
-  - `tests/test_worker_param_compat.py`
-  - `tests/test_worker_preflight.py`
-  - `tests/test_i18n.py`
-
-### v4.4
-- 다국어 지원 (i18n): 한국어/영어
-- 언어 설정 기능
-- UI 리팩토링
-
-### v4.3
-- 진행 오버레이 (ProgressOverlay)
-- EmptyStateWidget
-- Premium 버튼 스타일
-- 미리보기 줌/패닝
-
-### v4.2
-- google-genai SDK 전환
-- gemini-2.5-flash 모델
-- PDF → Word 기능 제거
-- 리소스 관리 개선
-- 빌드 경량화
+# Gemini File API live smoke (opt-in)
+$env:PDF_MASTER_GEMINI_FILE_API_SMOKE = "1"
+$env:GEMINI_API_KEY = "<your-key>"
+python -m pytest tests/test_ai_service_gemini_smoke.py -v
+```
 
 ---
 
-*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-05-22)*
-
----
-
-## 2026-04-21 Stability Addendum
-
-- `AIService.summarize_pdf()`, `ask_about_pdf()`, and `extract_keywords()` now return a `meta` dictionary describing `file_api` vs `text_fallback`, truncation, focus limit, fallback page counts, and the 30,000-character cap.
-- AI result presentation now includes meta labels in the tab UI, and summary export prepends a short header when fallback extraction or truncation affected the answer.
-- Uploaded Gemini files are now tracked with remote names so LRU eviction, Clear Chat for the currently selected PDF, and shutdown cleanup can call `client.files.delete(name=...)` on a best-effort basis.
-- Worker/runtime changes now include atomic text saves, case-insensitive batch filename collision avoidance, bidirectional visual diff overlays, and explicit undo-unavailable warnings when snapshot backups fail.
-- Settings persistence is now keyring-first; plaintext fallback storage requires an explicit user confirmation path instead of a silent fallback.
-- Packaging/docs are synced with the current repo contract: `pyproject.toml`, `requirements-dev.txt`, `typings/`, `python -m pyright`, `python -m pytest -q`, `python -m build`, and `python -m PyInstaller pdf_master.spec --clean`.
-
-## 2026-04-27 Worker/AI/Compare Stabilization Addendum
-
-- `split_by_pages` preflight is now aligned to the UI contract and no longer requires unsupported page-count chunking options.
-- Stored AI chat histories use `path + mtime_ns` versioned keys; legacy path-only histories migrate once on load.
-- AI tab actions are consolidated in `src.ui.tabs_ai.actions`; `actions_meta.py` remains only for compatibility.
-- Worker PDF opening supports explicit password args plus `passwords={normalized_path: password}` mapping for preview password reuse.
-- `compare_pdfs` now returns structured payload data and the UI presents a summary dialog after completion.
-- Worker/runtime changes now include atomic binary saves for image/attachment extraction and rollback tracking on cancellation.
-
-## 2026-05-13 Functional Audit Follow-up
-
-- File-writing Worker modes now fail fast through `required_any_kwargs`; `ai_summarize` remains output-file optional because the UI can consume in-memory results.
-- `src/core/pdf_validation.py` is the shared PDF size/header validator used by Worker preflight and UI file widgets.
-- Progress overlay and common file widget strings are covered by runtime UI i18n hardcoded-string smoke tests.
-- `main.py --smoke` initializes the app and exits with code 0; `scripts/package_smoke.ps1` clears `PYTHONPATH`, rebuilds the PyInstaller EXE, and runs the EXE smoke.
-- Gemini File API live validation is opt-in through `PDF_MASTER_GEMINI_FILE_API_SMOKE=1` plus `GEMINI_API_KEY`.
-- Worker handlers now live in domain modules under `src/core/worker_ops/`, `AIService` lives under `src/core/ai/`, and long UI/style/catalog files are split behind compatibility facades; public Worker/import paths remain unchanged.
-- Packaging/docs and `.gitignore` are synced to cover `.pdf_master_*.tmp*` atomic-save temporary files.
-
-## 2026-05-22 Audit Follow-up Hardening
-
-- `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md` is the current repo-local audit document; docs tests reject maintained docs that reference missing functional-audit files.
-- `get_pdf_info`, `search_text`, `extract_tables`, and `list_annotations` now check cancellation inside page loops before writing output files.
-- `tests/test_worker_cancel_regression.py` covers those four modes and asserts cancelled runs leave no result files behind.
-- `tests/test_ai_service_cache.py` validates Gemini File API upload caching, generate/stream calls, chat reuse, structured JSON parsing, and upload fallback with fake SDK objects and no credentials.
-- `pdf_master.spec`, README/README_EN/CLAUDE/GEMINI/roadmap, and `.gitignore` coverage were rechecked against the current codebase; no `.gitignore` rule change was required.
-- Compare/report UI expansion and OCR engine support remain future product tasks outside this pass.
+*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-06-20)*
