@@ -72,7 +72,7 @@ def test_run_worker_registers_pending_undo_for_newly_supported_mode(monkeypatch)
     class Dummy(MainWindowWorkerMixin):
         def __init__(self):
             self.worker = None
-            self._pending_worker = None
+            self._pending_workers = []
             self._cancel_pending = False
             self._cancel_handled = False
             self._pending_undo = None
@@ -134,7 +134,7 @@ def test_run_worker_skips_pending_undo_for_non_mutating_mode(monkeypatch):
     class Dummy(MainWindowWorkerMixin):
         def __init__(self):
             self.worker = None
-            self._pending_worker = None
+            self._pending_workers = []
             self._cancel_pending = False
             self._cancel_handled = False
             self._pending_undo = None
@@ -239,7 +239,7 @@ def test_run_worker_warns_when_undo_snapshot_unavailable(monkeypatch):
     class Dummy(MainWindowWorkerMixin):
         def __init__(self):
             self.worker = None
-            self._pending_worker = None
+            self._pending_workers = []
             self._cancel_pending = False
             self._cancel_handled = False
             self._pending_undo = None

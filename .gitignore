@@ -46,6 +46,11 @@ __pypackages__/
 *.orig
 *.rej
 
+# Local dev / agent tooling
+.codegraph/
+.grok/
+mcps/
+
 # OS / editor files
 Thumbs.db
 Desktop.ini

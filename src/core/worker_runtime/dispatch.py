@@ -193,7 +193,12 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
     "resize_pages": _spec("resize_pages", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_resize_pages"),
     "reverse_pages": _spec("reverse_pages", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="btn_reverse_page"),
     "rotate": _spec("rotate", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="action_rotate"),
-    "search_text": _spec("search_text", output_kind="text", title_key="mode_search_text"),
+    "search_text": _spec(
+        "search_text",
+        output_kind="text",
+        title_key="mode_search_text",
+        required_kwargs=("search_term",),
+    ),
     "set_bookmarks": _spec("set_bookmarks", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_set_bookmarks"),
     "split": _spec("split", output_kind="directory", title_key="action_split", required_kwargs=("output_dir", "page_range")),
     "split_by_pages": _spec("split_by_pages", output_kind="directory", title_key="mode_split_by_pages", required_kwargs=("output_dir",)),

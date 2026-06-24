@@ -14,6 +14,9 @@ from .security_ops import (
 
 logger = logging.getLogger(__name__)
 
+_BATCH_OPERATIONS = frozenset({"compress", "watermark", "encrypt", "rotate"})
+_BATCH_OPERATIONS_REQUIRING_OPTION = frozenset({"watermark", "encrypt"})
+
 
 class WorkerBatchOpsMixin(WorkerHost):
     def batch(self):
@@ -22,6 +25,14 @@ class WorkerBatchOpsMixin(WorkerHost):
         output_dir = _as_str(self.kwargs.get("output_dir"))
         operation = _as_str(self.kwargs.get("operation"))
         option = _as_str(self.kwargs.get("option"))
+
+        if operation not in _BATCH_OPERATIONS:
+            self.error_signal.emit(self._get_msg("err_batch_unsupported_operation", operation))
+            return
+        if operation in _BATCH_OPERATIONS_REQUIRING_OPTION and not option:
+            self.error_signal.emit(self._get_msg("err_batch_option_required", operation))
+            return
+
         failed_files: list[tuple[str, str]] = []
         used_output_stems: set[str] = set()
 
@@ -51,7 +62,7 @@ class WorkerBatchOpsMixin(WorkerHost):
                             default=DEFAULT_COMPRESSION_SAVE_PROFILE,
                         ),
                     )
-                elif operation == "watermark" and option:
+                elif operation == "watermark":
                     for page in doc:
                         text_rect = fitz.Rect(
                             40,
@@ -69,7 +80,7 @@ class WorkerBatchOpsMixin(WorkerHost):
                             align=1,
                         )
                     self._atomic_pdf_save(doc, out_path)
-                elif operation == "encrypt" and option:
+                elif operation == "encrypt":
                     perm = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
                     self._atomic_pdf_save(
                         doc,
@@ -82,8 +93,6 @@ class WorkerBatchOpsMixin(WorkerHost):
                 elif operation == "rotate":
                     for page in doc:
                         page.set_rotation(page.rotation + 90)
-                    self._atomic_pdf_save(doc, out_path)
-                else:
                     self._atomic_pdf_save(doc, out_path)
                 success_count += 1
             except Exception as exc:

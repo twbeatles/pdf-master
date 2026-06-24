@@ -45,6 +45,7 @@ import src.ui.styles
 import src.ui.widgets
 import src.core.settings
 import src.core.worker
+from src.core.i18n import tm
 from src.ui.main_window import PDFMasterApp
 
 def global_exception_handler(exc_type, exc_value, exc_tb):
@@ -61,8 +62,8 @@ def global_exception_handler(exc_type, exc_value, exc_tb):
     if app:
         QMessageBox.critical(
             None,
-            "오류 발생",
-            f"예상치 못한 오류가 발생했습니다.\n\n{exc_value}\n\n상세 로그: {LOG_FILE}"
+            tm.get("err_uncaught_exception_title"),
+            tm.get("err_uncaught_exception_body", exc_value, LOG_FILE),
         )
 
 def main() -> int:

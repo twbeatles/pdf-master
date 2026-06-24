@@ -377,7 +377,7 @@ pip install -e .[build]   # 빌드 도구
 python -m pyright          # 0 errors 목표
 
 # 테스트
-python -m pytest -q        # 179 collected / 178 passed / 1 opt-in skipped
+python -m pytest -q        # 192 collected / 191 passed / 1 opt-in skipped
 
 # 패키지 빌드
 python -m build

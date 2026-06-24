@@ -40,7 +40,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 python main.py --smoke
 ```
 
-Current local baseline after the 2026-05-22 audit follow-up: `python -m pyright` passes with 0 errors, `python -m pytest -q` collects 179 tests with 178 passed and 1 opt-in Gemini smoke skipped, `python -m build` produces sdist/wheel, and `scripts/package_smoke.ps1` rebuilds the PyInstaller EXE and runs `--smoke`.
+Current local baseline after the 2026-06-24 project audit follow-up: `python -m pyright` passes with 0 errors, `python -m pytest -q` collects 192 tests with 191 passed and 1 opt-in Gemini smoke skipped, `python -m build` produces sdist/wheel, and `scripts/package_smoke.ps1` rebuilds the PyInstaller EXE and runs `--smoke`. See `PROJECT_AUDIT.md` for the 2026-06-24 functional audit and implemented fixes.
 
 ## Next Priorities
 

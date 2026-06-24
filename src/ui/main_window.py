@@ -79,6 +79,9 @@ class PDFMasterApp(
         self._settings_save_timer.setSingleShot(True)
         self._settings_save_timer.timeout.connect(self._flush_settings_save)
         self.worker = None
+        self._pending_workers = []
+        self._app_shortcuts = []
+        self._menu_open_action = None
         self._last_output_path = None  # 마지막 저장 경로 추적
         self._last_output_existed = False
         self._current_preview_page = 0

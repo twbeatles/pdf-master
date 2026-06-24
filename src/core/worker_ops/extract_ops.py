@@ -207,6 +207,9 @@ class WorkerExtractOpsMixin(WorkerHost):
         file_path = _as_str(self.kwargs.get("file_path"))
         search_term = _as_str(self.kwargs.get("search_term"))
         output_path = _as_str(self.kwargs.get("output_path"))
+        if not search_term.strip():
+            self.error_signal.emit(self._get_msg("err_search_term_required"))
+            return
         results: list[dict[str, Any]] = []
         doc = None
         try:

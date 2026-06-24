@@ -266,6 +266,8 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 타입 스텁은 `typings/` 디렉터리에 있으며 `pyrightconfig.json`에서 참조합니다.
 
+검증 기준선: `python -m pytest -q` → **192 collected / 191 passed / 1 opt-in Gemini smoke skipped**. 기능 감사 및 후속 구현 내역은 `PROJECT_AUDIT.md`를 참고하세요.
+
 ---
 
 ## 📝 변경 이력
@@ -282,6 +284,9 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 - `페이지 크기 변경` — 원본 비율 유지 fit-center 배치
 - Markdown 추출 모드 추가 (`auto / native / text`, front matter, 페이지 마커)
 - AI 채팅 **대화 삭제**가 현재 PDF 기록만 초기화
+- 배치 미지원 operation / option 누락 fail-fast (silent copy 제거)
+- Worker 대기 큐 FIFO(`_pending_workers`), busy 중 단축키·파일 열기 비활성화
+- `remove_annotations` 취소 체크, 빈 `search_term` reject, 전역 예외 i18n
 
 ### v4.5.4
 - 회전 섹션 전용 썸네일 목록 추가

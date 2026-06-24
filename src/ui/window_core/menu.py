@@ -35,6 +35,7 @@ def _create_menu_bar(self):
     open_action.setShortcut("Ctrl+O")
     open_action.triggered.connect(self._shortcut_open_file)
     file_menu.addAction(open_action)
+    self._menu_open_action = open_action
 
     # 최근 파일 서브메뉴
     self.recent_menu_bar = file_menu.addMenu(tm.get("menu_recent"))

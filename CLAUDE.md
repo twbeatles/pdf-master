@@ -28,6 +28,11 @@
 - Worker preflight now enforces one-of output contracts through `required_any_kwargs` and rejects non-PDF headers through shared validation.
 - Frozen/package verification uses `main.py --smoke` and `scripts/package_smoke.ps1`; Gemini File API live testing remains opt-in through environment variables.
 - Compatibility facades remain stable after the 2026-05-13 split: `ai_service.py`, `_pdf_impl.py`, `widgets.py`, `thumbnail_grid.py`, `zoomable_preview.py`, `styles.py`, and `tabs_advanced/builders.py` re-export implementations from smaller packages.
+- Batch mode rejects unsupported `operation` values and missing `watermark`/`encrypt` options at preflight and handler boundaries instead of silently copying source PDFs.
+- `remove_annotations` checks cancellation at each page loop; `search_text` rejects blank `search_term` at preflight and handler boundaries.
+- `set_ui_busy` disables tabs, output-folder button, app shortcuts (`_app_shortcuts`), and the File > Open menu action while a worker is running.
+- Pending worker requests are stored in `_pending_workers` FIFO queue; `run_worker` waits up to 3s before finalize and defers when the previous thread is still running.
+- `global_exception_handler` in `main.py` uses i18n catalog keys for uncaught exception dialogs.
 
 ---
 
@@ -513,7 +518,7 @@ class ZoomablePreviewWidget(QWidget):
 - 검증 환경 준비: `pip install -e .[dev]`
 - 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - `python -m pyright` -> `0 errors`
-- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 179 collected / 178 passed / 1 opt-in Gemini smoke skipped
+- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 192 collected / 191 passed / 1 opt-in Gemini smoke skipped
 - `python -m build`
 - `python -m PyInstaller pdf_master.spec --clean`
 - `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1` -> clean `PYTHONPATH` PyInstaller + EXE `--smoke`
@@ -610,7 +615,23 @@ class ZoomablePreviewWidget(QWidget):
   - README/가이드/spec/감사 문서/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest -q`: 179 collected / 178 passed / 1 opt-in Gemini smoke skipped
+- 현재 워크트리 기준 `python -m pytest -q`: 192 collected / 191 passed / 1 opt-in Gemini smoke skipped
+
+### v4.5.5 audit follow-up tests (2026-06-24)
+- `tests/test_worker_batch_unknown_operation.py`
+  - 배치 미지원 operation silent copy 방지 및 preflight fail-fast 검증
+- `tests/test_worker_batch_missing_option.py`
+  - 배치 watermark/encrypt option 누락 fail-fast 검증
+- `tests/test_worker_remove_annotations_cancel.py`
+  - 주석 삭제 page loop 취소 시 출력 미생성 검증
+- `tests/test_run_worker_pending_queue.py`
+  - `_pending_workers` FIFO 큐 보존 검증
+- `tests/test_set_ui_busy_shortcuts.py`
+  - busy 중 단축키/파일 열기 메뉴 비활성화 검증
+- `tests/test_worker_search_text_empty_term.py`
+  - 빈 검색어 Worker/preflight reject 검증
+- `tests/test_compare_scanned_pdf_limitation.py`
+  - 텍스트-only compare 한계 스냅샷 검증
 
 ---
 

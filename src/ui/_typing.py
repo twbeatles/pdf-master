@@ -37,7 +37,9 @@ class MainWindowHost:
     _summary_result_meta: dict[str, Any]
     _chat_result_meta: dict[str, Any]
     _keywords_result_meta: dict[str, Any]
-    _pending_worker: dict[str, Any] | None
+    _pending_workers: list[dict[str, Any]]
+    _app_shortcuts: list[Any]
+    _menu_open_action: Any
     _pending_undo: dict[str, Any] | None
     _cancel_pending: bool
     _cancel_handled: bool

@@ -116,6 +116,13 @@ def set_ui_busy(self, busy):
     self.tabs.setEnabled(not busy)
     self.btn_open_folder.setEnabled(not busy)
 
+    for shortcut in getattr(self, "_app_shortcuts", []):
+        shortcut.setEnabled(not busy)
+
+    open_action = getattr(self, "_menu_open_action", None)
+    if open_action is not None:
+        open_action.setEnabled(not busy)
+
 def _finalize_worker(self):
     """현재 worker의 시그널 연결을 해제하고 Qt 메모리 정리를 예약합니다."""
     if not self.worker:
@@ -132,17 +139,17 @@ def _finalize_worker(self):
 
 def _run_pending_worker(self):
     """대기 중인 작업이 있으면 자동 실행"""
-    pending = getattr(self, "_pending_worker", None)
-    if not pending:
+    pending_workers = getattr(self, "_pending_workers", None)
+    if not pending_workers:
         return
     if self.worker and self.worker.isRunning():
         QTimer.singleShot(200, self._run_pending_worker)
         return
-    self._pending_worker = None
+    pending = pending_workers.pop(0)
     QTimer.singleShot(0, lambda: self.run_worker(
         pending["mode"],
         pending.get("output_path"),
-        **pending.get("kwargs", {})
+        **pending.get("kwargs", {}),
     ))
 
 def _reset_progress_if_idle(self):

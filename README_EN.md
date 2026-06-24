@@ -266,6 +266,8 @@ Output: `dist/PDF_Master_v4.5.5.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
+Validation baseline: `python -m pytest -q` → **192 collected / 191 passed / 1 opt-in Gemini smoke skipped**. See `PROJECT_AUDIT.md` for the 2026-06-24 functional audit and follow-up fixes.
+
 ---
 
 ## 📝 Changelog
@@ -282,6 +284,9 @@ Type stubs live in the `typings/` directory and are referenced by `pyrightconfig
 - `Resize Pages` preserves aspect ratio and centers the source content
 - Markdown extraction modes (`auto / native / text`, front matter, page markers)
 - **Clear Chat** now resets only the current PDF's history
+- Batch fail-fast for unsupported operations and missing watermark/encrypt options (no silent copy)
+- Worker pending FIFO queue (`_pending_workers`), shortcut/menu disabling while busy
+- `remove_annotations` cancellation checks, blank `search_term` reject, i18n uncaught-exception dialog
 
 ### v4.5.4
 - Dedicated thumbnail list inside the rotate section

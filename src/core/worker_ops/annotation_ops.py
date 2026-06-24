@@ -174,6 +174,7 @@ class WorkerAnnotationOpsMixin(WorkerHost):
         try:
             doc = self._open_pdf_document(file_path)
             for page in doc:
+                self._check_cancelled()
                 annot = page.first_annot
                 while annot:
                     next_annot = annot.next

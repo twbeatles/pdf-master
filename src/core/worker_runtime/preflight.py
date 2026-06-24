@@ -143,6 +143,26 @@ def preflight_inputs(host: Any) -> bool:
             return False
         return validate_file_size(host, path, emit_error=True)
 
+    mode = getattr(host, "mode", "")
+    if mode == "search_text":
+        search_term = kwargs.get("search_term")
+        if not (search_term.strip() if isinstance(search_term, str) else ""):
+            host.error_signal.emit(host._get_msg("err_search_term_required"))
+            return False
+
+    if mode == "batch":
+        operation = kwargs.get("operation")
+        operation_text = operation.strip() if isinstance(operation, str) else ""
+        option_text = kwargs.get("option")
+        option_value = option_text.strip() if isinstance(option_text, str) else ""
+
+        if operation_text not in {"compress", "watermark", "encrypt", "rotate"}:
+            host.error_signal.emit(host._get_msg("err_batch_unsupported_operation", operation_text))
+            return False
+        if operation_text in {"watermark", "encrypt"} and not option_value:
+            host.error_signal.emit(host._get_msg("err_batch_option_required", operation_text))
+            return False
+
     if spec is not None:
         for key in spec.required_kwargs:
             if _has_required_value(kwargs.get(key)):
