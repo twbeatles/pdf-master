@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build dependencies
+        run: pip install -e .[build]
+
+      - name: Verify app icon assets
+        run: python -c "from pathlib import Path; png=Path('assets/app_icon.png'); ico=Path('assets/app_icon.ico'); assert png.is_file() and ico.is_file(), 'Missing app icon assets'; assert png.stat().st_size < 512*1024, 'PNG icon too large'; assert ico.stat().st_size < 512*1024, 'ICO icon too large'"
+
+      - name: Build executable
+        run: python -m PyInstaller pdf_master.spec --clean --noconfirm
+
+      - name: Run packaged smoke
+        run: dist\PDF_Master_v4.5.5.exe --smoke
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/PDF_Master_v4.5.5.exe
+          generate_release_notes: true

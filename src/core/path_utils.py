@@ -1,9 +1,22 @@
 from __future__ import annotations
 
 import os
+import sys
 
 
 CHAT_HISTORY_KEY_PREFIX = "v2:"
+
+
+def bundle_root() -> str:
+    """개발/패키징 환경에서 리소스 기준 경로를 반환합니다."""
+    if getattr(sys, "frozen", False):
+        return getattr(sys, "_MEIPASS", os.path.abspath("."))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+
+
+def resource_path(*parts: str) -> str:
+    """번들 리소스의 절대 경로를 반환합니다."""
+    return os.path.join(bundle_root(), *parts)
 
 
 def normalize_path_key(path: object) -> str:

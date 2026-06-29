@@ -39,13 +39,14 @@ else:
 sys.path.insert(0, base_path)
 
 from PyQt6.QtWidgets import QApplication, QMessageBox
-from PyQt6.QtGui import QGuiApplication, QFont
+from PyQt6.QtGui import QGuiApplication, QFont, QIcon
 # Explicit imports to ensure PyInstaller bundles them
 import src.ui.styles
 import src.ui.widgets
 import src.core.settings
 import src.core.worker
 from src.core.i18n import tm
+from src.core.path_utils import resource_path
 from src.ui.main_window import PDFMasterApp
 
 def global_exception_handler(exc_type, exc_value, exc_tb):
@@ -81,6 +82,9 @@ def main() -> int:
     try:
         app = QApplication(app_argv)
         app.setFont(QFont("Segoe UI", 9))  # Windows 기본 폰트 크기 설정
+        app_icon_path = resource_path("assets", "app_icon.png")
+        if os.path.isfile(app_icon_path):
+            app.setWindowIcon(QIcon(app_icon_path))
         window = PDFMasterApp()
         if smoke_mode:
             app.processEvents()

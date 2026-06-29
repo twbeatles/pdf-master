@@ -79,7 +79,7 @@ hiddenimports += [
     'dataclasses',  # UndoManager ActionRecord
     'src.core.i18n',  # Explicitly include i18n for dynamic imports in widgets
     'src.core.optional_deps',  # Centralized optional fitz/keyring boundary
-    'src.core.path_utils',  # Shared normalized path helper used across settings/AI/UI
+    'src.core.path_utils',  # Shared normalized path/resource helper used across settings/AI/UI
     'src.core._typing',  # Pyright/Pylance host contracts imported by worker mixins
     'src.ui._typing',  # Pyright/Pylance host contracts imported by UI mixins
     'src.ui.zoomable_preview',  # Runtime-critical preview widget path (main preview panel)
@@ -130,7 +130,22 @@ else:
 hiddenimports += ['src.core.worker_runtime.save_profiles']
 
 # 데이터 파일 수집
+SPEC_DIR = os.path.dirname(os.path.abspath(SPEC))
+APP_ICON_ICO = os.path.join(SPEC_DIR, "assets", "app_icon.ico")
+APP_ICON_PNG = os.path.join(SPEC_DIR, "assets", "app_icon.png")
+
 datas = []
+if os.path.isfile(APP_ICON_PNG):
+    datas.append((APP_ICON_PNG, "assets"))
+    print(f"[OK] App icon PNG bundled: {APP_ICON_PNG}")
+else:
+    print("[WARN] App icon PNG not found - runtime window icon will be skipped")
+
+EXE_ICON = APP_ICON_ICO if os.path.isfile(APP_ICON_ICO) else None
+if EXE_ICON:
+    print(f"[OK] EXE icon: {EXE_ICON}")
+else:
+    print("[WARN] App icon ICO not found - EXE icon will be skipped")
 
 # =====================================================================
 # AI 기능 (조건부) - google-genai SDK only
@@ -301,7 +316,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon=EXE_ICON,
 )
 
 # =====================================================================
