@@ -52,6 +52,9 @@ def _create_extract_subtab(self):
     b_extract.setToolTip(tm.get("tooltip_extract_images"))
     b_extract.clicked.connect(self.action_extract_images)
     l_extract.addWidget(b_extract)
+    b_svg = QPushButton(tm.get("btn_convert_to_svg"))
+    b_svg.clicked.connect(self.action_convert_to_svg)
+    l_extract.addWidget(b_svg)
     layout.addWidget(grp_extract)
 
     # 테이블 추출

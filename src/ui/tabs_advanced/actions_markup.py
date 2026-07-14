@@ -42,6 +42,31 @@ def action_remove_annotations(self):
     if s:
         self.run_worker("remove_annotations", file_path=path, output_path=s)
 
+def action_redact_area(self):
+    path = self.sel_redact.get_path()
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    raw = self.inp_redact_rect.text().strip() if hasattr(self, "inp_redact_rect") else ""
+    if not raw:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("err_redact_area_required"))
+    parts = [p.strip() for p in raw.replace(";", ",").split(",") if p.strip()]
+    if len(parts) < 4:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("err_redact_area_invalid"))
+    try:
+        coords = [float(parts[i]) for i in range(4)]
+    except ValueError:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("err_redact_area_invalid"))
+    page = self.spn_redact_page.value() if hasattr(self, "spn_redact_page") else 1
+    s, _ = self._choose_save_file(tm.get("save"), "redacted_area.pdf", "PDF (*.pdf)")
+    if s:
+        self.run_worker(
+            "redact_area",
+            file_path=path,
+            output_path=s,
+            rects=[{"page": page, "rect": coords}],
+        )
+
+
 def action_redact_text(self):
     """텍스트 교정 (영구 삭제)"""
     path = self.sel_redact.get_path()

@@ -86,6 +86,22 @@ FALLBACK_MESSAGES = {
     "msg_invalid_stroke_format": "획 좌표 형식이 올바르지 않습니다.",
     "msg_freehand_signature_added": "✅ 프리핸드 서명 추가 완료!\n페이지 {}, {}개 획",
     "msg_batch_failed_row": "\n- {}: {}",
+    "msg_split_by_bookmarks_done": "✅ 북마크 기준 분할 완료!\n{}개 파일 생성",
+    "msg_remove_blank_done": "✅ 빈 페이지 {}장 제거, {}장 유지",
+    "msg_remove_blank_none": "✅ 빈 페이지가 없습니다. 원본을 저장했습니다.",
+    "msg_dedupe_pages_done": "✅ 중복 페이지 {}장 제거, {}장 유지",
+    "msg_dedupe_pages_none": "✅ 중복 페이지가 없습니다. 원본을 저장했습니다.",
+    "msg_auto_bookmarks_done": "✅ 자동 목차 생성 완료!\n{}개 항목",
+    "msg_sanitize_done": "✅ 문서 위생 처리 완료!",
+    "msg_impose_nup_done": "✅ {}-up 배치 완료!\n{}장 생성",
+    "msg_convert_to_svg_done": "✅ SVG 변환 완료!\n{}페이지",
+    "msg_form_flattened": "✅ 양식 고정(Flatten) 완료!",
+    "err_no_bookmarks_to_split": "분할할 북마크가 없습니다.",
+    "err_all_pages_blank": "모든 페이지가 비어 있어 저장할 수 없습니다.",
+    "err_no_headings_for_bookmarks": "제목으로 추정되는 텍스트를 찾지 못했습니다.",
+    "err_redact_area_required": "교정할 영역(좌표)을 입력해주세요.",
+    "err_redact_area_invalid": "유효한 교정 영역이 없습니다.",
+    "err_flatten_unsupported": "현재 PDF 엔진에서 양식 고정을 지원하지 않습니다.",
 }
 
 

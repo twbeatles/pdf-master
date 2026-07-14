@@ -49,6 +49,9 @@ def _create_misc_subtab(self):
     b_fill.setObjectName("actionBtn")
     b_fill.clicked.connect(self.action_fill_form)
     btn_form_layout.addWidget(b_fill)
+    b_flatten = QPushButton(tm.get("btn_flatten_form"))
+    b_flatten.clicked.connect(self.action_flatten_form)
+    btn_form_layout.addWidget(b_flatten)
     l_form.addLayout(btn_form_layout)
     layout.addWidget(grp_form)
 
@@ -61,6 +64,18 @@ def _create_misc_subtab(self):
     l_compare.addWidget(QLabel(tm.get("lbl_file_2")))
     self.sel_compare2 = FileSelectorWidget()
     l_compare.addWidget(self.sel_compare2)
+    compare_mode_row = QHBoxLayout()
+    compare_mode_row.addWidget(QLabel(tm.get("lbl_compare_mode")))
+    self.cmb_compare_mode = QComboBox()
+    for label, value in (
+        (tm.get("compare_mode_text"), "text"),
+        (tm.get("compare_mode_visual"), "visual"),
+        (tm.get("compare_mode_both"), "both"),
+    ):
+        self.cmb_compare_mode.addItem(label, value)
+    compare_mode_row.addWidget(self.cmb_compare_mode)
+    compare_mode_row.addStretch()
+    l_compare.addLayout(compare_mode_row)
     self.chk_compare_visual = QCheckBox(tm.get("chk_compare_visual_diff"))
     self.chk_compare_visual.setChecked(False)
     l_compare.addWidget(self.chk_compare_visual)

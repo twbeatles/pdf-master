@@ -255,7 +255,20 @@ def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -
 
     try:
         host._check_cancelled()
-        doc.save(tmp_path, **cast(Any, resolved_save_kwargs))
+        try:
+            doc.save(tmp_path, **cast(Any, resolved_save_kwargs))
+        except Exception as exc:
+            # PyMuPDF 1.28+ 는 linearisation을 제거했다. web 프로필 호환을 위해 재시도.
+            if resolved_save_kwargs.get("linear"):
+                logger.warning(
+                    "PDF linearisation unsupported; retrying save without linear (%s)",
+                    exc,
+                )
+                fallback_kwargs = dict(resolved_save_kwargs)
+                fallback_kwargs.pop("linear", None)
+                doc.save(tmp_path, **cast(Any, fallback_kwargs))
+            else:
+                raise
         host._check_cancelled()
         try:
             os.replace(tmp_path, output_path)

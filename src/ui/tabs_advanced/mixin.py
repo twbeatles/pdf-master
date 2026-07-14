@@ -9,10 +9,16 @@ from .actions_edit import (
     action_resize_pages,
     action_insert_signature,
     action_add_freehand_signature,
+    action_remove_blank_pages,
+    action_dedupe_pages,
+    action_auto_bookmarks,
+    action_sanitize_pdf,
+    action_impose_nup,
 )
 from .actions_extract import (
     action_extract_links,
     action_extract_images,
+    action_convert_to_svg,
     action_get_bookmarks,
     action_search_text,
     action_extract_tables,
@@ -23,6 +29,7 @@ from .actions_markup import (
     action_list_annotations,
     action_remove_annotations,
     action_redact_text,
+    action_redact_area,
     action_add_text_markup,
     action_add_background,
     action_add_sticky_note,
@@ -36,6 +43,7 @@ from .actions_misc import (
     action_detect_fields,
     _edit_form_field,
     action_fill_form,
+    action_flatten_form,
     action_compare_pdfs,
     action_decrypt_pdf,
     action_list_attachments,
@@ -80,8 +88,14 @@ class MainWindowTabsAdvancedMixin(MainWindowHost):
     action_resize_pages = action_resize_pages
     action_insert_signature = action_insert_signature
     action_add_freehand_signature = action_add_freehand_signature
+    action_remove_blank_pages = action_remove_blank_pages
+    action_dedupe_pages = action_dedupe_pages
+    action_auto_bookmarks = action_auto_bookmarks
+    action_sanitize_pdf = action_sanitize_pdf
+    action_impose_nup = action_impose_nup
     action_extract_links = action_extract_links
     action_extract_images = action_extract_images
+    action_convert_to_svg = action_convert_to_svg
     action_get_bookmarks = action_get_bookmarks
     action_search_text = action_search_text
     action_extract_tables = action_extract_tables
@@ -90,6 +104,7 @@ class MainWindowTabsAdvancedMixin(MainWindowHost):
     action_list_annotations = action_list_annotations
     action_remove_annotations = action_remove_annotations
     action_redact_text = action_redact_text
+    action_redact_area = action_redact_area
     action_add_text_markup = action_add_text_markup
     action_add_background = action_add_background
     action_add_sticky_note = action_add_sticky_note
@@ -101,6 +116,7 @@ class MainWindowTabsAdvancedMixin(MainWindowHost):
     action_detect_fields = action_detect_fields
     _edit_form_field = _edit_form_field
     action_fill_form = action_fill_form
+    action_flatten_form = action_flatten_form
     action_compare_pdfs = action_compare_pdfs
     action_decrypt_pdf = action_decrypt_pdf
     action_list_attachments = action_list_attachments

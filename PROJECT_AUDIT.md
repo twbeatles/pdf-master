@@ -2,7 +2,8 @@
 
 > 감사 기준일: 2026-06-24  
 > 구현 완료일: 2026-06-24  
-> 대상 버전: PDF Master v4.5.5  
+> 대상 버전: PDF Master v4.5.5 (감사 시점; 현재 코드 라인은 v4.5.6)  
+
 > 분석 수단: `README.md`, `CLAUDE.md`, CodeGraph MCP, 보조 grep·파일 열람, `python -m pytest -q`
 
 ---

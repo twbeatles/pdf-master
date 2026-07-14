@@ -46,25 +46,60 @@ FITZ_PDF_PERM_PRINT_HQ = int(getattr(fitz, "PDF_PERM_PRINT_HQ", 0))
 FITZ_PDF_ENCRYPT_AES_256 = int(getattr(fitz, "PDF_ENCRYPT_AES_256", 0))
 
 
+def _resolve_permissions(raw: object) -> int:
+    """permissions 리스트/마스크를 PyMuPDF 권한 비트로 변환."""
+    default = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
+    if raw is None:
+        return default
+    if isinstance(raw, int):
+        return raw
+    if not isinstance(raw, (list, tuple, set)):
+        return default
+
+    mapping = {
+        "accessibility": FITZ_PDF_PERM_ACCESSIBILITY,
+        "print": FITZ_PDF_PERM_PRINT,
+        "print_hq": FITZ_PDF_PERM_PRINT_HQ,
+        "copy": FITZ_PDF_PERM_COPY,
+        "modify": FITZ_PDF_PERM_MODIFY,
+        "annotate": FITZ_PDF_PERM_ANNOTATE,
+        "form": FITZ_PDF_PERM_FORM,
+        "assemble": FITZ_PDF_PERM_ASSEMBLE,
+    }
+    perm = 0
+    for item in raw:
+        key = str(item).strip().lower()
+        if key in mapping:
+            perm |= mapping[key]
+    # accessibility는 기본 유지 (스크린리더)
+    if perm == 0:
+        return default
+    if FITZ_PDF_PERM_ACCESSIBILITY and not (perm & FITZ_PDF_PERM_ACCESSIBILITY):
+        perm |= FITZ_PDF_PERM_ACCESSIBILITY
+    return perm
+
+
 class WorkerSecurityOpsMixin(WorkerHost):
     def protect(self):
         file_path = _as_str(self.kwargs.get('file_path'))
         output_path = _as_str(self.kwargs.get('output_path'))
         pw = _as_str(self.kwargs.get('password'))
+        owner_pw = _as_str(self.kwargs.get("owner_password")) or pw
+        user_pw = _as_str(self.kwargs.get("user_password")) or pw
         doc = None
         try:
-            if not pw:
+            if not pw and not owner_pw:
                 self.error_signal.emit(self._get_msg("err_password_required"))
                 return
 
             doc = self._open_pdf_document(file_path)
-            perm = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
+            perm = _resolve_permissions(self.kwargs.get("permissions"))
             self._atomic_pdf_save(
                 doc,
                 output_path,
                 encryption=FITZ_PDF_ENCRYPT_AES_256,
-                owner_pw=pw,
-                user_pw=pw,
+                owner_pw=owner_pw,
+                user_pw=user_pw,
                 permissions=perm,
             )
             self._emit_progress_if_due(100)

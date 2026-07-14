@@ -23,6 +23,15 @@ def action_extract_images(self):
         self.run_worker("extract_images", file_path=path, output_dir=out_dir)
 
 
+def action_convert_to_svg(self):
+    path = self.sel_extract.get_path()
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    out_dir = self._choose_output_directory(tm.get("dlg_select_output_dir"))
+    if out_dir:
+        self.run_worker("convert_to_svg", file_path=path, output_dir=out_dir)
+
+
 def action_get_bookmarks(self):
     """Bookmark extraction."""
     path = self.sel_bm.get_path()

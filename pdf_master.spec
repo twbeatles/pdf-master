@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PDF Master v4.5.5 - PyInstaller Spec File
+# PDF Master v4.5.6 - PyInstaller Spec File
 # One-file desktop build for the current split-package runtime layout.
 # Python 3.10+ compatible, with explicit optional dependency boundaries.
 # Verified 2026-05-22 after Worker/AI/UI split-package refactoring,
@@ -302,7 +302,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='PDF_Master_v4.5.5',
+    name='PDF_Master_v4.5.6',
     debug=False,
     bootloader_ignore_signals=False,
     # Windows에서 strip 실행 파일이 없는 환경이 많아 자동 비활성화
@@ -321,5 +321,5 @@ exe = EXE(
 
 # =====================================================================
 # 빌드: python -m PyInstaller pdf_master.spec --clean
-# 예상 결과: dist/PDF_Master_v4.5.5.exe (~30-40MB)
+# 예상 결과: dist/PDF_Master_v4.5.6.exe (~30-40MB)
 # =====================================================================

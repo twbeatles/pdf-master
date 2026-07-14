@@ -33,12 +33,18 @@ from ._pdf_helpers import (
     _normalize_stroke_points,
     _page_asset_placeholders,
     _sample_diff_text,
+    optimize_pdf_images,
+    subset_document_fonts,
+)
+from .cleanup_ops import _content_bbox
+from ..pdf_validation import validate_pdf_file
+from ..worker_runtime.save_profiles import (
+    normalize_save_profile,
+    quality_to_save_profile,
+    resolve_image_optimize_options,
 )
 
 logger = logging.getLogger(__name__)
-
-from ..pdf_validation import validate_pdf_file
-from ..worker_runtime.save_profiles import normalize_save_profile, quality_to_save_profile
 
 
 class WorkerTransformOpsMixin(WorkerHost):
@@ -117,7 +123,6 @@ class WorkerTransformOpsMixin(WorkerHost):
         original_size = os.path.getsize(file_path)
         doc = self._open_pdf_document(file_path)
         try:
-            total_pages = len(doc)
             save_profile = normalize_save_profile(
                 raw_save_profile,
                 default=quality_to_save_profile(quality),
@@ -126,11 +131,44 @@ class WorkerTransformOpsMixin(WorkerHost):
             if not raw_save_profile:
                 extra_save_kwargs = dict(COMPRESSION_SETTINGS.get(quality, COMPRESSION_SETTINGS["high"]))
 
-            for page_num in range(total_pages):
-                self._check_cancelled()
-                self._emit_progress_if_due(int((page_num + 1) / total_pages * 20))
+            optimize_opts = resolve_image_optimize_options(
+                save_profile,
+                optimize_images=self.kwargs.get("optimize_images"),
+                subset_fonts=self.kwargs.get("subset_fonts"),
+                max_image_dpi=self.kwargs.get("max_image_dpi"),
+                jpeg_quality=self.kwargs.get("jpeg_quality"),
+                grayscale_images=self.kwargs.get("grayscale_images"),
+            )
 
-            self._emit_progress_if_due(25)
+            images_replaced = 0
+            if optimize_opts.get("optimize_images"):
+                def _image_progress(done: int, total: int) -> None:
+                    # 이미지 단계: 0~70%
+                    ratio = done / max(1, total)
+                    self._emit_progress_if_due(int(ratio * 70))
+
+                images_replaced = optimize_pdf_images(
+                    doc,
+                    max_dpi=float(optimize_opts.get("max_dpi") or 150.0),
+                    jpeg_quality=int(optimize_opts.get("jpeg_quality") or 75),
+                    grayscale=bool(optimize_opts.get("grayscale")),
+                    check_cancelled=self._check_cancelled,
+                    progress_cb=_image_progress,
+                )
+            else:
+                self._check_cancelled()
+                self._emit_progress_if_due(40)
+
+            fonts_subset = False
+            if optimize_opts.get("subset_fonts"):
+                self._check_cancelled()
+                fonts_subset = subset_document_fonts(doc)
+            self._emit_progress_if_due(80)
+
+            # 완료 메시지/디버그에 쓸 수 있도록 기록
+            self.kwargs["compress_images_replaced"] = images_replaced
+            self.kwargs["compress_fonts_subset"] = fonts_subset
+
             self._atomic_pdf_save(
                 doc,
                 output_path,
@@ -152,6 +190,8 @@ class WorkerTransformOpsMixin(WorkerHost):
         file_path = _as_str(self.kwargs.get("file_path"))
         output_path = _as_str(self.kwargs.get("output_path"))
         margins = _as_dict(self.kwargs.get("margins") or {"left": 0, "top": 0, "right": 0, "bottom": 0})
+        crop_mode = _as_str(self.kwargs.get("crop_mode"), "margins")  # margins | content
+        pad = _as_float(self.kwargs.get("content_pad"), 2.0)
 
         doc = self._open_pdf_document(file_path)
         try:
@@ -160,19 +200,71 @@ class WorkerTransformOpsMixin(WorkerHost):
                 page = doc[i]
                 self._check_cancelled()
                 rect = page.rect
-                new_rect = fitz.Rect(
-                    rect.x0 + margins["left"],
-                    rect.y0 + margins["top"],
-                    rect.x1 - margins["right"],
-                    rect.y1 - margins["bottom"],
-                )
-                page.set_cropbox(new_rect)
+                if crop_mode == "content":
+                    bbox = _content_bbox(page, pad=float(pad or 0.0))
+                    if bbox is None or bbox.is_empty or bbox.width < 5 or bbox.height < 5:
+                        new_rect = rect
+                    else:
+                        new_rect = bbox
+                else:
+                    new_rect = fitz.Rect(
+                        rect.x0 + float(margins.get("left") or 0),
+                        rect.y0 + float(margins.get("top") or 0),
+                        rect.x1 - float(margins.get("right") or 0),
+                        rect.y1 - float(margins.get("bottom") or 0),
+                    )
+                if new_rect.width > 1 and new_rect.height > 1:
+                    page.set_cropbox(new_rect)
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))
 
             self._atomic_pdf_save(doc, output_path)
             self.finished_signal.emit(self._get_msg("msg_crop_done"))
         finally:
             doc.close()
+
+    def convert_to_svg(self):
+        """페이지별 SVG 내보내기."""
+        file_paths = [
+            path
+            for path in (_as_list(self.kwargs.get("file_paths")) or [_as_str(self.kwargs.get("file_path"))])
+            if isinstance(path, str) and path
+        ]
+        output_dir = _as_str(self.kwargs.get("output_dir"))
+        if not output_dir:
+            self.error_signal.emit(self._get_msg("err_output_path_missing"))
+            return
+
+        os.makedirs(output_dir, exist_ok=True)
+        total_files = len(file_paths)
+        used_stems: set[str] = set()
+        page_total_written = 0
+
+        for file_idx, file_path in enumerate(file_paths):
+            if not file_path or not os.path.exists(file_path):
+                continue
+            doc = None
+            try:
+                doc = self._open_pdf_document(file_path)
+                base = os.path.splitext(os.path.basename(file_path))[0]
+                unique_stem = self._build_unique_output_stem(
+                    output_dir,
+                    base,
+                    "_p001.svg",
+                    used_stems,
+                )
+                for i in range(len(doc)):
+                    self._check_cancelled()
+                    page = doc[i]
+                    svg = page.get_svg_image()
+                    out_path = os.path.join(output_dir, f"{unique_stem}_p{i + 1:03d}.svg")
+                    self._atomic_text_save(out_path, svg if isinstance(svg, str) else str(svg))
+                    page_total_written += 1
+            finally:
+                if doc:
+                    doc.close()
+            self._emit_progress_if_due(int((file_idx + 1) / max(1, total_files) * 100))
+
+        self.finished_signal.emit(self._get_msg("msg_convert_to_svg_done", page_total_written))
 
     def resize_pages(self):
         file_path = _as_str(self.kwargs.get("file_path"))

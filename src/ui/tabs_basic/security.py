@@ -4,6 +4,7 @@ import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QComboBox,
     QFileDialog,
     QFormLayout,
@@ -164,6 +165,29 @@ def setup_edit_sec_tab(self):
     b_comp.clicked.connect(self.action_compress)
     h_sec.addWidget(b_comp)
     l_sec.addLayout(h_sec)
+    perm_row = QHBoxLayout()
+    self.chk_perm_print = QCheckBox(tm.get("chk_perm_print"))
+    self.chk_perm_print.setChecked(True)
+    self.chk_perm_copy = QCheckBox(tm.get("chk_perm_copy"))
+    self.chk_perm_copy.setChecked(True)
+    self.chk_perm_modify = QCheckBox(tm.get("chk_perm_modify"))
+    self.chk_perm_modify.setChecked(False)
+    self.chk_perm_annotate = QCheckBox(tm.get("chk_perm_annotate"))
+    self.chk_perm_annotate.setChecked(False)
+    self.chk_perm_form = QCheckBox(tm.get("chk_perm_form"))
+    self.chk_perm_form.setChecked(False)
+    self.chk_perm_assemble = QCheckBox(tm.get("chk_perm_assemble"))
+    self.chk_perm_assemble.setChecked(False)
+    for chk in (
+        self.chk_perm_print,
+        self.chk_perm_copy,
+        self.chk_perm_modify,
+        self.chk_perm_annotate,
+        self.chk_perm_form,
+        self.chk_perm_assemble,
+    ):
+        perm_row.addWidget(chk)
+    l_sec.addLayout(perm_row)
     content_layout.addWidget(grp_sec)
 
     content_layout.addStretch()
@@ -214,7 +238,26 @@ def action_protect(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_password_required"))
     s, _ = self._choose_save_file(tm.get("save"), "encrypted.pdf", "PDF (*.pdf)")
     if s:
-        self.run_worker("protect", file_path=path, output_path=s, password=pw)
+        permissions = ["accessibility"]
+        if getattr(self, "chk_perm_print", None) and self.chk_perm_print.isChecked():
+            permissions.append("print")
+        if getattr(self, "chk_perm_copy", None) and self.chk_perm_copy.isChecked():
+            permissions.append("copy")
+        if getattr(self, "chk_perm_modify", None) and self.chk_perm_modify.isChecked():
+            permissions.append("modify")
+        if getattr(self, "chk_perm_annotate", None) and self.chk_perm_annotate.isChecked():
+            permissions.append("annotate")
+        if getattr(self, "chk_perm_form", None) and self.chk_perm_form.isChecked():
+            permissions.append("form")
+        if getattr(self, "chk_perm_assemble", None) and self.chk_perm_assemble.isChecked():
+            permissions.append("assemble")
+        self.run_worker(
+            "protect",
+            file_path=path,
+            output_path=s,
+            password=pw,
+            permissions=permissions,
+        )
 
 def action_unlock(self):
     path = self.sel_sec.get_path()

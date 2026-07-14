@@ -4,7 +4,12 @@ import os
 from .._typing import WorkerHost
 from ..optional_deps import fitz
 from ..worker_runtime.args import _as_list, _as_str
-from ..worker_runtime.save_profiles import DEFAULT_COMPRESSION_SAVE_PROFILE, normalize_save_profile
+from ..worker_runtime.save_profiles import (
+    DEFAULT_COMPRESSION_SAVE_PROFILE,
+    normalize_save_profile,
+    resolve_image_optimize_options,
+)
+from ._pdf_helpers import optimize_pdf_images, subset_document_fonts
 from .security_ops import (
     FITZ_PDF_ENCRYPT_AES_256,
     FITZ_PDF_PERM_ACCESSIBILITY,
@@ -54,13 +59,33 @@ class WorkerBatchOpsMixin(WorkerHost):
                 doc = self._open_pdf_document(file_path)
 
                 if operation == "compress":
+                    save_profile = normalize_save_profile(
+                        self.kwargs.get("save_profile"),
+                        default=DEFAULT_COMPRESSION_SAVE_PROFILE,
+                    )
+                    optimize_opts = resolve_image_optimize_options(
+                        save_profile,
+                        optimize_images=self.kwargs.get("optimize_images"),
+                        subset_fonts=self.kwargs.get("subset_fonts"),
+                        max_image_dpi=self.kwargs.get("max_image_dpi"),
+                        jpeg_quality=self.kwargs.get("jpeg_quality"),
+                        grayscale_images=self.kwargs.get("grayscale_images"),
+                    )
+                    if optimize_opts.get("optimize_images"):
+                        optimize_pdf_images(
+                            doc,
+                            max_dpi=float(optimize_opts.get("max_dpi") or 150.0),
+                            jpeg_quality=int(optimize_opts.get("jpeg_quality") or 75),
+                            grayscale=bool(optimize_opts.get("grayscale")),
+                            check_cancelled=self._check_cancelled,
+                        )
+                    if optimize_opts.get("subset_fonts"):
+                        self._check_cancelled()
+                        subset_document_fonts(doc)
                     self._atomic_pdf_save(
                         doc,
                         out_path,
-                        save_profile=normalize_save_profile(
-                            self.kwargs.get("save_profile"),
-                            default=DEFAULT_COMPRESSION_SAVE_PROFILE,
-                        ),
+                        save_profile=save_profile,
                     )
                 elif operation == "watermark":
                     for page in doc:

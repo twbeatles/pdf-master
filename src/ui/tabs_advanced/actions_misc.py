@@ -37,24 +37,38 @@ def action_fill_form(self):
         self.run_worker("fill_form", file_path=path, output_path=s, 
                       field_values=self._form_field_data)
 
+def action_flatten_form(self):
+    path = self.sel_form.get_path()
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    s, _ = self._choose_save_file(tm.get("save"), "flattened_form.pdf", "PDF (*.pdf)")
+    if s:
+        self.run_worker("flatten_form", file_path=path, output_path=s)
+
 def action_compare_pdfs(self):
     """PDF 비교"""
     path1 = self.sel_compare1.get_path()
     path2 = self.sel_compare2.get_path()
     generate_visual_diff = self.chk_compare_visual.isChecked() if hasattr(self, "chk_compare_visual") else False
+    compare_mode = "text"
+    if hasattr(self, "cmb_compare_mode"):
+        compare_mode = self.cmb_compare_mode.currentData() or "text"
 
     if not path1 or not path2:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_two_pdf"))
 
     s, _ = self._choose_save_file(tm.get("dlg_save_compare"), "comparison.txt", "Text (*.txt)")
     if s:
-        self.run_worker(
-            "compare_pdfs",
-            file_path1=path1,
-            file_path2=path2,
-            output_path=s,
-            generate_visual_diff=generate_visual_diff,
-        )
+        # 시각 모드에서는 PDF 생성 기본 ON, 체크박스는 명시 오버라이드
+        kwargs = {
+            "file_path1": path1,
+            "file_path2": path2,
+            "output_path": s,
+            "compare_mode": compare_mode,
+        }
+        if hasattr(self, "chk_compare_visual"):
+            kwargs["generate_visual_diff"] = generate_visual_diff or compare_mode in {"visual", "both"}
+        self.run_worker("compare_pdfs", **kwargs)
 
 def action_decrypt_pdf(self):
     """PDF 복호화"""

@@ -10,6 +10,9 @@ def action_split_adv(self):
     out_dir = self._choose_output_directory(tm.get("dlg_select_output_dir"))
     if out_dir:
         mode = self.cmb_split_mode.currentData() or "each"
+        if mode == "bookmarks":
+            self.run_worker("split_by_bookmarks", file_path=path, output_dir=out_dir, max_level=1)
+            return
         if mode == "range" and not self.inp_split_range.text().strip():
             return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_page_range"))
         self.run_worker("split_by_pages", file_path=path, output_dir=out_dir, 
@@ -31,13 +34,60 @@ def action_crop(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
     s, _ = self._choose_save_file(tm.get("save"), "cropped.pdf", "PDF (*.pdf)")
     if s:
+        crop_mode = "content" if getattr(self, "chk_crop_content", None) and self.chk_crop_content.isChecked() else "margins"
         margins = {
             'left': self.spn_crop_left.value(),
             'top': self.spn_crop_top.value(),
             'right': self.spn_crop_right.value(),
             'bottom': self.spn_crop_bottom.value()
         }
-        self.run_worker("crop_pdf", file_path=path, output_path=s, margins=margins)
+        self.run_worker("crop_pdf", file_path=path, output_path=s, margins=margins, crop_mode=crop_mode)
+
+
+def action_remove_blank_pages(self):
+    path = self.sel_cleanup.get_path()
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    s, _ = self._choose_save_file(tm.get("save"), "no_blank.pdf", "PDF (*.pdf)")
+    if s:
+        self.run_worker("remove_blank_pages", file_path=path, output_path=s)
+
+
+def action_dedupe_pages(self):
+    path = self.sel_cleanup.get_path()
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    s, _ = self._choose_save_file(tm.get("save"), "deduped.pdf", "PDF (*.pdf)")
+    if s:
+        self.run_worker("dedupe_pages", file_path=path, output_path=s)
+
+
+def action_auto_bookmarks(self):
+    path = self.sel_cleanup.get_path()
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    s, _ = self._choose_save_file(tm.get("save"), "with_bookmarks.pdf", "PDF (*.pdf)")
+    if s:
+        self.run_worker("auto_bookmarks", file_path=path, output_path=s)
+
+
+def action_sanitize_pdf(self):
+    path = self.sel_cleanup.get_path()
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    s, _ = self._choose_save_file(tm.get("save"), "sanitized.pdf", "PDF (*.pdf)")
+    if s:
+        self.run_worker("sanitize_pdf", file_path=path, output_path=s)
+
+
+def action_impose_nup(self):
+    path = self.sel_cleanup.get_path()
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    s, _ = self._choose_save_file(tm.get("save"), "nup.pdf", "PDF (*.pdf)")
+    if s:
+        nup = self.cmb_nup.currentData() if hasattr(self, "cmb_nup") else 2
+        self.run_worker("impose_nup", file_path=path, output_path=s, nup=nup or 2)
 
 def action_blank_page(self):
     path = self.sel_blank.get_path()

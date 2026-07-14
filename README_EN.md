@@ -1,4 +1,4 @@
-# PDF Master v4.5.5
+# PDF Master v4.5.6
 
 📑 **All-in-One PDF Editor** — PyQt6 Desktop Application
 
@@ -46,12 +46,17 @@
 | **Reverse Order** | Flip the entire page order |
 | **Resize Pages** | Convert to A4, A3, Letter, Legal, etc. (aspect ratio preserved) |
 | **Replace Page** | Swap a page with one from another PDF |
+| **Remove Blank Pages** | Drop empty pages without text/images |
+| **Remove Duplicate Pages** | Signature-based duplicate cleanup |
+| **N-up Impose** | 2-up / 4-up print layouts |
+| **Auto Bookmarks** | Build outline from heading-size heuristics |
 
 ### 🔒 Security & Protection
 | Feature | Description |
 |---------|-------------|
-| **Encrypt PDF** | Set AES-256 password |
+| **Encrypt PDF** | AES-256 password plus print/copy/modify permission flags |
 | **Decrypt PDF** | Remove password |
+| **Sanitize PDF** | Scrub metadata, attachments, annotations before sharing |
 | **Text Watermark** | Custom opacity, rotation, and position |
 | **Image Watermark** | 9 positions, custom scale and opacity |
 | **Add Stamp** | Confidential, Approved, Draft, Copy, etc. |
@@ -59,12 +64,13 @@
 ### 🔧 Advanced Editing
 | Feature | Description |
 |---------|-------------|
-| **Split PDF** | Split by page or range |
-| **Compress PDF** | Choose `fast`, `compact`, or `web` save profile |
-| **Crop PDF** | Trim margins |
+| **Split PDF** | Split by page, range, or **bookmarks** |
+| **Compress PDF** | `fast` / `compact` / `web` with image downsample + font subsetting |
+| **Crop PDF** | Margin crop or **content-aware auto crop** |
 | **Edit Metadata** | Modify title, author, subject, keywords |
-| **Compare PDFs** | Line-level diff with optional visual diff PDF |
+| **Compare PDFs** | Text / **visual (pixel)** / both + optional visual diff PDF |
 | **Set Bookmarks** | Define outline structure manually |
+| **Flatten Form** | Bake filled form fields into permanent content |
 
 ### 📝 Annotation & Markup
 | Feature | Description |
@@ -76,7 +82,8 @@
 | **Draw Shapes** | Add rectangles, circles, lines |
 | **Add Hyperlinks** | URL or page navigation links |
 | **Insert Textbox** | Type text directly on the PDF |
-| **Redact Text** | Permanently remove sensitive content |
+| **Redact Text** | Permanently remove sensitive text matches |
+| **Redact Area** | Permanently remove by coordinates |
 | **Add Background** | Change page background color |
 | **Freehand Signature** | Draw and embed a handwritten signature |
 
@@ -85,6 +92,7 @@
 |---------|-------------|--------|
 | **Extract Links** | List all URLs in the document | TXT |
 | **Extract Images** | Pull out embedded images | PNG / JPG |
+| **Export SVG** | Vector page export | SVG |
 | **Extract Tables** | Export table data | CSV |
 | **Extract Bookmarks** | Export outline structure | TXT |
 | **Markdown Convert** | `auto/native/text` mode | MD |
@@ -118,7 +126,7 @@
 
 ### Use the Prebuilt Executable (Windows)
 
-Run `dist/PDF_Master_v4.5.5.exe` directly — no installation required.
+Run `dist/PDF_Master_v4.5.6.exe` directly — no installation required.
 
 ### Run from Source
 
@@ -262,15 +270,24 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-Output: `dist/PDF_Master_v4.5.5.exe` (~30–40 MB)
+Output: `dist/PDF_Master_v4.5.6.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
-Validation baseline: `python -m pytest -q` → **192 collected / 191 passed / 1 opt-in Gemini smoke skipped**. See `PROJECT_AUDIT.md` for the 2026-06-24 functional audit and follow-up fixes.
+Validation baseline: `python -m pytest -q` → **211 collected / 210 passed / 1 opt-in Gemini smoke skipped**. See `PROJECT_AUDIT.md` for the 2026-06-24 functional audit and follow-up fixes.
 
 ---
 
 ## 📝 Changelog
+
+### v4.5.6
+- **Deep compress**: image downsample, JPEG re-encode, and font subsetting for `compact`/`web`
+- Split by bookmarks, remove blank/duplicate pages, auto bookmarks, N-up (2/4), sanitize
+- Content-aware crop, area redaction, form flatten
+- Encrypt permission checkboxes (print/copy/modify/annotate/form/assemble)
+- PDF compare modes: `text` / `visual` / `both` (pixel diffs for scans)
+- SVG page export; graceful fallback when linearization is unavailable
+- New `cleanup_ops` worker domain and extended regression tests
 
 ### v4.5.5
 - Preview zoom, pan, and print stability (Qt print pipeline)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .annotation_ops import WorkerAnnotationOpsMixin
 from .batch_ops import WorkerBatchOpsMixin
+from .cleanup_ops import WorkerCleanupOpsMixin
 from .compare_ops import WorkerCompareOpsMixin
 from .compose_ops import WorkerComposeOpsMixin
 from .extract_ops import WorkerExtractOpsMixin
@@ -21,6 +22,7 @@ class WorkerPdfOpsMixin(
     WorkerTransformOpsMixin,
     WorkerPageOpsMixin,
     WorkerComposeOpsMixin,
+    WorkerCleanupOpsMixin,
 ):
     """Composed worker operation surface grouped by domain modules."""
 

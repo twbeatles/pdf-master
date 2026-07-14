@@ -6,6 +6,7 @@
 
 ## Current Behavior Notes
 
+- PyMuPDF deep-util pass (v4.5.6): `compress` can downsample/re-encode images and subset fonts (`compact`/`web`); `cleanup_ops` covers blank/dedupe pages, bookmark split, auto TOC, sanitize, and N-up; crop supports `content` mode; `redact_area`, `flatten_form`, encrypt `permissions`, compare `visual`/`both`, and `convert_to_svg` are registered Worker modes with Advanced/Security UI.
 - The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
 - Preview print now renders through the Qt print pipeline; it no longer delegates to `os.startfile(..., "print")` or `lpr`.
 - Thumbnail entry points in the AI and rotate flows are preview-synchronized: if they target a different PDF, preview is switched first and encrypted PDFs reuse the preview password session.
@@ -38,7 +39,7 @@
 
 ## 📌 프로젝트 개요
 
-**PDF Master v4.5.5**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
+**PDF Master v4.5.6**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
 
 | 항목 | 내용 |
 |------|------|
@@ -90,6 +91,7 @@ pdf-master/
     │       ├── annotation_ops.py
     │       ├── compose_ops.py
     │       ├── transform_ops.py
+    │       ├── cleanup_ops.py      # blank/dedupe/sanitize/n-up/bookmarks (v4.5.6)
     │       ├── pdf_ops.py          # compatibility shim
     │       └── ai_ops.py
     └── ui/
@@ -181,6 +183,15 @@ error_signal = pyqtSignal(str)         # 에러 메시지
 | `list_attachments` | 첨부 파일 목록 조회 | `list_attachments()` |
 | `extract_attachments` | 첨부 파일 추출 | `extract_attachments()` |
 | `add_freehand_signature` | 프리핸드 서명 삽입 | `add_freehand_signature()` |
+| `split_by_bookmarks` | 북마크 기준 분할 (v4.5.6) | `split_by_bookmarks()` |
+| `remove_blank_pages` | 빈 페이지 제거 (v4.5.6) | `remove_blank_pages()` |
+| `dedupe_pages` | 중복 페이지 제거 (v4.5.6) | `dedupe_pages()` |
+| `auto_bookmarks` | 자동 목차 (v4.5.6) | `auto_bookmarks()` |
+| `sanitize_pdf` | 문서 위생 (v4.5.6) | `sanitize_pdf()` |
+| `impose_nup` | N-up 임포지션 (v4.5.6) | `impose_nup()` |
+| `redact_area` | 영역 교정 (v4.5.6) | `redact_area()` |
+| `flatten_form` | 양식 flatten (v4.5.6) | `flatten_form()` |
+| `convert_to_svg` | SVG 내보내기 (v4.5.6) | `convert_to_svg()` |
 
 #### v4.5.1 안정화 핵심 (2026-02-19)
 - `run()` 시작 시 `_preflight_inputs()`를 통해 입력 파일 존재/크기를 선검증합니다.
@@ -518,7 +529,7 @@ class ZoomablePreviewWidget(QWidget):
 - 검증 환경 준비: `pip install -e .[dev]`
 - 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - `python -m pyright` -> `0 errors`
-- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 192 collected / 191 passed / 1 opt-in Gemini smoke skipped
+- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 211 collected / 210 passed / 1 opt-in Gemini smoke skipped
 - `python -m build`
 - `python -m PyInstaller pdf_master.spec --clean`
 - `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1` -> clean `PYTHONPATH` PyInstaller + EXE `--smoke`
@@ -615,7 +626,13 @@ class ZoomablePreviewWidget(QWidget):
   - README/가이드/spec/감사 문서/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest -q`: 192 collected / 191 passed / 1 opt-in Gemini smoke skipped
+- 현재 워크트리 기준 `python -m pytest -q`: 211 collected / 210 passed / 1 opt-in Gemini smoke skipped
+
+### v4.5.6 PyMuPDF deep-util tests (2026-07-14)
+- `tests/test_worker_deep_compress.py`
+  - 이미지 다운샘플 압축 / 프로필 옵션 / 배치 compress 검증
+- `tests/test_worker_pymupdf_extras.py`
+  - blank/dedupe/bookmark split/auto TOC/sanitize/n-up/crop content/redact area/flatten/SVG/visual compare 검증
 
 ### v4.5.5 audit follow-up tests (2026-06-24)
 - `tests/test_worker_batch_unknown_operation.py`
@@ -648,7 +665,7 @@ python -m PyInstaller pdf_master.spec --clean
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 # 결과물
-dist/PDF_Master_v4.5.5.exe (~30-40MB)
+dist/PDF_Master_v4.5.6.exe (~30-40MB)
 ```
 
 ### 경량화 최적화
@@ -715,9 +732,17 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.5 기준으로 작성되었습니다. (2026-05-22)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-14)*
 
 ---
+
+## 2026-07-14 PyMuPDF Deep-Util Addendum
+
+- `compress` deep path: profile-driven image optimize (`max_dpi`/`jpeg_quality`/`subset_fonts`) plus kwargs override; batch compress reuses the same path.
+- `save` with `linear=True` falls back when the installed PyMuPDF build no longer supports linearisation.
+- New domain module `src/core/worker_ops/cleanup_ops.py` is mixed into `WorkerPdfOpsMixin`.
+- Compare supports `compare_mode=text|visual|both` with pixel sampling for scanned/image-only pages.
+- OCR remains intentionally out of scope until an optional-extra packaging design is approved.
 
 ## 2026-04-21 Stability Addendum
 
@@ -754,4 +779,4 @@ for i, page in enumerate(pages):
 - `tests/test_worker_cancel_regression.py` covers those four modes and asserts cancelled runs do not leave result files behind.
 - `tests/test_ai_service_cache.py` uses fake `google-genai` objects to validate upload cache reuse, generate/stream calls, chat creation/reuse, structured JSON parsing, and upload fallback without credentials.
 - `pdf_master.spec`, README/README_EN/CLAUDE/GEMINI/roadmap, and `.gitignore` coverage were rechecked against the current codebase; no `.gitignore` rule change was required.
-- Compare/report UI expansion and OCR engine support remain future product tasks, not implemented in this hardening pass.
+- Compare visual pixel mode shipped in v4.5.6; richer compare/report UI expansion and OCR engine support remain future product tasks.

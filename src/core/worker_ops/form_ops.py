@@ -98,3 +98,24 @@ class WorkerFormOpsMixin(WorkerHost):
             self.finished_signal.emit(self._get_msg("msg_form_filled", filled_count))
         finally:
             doc.close()
+
+    def flatten_form(self):
+        """양식 필드를 영구 콘텐츠로 고정(편집 불가)."""
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        bake_annots = _as_bool(self.kwargs.get("bake_annots"), False)
+
+        doc = self._open_pdf_document(file_path)
+        try:
+            self._check_cancelled()
+            bake = getattr(doc, "bake", None)
+            if not callable(bake):
+                self.error_signal.emit(self._get_msg("err_flatten_unsupported"))
+                return
+            bake(annots=bake_annots, widgets=True)
+            self._emit_progress_if_due(80)
+            self._atomic_pdf_save(doc, output_path)
+            self._emit_progress_if_due(100)
+            self.finished_signal.emit(self._get_msg("msg_form_flattened"))
+        finally:
+            doc.close()
