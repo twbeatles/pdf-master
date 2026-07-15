@@ -195,8 +195,10 @@ def test_cancel_cleanup_keeps_preexisting_batch_outputs(monkeypatch, tmp_path):
     calls = {"count": 0}
 
     def _cancel_before_third_file():
+        # file당: loop start + page cancel + atomic_pdf_save 전/후 ≈ 4회
+        # 2개 파일 완료 후 3번째 진입 시 취소 (임계값은 페이지 cancel 추가로 보정)
         calls["count"] += 1
-        if calls["count"] >= 7:
+        if calls["count"] >= 9:
             raise CancelledError("cancel")
 
     worker._check_cancelled = _cancel_before_third_file

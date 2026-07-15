@@ -2,10 +2,15 @@
 # PDF Master v4.5.6 - PyInstaller Spec File
 # One-file desktop build for the current split-package runtime layout.
 # Python 3.10+ compatible, with explicit optional dependency boundaries.
-# Verified 2026-05-22 after Worker/AI/UI split-package refactoring,
-# output-contract preflight, shared PDF header validation, worker page-loop
-# cancellation coverage, fake Gemini File API contract tests, main.py --smoke,
-# and isolated package_smoke EXE validation.
+#
+# Verification baseline (docs/tests contract):
+# - 2026-05-22: Worker/AI/UI split-package, preflight, cancel coverage, fake Gemini tests
+# - 2026-07-14: PyMuPDF deep-util (cleanup_ops, deep compress, visual compare, SVG, etc.)
+# - 2026-07-15: PROJECT_AUDIT follow-up — AI cancel_check + encrypted-PDF unlock path,
+#   blank-page conservative keep, visual_error compare status, batch/page cancel, i18n
+# Validation: python -m pyright; python -m pytest -q (~219 collected / 1 Gemini smoke skip);
+#   python main.py --smoke; python -m PyInstaller pdf_master.spec --clean;
+#   powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 import sys
 import os

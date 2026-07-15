@@ -3,7 +3,7 @@ import os
 
 from .._typing import WorkerHost
 from ..optional_deps import fitz
-from ..worker_runtime.args import _as_list, _as_str
+from ..worker_runtime.args import _as_list, _as_str  # noqa: F401 — batch encrypt uses _as_str
 from ..worker_runtime.save_profiles import (
     DEFAULT_COMPRESSION_SAVE_PROFILE,
     normalize_save_profile,
@@ -15,6 +15,7 @@ from .security_ops import (
     FITZ_PDF_PERM_ACCESSIBILITY,
     FITZ_PDF_PERM_COPY,
     FITZ_PDF_PERM_PRINT,
+    _resolve_permissions,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,7 @@ class WorkerBatchOpsMixin(WorkerHost):
                     )
                 elif operation == "watermark":
                     for page in doc:
+                        self._check_cancelled()
                         text_rect = fitz.Rect(
                             40,
                             (page.rect.height / 2) - 30,
@@ -106,17 +108,25 @@ class WorkerBatchOpsMixin(WorkerHost):
                         )
                     self._atomic_pdf_save(doc, out_path)
                 elif operation == "encrypt":
-                    perm = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
+                    # 단일 protect와 동일 권한 해석 (미지정 시 기본 accessibility/print/copy)
+                    raw_perm = self.kwargs.get("permissions")
+                    if raw_perm is None:
+                        perm = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
+                    else:
+                        perm = _resolve_permissions(raw_perm)
+                    owner_pw = _as_str(self.kwargs.get("owner_password")) or option
+                    user_pw = _as_str(self.kwargs.get("user_password")) or option
                     self._atomic_pdf_save(
                         doc,
                         out_path,
                         encryption=FITZ_PDF_ENCRYPT_AES_256,
-                        owner_pw=option,
-                        user_pw=option,
+                        owner_pw=owner_pw,
+                        user_pw=user_pw,
                         permissions=perm,
                     )
                 elif operation == "rotate":
                     for page in doc:
+                        self._check_cancelled()
                         page.set_rotation(page.rotation + 90)
                     self._atomic_pdf_save(doc, out_path)
                 success_count += 1

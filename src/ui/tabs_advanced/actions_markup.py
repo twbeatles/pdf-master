@@ -57,6 +57,16 @@ def action_redact_area(self):
     except ValueError:
         return QMessageBox.warning(self, tm.get("info"), tm.get("err_redact_area_invalid"))
     page = self.spn_redact_page.value() if hasattr(self, "spn_redact_page") else 1
+
+    reply = QMessageBox.warning(
+        self,
+        tm.get("warning"),
+        tm.get("msg_confirm_redact_area", page, *coords[:4]),
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+    )
+    if reply != QMessageBox.StandardButton.Yes:
+        return
+
     s, _ = self._choose_save_file(tm.get("save"), "redacted_area.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker(

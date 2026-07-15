@@ -137,6 +137,30 @@ def _finalize_worker(self):
     self.worker.deleteLater()
     self.worker = None
 
+# 대기 큐 상한 — 과도한 연속 요청으로 메모리/UX 폭주 방지
+_MAX_PENDING_WORKERS = 8
+
+
+def _enqueue_pending_worker(self, mode, output_path=None, kwargs=None) -> bool:
+    """대기 작업 FIFO 큐에 추가. 상한 초과 시 False."""
+    pending_workers = getattr(self, "_pending_workers", None)
+    if pending_workers is None:
+        self._pending_workers = []
+        pending_workers = self._pending_workers
+    if len(pending_workers) >= _MAX_PENDING_WORKERS:
+        toast = ToastWidget(tm.get("msg_worker_queue_full"), toast_type="warning", duration=3000)
+        toast.show_toast(self)
+        return False
+    pending_workers.append(
+        {
+            "mode": mode,
+            "output_path": output_path,
+            "kwargs": dict(kwargs or {}),
+        }
+    )
+    return True
+
+
 def _run_pending_worker(self):
     """대기 중인 작업이 있으면 자동 실행"""
     pending_workers = getattr(self, "_pending_workers", None)

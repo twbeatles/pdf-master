@@ -125,9 +125,11 @@ class AIService(
         style: str = "concise",
         max_pages: int | None = None,
         partial_callback: Callable[[str], None] | None = None,
+        cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         if not self.is_available:
             raise RuntimeError("AI service not available. Check API key and google-genai installation.")
+        self._run_cancel_check(cancel_check)
         prompt = self._build_summary_prompt(language, style, max_pages)
         payload = self._generate_structured_payload(
             prompt=prompt,
@@ -135,7 +137,9 @@ class AIService(
             schema=self._make_summary_schema(),
             partial_callback=partial_callback,
             fallback_max_pages=max_pages,
+            cancel_check=cancel_check,
         )
+        self._run_cancel_check(cancel_check)
         payload.setdefault("title", "")
         payload.setdefault("summary", "")
         payload.setdefault("key_points", [])
@@ -153,12 +157,14 @@ class AIService(
         question: str,
         conversation_history: list[dict[str, str]] | None = None,
         partial_callback: Callable[[str], None] | None = None,
+        cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         if not self.is_available:
             raise RuntimeError("AI service not available. Check API key and google-genai installation.")
         if not question.strip():
             raise RuntimeError("Question is required.")
 
+        self._run_cancel_check(cancel_check)
         schema = self._make_answer_schema()
         config = self._build_generate_config(schema)
         try:
@@ -178,19 +184,24 @@ class AIService(
                 schema=schema,
                 partial_callback=partial_callback,
                 fallback_max_pages=None,
+                cancel_check=cancel_check,
             )
         else:
             if partial_callback is not None:
                 chunks: list[str] = []
                 for chunk in chat.send_message_stream(question, config=config):
+                    self._run_cancel_check(cancel_check)
                     text = _response_text(chunk)
                     if text:
                         chunks.append(text)
                         partial_callback(text)
+                self._run_cancel_check(cancel_check)
                 raw_text = "".join(chunks)
                 payload = self._parse_structured_response(None, raw_text, schema)
             else:
+                self._run_cancel_check(cancel_check)
                 response = chat.send_message(question, config=config)
+                self._run_cancel_check(cancel_check)
                 payload = self._parse_structured_response(response, _response_text(response), schema)
 
         payload.setdefault("answer", "")
@@ -202,9 +213,11 @@ class AIService(
         pdf_path: str,
         max_keywords: int = 10,
         language: str = "ko",
+        cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         if not self.is_available:
             raise RuntimeError("AI service not available. Check API key and google-genai installation.")
+        self._run_cancel_check(cancel_check)
         prompt = self._build_keywords_prompt(max_keywords, language)
         payload = self._generate_structured_payload(
             prompt=prompt,
@@ -212,7 +225,9 @@ class AIService(
             schema=self._make_keywords_schema(),
             partial_callback=None,
             fallback_max_pages=None,
+            cancel_check=cancel_check,
         )
+        self._run_cancel_check(cancel_check)
         keywords = [str(item) for item in payload.get("keywords", []) if str(item).strip()]
         deduped: list[str] = []
         seen: set[str] = set()

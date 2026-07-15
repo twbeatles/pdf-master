@@ -46,15 +46,8 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if result == QMessageBox.StandardButton.Yes:
-                pending_workers = getattr(self, "_pending_workers", None)
-                if pending_workers is None:
-                    self._pending_workers = []
-                    pending_workers = self._pending_workers
-                pending_workers.append({
-                    "mode": mode,
-                    "output_path": output_path,
-                    "kwargs": dict(kwargs),
-                })
+                if not self._enqueue_pending_worker(mode, output_path, kwargs):
+                    return
                 toast = ToastWidget(tm.get("msg_worker_queued"), toast_type="info", duration=2000)
                 toast.show_toast(self)
                 return
@@ -64,15 +57,8 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             if self.worker.isRunning():
                 if not self.worker.wait(3000):
                     logger.warning("Previous worker still running; deferring new task")
-                    pending_workers = getattr(self, "_pending_workers", None)
-                    if pending_workers is None:
-                        self._pending_workers = []
-                        pending_workers = self._pending_workers
-                    pending_workers.append({
-                        "mode": mode,
-                        "output_path": output_path,
-                        "kwargs": dict(kwargs),
-                    })
+                    if not self._enqueue_pending_worker(mode, output_path, kwargs):
+                        return
                     toast = ToastWidget(tm.get("msg_worker_queued"), toast_type="info", duration=2000)
                     toast.show_toast(self)
                     return

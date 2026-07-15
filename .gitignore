@@ -30,10 +30,15 @@ pip-wheel-metadata/
 *.log
 build/
 dist/
+# package_smoke / local EXE leftovers outside dist (if any)
+PDF_Master_v*.exe
 
 # App/runtime temp files
 backup/
 .pdf_master_*.tmp*
+# AI encrypted-PDF unlock temps (worker may create under system temp; keep pattern for cwd accidents)
+pdf_master_ai_*.pdf
+pdf_master_undo/
 
 # Virtual environments
 .venv/
@@ -50,6 +55,10 @@ __pypackages__/
 .codegraph/
 .grok/
 mcps/
+terminals/
+agent-tools/
+.sessions/
+*.session.md
 
 # OS / editor files
 Thumbs.db
@@ -57,3 +66,5 @@ Desktop.ini
 .DS_Store
 .idea/
 .vscode/
+*.swp
+*~

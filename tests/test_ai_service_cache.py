@@ -104,7 +104,11 @@ def test_generate_structured_payload_only_falls_back_for_upload_errors(monkeypat
 
     service = AIService(api_key="")
 
-    monkeypatch.setattr(service, "_upload_pdf_file", lambda _path: (_ for _ in ()).throw(RuntimeError("upload failed: file too large")))
+    monkeypatch.setattr(
+        service,
+        "_upload_pdf_file",
+        lambda _path, **_kw: (_ for _ in ()).throw(RuntimeError("upload failed: file too large")),
+    )
     monkeypatch.setattr(
         service,
         "_generate_structured_payload_from_extracted_text",
@@ -118,7 +122,11 @@ def test_generate_structured_payload_only_falls_back_for_upload_errors(monkeypat
     )
     assert payload == {"answer": "fallback"}
 
-    monkeypatch.setattr(service, "_upload_pdf_file", lambda _path: (_ for _ in ()).throw(RuntimeError("auth error: invalid api key")))
+    monkeypatch.setattr(
+        service,
+        "_upload_pdf_file",
+        lambda _path, **_kw: (_ for _ in ()).throw(RuntimeError("auth error: invalid api key")),
+    )
     try:
         service._generate_structured_payload(
             prompt="Prompt",

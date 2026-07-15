@@ -56,7 +56,7 @@ Status: Implemented.
 
 ## Validation Baseline
 
-The current green baseline for this pass is:
+The green baseline **for this 2026-05-22 pass** was:
 
 ```powershell
 python -m pytest tests/test_validation_docs_config.py -q
@@ -68,7 +68,7 @@ python -m build
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-Observed result:
+Observed result (2026-05-22):
 
 - `python -m pyright`: 0 errors.
 - `python -m pytest -q`: 179 collected, 178 passed, 1 skipped opt-in Gemini File API smoke.
@@ -76,7 +76,10 @@ Observed result:
 - `python -m build`: sdist and wheel built.
 - `scripts/package_smoke.ps1`: clean `PYTHONPATH` PyInstaller build and packaged EXE `--smoke` succeeded.
 
+**Superseded baseline (repo current, 2026-07-15):** see `PROJECT_AUDIT.md` and README — `python -m pytest -q` → **219 collected / 218 passed / 1 opt-in Gemini smoke skipped** after v4.5.6 deep-util + audit follow-up. This file remains the canonical `FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md` contract name required by `tests/test_validation_docs_config.py`.
+
 ## Remaining Product Work
 
-- Richer compare/report UI: planned follow-up beyond the current completion summary dialog and optional visual diff PDF.
+- Richer compare/report UI: planned follow-up beyond the current completion summary dialog and optional visual diff PDF (`visual_error_count` already in payload as of 2026-07-15).
 - OCR: planned follow-up; choose engine, dependency extra, packaging strategy, and UX before implementation.
+- Preview drag-to-select redact/crop UX: Worker rect path exists; text-entry + confirm is shipped.

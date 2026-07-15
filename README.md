@@ -274,7 +274,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 타입 스텁은 `typings/` 디렉터리에 있으며 `pyrightconfig.json`에서 참조합니다.
 
-검증 기준선: `python -m pytest -q` → **211 collected / 210 passed / 1 opt-in Gemini smoke skipped**. 기능 감사 및 후속 구현 내역은 `PROJECT_AUDIT.md`를 참고하세요.
+검증 기준선: `python -m pytest -q` → **219 collected / 218 passed / 1 opt-in Gemini smoke skipped**. 기능 감사 및 후속 구현 내역은 `PROJECT_AUDIT.md`를 참고하세요.
 
 ---
 
@@ -288,6 +288,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 - **PDF 비교** `text` / `visual` / `both` 모드 (스캔본 픽셀 차이 탐지)
 - **SVG 페이지 내보내기**, PyMuPDF 1.28+ `linear` 미지원 시 저장 폴백
 - Worker 도메인 `cleanup_ops` 추가 및 회귀 테스트 확장
+- **2026-07-15 감사 후속**: AI 작업 취소(`cancel_check`)·암호화 PDF 미리보기 암호 재사용, 빈 페이지 보수 판정, visual compare 오류 상태, 영역 교정 확인 다이얼로그, 배치/추출 cancel·i18n 보강
 
 ### v4.5.5
 - 미리보기 줌·패닝·인쇄 안정화 (Qt 인쇄 파이프라인)

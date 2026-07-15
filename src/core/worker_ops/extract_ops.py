@@ -173,14 +173,16 @@ class WorkerExtractOpsMixin(WorkerHost):
             if doc:
                 doc.close()
 
-        lines = [f"# 북마크: {os.path.basename(file_path)}", ""]
+        lines = [f"# {self._get_msg('extract_bookmarks_title', os.path.basename(file_path))}", ""]
         if toc:
             for item in toc:
                 level, title, page = item[0], item[1], item[2]
                 indent = "  " * (max(0, int(level) - 1))
-                lines.append(f"{indent}- [{title}] -> 페이지 {page}")
+                lines.append(
+                    f"{indent}- [{title}] -> {self._get_msg('extract_bookmarks_page', page)}"
+                )
         else:
-            lines.append("북마크가 없습니다.")
+            lines.append(self._get_msg("extract_bookmarks_empty"))
         lines.append("")
         self._atomic_text_save(output_path, "\n".join(lines))
         self._emit_progress_if_due(100)
@@ -190,18 +192,46 @@ class WorkerExtractOpsMixin(WorkerHost):
         """PDF 북마크(목차) 설정"""
         file_path = _as_str(self.kwargs.get("file_path"))
         output_path = _as_str(self.kwargs.get("output_path"))
-        bookmarks = cast(list[list[Any]], self.kwargs.get("bookmarks") or [])
+        raw_bookmarks = self.kwargs.get("bookmarks") or []
+        if not isinstance(raw_bookmarks, list):
+            self.error_signal.emit(self._get_msg("err_bookmarks_invalid"))
+            return
+
+        normalized: list[list[Any]] = []
+        for item in raw_bookmarks:
+            if not isinstance(item, (list, tuple)) or len(item) < 3:
+                self.error_signal.emit(self._get_msg("err_bookmarks_invalid"))
+                return
+            try:
+                level = int(item[0])
+                title = str(item[1]).strip()
+                page = int(item[2])
+            except (TypeError, ValueError):
+                self.error_signal.emit(self._get_msg("err_bookmarks_invalid"))
+                return
+            if level < 1 or page < 1 or not title:
+                self.error_signal.emit(self._get_msg("err_bookmarks_invalid"))
+                return
+            normalized.append([level, title, page])
+
         doc = None
         try:
             doc = self._open_pdf_document(file_path)
-            doc.set_toc(bookmarks)
+            page_count = len(doc)
+            for _level, _title, page in normalized:
+                if page > page_count:
+                    self.error_signal.emit(
+                        self._get_msg("err_page_out_of_range", str(page), str(page_count))
+                    )
+                    return
+            doc.set_toc(normalized)
             self._atomic_pdf_save(doc, output_path)
         finally:
             if doc:
                 doc.close()
 
         self._emit_progress_if_due(100)
-        self.finished_signal.emit(self._get_msg("msg_bookmarks_set", len(bookmarks)))
+        self.finished_signal.emit(self._get_msg("msg_bookmarks_set", len(normalized)))
 
     def search_text(self):
         file_path = _as_str(self.kwargs.get("file_path"))
@@ -232,14 +262,25 @@ class WorkerExtractOpsMixin(WorkerHost):
             if doc:
                 doc.close()
 
-        lines = [f"# 검색 결과: '{search_term}'", f"파일: {os.path.basename(file_path)}", ""]
+        lines = [
+            f"# {self._get_msg('extract_search_title', search_term)}",
+            f"{self._get_msg('extract_search_file', os.path.basename(file_path))}",
+            "",
+        ]
         if results:
             total_found = sum(result["count"] for result in results)
-            lines.extend([f"총 {total_found}개 발견 ({len(results)}페이지)", ""])
+            lines.extend(
+                [
+                    self._get_msg("extract_search_total", total_found, len(results)),
+                    "",
+                ]
+            )
             for result in results:
-                lines.append(f"## 페이지 {result['page']}: {result['count']}개")
+                lines.append(
+                    f"## {self._get_msg('extract_search_page', result['page'], result['count'])}"
+                )
         else:
-            lines.append("검색 결과가 없습니다.")
+            lines.append(self._get_msg("extract_search_empty"))
         lines.append("")
         self._atomic_text_save(output_path, "\n".join(lines))
         total_found = sum(r["count"] for r in results) if results else 0
@@ -366,6 +407,7 @@ class WorkerExtractOpsMixin(WorkerHost):
         try:
             count = doc.embfile_count()
             for i in range(count):
+                self._check_cancelled()
                 info = doc.embfile_info(i)
                 attachments.append({
                     'index': i,
@@ -388,10 +430,12 @@ class WorkerExtractOpsMixin(WorkerHost):
         attach_path = _as_str(self.kwargs.get("attach_path"))
         doc = None
         try:
+            self._check_cancelled()
             doc = self._open_pdf_document(file_path)
             with open(attach_path, "rb") as handle:
                 data = handle.read()
 
+            self._check_cancelled()
             doc.embfile_add(os.path.basename(attach_path), data)
             self._atomic_pdf_save(doc, output_path)
         finally:

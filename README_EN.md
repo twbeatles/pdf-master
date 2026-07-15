@@ -274,7 +274,7 @@ Output: `dist/PDF_Master_v4.5.6.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
-Validation baseline: `python -m pytest -q` → **211 collected / 210 passed / 1 opt-in Gemini smoke skipped**. See `PROJECT_AUDIT.md` for the 2026-06-24 functional audit and follow-up fixes.
+Validation baseline: `python -m pytest -q` → **219 collected / 218 passed / 1 opt-in Gemini smoke skipped**. See `PROJECT_AUDIT.md` for the functional audit and 2026-07-15 follow-up fixes.
 
 ---
 
@@ -288,6 +288,7 @@ Validation baseline: `python -m pytest -q` → **211 collected / 210 passed / 1 
 - PDF compare modes: `text` / `visual` / `both` (pixel diffs for scans)
 - SVG page export; graceful fallback when linearization is unavailable
 - New `cleanup_ops` worker domain and extended regression tests
+- **2026-07-15 audit follow-up**: AI cooperative cancel + encrypted-PDF password unlock, conservative blank-page keep, visual compare `visual_error` status, area-redact confirmation, batch/extract cancel and i18n hardening
 
 ### v4.5.5
 - Preview zoom, pan, and print stability (Qt print pipeline)

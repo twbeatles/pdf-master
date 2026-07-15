@@ -74,7 +74,8 @@ def _is_blank_page(page: Any, *, text_threshold: int = 0) -> bool:
         var = sum((v - avg) ** 2 for v in vals) / len(vals)
         return var < 30.0
     except Exception:
-        return True
+        # 렌더 실패 시 빈 페이지로 오판하면 데이터 손실 → 보수적으로 유지
+        return False
 
 
 def _page_signature(page: Any) -> str:
@@ -147,12 +148,19 @@ def _content_bbox(page: Any, *, pad: float = 2.0) -> Any | None:
     return bbox & rect
 
 
-def _collect_heading_toc(doc: Any, *, min_size: float = _HEADING_MIN_SIZE) -> list[list[Any]]:
+def _collect_heading_toc(
+    doc: Any,
+    *,
+    min_size: float = _HEADING_MIN_SIZE,
+    check_cancelled: Any | None = None,
+) -> list[list[Any]]:
     """폰트 크기 휴리스틱으로 목차 후보 생성."""
     size_counter: Counter[float] = Counter()
     candidates: list[tuple[int, float, str]] = []
 
     for page_index in range(len(doc)):
+        if callable(check_cancelled):
+            check_cancelled()
         page = doc[page_index]
         try:
             text_dict = page.get_text("dict") or {}
@@ -360,7 +368,11 @@ class WorkerCleanupOpsMixin(WorkerHost):
 
         doc = self._open_pdf_document(file_path)
         try:
-            toc = _collect_heading_toc(doc, min_size=min_size or _HEADING_MIN_SIZE)
+            toc = _collect_heading_toc(
+                doc,
+                min_size=min_size or _HEADING_MIN_SIZE,
+                check_cancelled=self._check_cancelled,
+            )
             if not toc:
                 self.error_signal.emit(self._get_msg("err_no_headings_for_bookmarks"))
                 return

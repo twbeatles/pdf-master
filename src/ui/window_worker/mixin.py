@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .lifecycle import (
     _cleanup_cancelled_worker,
+    _enqueue_pending_worker,
     _finalize_worker,
     _on_progress_update,
     _on_worker_cancelled,
@@ -20,6 +21,7 @@ class MainWindowWorkerMixin(MainWindowHost):
     _cleanup_cancelled_worker = _cleanup_cancelled_worker
     set_ui_busy = set_ui_busy
     _finalize_worker = _finalize_worker
+    _enqueue_pending_worker = _enqueue_pending_worker
     _run_pending_worker = _run_pending_worker
     _reset_progress_if_idle = _reset_progress_if_idle
     _prepare_preview_for_same_path_output = _prepare_preview_for_same_path_output

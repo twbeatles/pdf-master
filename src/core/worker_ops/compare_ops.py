@@ -161,14 +161,28 @@ class WorkerCompareOpsMixin(WorkerHost):
 
                 visual_ratio = 0.0
                 visual_diff = False
+                visual_error: str | None = None
                 if do_visual:
                     try:
                         visual_ratio = _pixel_diff_ratio(page1, page2)
                         visual_diff = visual_ratio > visual_threshold
                     except Exception as exc:
-                        logger.debug("visual compare failed page %s: %s", index + 1, exc)
-                        visual_ratio = 0.0
-                        visual_diff = False
+                        logger.warning("visual compare failed page %s: %s", index + 1, exc)
+                        visual_error = str(exc)[:160]
+
+                if visual_error is not None:
+                    results.append(
+                        {
+                            "page": index + 1,
+                            "status": "visual_error",
+                            "added": 0,
+                            "deleted": 0,
+                            "modified": 0,
+                            "samples": [f"visual_error={visual_error}"],
+                            "visual_ratio": 0.0,
+                        }
+                    )
+                    continue
 
                 if do_text and not do_visual and text_same:
                     continue
@@ -337,33 +351,60 @@ class WorkerCompareOpsMixin(WorkerHost):
                 finally:
                     diff_doc.close()
 
-            report_lines = ["# PDF 비교 결과", "", f"파일1: {os.path.basename(file_path1)}", f"파일2: {os.path.basename(file_path2)}", ""]
+            report_lines = [
+                f"# {self._get_msg('compare_report_title')}",
+                "",
+                f"{self._get_msg('compare_report_file1')}: {os.path.basename(file_path1)}",
+                f"{self._get_msg('compare_report_file2')}: {os.path.basename(file_path2)}",
+                "",
+            ]
             if results:
                 for result in results:
                     page_number = result["page"]
                     status = result["status"]
-                    report_lines.append(f"## 페이지 {page_number}")
+                    report_lines.append(f"## {self._get_msg('compare_report_page', page_number)}")
                     if status == "missing_file1":
-                        report_lines.append("- 파일1에 해당 페이지가 없습니다.")
+                        report_lines.append(f"- {self._get_msg('compare_report_missing_file1')}")
                     elif status == "missing_file2":
-                        report_lines.append("- 파일2에 해당 페이지가 없습니다.")
-                    else:
-                        report_lines.append(f"- 추가: {result['added']}줄")
-                        report_lines.append(f"- 삭제: {result['deleted']}줄")
-                        report_lines.append(f"- 변경: {result['modified']}줄")
+                        report_lines.append(f"- {self._get_msg('compare_report_missing_file2')}")
+                    elif status == "visual_error":
+                        report_lines.append(f"- {self._get_msg('compare_report_visual_error')}")
                         for sample in result.get("samples", []):
-                            report_lines.append(f"- 예시: {sample}")
+                            report_lines.append(f"- {self._get_msg('compare_report_sample', sample)}")
+                    elif status == "visual_diff":
+                        report_lines.append(f"- {self._get_msg('compare_report_visual_diff')}")
+                        for sample in result.get("samples", []):
+                            report_lines.append(f"- {self._get_msg('compare_report_sample', sample)}")
+                    else:
+                        report_lines.append(
+                            f"- {self._get_msg('compare_report_added', result.get('added', 0))}"
+                        )
+                        report_lines.append(
+                            f"- {self._get_msg('compare_report_deleted', result.get('deleted', 0))}"
+                        )
+                        report_lines.append(
+                            f"- {self._get_msg('compare_report_modified', result.get('modified', 0))}"
+                        )
+                        for sample in result.get("samples", []):
+                            report_lines.append(f"- {self._get_msg('compare_report_sample', sample)}")
                     report_lines.append("")
             else:
-                report_lines.append("두 파일의 텍스트 내용이 동일합니다.")
+                report_lines.append(self._get_msg("compare_report_identical"))
             if visual_diff_path:
-                report_lines.extend(["", f"- 시각 비교 PDF: {os.path.basename(visual_diff_path)}"])
+                report_lines.extend(
+                    [
+                        "",
+                        f"- {self._get_msg('compare_report_visual_path', os.path.basename(visual_diff_path))}",
+                    ]
+                )
             report_lines.append("")
             self._atomic_text_save(output_path, "\n".join(report_lines))
 
-            diff_count = sum(1 for result in results if result["status"] != "same")
+            visual_error_count = sum(1 for result in results if result.get("status") == "visual_error")
+            diff_count = sum(1 for result in results if result.get("status") not in {"same", "visual_error"})
             self._set_result_payload(
                 diff_count=diff_count,
+                visual_error_count=visual_error_count,
                 results=results,
                 report_path=output_path,
                 visual_diff_path=visual_diff_path or "",

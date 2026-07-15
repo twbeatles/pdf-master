@@ -59,6 +59,12 @@ class AIGenerationMixin:
         )
         return any(token in text for token in allow_tokens) and not any(token in text for token in deny_tokens)
 
+    @staticmethod
+    def _run_cancel_check(cancel_check: Callable[[], None] | None) -> None:
+        """작업 취소 콜백 실행 (예외는 그대로 전파)."""
+        if cancel_check is not None:
+            cancel_check()
+
     def _generate_structured_payload_from_extracted_text(
         self,
         *,
@@ -68,26 +74,39 @@ class AIGenerationMixin:
         partial_callback: Callable[[str], None] | None = None,
         fallback_max_pages: int | None = None,
         upload_error: Exception | None = None,
+        cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
+        self._run_cancel_check(cancel_check)
         extracted_text, meta = self._extract_text_with_meta(pdf_path, max_pages=fallback_max_pages)
         if not extracted_text.strip():
             raise RuntimeError(f"PDF text extraction failed after File API upload failure: {upload_error}")
         contents = [prompt, extracted_text]
+        self._run_cancel_check(cancel_check)
         if partial_callback is not None:
             payload = self._stream_generate_content(
                 contents=contents,
                 schema=schema,
                 partial_callback=partial_callback,
+                cancel_check=cancel_check,
             )
         else:
-            payload = self._generate_content(contents=contents, schema=schema)
+            payload = self._generate_content(
+                contents=contents,
+                schema=schema,
+                cancel_check=cancel_check,
+            )
         payload["meta"] = meta
         return payload
 
     @retry_with_backoff()
-    def _upload_pdf_file(self, pdf_path: str) -> Any:
+    def _upload_pdf_file(
+        self,
+        pdf_path: str,
+        cancel_check: Callable[[], None] | None = None,
+    ) -> Any:
         if not self.is_available or self._client is None:
             raise RuntimeError("AI service not available")
+        self._run_cancel_check(cancel_check)
         cache_key = self._make_upload_cache_key(pdf_path)
         cached = self._get_cached_uploaded_file(cache_key)
         if cached is not None:
@@ -95,7 +114,9 @@ class AIGenerationMixin:
         files_api = getattr(self._client, "files", None)
         if files_api is None or not hasattr(files_api, "upload"):
             raise RuntimeError("google-genai client does not expose File API upload")
+        self._run_cancel_check(cancel_check)
         uploaded = files_api.upload(file=pdf_path)
+        self._run_cancel_check(cancel_check)
         self._put_cached_uploaded_file(cache_key, uploaded)
         return uploaded
 
@@ -105,10 +126,12 @@ class AIGenerationMixin:
         contents: list[Any],
         schema: dict[str, Any],
         partial_callback: Callable[[str], None] | None = None,
+        cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         if self._client is None:
             raise RuntimeError("Gemini client is not configured")
 
+        self._run_cancel_check(cancel_check)
         config = self._build_generate_config(schema)
         chunks: list[str] = []
         for chunk in self._client.models.generate_content_stream(
@@ -116,11 +139,13 @@ class AIGenerationMixin:
             contents=contents,
             config=config,
         ):
+            self._run_cancel_check(cancel_check)
             text = _response_text(chunk)
             if text:
                 chunks.append(text)
                 if partial_callback is not None:
                     partial_callback(text)
+        self._run_cancel_check(cancel_check)
         raw_text = "".join(chunks)
         return self._parse_structured_response(None, raw_text, schema)
 
@@ -130,15 +155,18 @@ class AIGenerationMixin:
         *,
         contents: list[Any],
         schema: dict[str, Any],
+        cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         if self._client is None:
             raise RuntimeError("Gemini client is not configured")
+        self._run_cancel_check(cancel_check)
         config = self._build_generate_config(schema)
         response = self._client.models.generate_content(
             model=self._model,
             contents=contents,
             config=config,
         )
+        self._run_cancel_check(cancel_check)
         return self._parse_structured_response(response, _response_text(response), schema)
 
     def _generate_structured_payload(
@@ -149,10 +177,12 @@ class AIGenerationMixin:
         schema: dict[str, Any],
         partial_callback: Callable[[str], None] | None = None,
         fallback_max_pages: int | None = None,
+        cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         try:
-            uploaded_file = self._upload_pdf_file(pdf_path)
+            uploaded_file = self._upload_pdf_file(pdf_path, cancel_check=cancel_check)
         except Exception as exc:
+            # 취소·인증 오류 등은 File API fallback 대상이 아님
             if not self._should_fallback_from_file_api(exc):
                 raise
             logger.warning("Gemini File API upload failed, falling back to local text extraction: %s", exc)
@@ -163,6 +193,7 @@ class AIGenerationMixin:
                 partial_callback=partial_callback,
                 fallback_max_pages=fallback_max_pages,
                 upload_error=exc,
+                cancel_check=cancel_check,
             )
 
         contents = [prompt, uploaded_file]
@@ -171,9 +202,14 @@ class AIGenerationMixin:
                 contents=contents,
                 schema=schema,
                 partial_callback=partial_callback,
+                cancel_check=cancel_check,
             )
         else:
-            payload = self._generate_content(contents=contents, schema=schema)
+            payload = self._generate_content(
+                contents=contents,
+                schema=schema,
+                cancel_check=cancel_check,
+            )
         payload["meta"] = self._build_result_meta(
             source="file_api",
             page_focus_limit=fallback_max_pages,

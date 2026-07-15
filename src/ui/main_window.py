@@ -219,6 +219,8 @@ class PDFMasterApp(
         if not _shutdown_worker_for_close(self, self.worker):
             a0.ignore()
             return
+        # 종료 시 대기 큐 폐기 (실행되지 않은 요청은 무효)
+        self._pending_workers = []
 
         # 2. 미리보기 문서 리소스 정리
         if hasattr(self, "_unwatch_preview_file"):

@@ -267,7 +267,7 @@ class WorkerRuntimeMixin(WorkerHost):
                 if not self._cancel_requested:
                     logger.info("Task completed: %s", self.mode)
             else:
-                error_msg = f"Unknown task: {self.mode}"
+                error_msg = self._get_msg("err_unknown_task", self.mode)
                 logger.error(error_msg)
                 self.error_signal.emit(error_msg)
         except Exception as exc:

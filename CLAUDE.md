@@ -529,7 +529,7 @@ class ZoomablePreviewWidget(QWidget):
 - 검증 환경 준비: `pip install -e .[dev]`
 - 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - `python -m pyright` -> `0 errors`
-- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 211 collected / 210 passed / 1 opt-in Gemini smoke skipped
+- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 219 collected / 218 passed / 1 opt-in Gemini smoke skipped
 - `python -m build`
 - `python -m PyInstaller pdf_master.spec --clean`
 - `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1` -> clean `PYTHONPATH` PyInstaller + EXE `--smoke`
@@ -626,13 +626,19 @@ class ZoomablePreviewWidget(QWidget):
   - README/가이드/spec/감사 문서/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest -q`: 211 collected / 210 passed / 1 opt-in Gemini smoke skipped
+- 현재 워크트리 기준 `python -m pytest -q`: 219 collected / 218 passed / 1 opt-in Gemini smoke skipped
 
 ### v4.5.6 PyMuPDF deep-util tests (2026-07-14)
 - `tests/test_worker_deep_compress.py`
   - 이미지 다운샘플 압축 / 프로필 옵션 / 배치 compress 검증
 - `tests/test_worker_pymupdf_extras.py`
   - blank/dedupe/bookmark split/auto TOC/sanitize/n-up/crop content/redact area/flatten/SVG/visual compare 검증
+
+### v4.5.6 PROJECT_AUDIT follow-up tests (2026-07-15)
+- `tests/test_ai_ops_cancel_and_encrypted.py`
+  - AI cancel 재전파, 암호화 PDF passwords unlock, stream cancel_check
+- `tests/test_audit_followup_stability.py`
+  - blank-page 렌더 실패 유지, visual_error, set_bookmarks 검증, pending queue 상한
 
 ### v4.5.5 audit follow-up tests (2026-06-24)
 - `tests/test_worker_batch_unknown_operation.py`
@@ -732,9 +738,20 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-14)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-15)*
 
 ---
+
+## 2026-07-15 PROJECT_AUDIT Follow-up Addendum
+
+- AI Worker: `cancel_check` 전 경로 전파, 취소 시 `CancelledError` 재전파로 `finished_signal` 차단.
+- 암호화 PDF AI: preview `passwords` 인증 후 임시 비암호화 PDF로 File API/텍스트 추출, 완료 시 임시 파일 삭제.
+- `remove_blank_pages`: pixmap 렌더 실패 시 빈 페이지로 간주하지 않음(페이지 유지).
+- `compare_pdfs` visual 예외 → `visual_error` status + `visual_error_count` payload/요약 UI.
+- `redact_area` UI 확인 다이얼로그; batch watermark/rotate 페이지 cancel; auto_bookmarks 스캔 cancel.
+- batch encrypt: `_resolve_permissions` + optional owner/user kwargs; extract 리포트 i18n; pending queue 상한 8.
+- 회귀: `tests/test_ai_ops_cancel_and_encrypted.py`, `tests/test_audit_followup_stability.py`.
+- 검증 기준선: `python -m pytest -q` → 219 collected / 218 passed / 1 opt-in Gemini smoke skipped.
 
 ## 2026-07-14 PyMuPDF Deep-Util Addendum
 

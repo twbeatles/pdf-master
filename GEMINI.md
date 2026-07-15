@@ -388,7 +388,7 @@ pip install -e .[build]   # 빌드 도구
 python -m pyright          # 0 errors 목표
 
 # 테스트
-python -m pytest -q        # 192 collected / 191 passed / 1 opt-in skipped
+python -m pytest -q        # 219 collected / 218 passed / 1 opt-in Gemini smoke skipped
 
 # 패키지 빌드
 python -m build
@@ -410,4 +410,13 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-14)*
+## 2026-07-15 감사 후속 (요약)
+
+- AI: `cancel_check` 전파, 암호화 PDF는 preview passwords로 임시 복호 후 처리
+- blank-page / visual compare / redact_area 확인 / batch permissions·cancel 보강
+- 상세: `PROJECT_AUDIT.md`, `CLAUDE.md` 2026-07-15 addendum
+- 검증: `python -m pytest -q` → 219 collected / 218 passed / 1 opt-in skip
+
+---
+
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-15)*

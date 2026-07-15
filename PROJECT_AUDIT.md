@@ -1,245 +1,230 @@
 # Project Audit
 
-> 감사 기준일: 2026-06-24  
-> 구현 완료일: 2026-06-24  
-> 대상 버전: PDF Master v4.5.5 (감사 시점; 현재 코드 라인은 v4.5.6)  
-
-> 분석 수단: `README.md`, `CLAUDE.md`, CodeGraph MCP, 보조 grep·파일 열람, `python -m pytest -q`
-
----
-
-## 구현 상태 (2026-06-24)
-
-본 리포트 **1~2단계 권장 수정**은 코드에 반영되었습니다.
-
-| 우선순위 | 이슈 | 상태 |
-|----------|------|------|
-| High | 배치 미지원 `operation` 묵시 복사 | **해결** — `batch_ops.py` + `preflight.py` fail-fast |
-| Medium | `remove_annotations` 취소 체크 없음 | **해결** — page loop `_check_cancelled()` |
-| Medium | `set_ui_busy` 범위 제한 | **해결** — 단축키 + 파일 열기 메뉴 포함 |
-| Medium | `run_worker` 500ms `wait` 경합 | **해결** — 3s wait + running 시 큐잉 |
-| Medium | 단일 `_pending_worker` 덮어쓰기 | **해결** — `_pending_workers` FIFO 큐 |
-| Medium | `compare_pdfs` 텍스트-only 한계 | **문서화/스냅샷** — OCR은 3단계(미구현) |
-| Low | `global_exception_handler` i18n | **해결** — `tm.get()` 적용 |
-| Low | 배치 encrypt owner/user 동일 비밀번호 | **의도 유지** — `protect()`와 동일 계약 |
-
-**3단계(미착수):** Compare OCR/렌더링 옵션, Worker cancel domain checklist 전수 점검, 암호화 PDF AI password UI 문서화.
-
-테스트 기준선: `python -m pytest -q` → **192 collected / 191 passed / 1 skipped(opt-in Gemini smoke)**.
+> 감사 기준일: **2026-07-15**  
+> 대상 버전: **PDF Master v4.5.6**  
+> 범위: 기능 구현 관점 (버그·검증·상태/비동기·보안·문서 정합·테스트 공백)  
+> 분석 수단: `README.md`, `CLAUDE.md`, CodeGraph MCP/`codegraph explore`, 보조 파일 열람·grep, 테스트 수집 카운트  
+>
+> **후속 구현 (2026-07-15):** 본 리포트 1~3단계 권장 항목 중 코드로 실현 가능한 항목을 반영함.  
+> OCR 엔진·미리보기 드래그 교정 UX는 제품 설계 후 별도 착수(의도적 미구현 유지).
 
 ---
 
 ## 1. Executive Summary
 
-PDF Master v4.5.5는 **PyQt6 UI + WorkerThread 백그라운드 처리 + domain별 `worker_ops`** 구조가 잘 정리된 데스크톱 PDF 편집기입니다. v4.5.5 감사 후속(2026-05-13~22)과 2026-06-24 본 리포트 후속 구현으로 preflight 계약, atomic save, same-path preview 복원, Undo 스냅샷, Worker 큐/취소, 배치 fail-fast 등이 보강되어 **전체 위험도는 Low** 로 평가합니다.
+PDF Master v4.5.6은 **PyQt6 UI + `WorkerThread` 백그라운드 처리 + domain별 `worker_ops` + `worker_runtime` 계약(preflight/dispatch/atomic I/O)** 구조가 잘 정리된 데스크톱 PDF 편집기입니다. v4.5.5~4.5.6 안정화와 **2026-07-15 감사 후속 구현**으로 **전체 위험도는 Low**에 가깝게 낮아졌습니다.
 
-2026-06-24 감사 시점의 잔여 리스크였던 배치 묵시 복사, Worker 큐 덮어쓰기, `set_ui_busy` 범위, `remove_annotations` 취소, 빈 `search_term` 허용, 전역 예외 i18n은 **구현 완료**되었습니다.
+### 구현 상태 (2026-07-15 후속)
 
-남은 제품/구조 과제는 다음에 집중됩니다.
+| 우선순위 | 이슈 | 상태 |
+|----------|------|------|
+| High | AI 취소 무시 / finished 시그널 | **해결** — `cancel_check` + stream/handler re-raise |
+| High | 암호화 PDF AI 무조건 거부 | **해결** — preview `passwords`로 임시 복호 경로 |
+| Medium | blank-page 렌더 실패 오판 | **해결** — 예외 시 페이지 유지 |
+| Medium | visual compare silent fail | **해결** — `visual_error` + `visual_error_count` |
+| Medium | redact_area 확인 없음 | **해결** — 확인 다이얼로그 |
+| Low | 문서 기준선 / Unknown task i18n / batch permissions | **해결** |
 
-1. **기능 한계 문서화** — 텍스트 기반 비교, OCR 미구현 (`test_compare_scanned_pdf_limitation.py`로 한계 스냅샷 유지)
-2. **3단계 구조 개선** — Compare OCR/렌더링, Worker cancel checklist 통일, 암호화 PDF AI password UI 계약
-3. **추정 gap 모니터링** — 썸네일 로더 취소, `chat_histories` 저장 경합, WSL/Windows CodeGraph lock
+**테스트 기준선:** `python -m pytest -q` → **219 collected / 218 passed / 1 opt-in Gemini smoke skipped**.
 
-테스트 기준선은 `python -m pytest -q` → **192 collected / 191 passed / 1 skipped(opt-in Gemini smoke)** 입니다.
+**잔여(제품 로드맵):** OCR 엔진, 미리보기 드래그 교정 UX, compare 리포트 UI 확장.
 
 ---
 
 ## 2. Project Understanding
 
-### 2.1 프로젝트 목적
+### 2.1 목적
 
-- **올인원 PDF 편집 데스크톱 앱** (병합, 변환, 페이지 편집, 보안, 주석, 추출, AI 요약/채팅/키워드)
-- Python 3.10+, PyQt6, PyMuPDF(fitz), optional Gemini (`google-genai`)
+- 올인원 PDF 편집 데스크톱 앱: 병합/변환/페이지 편집/보안/주석/추출/배치/AI(Gemini)
+- 스택: Python 3.10+, PyQt6, PyMuPDF(`fitz`), optional `google-genai`, PyInstaller
 
-### 2.2 아키텍처 개요
+### 2.2 아키텍처 (CodeGraph + 문서 교차)
 
 ```
 main.py
+  ├─ setup_logging / global_exception_handler (i18n)
   └─ PDFMasterApp (믹스인 조립)
-       ├─ window_core / window_preview / window_undo
+       ├─ window_core / window_preview / window_undo / window_worker
        ├─ tabs_basic / tabs_advanced / tabs_ai
        └─ MainWindowWorkerMixin.run_worker()
+            ├─ busy 가드 + _pending_workers FIFO
+            ├─ same-path preview 해제 / password 주입
             └─ WorkerThread (QThread)
-                 ├─ WorkerRuntimeMixin.run()
-                 │    ├─ _normalize_mode_kwargs()
-                 │    ├─ _preflight_inputs()  ← dispatch OperationSpec 계약
-                 │    └─ handler() in worker_ops/*
-                 └─ signals → on_success / on_fail / on_cancelled
+                 └─ WorkerRuntimeMixin.run()
+                      ├─ _normalize_mode_kwargs()
+                      ├─ _preflight_inputs()  ← OperationSpec + PDF header/size
+                      └─ handler in worker_ops/*
+                           └─ signals → on_success / on_fail / on_cancelled
 ```
 
-### 2.3 CodeGraph 기반 핵심 실행 흐름
+### 2.3 CodeGraph 기반 핵심 호출 관계
 
-| 단계 | 심볼 | 파일 | 설명 |
+| 단계 | 심볼 | 위치 | 비고 |
 |------|------|------|------|
-| 진입 | `main()` | `main.py` | 로깅, HiDPI, `--smoke`, `PDFMasterApp` 실행 |
-| UI 액션 | `run_worker()` | `src/ui/main_window_worker.py:38` | 58+ 탭 액션에서 호출 (CodeGraph callers) |
-| 스레드 | `WorkerThread.run()` | `src/core/worker.py:45` | `WorkerRuntimeMixin.run()` 위임 |
-| 선검증 | `preflight_inputs()` | `src/core/worker_runtime/preflight.py:126` | PDF/header/크기, `required_kwargs`, `required_any_kwargs` |
-| 디스패치 | `OPERATION_SPECS` | `src/core/worker_runtime/dispatch.py` | 50+ mode 계약(undo, cancel_cleanup, output_kind) |
-| 완료 | `on_success/on_fail/on_cancelled` | `src/ui/main_window_worker.py` | Undo 등록, preview 복원, pending worker 재실행 |
-| 종료 | `_shutdown_worker_for_close()` | `src/ui/main_window.py:38` | cooperative cancel → 3s wait → 강제 종료 확인 |
+| 진입 | `main()` | `main.py` | HiDPI, `--smoke`, `PDFMasterApp` |
+| UI 게이트 | `run_worker` | `src/ui/main_window_worker.py` | CodeGraph: 다수 탭 액션 caller |
+| 스레드 | `WorkerThread.run` | `src/core/worker.py` | Runtime mixin 위임 |
+| 선검증 | `preflight_inputs` | `src/core/worker_runtime/preflight.py` | batch op 화이트리스트, search_term, required_* |
+| 디스패치 | `OPERATION_SPECS` | `src/core/worker_runtime/dispatch.py` | 50+ mode 계약 |
+| PDF open | `_open_pdf_document` | `src/core/worker_runtime/mixin.py` | `passwords` 맵 + authenticate |
+| 완료/실패 | `on_success` / `on_fail` / `on_cancelled` | `main_window_worker.py` | Undo 스냅샷, preview 복원, pending 재실행 |
+| 종료 | `_shutdown_worker_for_close` | `main_window.py` | cancel → 3s wait → 강제 종료 확인 |
 
-### 2.4 주요 안정화 메커니즘 (문서·코드 일치)
+### 2.4 안정화 메커니즘 (문서 ↔ 코드 대체로 일치)
 
-- **Same-path 저장**: `_prepare_preview_for_same_path_output` → worker → `_restore_preview_after_same_path_output` (`src/ui/window_worker/same_path.py`)
-- **Undo**: before/after 백업 스냅샷 (`undo_manager.py` + `on_success` 등록)
-- **취소 롤백**: `created_output_paths` + `cancel_cleanup` 정책 (`src/ui/window_worker/lifecycle.py`)
-- **Atomic I/O**: `_atomic_pdf_save` / `_atomic_text_save` / `_atomic_binary_save` (`src/core/worker_runtime/io.py`)
-- **AI 캐시/세션**: `AICacheMixin` — upload cache, chat session, mtime 기반 키 (`src/core/ai/cache.py`, `session.py`)
+- Same-path 저장 전 preview 해제 + 완료 후 복원
+- Undo: `before_backup_path` / `after_backup_path` 스냅샷
+- 취소 롤백: `created_output_paths` + `OperationSpec.cancel_cleanup`
+- Atomic I/O: `_atomic_pdf_save` / text / binary
+- AI 클래스 캐시: upload/text/chat session은 **클래스 변수**로 인스턴스 간 공유
+- 첨부 추출: 파일명 정규화 + `output_dir` 하위 강제 (`io.py`)
 
-### 2.5 README/CLAUDE.md vs 실제 구현 정합성
+### 2.5 README / CLAUDE.md vs 구현 정합성
 
 | 문서 주장 | 실제 | 판정 |
 |-----------|------|------|
-| 미리보기는 `zoomable_preview.py` 경유 | `window_preview/*` + `ZoomablePreviewWidget` | 일치 |
-| Worker preflight + `pdf_validation.py` 공유 | `preflight.py` → `validate_pdf_file()` | 일치 |
-| Undo 스냅샷 복원 | `on_success`에서 backup push, `_restore_from_backup` | 일치 |
-| 192 tests / 191 passed | 로컬 `pytest -q` 동일 (1 Gemini smoke skip) | 일치 |
-| OCR / 풍부한 compare UI | 코드·로드맵에 “미구현” 명시 | 일치 (의도적 미구현) |
-| 언어 변경 후 재시작 필요 | `window_core/menu.py` 재시작 안내 유지 | 일치 |
+| v4.5.6 deep compress / cleanup_ops / visual compare / redact_area 등 | `transform_ops`, `cleanup_ops`, `compare_ops`, UI 탭 빌더 존재 | **일치** |
+| 미리보기 `zoomable_preview` / Qt 인쇄 | preview 위젯 + 인쇄 경로 | **일치** |
+| Worker preflight + shared `pdf_validation` | `preflight.py` → `validate_pdf_file` | **일치** |
+| 배치 미지원 op fail-fast | `batch_ops` + preflight 화이트리스트 | **일치** |
+| `_pending_workers` FIFO / busy 단축키 비활성 | `lifecycle.set_ui_busy`, `run_worker` | **일치** |
+| pytest 219 / 218 pass / 1 skip | 전체 suite 통과 확인 (2026-07-15 후속 후) | **일치** |
+| OCR 미구현 | 코드/로드맵에 후속 과제 | **일치 (의도적)** |
+| GEMINI.md 테스트 기준선 | README와 동일 219 기준으로 동기화 | **일치** |
 
 ---
 
 ## 3. High-Risk Issues
 
-### 3.1 배치 모드 미지원 operation 묵시 폴백
+> **참고:** 아래 항목은 감사 시점의 발견 기록입니다. 2026-07-15 후속으로 **해결된 항목**은 Executive Summary 표와 §7.1을 우선 참고하세요.
 
-* **위치:** `src/core/worker_ops/batch_ops.py` / `WorkerBatchOpsMixin.batch()`
-* **문제:** `operation`이 `compress|watermark|encrypt|rotate`가 아니면 `else` 분기에서 **원본을 그대로 복사 저장**합니다. 오류 없이 “성공”으로 집계됩니다.
-* **영향:** 잘못된 배치 설정 시 사용자는 작업이 적용됐다고 믿지만 실제로는 단순 복사본만 생성됩니다.
+### 3.1 AI Worker 취소가 완료 경로를 막지 못함
+
+* **위치:** `src/core/worker_ops/ai_ops.py` (`ai_summarize` / `ai_ask_question` / `ai_extract_keywords`), `src/core/ai/generation.py` (`_stream_generate_content`), `src/core/worker_runtime/mixin.py` (`run`)
+* **문제:**
+  1. AI 핸들러는 `_check_cancelled()`를 호출하지 않는다.
+  2. 스트리밍 루프(`generate_content_stream`)에도 취소 체크가 없다.
+  3. 취소 후에도 핸들러가 끝까지 가면 `finished_signal.emit(...)`이 그대로 호출된다. `run()`은 취소 시 로그만 생략할 뿐 finished를 막지 않는다.
+* **영향:** 사용자가 오버레이에서 취소해도 네트워크/토큰 비용이 계속 들고, 완료 후 **성공 UI(요약/채팅 반영)** 가 뜰 수 있다. 취소 UX와 실제 상태가 어긋난다.
 * **근거:**
-
-```86:88:src/core/worker_ops/batch_ops.py
-                else:
-                    self._atomic_pdf_save(doc, out_path)
-                success_count += 1
-```
-
-* **권장 수정 방향:** `else`에서 `error_signal` 또는 파일별 `failed_files`로 처리; preflight에서 `operation` 화이트리스트 검증 추가.
+  - `ai_ops.py` 전 구간: cancel 체크 없음, 성공 시 무조건 `finished_signal.emit`
+  - `generation.py` 114–123: stream chunk 루프에 중단 조건 없음
+  - `WorkerThread.cancel()`은 `_cancel_requested`만 세팅
+* **권장 수정 방향:**
+  - stream/generate 사이에 cancel 콜백 또는 `_check_cancelled()` 주입
+  - AI 핸들러 종료 직전 cancel이면 `CancelledError` 또는 `cancelled_signal` 경로
+  - (선택) SDK 요청 타임아웃/abort 연동
 * **우선순위:** **High**
 
 ---
 
-### 3.2 `remove_annotations` 취소 응답성 부재
+### 3.2 암호화 PDF AI 거부 — preview password 계약 미사용
 
-* **위치:** `src/core/worker_ops/annotation_ops.py` / `WorkerAnnotationOpsMixin.remove_annotations()`
-* **문제:** 페이지별 주석 삭제 루프에 `_check_cancelled()`가 없습니다. 대용량 주석 문서에서 취소가 늦게 반영됩니다.
-* **영향:** 취소 후에도 CPU 시간 소모, 완료 직전 취소 시 출력 파일이 이미 저장될 수 있음.
+* **위치:** `src/core/worker_ops/ai_ops.py` (세 모드 모두), `src/core/worker_runtime/preflight.py` `is_pdf_encrypted`, `src/ui/window_worker/undo.py` `_augment_worker_passwords_from_preview`
+* **문제:** AI 핸들러는 `_is_pdf_encrypted(file_path)`가 True이면 **비밀번호 보유 여부와 무관하게** 즉시 오류로 종료한다. 반면 일반 Worker 경로는 `_open_pdf_document` + `passwords` 맵으로 preview 세션 암호를 재사용한다. UI도 `run_worker`에서 password를 kwargs에 주입한다.
+* **영향:** 미리보기에서 연 암호화 PDF라도 요약/채팅/키워드가 불가. README “암호화 PDF는 일부 작업에서 복호화 필요”와 부분 일치하나, **이미 인증된 세션을 버리는 점**은 기능 gap.
+* **근거:**
+  - `ai_ops.py` 28–30, 87–89, 133–135: encrypted early return
+  - `is_pdf_encrypted`: `doc.is_encrypted`만 확인 (authenticate 없음)
+  - `_augment_worker_passwords_from_preview`: passwords 주입은 되지만 AI가 사용하지 않음
+* **권장 수정 방향:**
+  - AI 전 단계에서 `_open_pdf_document` 또는 authenticate 후 임시 복호/추출 경로
+  - File API 업로드 전 암호 해제된 임시 파일 사용 시 삭제 보장
+  - UI에 “암호 PDF는 미리보기 인증 후 AI 가능” 문구 또는 실패 메시지 개선
+* **우선순위:** **High**
+
+---
+
+### 3.3 `remove_blank_pages` — 렌더 실패를 빈 페이지로 취급
+
+* **위치:** `src/core/worker_ops/cleanup_ops.py` / `_is_blank_page`
+* **문제:** 텍스트·이미지·드로잉이 없을 때 저해상도 pixmap으로 판별하는데, **예외 시 `return True`(빈 페이지)** 이다. 손상 페이지·렌더 실패·메모리 압박 시 정상 페이지가 삭제 후보가 될 수 있다.
+* **영향:** 대용량/스캔/특수 콘텐츠 PDF에서 의도치 않은 페이지 손실 위험.
 * **근거:**
 
-```176:182:src/core/worker_ops/annotation_ops.py
-            for page in doc:
-                annot = page.first_annot
-                while annot:
-                    next_annot = annot.next
-                    page.delete_annot(annot)
+```python
+# cleanup_ops.py _is_blank_page
+try:
+    pix = page.get_pixmap(...)
+    ...
+except Exception:
+    return True
 ```
 
-  (`get_pdf_info`, `search_text`, `extract_tables`, `list_annotations`는 2026-05-22에 취소 체크가 추가됨 — `remove_annotations`는 제외)
-* **권장 수정 방향:** 페이지 루프·내부 annot 루프 시작 시 `_check_cancelled()` 호출; 회귀 테스트 추가.
+* **권장 수정 방향:** 예외 시 **False(유지)** 또는 “판정 불가”로 keep; 옵션으로 공격적/보수적 모드 분리; 회귀 테스트(렌더 mock 실패 → 페이지 유지)
+* **우선순위:** **Medium** (데이터 손실 가능성이라 상위에 가깝게 취급 권장)
+
+---
+
+### 3.4 visual compare 예외를 “차이 없음”으로 흡수
+
+* **위치:** `src/core/worker_ops/compare_ops.py` / `_legacy_compare_pdfs` 내 `_pixel_diff_ratio` 호출부
+* **문제:** visual 비교 중 예외가 나면 `logger.debug` 후 `visual_ratio=0`, `visual_diff=False`로 둔다. 페이지가 실제로 달라도 리포트에 안 잡힐 수 있다.
+* **영향:** 스캔본/이미지 PDF 비교의 **신뢰성 false negative**. 보안·교정 워크플로에서 위험.
+* **근거:**
+
+```python
+# compare_ops.py ~164-171
+except Exception as exc:
+    logger.debug("visual compare failed page %s: %s", index + 1, exc)
+    visual_ratio = 0.0
+    visual_diff = False
+```
+
+* **권장 수정 방향:** 페이지 status를 `visual_error`로 기록; 요약 다이얼로그에 실패 페이지 수 표시; 전체 실패 시 warning 완료 메시지
 * **우선순위:** **Medium**
 
 ---
 
-### 3.3 `set_ui_busy` 적용 범위가 제한적
+### 3.5 영역 교정(`redact_area`) — 파괴적 작업인데 확인 단계 없음
 
-* **위치:** `src/ui/window_worker/lifecycle.py` / `set_ui_busy()`
-* **문제:** busy 상태에서 **`tabs`와 `btn_open_folder`만** 비활성화합니다. 메뉴바 단축키(`Ctrl+O`, `Ctrl+Z`), 툴바, progress overlay 외부 위젯은 그대로 동작할 수 있습니다.
-* **영향:** 작업 중 중복 `run_worker` 호출 가능성(내부적으로 `isRunning()` 가드가 있으나 UX 혼란·대기 큐 덮어쓰기 유발).
-* **근거:**
-
-```115:117:src/ui/window_worker/lifecycle.py
-def set_ui_busy(self, busy):
-    self.tabs.setEnabled(not busy)
-    self.btn_open_folder.setEnabled(not busy)
-```
-
-* **권장 수정 방향:** 메뉴 액션/단축키 일괄 disable, 또는 `run_worker` 진입 전 중앙 `WorkerGate`로 모든 액션 차단.
+* **위치:** UI `src/ui/tabs_advanced/actions_markup.py` `action_redact_area` vs `action_redact_text`
+* **문제:** `redact_text`는 경고 확인 후 실행하지만, `redact_area`는 좌표 파싱 후 바로 저장 대화상자 → Worker 실행. 교정은 영구 삭제다.
+* **영향:** 잘못된 좌표/페이지로 비가역 데이터 손실. Undo는 백업 스냅샷으로 가능하나 UX 안전장치 불균형.
+* **근거:** `action_redact_text`에 `QMessageBox.warning` 확인 있음; `action_redact_area`에는 없음
+* **권장 수정 방향:** 동일 확인 다이얼로그; (추정 개선) 미리보기 좌표 오버레이 선택 UX
 * **우선순위:** **Medium**
 
 ---
 
-### 3.4 Worker 정리 시 500ms `wait` 경합
+### 3.6 AI/장시간 작업 중 취소 외 세부 이슈 (배치 내부 루프)
 
-* **위치:** `src/ui/main_window_worker.py` / `run_worker()`
-* **문제:** 기존 worker가 `isRunning()`이면 `wait(500)` 후 `_finalize_worker()`합니다. 500ms 내 종료되지 않으면 **아직 실행 중인 스레드를 finalize** 할 수 있습니다.
-* **영향:** stale signal, 드물게 이중 완료 핸들러, 리소스 경합.
-* **근거:**
-
-```59:62:src/ui/main_window_worker.py
-        if self.worker:
-            if self.worker.isRunning():
-                self.worker.wait(500)
-            self._finalize_worker()
-```
-
-  (종료 시에는 `main_window.py`에서 3000ms + 사용자 확인 후 `terminate()` — 더 안전)
-* **권장 수정 방향:** `wait()`를 충분히 길게 하거나, 완료 시그널 기반으로만 finalize; running 중이면 큐잉만 허용.
-* **우선순위:** **Medium**
+* **위치:** `src/core/worker_ops/batch_ops.py` watermark/rotate 분기
+* **문제:** 파일 단위 `_check_cancelled()`는 있으나, 페이지 루프 내부에는 없음. 초대형 단일 PDF 배치 시 취소 지연.
+* **영향:** 응답성 저하 (기능 오류보다는 UX). compress 이미지 최적화 경로는 cancel 콜백이 있음.
+* **근거:** watermark `for page in doc:` 내부에 cancel 없음; file loop 시작에만 존재
+* **권장 수정 방향:** 페이지 루프에 `_check_cancelled()` 추가
+* **우선순위:** **Low–Medium**
 
 ---
 
-### 3.5 단일 `_pending_worker` 큐 — 마지막 요청만 보존
+### 3.7 문서 기준선 불일치 (기능 자체보다 운영 리스크)
 
-* **위치:** `src/ui/main_window_worker.py` / `run_worker()`, `_run_pending_worker()`
-* **문제:** 작업 중 “예”를 여러 번 누르면 `_pending_worker`가 **매번 덮어쓰기**됩니다. FIFO 큐가 아닙니다.
-* **영향:** 사용자가 의도한 두 번째 대기 작업이 유실될 수 있음.
-* **근거:** `self._pending_worker = {"mode": ..., ...}` 단일 dict 할당 (line 49-53); `_run_pending_worker`는 1건만 pop.
-* **권장 수정 방향:** `list` 큐로 변경하거나, 덮어쓰기 시 토스트/확인 표시.
-* **우선순위:** **Medium**
-
----
-
-### 3.6 배치 암호화 시 user/owner 동일 비밀번호
-
-* **위치:** `src/core/worker_ops/batch_ops.py` / `batch()` encrypt 분기
-* **문제:** `owner_pw`와 `user_pw`에 동일 `option`을 설정합니다. 의도적일 수 있으나, 단일 파일 `protect` UI와 권한 정책이 다를 수 있습니다.
-* **영향:** 배치 암호화 결과물의 권한 모델이 단일 protect 작업과 미묘하게 다를 수 있음.
-* **근거:**
-
-```72:80:src/core/worker_ops/batch_ops.py
-                elif operation == "encrypt" and option:
-                    perm = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
-                    self._atomic_pdf_save(
-                        doc, out_path,
-                        encryption=FITZ_PDF_ENCRYPT_AES_256,
-                        owner_pw=option, user_pw=option,
-```
-
-* **권장 수정 방향:** 단일 `protect` 모드와 동일 kwargs 계약으로 통일; 문서화.
+* **위치:** `GEMINI.md`, `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md`, 구 `PROJECT_AUDIT.md` 잔존 수치
+* **문제:** README/CLAUDE는 **211 collected**를 쓰는데 GEMINI는 **192**, 구 감사는 **179/192**가 남아 있다. `PROJECT_AUDIT.md` 자체가 “1–2단계 완료·위험도 Low”로 고정되어 v4.5.6 신규 리스크를 가린다.
+* **영향:** 신규 기여자/CI 기대치 혼선, 감사 문서 SSOT 붕괴
+* **권장 수정 방향:** 유지 문서의 pytest 기준선을 한곳(README 또는 CLAUDE) 기준으로 동기화; 구 감사는 archive 섹션으로 분리
 * **우선순위:** **Low**
 
 ---
 
-### 3.7 전역 예외 핸들러 i18n 미적용
+### 3.8 Unknown task 메시지 하드코딩 (i18n)
 
-* **위치:** `main.py` / `global_exception_handler()`
-* **문제:** 처리되지 않은 예외 메시지 박스가 **한국어 하드코딩**입니다. `language=en` 설정과 불일치합니다.
-* **영향:** 영어 UI 사용자에게 한국어 크래시 대화상자 표시.
-* **근거:**
-
-```62:66:main.py
-        QMessageBox.critical(
-            None,
-            "오류 발생",
-            f"예상치 못한 오류가 발생했습니다.\n\n{exc_value}\n\n상세 로그: {LOG_FILE}"
-        )
-```
-
-* **권장 수정 방향:** `tm.get(...)` 또는 최소 en/ko 분기.
+* **위치:** `src/core/worker_runtime/mixin.py` `run()` else 분기
+* **문제:** `error_msg = f"Unknown task: {self.mode}"` 영어 고정. 전역 예외 핸들러 i18n은 반영됨.
+* **영향:** 영어/한국어 UI 불일치 (발생 빈도는 낮음 — 레지스트리 밖 mode)
+* **권장 수정 방향:** `_get_msg("err_unknown_task", mode)`
 * **우선순위:** **Low**
 
 ---
 
-### 3.8 `compare_pdfs` — 텍스트 레이어만 비교
+### 3.9 배치 encrypt vs 단일 protect 권한 계약 차이 (의도 가능)
 
-* **위치:** `src/core/worker_ops/compare_ops.py` / `_legacy_compare_pdfs()`
-* **문제:** `page.get_text()` 문자열 diff만 수행합니다. 스캔 PDF·이미지 기반 PDF는 “동일”로 판정될 수 있습니다.
-* **영향:** 시각적으로 다른 문서가 동일하다고 보고됨 (기능적 false negative).
-* **근거:** line 118-121 text equality early-continue; OCR 미구현은 README/로드맵과 일치.
-* **권장 수정 방향:** 제품 로드맵대로 OCR/렌더링 기반 비교 옵션 추가; 현재는 UI에 “텍스트 비교” 한계 명시.
-* **우선순위:** **Medium** (제품 한계로 문서화됨, 구현 gap)
+* **위치:** `batch_ops.py` encrypt 분기 vs `security_ops.protect` + `_resolve_permissions`
+* **문제:** 배치는 owner/user 동일 비밀번호 + 고정 permission(print/copy/accessibility). 단일 protect는 UI 권한 체크박스 + owner/user 분리 가능.
+* **영향:** 배치로 만든 암호 PDF 권한 모델이 단일 작업과 다를 수 있음 (보안 정책 기대 불일치)
+* **권장 수정 방향:** 의도라면 README/툴팁 명시; 아니면 protect와 동일 kwargs 계약
+* **우선순위:** **Low** (의도 유지 가능)
 
 ---
 
@@ -249,94 +234,120 @@ def set_ui_busy(self, busy):
 
 | 항목 | 설명 |
 |------|------|
-| OCR 엔진 | README/로드맵에 후속 과제로만 존재, 코드 없음 |
-| Compare 리포트 UI 확장 | 완료 요약 다이얼로그 + optional visual diff PDF까지만 구현 |
-| Worker 직접 호출 시 빈 `search_term` | UI(`action_search_text`)는 검증하지만 Worker `search_text()`는 빈 문자열 허용 |
-| `fill_form` / `get_bookmarks` / `extract_links` | page loop 취소 체크 패턴이 extract 계열과不完全 일치 가능 (grep상 `_check_cancelled` 호출 없음) |
-| 배치 워터마크 `option` 누락 | `watermark` 분기는 `option` 없으면 아무 것도 안 하고 복사에 가까운 저장 가능 |
-| AI 암호화 PDF | `ai_ops`에서 `is_pdf_encrypted` 시 조기 종료 — preview 비밀번호를 Worker에 넘기지 않으면 AI 불가 (의도적일 수 있음) |
+| OCR | 의도적 미구현. 텍스트 없는 스캔본 추출/검색/AI fallback 품질 한계 |
+| AI cancel | 3.1 — 취소가 완료 결과를 막지 못함 |
+| AI + 암호 PDF | 3.2 — preview password 미사용 hard reject |
+| 기본 compare 모드 | UI 콤보 기본값이 text; visual은 사용자가 선택해야 함 (기능은 존재) |
+| visual 샘플링 | `_pixel_diff_ratio`가 바이트 step 샘플링 → 국소 차이 누락 가능 (한계) |
+| `auto_bookmarks` 휴리스틱 | 폰트 크기 기반; 다단/한글 제목 오탐·미탐 가능 |
+| `redact_area` UX | 수동 좌표 입력만; 미리보기 드래그 선택 없음 |
+| 추출 결과 하드코딩 한글 | `get_bookmarks`/`search_text` 출력 본문에 한국어 고정 문자열 |
+| `_pending_workers` 상한 없음 | 이론상 무한 큐 (실사용에서는 낮음) |
+| 종료 시 pending 큐 | close는 실행 중 worker만 정리; 대기 큐는 앱 종료로 소멸 (의도적일 수 있음) |
 
 ### 4.2 추정 gap
 
 | 항목 | 설명 |
 |------|------|
-| **추정** — WSL/Windows 이중 환경 | CodeGraph 주석(`directory.d.ts`)처럼 동일 워크트리에서 WSL+Windows가 `.codegraph/`를 공유하면 인덱스/데몬 lock 충돌 가능. `CODEGRAPH_DIR` 분리 필요. |
-| **추정** — 대용량 배치 취소 | 배치는 `_atomic_pdf_save`로 path 추적은 되나, 수백 파일 처리 중 취소 시 부분 성공 파일이 출력 폴더에 남음(의도된 `created_outputs` 정책이나 UX 혼란 가능). |
-| **추정** — 썸네일 로더 취소 | `ThumbnailLoaderThread`는 `_is_cancelled` 플래그만 사용, `QThread.requestInterruption` 미연동. |
-| **추정** — `chat_histories` 동시 쓰기 | 빠른 연속 AI 채팅 시 settings 저장 타이머(400ms)와의 경합으로 마지막 메시지 유실 가능성(낮음). |
+| **추정** — 썸네일 로더 | `ThumbnailLoaderThread`는 `_is_cancelled`만 사용. 대용량 PDF 전환 시 이전 배치 잔여 시그널이 잠깐 섞일 여지 (sender 가드 여부는 grid 쪽 추가 확인 필요) |
+| **추정** — settings 저장 경합 | `_save_chat_histories` 즉시 저장 vs `_schedule_settings_save` 400ms debounce가 같은 `self.settings` dict를 쓰므로, 극단적 연속 조작 시 last-write-wins |
+| **추정** — sanitize 완전성 | JS/OpenAction/일부 이름 트리 제거는 best-effort. “포렌식급 위생”은 아님 |
+| **추정** — `set_bookmarks` 입력 | 구조 검증 약함 → 잘못된 toc가 PyMuPDF 예외로 실패할 수 있음 |
+| **추정** — Linux/macOS | 앱은 Windows 중심(Segoe UI, dist exe). 소스 실행은 가능하나 인쇄/keyring/경로 케이스는 테스트 얇을 수 있음 |
 
 ---
 
 ## 5. Recommended Fix Plan
 
-### 1단계 — 즉시 수정 ✅ (2026-06-24 완료)
+### 1단계 — 즉시 수정 (기능 신뢰성)
 
-1. ~~`batch()` unknown `operation` 묵시 복사 제거~~ → `batch_ops.py` + `preflight.py`
-2. ~~`remove_annotations` 취소 체크 추가 + 테스트~~ → `annotation_ops.py` + `test_worker_remove_annotations_cancel.py`
-3. ~~배치 `watermark`/`encrypt`에서 `option` 누락 시 명시적 실패 처리~~ → `test_worker_batch_missing_option.py`
+1. **AI 취소 계약:** stream/generate 중 cancel 체크 + 취소 시 `finished_signal` 금지 / `cancelled_signal` 경로
+2. **AI 암호 PDF:** preview `passwords`로 open/authenticate 후 처리; 실패 메시지로 “미리보기에서 먼저 잠금 해제” 안내
+3. **`_is_blank_page` 예외 시 유지(False):** 데이터 손실 방지 + 단위 테스트
 
-### 2단계 — 안정성 개선 ✅ (2026-06-24 완료)
+### 2단계 — 안정성 개선
 
-1. ~~`set_ui_busy` 범위 확대(메뉴/단축키/핵심 액션)~~ → `lifecycle.py`, `shortcuts.py`, `menu.py`
-2. ~~`run_worker`의 `wait(500)` → 시그널 기반 정리 또는 대기 큐~~ → 3s wait + running 시 큐잉
-3. ~~`_pending_worker`를 list 큐로 확장~~ → `_pending_workers` FIFO
-4. ~~Worker 레벨 입력 검증 보강 (`search_term`, `operation` 등)~~ → `extract_ops.py`, `preflight.py`, `dispatch.py`
-5. ~~`global_exception_handler` i18n~~ → `main.py` + i18n catalogs
+1. visual compare 예외 → `visual_error` status + UI 요약 반영
+2. `redact_area` 확인 다이얼로그 (redact_text와 동일 정책)
+3. batch watermark/rotate 페이지 루프 cancel 체크
+4. `auto_bookmarks` 헤딩 스캔 루프에 cancel 체크
+5. 유지 문서(GEMINI.md 등) pytest 기준선 동기화
 
-### 3단계 — 구조·제품 개선 (미착수)
+### 3단계 — 구조·제품 개선
 
-1. Compare: OCR/렌더링 기반 옵션 (로드맵 착수 전 설계 문서)
-2. Worker cancel 정책을 domain checklist로 통일 (`form_ops`, `annotation_ops` 전수 점검)
-3. 암호화 PDF — AI/배치/고급 추출에서 preview password 재사용 계약 UI 문서화
-4. CodeGraph/개발 환경: `scripts/codegraph_repair.ps1` 정기 실행 가이드 (이미 추가됨)
+1. OCR 옵션 설계 (엔진/extra/패키징) — 로드맵 항목
+2. compare 리포트 UI 확장 (페이지별 visual_error, 샘플 히트맵)
+3. redact 좌표를 미리보기에서 지정하는 UX
+4. Worker cancel domain checklist 전수(남은 짧은 핸들러 포함)
+5. 추출 텍스트 결과 i18n 또는 locale-neutral 포맷
+6. (선택) batch protect를 단일 protect 권한 모델과 통합
 
 ---
 
 ## 6. Test Recommendations
 
-### 6.1 추가 권장 테스트 ✅ (2026-06-24 반영)
+### 6.1 신규 권장 테스트
 
-| 테스트 | 검증 목표 | 상태 |
-|--------|-----------|------|
-| `test_worker_batch_unknown_operation.py` | 잘못된 `operation`이 silent copy 되지 않음 | 추가됨 |
-| `test_worker_batch_missing_option.py` | watermark/encrypt에 `option` 없을 때 실패 | 추가됨 |
-| `test_worker_remove_annotations_cancel.py` | annot 삭제 루프 중 취소 시 출력 미생성 | 추가됨 |
-| `test_run_worker_pending_queue.py` | 연속 큐잉 시 요청 유실 없음 | 추가됨 |
-| `test_set_ui_busy_shortcuts.py` | busy 중 단축키/메뉴 비활성화 | 추가됨 |
-| `test_worker_search_text_empty_term.py` | Worker 경계에서 빈 검색어 reject | 추가됨 |
-| `test_fill_form_cancel_regression.py` | 양식 채우기 page loop 취소 | 기존 `test_worker_cancel_regression.py`로 충족 |
-| `test_compare_scanned_pdf_limitation.py` | 이미지-only PDF “동일” 스냅샷 | 추가됨 |
+| 테스트 | 검증 목표 |
+|--------|-----------|
+| `test_ai_ops_cancel_mid_stream.py` | cancel 후 `finished_signal` 미발생 / `cancelled_signal` 또는 결과 미반영 |
+| `test_ai_ops_encrypted_with_password.py` | passwords 맵 있으면 AI 진행(또는 명시적 복호 경로); 없으면 기존 오류 |
+| `test_remove_blank_pages_render_failure_keeps_page.py` | pixmap 예외 시 페이지 유지 |
+| `test_compare_visual_error_status.py` | visual 경로 예외 시 identical로 삼키지 않음 |
+| `test_redact_area_ui_confirm.py` | (UI) 확인 No면 Worker 미기동 — 패턴은 redact_text와 동일 |
+| `test_batch_watermark_cancel_mid_pages.py` | 대형 문서 페이지 루프 중 취소 |
 
 ### 6.2 기존 테스트 보강
 
 | 영역 | 현황 | 보강 |
 |------|------|------|
-| `run_worker` UI 흐름 | CodeGraph: direct unit test 없음 | `on_success`/`on_fail` payload 분기 통합 테스트 |
-| `preflight_inputs` | 구조 테스트 있음 | mode별 negative case 표 확장 |
-| AI File API | fake SDK 테스트 강함 | 암호화 PDF + password mapping 시나리오 |
-| Encoding audit | `agent-tools/` 등 임시 파일에 민감 | `.gitignore` 또는 audit exclude에 `agent-tools/` 추가 검토 |
+| `test_compare_scanned_pdf_limitation.py` | 기본(text) 모드 한계 스냅샷 | visual 모드에서 픽셀 차이가 잡히는지 **긍정 케이스** 추가 |
+| `test_worker_pymupdf_extras.py` | cleanup/redact 등 존재 | blank-page 오판, sanitize best-effort 경계 |
+| `test_ai_service_cache.py` | fake SDK 강함 | cancel 콜백 / stream 중단 계약 |
+| 문서 검증 | `test_validation_docs_config.py` | GEMINI 등 기준선 숫자 드리프트 탐지 강화 |
 
-### 6.3 검증 기준선 (유지)
+### 6.3 검증 커맨드 (유지)
 
 ```powershell
 python -m pyright
 python -m pytest -q
 python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
-powershell -ExecutionPolicy Bypass -File scripts/codegraph_repair.ps1
 ```
 
----
-
-## 부록: 감사 시 수행한 환경 조치
-
-CodeGraph MCP 안정화를 위해 다음을 적용했습니다 (감사 범위 외이나 재현성에 영향).
-
-- CodeGraph **v1.0.1 → v1.1.0** 업그레이드
-- `codegraph index -f` 전체 재인덱싱
-- `scripts/codegraph_repair.ps1`, `scripts/codegraph.ps1`, `.grok/config.toml` 추가
-- 손상된 `daemon.pid` 이력(`EISDIR`) 정리 및 `daemon.log` 초기화
+예상: **219 collected / 218 passed / 1 opt-in Gemini smoke skipped** (환경·의존성 동일 시).
 
 ---
 
-*초기 작성(2026-06-24)은 분석·보고만 수행했습니다. 동일 날짜에 1~2단계 권장 수정과 신규 테스트 13건이 코드에 반영되었습니다. 이전 감사 문서 `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md`의 F-01~F-04는 “이미 해결됨”으로 간주합니다.*
+## 7. Appendix
+
+### 7.1 이전 감사(2026-06-24) 이슈 상태
+
+| 이슈 | 상태 |
+|------|------|
+| 배치 미지원 operation 묵시 복사 | **해결** (`batch_ops` + preflight) |
+| `remove_annotations` 취소 없음 | **해결** |
+| `set_ui_busy` 단축키 미차단 | **해결** (`lifecycle.py`) |
+| `run_worker` wait(500) | **해결** (3s + 큐잉) |
+| 단일 `_pending_worker` 덮어쓰기 | **해결** (`_pending_workers` FIFO) |
+| 빈 `search_term` Worker 허용 | **해결** |
+| `global_exception_handler` i18n | **해결** |
+| compare 텍스트-only / visual silent fail | **개선** (visual/both UI + `visual_error` 상태; 기본 모드는 text 유지) |
+| AI cancel / 암호 PDF / blank-page / redact confirm | **해결** (2026-07-15) |
+
+### 7.2 CodeGraph 참고
+
+- 인덱스: 프로젝트 루트 `.codegraph/` (약 212 files)
+- MCP: `codegraph_explore` — entry/worker/security/cleanup 쿼리 사용
+- CLI: `codegraph explore "..."` 로 runtime/preflight/cleanup 교차 확인
+- 일부 “no covering tests found” 표시는 인덱스/동적 dispatch 한계로 **과소 탐지** 가능 (예: `run_worker`는 별도 테스트 존재)
+
+### 7.3 감사 한계
+
+- 전체 `pytest` 실행·PyInstaller smoke는 이번 세션에서 **전수 재실행하지 않음** (수집 카운트와 코드 정적 근거 중심)
+- 네트워크 의존 Gemini live smoke는 opt-in 범위로 제외
+- OCR/패키징 전략 같은 제품 결정은 로드맵 수준으로만 기록
+
+---
+
+*작성: 2026-07-15 — 기능 구현 감사. 코드 변경 없음. 이전 구현 완료 이슈와 신규 잔여 리스크를 분리 기록함.*
