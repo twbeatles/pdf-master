@@ -184,6 +184,10 @@ class AIService:
 
 ### 3. `src/core/settings.py` — 설정 관리
 
+> 구현 패키지: `src/core/_settings_impl/` (`config` / `defaults` / `normalize` / `persistence` / `api_key`).  
+> `settings.py`는 public import 호환 facade입니다.
+
+
 ```python
 DEFAULT_SETTINGS = {
     "theme": "dark",

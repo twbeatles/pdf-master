@@ -30,6 +30,9 @@ pip-wheel-metadata/
 *.log
 build/
 dist/
+# PyInstaller intermediate (also under build/, keep explicit)
+warn-*.txt
+xref-*.html
 # package_smoke / local EXE leftovers outside dist (if any)
 PDF_Master_v*.exe
 

@@ -88,9 +88,13 @@ hiddenimports += [
     'src.core.optional_deps',  # Centralized optional fitz/keyring boundary
     'src.core.path_utils',  # Shared normalized path/resource helper used across settings/AI/UI
     'src.core._typing',  # Pyright/Pylance host contracts imported by worker mixins
+    'src.core.settings',  # Settings facade (impl under _settings_impl)
+    'src.core.constants',  # Constants facade (impl under _constants_impl)
+    'src.core.undo_manager',  # Undo facade (impl under _undo_impl)
     'src.ui._typing',  # Pyright/Pylance host contracts imported by UI mixins
     'src.ui.zoomable_preview',  # Runtime-critical preview widget path (main preview panel)
     'src.ui.thumbnail_grid',  # Runtime-loaded thumbnail grid path used by AI/page flows
+    'src.ui.progress_overlay',  # Progress overlay facade (impl under ui.progress)
     'src.ui.tabs_ai.meta',  # AI result meta formatting/warning labels
     'src.ui.tabs_ai.actions',  # Canonical AI tab actions implementation
     'src.ui.tabs_ai.actions_meta',  # Compatibility shim for legacy hidden imports
@@ -98,11 +102,21 @@ hiddenimports += [
 ]
 
 # v4.5.3+: 폴더 기반 모듈 분할(hidden import 보강)
+# v4.5.6 / 2026-07-21: SOLID 패키지 분할 — _*_impl 및 worker_ops 하위 도메인, ui.progress
 for package_name in [
     'src.core.worker_ops',
+    'src.core.worker_ops.annotation',
+    'src.core.worker_ops.extract',
+    'src.core.worker_ops.cleanup',
+    'src.core.worker_ops.page',
+    'src.core.worker_ops.transform',
+    'src.core.worker_ops.compare',
     'src.core.worker_runtime',
     'src.core.ai',
     'src.core.i18n_catalogs',
+    'src.core._settings_impl',
+    'src.core._constants_impl',
+    'src.core._undo_impl',
     'src.ui.common_widgets',
     'src.ui.tabs_basic',
     'src.ui.tabs_advanced',
@@ -111,6 +125,7 @@ for package_name in [
     'src.ui.preview_widget',
     'src.ui.thumbnail',
     'src.ui.theme',
+    'src.ui.progress',
     'src.ui.window_core',
     'src.ui.window_preview',
     'src.ui.window_worker',

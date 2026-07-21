@@ -91,7 +91,7 @@ main.py
 | `_pending_workers` FIFO / busy 단축키 비활성 | `lifecycle.set_ui_busy`, `run_worker` | **일치** |
 | pytest 222 / 221 pass / 1 skip | 전체 suite 통과 확인 (2026-07-21 SOLID 분할 후) | **일치** |
 | OCR 미구현 | 코드/로드맵에 후속 과제 | **일치 (의도적)** |
-| GEMINI.md 테스트 기준선 | README와 동일 219 기준으로 동기화 | **일치** |
+| GEMINI.md 테스트 기준선 | README와 동일 222 기준으로 동기화 | **일치** |
 
 ---
 
@@ -201,8 +201,10 @@ except Exception as exc:
 
 ### 3.7 문서 기준선 불일치 (기능 자체보다 운영 리스크)
 
+> **2026-07-21 상태:** 유지 문서(README/CLAUDE/GEMINI/roadmap/spec) 기준선은 **222 collected / 221 passed / 1 skip**으로 동기화됨. 아래는 감사 시점 기록.
+
 * **위치:** `GEMINI.md`, `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md`, 구 `PROJECT_AUDIT.md` 잔존 수치
-* **문제:** README/CLAUDE는 **211 collected**를 쓰는데 GEMINI는 **192**, 구 감사는 **179/192**가 남아 있다. `PROJECT_AUDIT.md` 자체가 “1–2단계 완료·위험도 Low”로 고정되어 v4.5.6 신규 리스크를 가린다.
+* **문제(감사 시점):** README/CLAUDE와 GEMINI/구 감사의 pytest 수집 수치가 어긋날 수 있었다.
 * **영향:** 신규 기여자/CI 기대치 혼선, 감사 문서 SSOT 붕괴
 * **권장 수정 방향:** 유지 문서의 pytest 기준선을 한곳(README 또는 CLAUDE) 기준으로 동기화; 구 감사는 archive 섹션으로 분리
 * **우선순위:** **Low**
