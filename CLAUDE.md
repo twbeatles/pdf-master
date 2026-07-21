@@ -6,7 +6,8 @@
 
 ## Current Behavior Notes
 
-- PyMuPDF deep-util pass (v4.5.6): `compress` can downsample/re-encode images and subset fonts (`compact`/`web`); `cleanup_ops` covers blank/dedupe pages, bookmark split, auto TOC, sanitize, and N-up; crop supports `content` mode; `redact_area`, `flatten_form`, encrypt `permissions`, compare `visual`/`both`, and `convert_to_svg` are registered Worker modes with Advanced/Security UI.
+- PyMuPDF deep-util pass (v4.5.6): `compress` can downsample/re-encode images and subset fonts (`compact`/`web`); cleanup package (`cleanup_ops` facade) covers blank/dedupe pages, bookmark split, auto TOC, sanitize, and N-up; crop supports `content` mode; `redact_area`, `flatten_form`, encrypt `permissions`, compare `visual`/`both`, and `convert_to_svg` are registered Worker modes with Advanced/Security UI.
+- SOLID split (2026-07-21): large worker domains live under `worker_ops/{annotation,extract,cleanup,page,transform,compare}/` with thin `*_ops.py` facades; settings/constants/undo use `_*-impl` packages; progress UI under `ui/progress/`.
 - The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
 - Preview print now renders through the Qt print pipeline; it no longer delegates to `os.startfile(..., "print")` or `lpr`.
 - Thumbnail entry points in the AI and rotate flows are preview-synchronized: if they target a different PDF, preview is switched first and encrypted PDFs reuse the preview password session.
@@ -74,24 +75,32 @@ pdf-master/
     │   ├── ai_service.py          # compatibility facade
     │   ├── optional_deps.py        # fitz/keyring optional dependency boundary
     │   ├── _typing.py              # worker mixin host contracts
-    │   ├── constants.py
+    │   ├── constants.py            # facade → _constants_impl/
+    │   ├── _constants_impl/        # 상수 values 패키지
     │   ├── i18n.py                 # TranslationManager facade
     │   ├── i18n_catalogs/          # KO/EN base catalog + facade
     │   ├── pdf_validation.py       # shared PDF size/header validation
-    │   ├── settings.py
-    │   ├── undo_manager.py
+    │   ├── settings.py             # facade → _settings_impl/
+    │   ├── _settings_impl/         # defaults/normalize/persistence/api_key
+    │   ├── undo_manager.py         # facade → _undo_impl/
+    │   ├── _undo_impl/             # ActionRecord + UndoManager
     │   ├── worker.py               # QThread facade
     │   ├── worker_runtime/         # 공통 runtime/dispatch/preflight
-    │   └── worker_ops/             # 실제 Worker 기능 구현
+    │   └── worker_ops/             # 실제 Worker 기능 구현 (도메인 패키지 + facade)
     │       ├── _pdf_impl.py        # compatibility shim
-    │       ├── page_ops.py
-    │       ├── compare_ops.py
-    │       ├── form_ops.py
+    │       ├── annotation/         # watermark/markup/redaction/signatures …
+    │       ├── annotation_ops.py   # thin facade
+    │       ├── extract/            # text/bookmarks/attachments/markdown …
     │       ├── extract_ops.py
-    │       ├── annotation_ops.py
+    │       ├── cleanup/            # blank/dedupe/sanitize/n-up/bookmarks
+    │       ├── cleanup_ops.py
+    │       ├── page/ + page_ops.py
+    │       ├── transform/ + transform_ops.py
+    │       ├── compare/ + compare_ops.py
+    │       ├── form_ops.py
     │       ├── compose_ops.py
-    │       ├── transform_ops.py
-    │       ├── cleanup_ops.py      # blank/dedupe/sanitize/n-up/bookmarks (v4.5.6)
+    │       ├── security_ops.py
+    │       ├── batch_ops.py
     │       ├── pdf_ops.py          # compatibility shim
     │       └── ai_ops.py
     └── ui/
@@ -103,7 +112,7 @@ pdf-master/
         ├── main_window_tabs_ai.py        # 호환 shim
         ├── main_window_core.py           # 호환 shim
         ├── main_window_preview.py        # 호환 shim
-        ├── main_window_worker.py         # 호환 shim
+        ├── main_window_worker.py         # run_worker/on_success 등 (Toast monkeypatch 계약)
         ├── main_window_undo.py           # 호환 shim
         ├── tabs_basic/
         ├── tabs_advanced/
@@ -117,7 +126,8 @@ pdf-master/
         ├── window_preview/
         ├── window_worker/
         ├── window_undo/
-        ├── progress_overlay.py
+        ├── progress/                    # overlay + spinner 구현
+        ├── progress_overlay.py          # thin facade
         ├── styles.py
         ├── thumbnail_grid.py
         ├── widgets.py
@@ -258,6 +268,9 @@ class AIService:
 ---
 
 ### 4. `src/core/settings.py` - 설정 관리
+
+`settings.py`는 public import 호환 facade입니다. 구현은 `src/core/_settings_impl/`
+(`config` / `defaults` / `normalize` / `persistence` / `api_key`)에 있습니다.
 
 #### 저장 위치
 - 설정 파일: `~/.pdf_master_settings.json`
@@ -444,6 +457,9 @@ def is_valid_pdf(file_path: str) -> bool:
 
 ### 11. `src/ui/progress_overlay.py` - 진행 오버레이
 
+`progress_overlay.py`는 facade이며 구현은 `src/ui/progress/`
+(`overlay.py`, `spinner.py`)에 있습니다.
+
 ```python
 class ProgressOverlayWidget(QWidget):
     cancelled = pyqtSignal()
@@ -529,7 +545,7 @@ class ZoomablePreviewWidget(QWidget):
 - 검증 환경 준비: `pip install -e .[dev]`
 - 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - `python -m pyright` -> `0 errors`
-- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 219 collected / 218 passed / 1 opt-in Gemini smoke skipped
+- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 222 collected / 221 passed / 1 opt-in Gemini smoke skipped
 - `python -m build`
 - `python -m PyInstaller pdf_master.spec --clean`
 - `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1` -> clean `PYTHONPATH` PyInstaller + EXE `--smoke`
@@ -556,6 +572,7 @@ class ZoomablePreviewWidget(QWidget):
   - `main.py --smoke` 초기화 종료 검증
 - `tests/test_worker_structure_budget.py`
   - legacy facade line budget, public import path, Worker legacy alias 회귀 검증
+  - SOLID 분할 후 도메인 패키지 심볼 surface 보존 검증
 - `tests/test_worker_regression_modes.py`
   - Markdown 옵션 및 batch compress save profile 회귀 검증
 - `tests/test_worker_cancel_regression.py`
@@ -626,7 +643,7 @@ class ZoomablePreviewWidget(QWidget):
   - README/가이드/spec/감사 문서/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest -q`: 219 collected / 218 passed / 1 opt-in Gemini smoke skipped
+- 현재 워크트리 기준 `python -m pytest -q`: 222 collected / 221 passed / 1 opt-in Gemini smoke skipped
 
 ### v4.5.6 PyMuPDF deep-util tests (2026-07-14)
 - `tests/test_worker_deep_compress.py`
@@ -738,9 +755,18 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-15)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-21)*
 
 ---
+
+## 2026-07-21 SOLID 코드 분할 Addendum
+
+- Worker 대형 도메인: `annotation` / `extract` / `cleanup` / `page` / `transform` / `compare` 패키지 + thin `*_ops.py` facade.
+- Core: `settings` → `_settings_impl/`, `constants` → `_constants_impl/`, `undo_manager` → `_undo_impl/`.
+- UI: `progress_overlay` → `ui/progress/` facade. preview/thumbnail 위젯 본체는 PyQt 시그널·MRO·pyright 안정성을 위해 단일 파일 유지.
+- `main_window_worker.py`의 `run_worker`/`on_success` 등은 ToastWidget·WorkerThread 모듈 monkeypatch 계약 때문에 유지.
+- public import 경로·mode 이름·kwargs 계약 불변. 설계: `docs/superpowers/specs/2026-07-21-code-split-solid-design.md`.
+- 검증: `python -m pyright` 0 errors; `python -m pytest -q` → 222 collected / 221 passed / 1 opt-in Gemini smoke skipped.
 
 ## 2026-07-15 PROJECT_AUDIT Follow-up Addendum
 
@@ -751,13 +777,14 @@ for i, page in enumerate(pages):
 - `redact_area` UI 확인 다이얼로그; batch watermark/rotate 페이지 cancel; auto_bookmarks 스캔 cancel.
 - batch encrypt: `_resolve_permissions` + optional owner/user kwargs; extract 리포트 i18n; pending queue 상한 8.
 - 회귀: `tests/test_ai_ops_cancel_and_encrypted.py`, `tests/test_audit_followup_stability.py`.
-- 검증 기준선: `python -m pytest -q` → 219 collected / 218 passed / 1 opt-in Gemini smoke skipped.
+- 검증 기준선(당시): `python -m pytest -q` → 219 collected / 218 passed / 1 opt-in Gemini smoke skipped.
+- 현재 기준선은 2026-07-21 SOLID 분할 Addendum 참고.
 
 ## 2026-07-14 PyMuPDF Deep-Util Addendum
 
 - `compress` deep path: profile-driven image optimize (`max_dpi`/`jpeg_quality`/`subset_fonts`) plus kwargs override; batch compress reuses the same path.
 - `save` with `linear=True` falls back when the installed PyMuPDF build no longer supports linearisation.
-- New domain module `src/core/worker_ops/cleanup_ops.py` is mixed into `WorkerPdfOpsMixin`.
+- Domain cleanup surface lives under `src/core/worker_ops/cleanup/` with `cleanup_ops.py` facade mixed into `WorkerPdfOpsMixin`.
 - Compare supports `compare_mode=text|visual|both` with pixel sampling for scanned/image-only pages.
 - OCR remains intentionally out of scope until an optional-extra packaging design is approved.
 

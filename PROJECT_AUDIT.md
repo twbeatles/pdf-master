@@ -25,7 +25,7 @@ PDF Master v4.5.6은 **PyQt6 UI + `WorkerThread` 백그라운드 처리 + domain
 | Medium | redact_area 확인 없음 | **해결** — 확인 다이얼로그 |
 | Low | 문서 기준선 / Unknown task i18n / batch permissions | **해결** |
 
-**테스트 기준선:** `python -m pytest -q` → **219 collected / 218 passed / 1 opt-in Gemini smoke skipped**.
+**테스트 기준선:** `python -m pytest -q` → **222 collected / 221 passed / 1 opt-in Gemini smoke skipped** (2026-07-21 SOLID 분할 반영).
 
 **잔여(제품 로드맵):** OCR 엔진, 미리보기 드래그 교정 UX, compare 리포트 UI 확장.
 
@@ -83,12 +83,13 @@ main.py
 
 | 문서 주장 | 실제 | 판정 |
 |-----------|------|------|
-| v4.5.6 deep compress / cleanup_ops / visual compare / redact_area 등 | `transform_ops`, `cleanup_ops`, `compare_ops`, UI 탭 빌더 존재 | **일치** |
+| v4.5.6 deep compress / cleanup_ops / visual compare / redact_area 등 | `transform/`+facade, `cleanup/`+facade, `compare/`+facade, UI 탭 빌더 존재 | **일치** |
+| SOLID 도메인 패키지 + thin facade (2026-07-21) | `worker_ops/{annotation,extract,cleanup,page,transform,compare}/`, `_settings_impl` 등 | **일치** |
 | 미리보기 `zoomable_preview` / Qt 인쇄 | preview 위젯 + 인쇄 경로 | **일치** |
 | Worker preflight + shared `pdf_validation` | `preflight.py` → `validate_pdf_file` | **일치** |
 | 배치 미지원 op fail-fast | `batch_ops` + preflight 화이트리스트 | **일치** |
 | `_pending_workers` FIFO / busy 단축키 비활성 | `lifecycle.set_ui_busy`, `run_worker` | **일치** |
-| pytest 219 / 218 pass / 1 skip | 전체 suite 통과 확인 (2026-07-15 후속 후) | **일치** |
+| pytest 222 / 221 pass / 1 skip | 전체 suite 통과 확인 (2026-07-21 SOLID 분할 후) | **일치** |
 | OCR 미구현 | 코드/로드맵에 후속 과제 | **일치 (의도적)** |
 | GEMINI.md 테스트 기준선 | README와 동일 219 기준으로 동기화 | **일치** |
 
@@ -137,13 +138,13 @@ main.py
 
 ### 3.3 `remove_blank_pages` — 렌더 실패를 빈 페이지로 취급
 
-* **위치:** `src/core/worker_ops/cleanup_ops.py` / `_is_blank_page`
+* **위치:** `src/core/worker_ops/cleanup/helpers.py` (`cleanup_ops` facade re-export) / `_is_blank_page`
 * **문제:** 텍스트·이미지·드로잉이 없을 때 저해상도 pixmap으로 판별하는데, **예외 시 `return True`(빈 페이지)** 이다. 손상 페이지·렌더 실패·메모리 압박 시 정상 페이지가 삭제 후보가 될 수 있다.
 * **영향:** 대용량/스캔/특수 콘텐츠 PDF에서 의도치 않은 페이지 손실 위험.
 * **근거:**
 
 ```python
-# cleanup_ops.py _is_blank_page
+# cleanup/helpers.py _is_blank_page
 try:
     pix = page.get_pixmap(...)
     ...
@@ -315,7 +316,7 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-예상: **219 collected / 218 passed / 1 opt-in Gemini smoke skipped** (환경·의존성 동일 시).
+예상: **222 collected / 221 passed / 1 opt-in Gemini smoke skipped** (환경·의존성 동일 시, 2026-07-21 기준).
 
 ---
 

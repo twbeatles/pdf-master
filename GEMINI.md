@@ -48,30 +48,32 @@ pdf-master/
     │   ├── ai_service.py          # compatibility facade
     │   ├── optional_deps.py       # fitz/keyring optional import 경계
     │   ├── _typing.py             # Worker 믹스인 host 계약
-    │   ├── constants.py
+    │   ├── constants.py           # facade → _constants_impl/
+    │   ├── _constants_impl/
     │   ├── i18n.py                # TranslationManager facade
     │   ├── i18n_catalogs/         # KO/EN base catalog
     │   ├── pdf_validation.py      # PDF size/header 공용 검증
-    │   ├── settings.py
-    │   ├── undo_manager.py
+    │   ├── settings.py            # facade → _settings_impl/
+    │   ├── _settings_impl/        # defaults/normalize/persistence/api_key
+    │   ├── undo_manager.py        # facade → _undo_impl/
+    │   ├── _undo_impl/
     │   ├── worker.py              # QThread facade
     │   ├── worker_runtime/        # 공통 runtime/dispatch/preflight
-    │   └── worker_ops/            # Worker 기능 domain module 분할
-    │       ├── _pdf_impl.py       # compatibility shim
-    │       ├── page_ops.py
-    │       ├── compare_ops.py
-    │       ├── form_ops.py
-    │       ├── extract_ops.py
-    │       ├── annotation_ops.py
-    │       ├── compose_ops.py
-    │       ├── transform_ops.py
-    │       ├── pdf_ops.py         # compatibility shim
+    │   └── worker_ops/            # 도메인 패키지 + thin *_ops facade
+    │       ├── annotation/ + annotation_ops.py
+    │       ├── extract/ + extract_ops.py
+    │       ├── cleanup/ + cleanup_ops.py
+    │       ├── page/ + page_ops.py
+    │       ├── transform/ + transform_ops.py
+    │       ├── compare/ + compare_ops.py
+    │       ├── form_ops.py / compose_ops.py / security_ops.py / batch_ops.py
+    │       ├── _pdf_impl.py / pdf_ops.py  # compatibility shim
     │       └── ai_ops.py
     └── ui/
         ├── _typing.py
         ├── main_window.py
         ├── main_window_config.py
-        ├── main_window_*.py       # 호환 shim 계열
+        ├── main_window_*.py       # 호환 shim 계열 (worker 오버라이드 포함)
         ├── tabs_basic/
         ├── tabs_advanced/
         │   └── tab_builders/
@@ -84,7 +86,8 @@ pdf-master/
         ├── window_preview/
         ├── window_worker/
         ├── window_undo/
-        ├── progress_overlay.py
+        ├── progress/              # overlay + spinner
+        ├── progress_overlay.py    # thin facade
         ├── styles.py
         ├── thumbnail_grid.py
         ├── widgets.py
@@ -354,15 +357,17 @@ def new_operation(self):
 | `src/core/ai_service.py` | AIService compatibility facade |
 | `src/core/ai/*` | Gemini client/cache/schema/session/prompt 구현 |
 | `src/core/i18n_catalogs/ko_base.py`, `en_base.py` | KO/EN 번역 카탈로그 |
-| `src/core/worker_ops/page_ops.py` | split / reorder / insert / replace / duplicate |
-| `src/core/worker_ops/annotation_ops.py` | highlight / redact / shape / link / textbox / ink |
+| `src/core/worker_ops/page/` (+ `page_ops` facade) | split / reorder / insert / replace / duplicate |
+| `src/core/worker_ops/annotation/` (+ facade) | watermark / highlight / redact / shape / link / textbox / ink |
 | `src/core/worker_ops/compose_ops.py` | merge / images-to-PDF / copy-page |
-| `src/core/worker_ops/transform_ops.py` | metadata / compress / crop / resize / SVG |
-| `src/core/worker_ops/cleanup_ops.py` | blank/dedupe/sanitize/n-up/bookmark split/auto TOC |
-| `src/core/worker_ops/extract_ops.py` | text / image / link / bookmark / markdown (`auto/native/text`) / attachment |
-| `src/core/worker_ops/compare_ops.py` | PDF 비교 (text/visual/both) |
+| `src/core/worker_ops/transform/` (+ facade) | metadata / compress / crop / resize / SVG |
+| `src/core/worker_ops/cleanup/` (+ facade) | blank/dedupe/sanitize/n-up/bookmark split/auto TOC |
+| `src/core/worker_ops/extract/` (+ facade) | text / image / link / bookmark / markdown (`auto/native/text`) / attachment |
+| `src/core/worker_ops/compare/` (+ facade) | PDF 비교 (text/visual/both) |
 | `src/core/worker_ops/form_ops.py` | 양식 필드 조회/채우기/flatten |
 | `src/core/worker_ops/ai_ops.py` | AI 요약/채팅/키워드 |
+| `src/core/_settings_impl/` | 설정 정규화·저장·API 키 (settings facade) |
+| `src/ui/progress/` | 진행 오버레이 / 스피너 (progress_overlay facade) |
 | `src/ui/tabs_basic/*` | 병합/변환/페이지/보안/순서/배치 탭 |
 | `src/ui/tabs_advanced/*` | 고급 탭 (편집/추출/마크업) |
 | `src/ui/tabs_ai/*` | AI 탭 / 스토리지 / 액션 |
@@ -388,7 +393,7 @@ pip install -e .[build]   # 빌드 도구
 python -m pyright          # 0 errors 목표
 
 # 테스트
-python -m pytest -q        # 219 collected / 218 passed / 1 opt-in Gemini smoke skipped
+python -m pytest -q        # 222 collected / 221 passed / 1 opt-in Gemini smoke skipped
 
 # 패키지 빌드
 python -m build
@@ -415,8 +420,15 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 - AI: `cancel_check` 전파, 암호화 PDF는 preview passwords로 임시 복호 후 처리
 - blank-page / visual compare / redact_area 확인 / batch permissions·cancel 보강
 - 상세: `PROJECT_AUDIT.md`, `CLAUDE.md` 2026-07-15 addendum
-- 검증: `python -m pytest -q` → 219 collected / 218 passed / 1 opt-in skip
+- 검증(당시): `python -m pytest -q` → 219 collected / 218 passed / 1 opt-in skip
+
+## 2026-07-21 SOLID 코드 분할
+
+- Worker 대형 도메인을 `annotation`/`extract`/`cleanup`/`page`/`transform`/`compare` 패키지로 분리하고 `*_ops.py` facade로 public import 유지
+- `settings` / `constants` / `undo_manager` 구현 패키지화, `progress_overlay` → `ui/progress/`
+- 설계 문서: `docs/superpowers/specs/2026-07-21-code-split-solid-design.md`
+- 검증: `python -m pyright` 0 errors; `python -m pytest -q` → 222 collected / 221 passed / 1 opt-in skip
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-15)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-21)*

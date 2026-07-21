@@ -8,7 +8,9 @@
 # - 2026-07-14: PyMuPDF deep-util (cleanup_ops, deep compress, visual compare, SVG, etc.)
 # - 2026-07-15: PROJECT_AUDIT follow-up — AI cancel_check + encrypted-PDF unlock path,
 #   blank-page conservative keep, visual_error compare status, batch/page cancel, i18n
-# Validation: python -m pyright; python -m pytest -q (~219 collected / 1 Gemini smoke skip);
+# - 2026-07-21: SOLID package split — worker_ops domain packages + settings/constants/undo
+#   impl packages + ui/progress; public import facades retained for PyInstaller analysis
+# Validation: python -m pyright; python -m pytest -q (~222 collected / 1 Gemini smoke skip);
 #   python main.py --smoke; python -m PyInstaller pdf_master.spec --clean;
 #   powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 

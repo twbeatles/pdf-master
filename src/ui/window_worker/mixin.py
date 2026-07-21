@@ -16,6 +16,13 @@ from .._typing import MainWindowHost
 
 
 class MainWindowWorkerMixin(MainWindowHost):
+    """Worker 수명주기 헬퍼 surface.
+
+    run_worker/on_success 등 UI 진입 오버라이드는
+    `src.ui.main_window_worker.MainWindowWorkerMixin` 에 둔다
+    (ToastWidget/WorkerThread monkeypatch 계약 유지).
+    """
+
     _on_progress_update = _on_progress_update
     _on_worker_cancelled = _on_worker_cancelled
     _cleanup_cancelled_worker = _cleanup_cancelled_worker

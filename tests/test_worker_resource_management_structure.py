@@ -19,12 +19,14 @@ TARGET_METHODS = [
 
 def test_target_worker_methods_have_try_finally_for_resource_cleanup():
     methods = {}
-    for path in Path("src/core/worker_ops").glob("*.py"):
-        source = path.read_text(encoding="utf-8-sig")
-        tree = ast.parse(source, filename=str(path))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                methods.setdefault(node.name, []).append(node)
+    roots = [Path("src/core/worker_ops")]
+    for root in roots:
+        for path in root.rglob("*.py"):
+            source = path.read_text(encoding="utf-8-sig")
+            tree = ast.parse(source, filename=str(path))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    methods.setdefault(node.name, []).append(node)
 
     missing = []
     for method in TARGET_METHODS:

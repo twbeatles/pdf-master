@@ -60,6 +60,17 @@ agent-tools/
 .sessions/
 *.session.md
 
+# Ephemeral agent/session scratch (never commit)
+.claude/
+.cursor/
+.codex/
+.agent/
+.agents/
+.superpowers/
+tmp/
+temp/
+.pdf_master_settings.json.backup_*
+
 # OS / editor files
 Thumbs.db
 Desktop.ini
@@ -68,3 +79,4 @@ Desktop.ini
 .vscode/
 *.swp
 *~
+*.bak
