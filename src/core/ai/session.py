@@ -44,33 +44,41 @@ class AIChatSessionMixin:
         if self._client is None or self._types is None:
             raise RuntimeError("Gemini client is not configured")
         cache_key = self._make_chat_session_cache_key(pdf_path)
-        with self.__class__._chat_sessions_lock:
-            cached = self.__class__._chat_sessions.get(cache_key)
-            if cached is not None:
-                return cached
+        cls = self.__class__
+        # single-flight: 같은 cache_key 생성은 한 번에 하나만
+        create_lock = cls._chat_create_locks.setdefault(cache_key, threading.Lock())
+        with create_lock:
+            with cls._chat_sessions_lock:
+                cached = cls._chat_sessions.get(cache_key)
+                if cached is not None:
+                    return cached
 
-        uploaded_file = self._upload_pdf_file(pdf_path)
-        part_factory = getattr(self._types, "Part", None)
-        content_type = getattr(self._types, "Content", None)
-        if part_factory is None or content_type is None:
-            raise RuntimeError("google-genai content types are unavailable")
+            uploaded_file = self._upload_pdf_file(pdf_path)
+            part_factory = getattr(self._types, "Part", None)
+            content_type = getattr(self._types, "Content", None)
+            if part_factory is None or content_type is None:
+                raise RuntimeError("google-genai content types are unavailable")
 
-        history_contents = [
-            content_type(
-                role="user",
-                parts=[
-                    part_factory.from_text(
-                        text=(
-                            "You are assisting with questions about the attached PDF. "
-                            "Use the PDF as the primary source of truth."
-                        )
-                    ),
-                    uploaded_file,
-                ],
-            )
-        ]
-        history_contents.extend(self._history_to_contents(conversation_history or []))
-        chat = self._client.chats.create(model=self._model, history=history_contents)
-        with self.__class__._chat_sessions_lock:
-            self.__class__._chat_sessions[cache_key] = chat
-        return chat
+            history_contents = [
+                content_type(
+                    role="user",
+                    parts=[
+                        part_factory.from_text(
+                            text=(
+                                "You are assisting with questions about the attached PDF. "
+                                "Use the PDF as the primary source of truth."
+                            )
+                        ),
+                        uploaded_file,
+                    ],
+                )
+            ]
+            history_contents.extend(self._history_to_contents(conversation_history or []))
+            chat = self._client.chats.create(model=self._model, history=history_contents)
+            with cls._chat_sessions_lock:
+                # double-check: 대기 중 다른 경로가 채웠을 수 있음
+                existing = cls._chat_sessions.get(cache_key)
+                if existing is not None:
+                    return existing
+                cls._chat_sessions[cache_key] = chat
+            return chat

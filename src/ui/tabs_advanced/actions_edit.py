@@ -48,6 +48,14 @@ def action_remove_blank_pages(self):
     path = self.sel_cleanup.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    reply = QMessageBox.warning(
+        self,
+        tm.get("warning"),
+        tm.get("msg_confirm_remove_blank_pages"),
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+    )
+    if reply != QMessageBox.StandardButton.Yes:
+        return
     s, _ = self._choose_save_file(tm.get("save"), "no_blank.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("remove_blank_pages", file_path=path, output_path=s)
@@ -57,6 +65,14 @@ def action_dedupe_pages(self):
     path = self.sel_cleanup.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    reply = QMessageBox.warning(
+        self,
+        tm.get("warning"),
+        tm.get("msg_confirm_dedupe_pages"),
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+    )
+    if reply != QMessageBox.StandardButton.Yes:
+        return
     s, _ = self._choose_save_file(tm.get("save"), "deduped.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("dedupe_pages", file_path=path, output_path=s)
@@ -75,6 +91,14 @@ def action_sanitize_pdf(self):
     path = self.sel_cleanup.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+    reply = QMessageBox.warning(
+        self,
+        tm.get("warning"),
+        tm.get("msg_confirm_sanitize_pdf"),
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+    )
+    if reply != QMessageBox.StandardButton.Yes:
+        return
     s, _ = self._choose_save_file(tm.get("save"), "sanitized.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("sanitize_pdf", file_path=path, output_path=s)

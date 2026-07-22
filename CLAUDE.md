@@ -8,6 +8,7 @@
 
 - PyMuPDF deep-util pass (v4.5.6): `compress` can downsample/re-encode images and subset fonts (`compact`/`web`); cleanup package (`cleanup_ops` facade) covers blank/dedupe pages, bookmark split, auto TOC, sanitize, and N-up; crop supports `content` mode; `redact_area`, `flatten_form`, encrypt `permissions`, compare `visual`/`both`, and `convert_to_svg` are registered Worker modes with Advanced/Security UI.
 - SOLID split (2026-07-21): large worker domains live under `worker_ops/{annotation,extract,cleanup,page,transform,compare}/` with thin `*_ops.py` facades; settings/constants/undo use `_*-impl` packages; progress UI under `ui/progress/`.
+- 2026-07-22 PROJECT_AUDIT follow-up: `src/core/temp_cleanup.py` sweeps `pdf_master_ai_*` / `.pdf_master_*` orphans on startup/shutdown/cancel/force-terminate; thumbnail loader signals use sender guard; AI `retry_with_backoff` sleeps in slices and does not retry cancel; blank/dedupe/sanitize UI confirm dialogs; cancel cleanup uses only `created_output_paths` (no mtime heuristic); `list_annotations` OperationSpec is `output_kind=text`; batch encrypt tip documents default permissions; chat session create is single-flight per cache key.
 - The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
 - Preview print now renders through the Qt print pipeline; it no longer delegates to `os.startfile(..., "print")` or `lpr`.
 - Thumbnail entry points in the AI and rotate flows are preview-synchronized: if they target a different PDF, preview is switched first and encrypted PDFs reuse the preview password session.
@@ -16,7 +17,7 @@
 - Auto-generated outputs for `convert_to_img` and `extract_text` use collision-safe stems (`name`, `name__2`, `name__3`, ...).
 - `compare_pdfs` uses sequence-based line diffing and the Advanced tab can optionally generate a visual diff PDF.
 - Page-targeted worker modes share a strict page resolver; `-1` last-page sentinel is reserved for signature insertion flows.
-- Directory-output cancellations roll back only files tracked in `kwargs["created_output_paths"]`, not the whole output folder.
+- Directory-output cancellations roll back only files tracked in `kwargs["created_output_paths"]`, not the whole output folder; single-file cancel also removes only tracked created outputs (mtime-based delete removed).
 - Single-input/single-output mutation modes can save back onto the original path; preview closes that document before the worker starts and restores it after success/fail/cancel.
 - The preview search/bookmark side panel is collapsible, `Ctrl+F` opens the search tab and focuses the query field, and same-path restore reuses captured preview view state.
 - Preview file watching now tracks both the active PDF and its parent directory so external atomic replace flows can auto-reload after a bounded retry window.
@@ -545,7 +546,7 @@ class ZoomablePreviewWidget(QWidget):
 - 검증 환경 준비: `pip install -e .[dev]`
 - 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - `python -m pyright` -> `0 errors`
-- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 222 collected / 221 passed / 1 opt-in Gemini smoke skipped
+- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 230 collected / 229 passed / 1 opt-in Gemini smoke skipped
 - `python -m build`
 - `python -m PyInstaller pdf_master.spec --clean`
 - `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1` -> clean `PYTHONPATH` PyInstaller + EXE `--smoke`
@@ -643,7 +644,7 @@ class ZoomablePreviewWidget(QWidget):
   - README/가이드/spec/감사 문서/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest -q`: 222 collected / 221 passed / 1 opt-in Gemini smoke skipped
+- 현재 워크트리 기준 `python -m pytest -q`: 230 collected / 229 passed / 1 opt-in Gemini smoke skipped
 
 ### v4.5.6 PyMuPDF deep-util tests (2026-07-14)
 - `tests/test_worker_deep_compress.py`
@@ -656,6 +657,11 @@ class ZoomablePreviewWidget(QWidget):
   - AI cancel 재전파, 암호화 PDF passwords unlock, stream cancel_check
 - `tests/test_audit_followup_stability.py`
   - blank-page 렌더 실패 유지, visual_error, set_bookmarks 검증, pending queue 상한
+
+### v4.5.6 PROJECT_AUDIT follow-up tests (2026-07-22)
+- `tests/test_audit_2026_07_22_followup.py`
+  - temp_cleanup age/include_in_progress, retry interruptible cancel, list_annotations text spec,
+    cancel cleanup without mtime delete, thumbnail stale-sender guard, chat create locks, i18n confirm keys
 
 ### v4.5.5 audit follow-up tests (2026-06-24)
 - `tests/test_worker_batch_unknown_operation.py`
@@ -755,9 +761,20 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-21)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-22)*
 
 ---
+
+## 2026-07-22 PROJECT_AUDIT Follow-up Addendum
+
+- `src/core/temp_cleanup.py`: `pdf_master_ai_*` / `.pdf_master_*` orphan 스윕 (기동·종료·취소·강제 terminate).
+- 썸네일: `_is_active_loader_sender`로 ready/progress/complete 잔여 시그널 차단.
+- AI: `retry_with_backoff` 분할 sleep + cancel 비재시도; chat session per-key single-flight create lock.
+- UI: blank/dedupe/sanitize 확인 다이얼로그; 배치 암호 기본 권한 안내 문구.
+- Worker: 취소 롤백 mtime 휴리스틱 제거; `list_annotations` → `output_kind=text`.
+- 회귀: `tests/test_audit_2026_07_22_followup.py`.
+- 검증: `python -m pyright` 0 errors; `python -m pytest -q` → 230 collected / 229 passed / 1 opt-in Gemini smoke skipped.
+- 의도적 미구현(로드맵): OCR, 미리보기 드래그 교정, compare 인터랙티브 리포트, SDK-level AI abort.
 
 ## 2026-07-21 SOLID 코드 분할 Addendum
 
@@ -766,7 +783,7 @@ for i, page in enumerate(pages):
 - UI: `progress_overlay` → `ui/progress/` facade. preview/thumbnail 위젯 본체는 PyQt 시그널·MRO·pyright 안정성을 위해 단일 파일 유지.
 - `main_window_worker.py`의 `run_worker`/`on_success` 등은 ToastWidget·WorkerThread 모듈 monkeypatch 계약 때문에 유지.
 - public import 경로·mode 이름·kwargs 계약 불변. 설계: `docs/superpowers/specs/2026-07-21-code-split-solid-design.md`.
-- 검증: `python -m pyright` 0 errors; `python -m pytest -q` → 222 collected / 221 passed / 1 opt-in Gemini smoke skipped.
+- 검증(당시 SOLID 분할 직후): 222 collected / 221 passed / 1 skip. 현재 기준선은 2026-07-22 Addendum.
 
 ## 2026-07-15 PROJECT_AUDIT Follow-up Addendum
 
@@ -778,7 +795,7 @@ for i, page in enumerate(pages):
 - batch encrypt: `_resolve_permissions` + optional owner/user kwargs; extract 리포트 i18n; pending queue 상한 8.
 - 회귀: `tests/test_ai_ops_cancel_and_encrypted.py`, `tests/test_audit_followup_stability.py`.
 - 검증 기준선(당시): `python -m pytest -q` → 219 collected / 218 passed / 1 opt-in Gemini smoke skipped.
-- 현재 기준선은 2026-07-21 SOLID 분할 Addendum 참고.
+- 현재 기준선은 2026-07-22 PROJECT_AUDIT Follow-up Addendum 참고.
 
 ## 2026-07-14 PyMuPDF Deep-Util Addendum
 

@@ -287,8 +287,21 @@ class ThumbnailGridWidget(QWidget):
         self._loader_thread.loading_complete.connect(self._on_loading_complete)
         self._loader_thread.start()
 
+    def _is_active_loader_sender(self) -> bool:
+        """현재 활성 로더 스레드에서 온 시그널인지 확인 (잔여 스레드 혼선 방지)."""
+        sender = self.sender()
+        active = getattr(self, "_loader_thread", None)
+        if active is None:
+            # cleanup 직후 잔여 시그널은 무시
+            return False
+        if sender is not None and sender is not active:
+            return False
+        return True
+
     @pyqtSlot(int, QPixmap)
     def _on_thumbnail_ready(self, index: int, pixmap: QPixmap):
+        if not self._is_active_loader_sender():
+            return
         if index < len(self._thumbnails):
             self._thumbnails[index].set_pixmap(pixmap)
             self._loaded_indices.add(index)
@@ -297,12 +310,13 @@ class ThumbnailGridWidget(QWidget):
 
     @pyqtSlot(int)
     def _on_loader_progress(self, _value: int):
+        if not self._is_active_loader_sender():
+            return
         self.loadingProgress.emit(int((len(self._loaded_indices) / max(1, self._total_pages)) * 100))
 
     @pyqtSlot()
     def _on_loading_complete(self):
-        sender = self.sender()
-        if self._loader_thread and sender is not None and sender is not self._loader_thread:
+        if not self._is_active_loader_sender():
             return
         logger.debug("Thumbnail batch loading complete")
         unfinished = [

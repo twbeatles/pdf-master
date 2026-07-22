@@ -42,6 +42,8 @@ class AIService(
 
     _chat_sessions: dict[tuple[str, str, int], Any] = {}
     _chat_sessions_lock = threading.Lock()
+    # chat 세션 생성 single-flight (cache_key → Lock)
+    _chat_create_locks: dict[tuple[str, str, int], threading.Lock] = {}
 
     def __init__(self, api_key: str = "", model: str | None = None, timeout: int | None = None):
         self._api_key = api_key

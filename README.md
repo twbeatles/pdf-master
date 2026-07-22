@@ -274,7 +274,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 타입 스텁은 `typings/` 디렉터리에 있으며 `pyrightconfig.json`에서 참조합니다.
 
-검증 기준선: `python -m pytest -q` → **222 collected / 221 passed / 1 opt-in Gemini smoke skipped**. 기능 감사 및 후속 구현 내역은 `PROJECT_AUDIT.md`를 참고하세요.
+검증 기준선: `python -m pytest -q` → **230 collected / 229 passed / 1 opt-in Gemini smoke skipped**. 기능 감사 및 후속 구현 내역은 `PROJECT_AUDIT.md`를 참고하세요.
 
 ---
 
@@ -290,6 +290,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 - Worker 도메인 `cleanup_ops` 추가 및 회귀 테스트 확장
 - **2026-07-15 감사 후속**: AI 작업 취소(`cancel_check`)·암호화 PDF 미리보기 암호 재사용, 빈 페이지 보수 판정, visual compare 오류 상태, 영역 교정 확인 다이얼로그, 배치/추출 cancel·i18n 보강
 - **2026-07-21 SOLID 코드 분할**: Worker 도메인 패키지(`annotation`/`extract`/`cleanup`/`page`/`transform`/`compare`) + settings/constants/undo 구현 패키지 + progress UI 분리. public import·동작 계약 유지
+- **2026-07-22 감사 후속**: 썸네일 로더 sender 가드, AI temp/atomic orphan 스윕(`temp_cleanup`), AI retry 분할 sleep+취소 비재시도, blank/dedupe/sanitize 확인 다이얼로그, 취소 롤백 mtime 휴리스틱 제거, `list_annotations` text 계약, 배치 암호 권한 안내, chat session single-flight
 
 ### v4.5.5
 - 미리보기 줌·패닝·인쇄 안정화 (Qt 인쇄 파이프라인)

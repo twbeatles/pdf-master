@@ -76,7 +76,7 @@ Observed result (2026-05-22):
 - `python -m build`: sdist and wheel built.
 - `scripts/package_smoke.ps1`: clean `PYTHONPATH` PyInstaller build and packaged EXE `--smoke` succeeded.
 
-**Superseded baseline (repo current, 2026-07-21):** see `PROJECT_AUDIT.md` and README — `python -m pytest -q` → **222 collected / 221 passed / 1 opt-in Gemini smoke skipped** after v4.5.6 deep-util + audit follow-up + SOLID code split. This file remains the canonical `FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md` contract name required by `tests/test_validation_docs_config.py`.
+**Superseded baseline (repo current, 2026-07-22):** see `PROJECT_AUDIT.md` and README — `python -m pytest -q` → **230 collected / 229 passed / 1 opt-in Gemini smoke skipped** after v4.5.6 deep-util + audit follow-up + SOLID code split + 2026-07-22 audit follow-up. This file remains the canonical `FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md` contract name required by `tests/test_validation_docs_config.py`.
 
 ## Remaining Product Work
 

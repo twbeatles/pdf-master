@@ -179,10 +179,10 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
     "insert_textbox": _spec("insert_textbox", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_insert_textbox"),
     "list_annotations": _spec(
         "list_annotations",
-        output_kind="memory",
+        # 텍스트 리포트 파일 + result payload 병행 (UI는 output_path 필수)
+        output_kind="text",
         result_kind="annotations",
         title_key="mode_list_annotations",
-        required_any_kwargs=(("output_path",),),
         result_payload_keys=("annotations",),
         refresh_preview=False,
     ),

@@ -69,6 +69,13 @@ class WorkerAiOpsMixin(WorkerHost):
                 os.remove(temp_path)
         except OSError:
             logger.debug("Failed to remove AI temp PDF: %s", temp_path, exc_info=True)
+        # 동일 접두사 orphan 스윕 (나이 기반 — 진행 중 다른 작업 보호)
+        try:
+            from ..temp_cleanup import cleanup_pdf_master_temp_files
+
+            cleanup_pdf_master_temp_files(max_age_seconds=5.0)
+        except Exception:
+            logger.debug("AI temp orphan sweep failed", exc_info=True)
 
     def _reraise_if_cancelled(self, exc: BaseException) -> None:
         from ..worker import CancelledError

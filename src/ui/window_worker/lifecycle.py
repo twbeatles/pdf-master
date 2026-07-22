@@ -1,6 +1,5 @@
 import logging
 import os
-import time
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QMessageBox
@@ -96,18 +95,22 @@ def _cleanup_cancelled_worker(self):
             if output_path_abs in input_paths_abs or getattr(self, "_last_output_existed", False):
                 logger.info("Keeping cancelled output path because it pre-existed or is an input: %s", output_path_abs)
             else:
+                # created_output_paths에 기록된 파일만 삭제 (mtime 휴리스틱 제거)
                 should_remove = output_path_abs in created_paths_abs
-                if not should_remove:
-                    try:
-                        should_remove = time.time() - os.path.getmtime(output_path_abs) < 5
-                    except Exception:
-                        should_remove = False
             try:
                 if should_remove and os.path.isfile(output_path_abs):
                     os.remove(output_path_abs)
                     logger.info(f"Removed incomplete output file: {output_path_abs}")
             except Exception as e:
                 logger.debug(f"Could not remove cancelled output: {e}")
+
+    # AI 평문 temp 등 orphan 스윕 (취소 직후 잔존 완화)
+    try:
+        from ...core.temp_cleanup import cleanup_pdf_master_temp_files
+
+        cleanup_pdf_master_temp_files()
+    except Exception:
+        logger.debug("Temp cleanup after cancel failed", exc_info=True)
 
     toast = ToastWidget(tm.get("msg_worker_cancelled"), toast_type='warning', duration=3000)
     toast.show_toast(self)

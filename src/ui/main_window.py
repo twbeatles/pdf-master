@@ -59,6 +59,13 @@ def _shutdown_worker_for_close(parent, worker) -> bool:
     logger.warning("User requested forced termination during close")
     worker.terminate()
     worker.wait(1000)
+    # 강제 종료 후 orphan temp 스윕 (진행 중 파일 포함)
+    try:
+        from ..core.temp_cleanup import cleanup_pdf_master_temp_files
+
+        cleanup_pdf_master_temp_files(include_in_progress=True, max_age_seconds=None)
+    except Exception:
+        logger.debug("Temp cleanup after force terminate failed", exc_info=True)
     return True
 
 
@@ -110,6 +117,13 @@ class PDFMasterApp(
         self._cleanup_old_undo_backups(max_age_hours=UNDO_BACKUP_MAX_AGE_HOURS)  # v4.5: 상수 사용
         # v4.5: 시작 시 용량 기반 백업 정리
         self._cleanup_undo_backups_by_size(max_size_mb=UNDO_BACKUP_MAX_SIZE_MB)  # v4.5: 상수 사용
+        # AI 평문 temp / atomic orphan 정리 (이전 비정상 종료 잔존)
+        try:
+            from ..core.temp_cleanup import cleanup_pdf_master_temp_files
+
+            cleanup_pdf_master_temp_files()
+        except Exception:
+            logger.debug("Startup temp cleanup failed", exc_info=True)
 
         # 휠 이벤트 필터 설치 (스크롤로 값 변경 방지)
         self._wheel_filter = WheelEventFilter(self)
@@ -236,10 +250,18 @@ class PDFMasterApp(
         # 3. 미사용 undo 백업 정리 (v4.4)
         self._cleanup_unused_undo_backups()
 
-        # 4. 채팅 히스토리 저장
+        # 4. orphan temp 스윕 (AI 평문 복호 파일 등)
+        try:
+            from ..core.temp_cleanup import cleanup_pdf_master_temp_files
+
+            cleanup_pdf_master_temp_files(include_in_progress=True, max_age_seconds=None)
+        except Exception:
+            logger.debug("Shutdown temp cleanup failed", exc_info=True)
+
+        # 5. 채팅 히스토리 저장
         self._save_chat_histories()
 
-        # 5. 설정 저장
+        # 6. 설정 저장
         self._flush_settings_save()
         self._save_settings_on_exit()
 

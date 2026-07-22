@@ -10,7 +10,9 @@
 #   blank-page conservative keep, visual_error compare status, batch/page cancel, i18n
 # - 2026-07-21: SOLID package split — worker_ops domain packages + settings/constants/undo
 #   impl packages + ui/progress; public import facades retained for PyInstaller analysis
-# Validation: python -m pyright; python -m pytest -q (~222 collected / 1 Gemini smoke skip);
+# - 2026-07-22: PROJECT_AUDIT follow-up — temp_cleanup orphan sweep, AI retry cancel,
+#   thumbnail loader sender guard, cleanup confirm dialogs, list_annotations text contract
+# Validation: python -m pyright; python -m pytest -q (~230 collected / 1 Gemini smoke skip);
 #   python main.py --smoke; python -m PyInstaller pdf_master.spec --clean;
 #   powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
@@ -103,6 +105,12 @@ hiddenimports += [
 
 # v4.5.3+: 폴더 기반 모듈 분할(hidden import 보강)
 # v4.5.6 / 2026-07-21: SOLID 패키지 분할 — _*_impl 및 worker_ops 하위 도메인, ui.progress
+# v4.5.6 / 2026-07-22: temp_cleanup (AI 평문 temp / atomic orphan 스윕)
+hiddenimports += [
+    'src.core.temp_cleanup',
+    'src.core.path_utils',
+    'src.core.pdf_validation',
+]
 for package_name in [
     'src.core.worker_ops',
     'src.core.worker_ops.annotation',

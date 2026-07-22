@@ -38,10 +38,16 @@ PDF_Master_v*.exe
 
 # App/runtime temp files
 backup/
+# Atomic I/O temps (worker_runtime/io.py, settings save) — any extension
 .pdf_master_*.tmp*
-# AI encrypted-PDF unlock temps (worker may create under system temp; keep pattern for cwd accidents)
+.pdf_master_*
+# AI encrypted-PDF unlock temps (ai_ops / temp_cleanup; may appear under cwd if tempdir mis-set)
+pdf_master_ai_*
 pdf_master_ai_*.pdf
 pdf_master_undo/
+# Local settings corruption backups (also under ~/, keep cwd accident pattern)
+.pdf_master_settings.json
+.pdf_master_settings.json.backup_*
 
 # Virtual environments
 .venv/
@@ -72,7 +78,6 @@ agent-tools/
 .superpowers/
 tmp/
 temp/
-.pdf_master_settings.json.backup_*
 
 # OS / editor files
 Thumbs.db

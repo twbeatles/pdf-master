@@ -90,8 +90,14 @@ def setup_batch_tab(self):
     opt_layout2.addWidget(QLabel(tm.get("lbl_batch_option")))
     self.inp_batch_opt = QLineEdit()
     self.inp_batch_opt.setPlaceholderText(tm.get("ph_batch_option"))
+    self.inp_batch_opt.setToolTip(tm.get("tip_batch_encrypt_permissions"))
     opt_layout2.addWidget(self.inp_batch_opt)
     content_layout.addLayout(opt_layout2)
+
+    batch_encrypt_note = QLabel(tm.get("tip_batch_encrypt_permissions"))
+    batch_encrypt_note.setObjectName("desc")
+    batch_encrypt_note.setWordWrap(True)
+    content_layout.addWidget(batch_encrypt_note)
 
     step3 = QLabel(tm.get("step_batch_3"))
     step3.setObjectName("stepLabel")

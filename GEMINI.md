@@ -397,7 +397,7 @@ pip install -e .[build]   # 빌드 도구
 python -m pyright          # 0 errors 목표
 
 # 테스트
-python -m pytest -q        # 222 collected / 221 passed / 1 opt-in Gemini smoke skipped
+python -m pytest -q        # 230 collected / 229 passed / 1 opt-in Gemini smoke skipped
 
 # 패키지 빌드
 python -m build
@@ -431,8 +431,18 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 - Worker 대형 도메인을 `annotation`/`extract`/`cleanup`/`page`/`transform`/`compare` 패키지로 분리하고 `*_ops.py` facade로 public import 유지
 - `settings` / `constants` / `undo_manager` 구현 패키지화, `progress_overlay` → `ui/progress/`
 - 설계 문서: `docs/superpowers/specs/2026-07-21-code-split-solid-design.md`
-- 검증: `python -m pyright` 0 errors; `python -m pytest -q` → 222 collected / 221 passed / 1 opt-in skip
+- 검증(당시): 222 collected / 221 passed / 1 skip — 현재 기준선은 아래 2026-07-22 항목
+
+## 2026-07-22 감사 후속 (요약)
+
+- `temp_cleanup`: AI 평문 temp / atomic orphan 스윕 (기동·종료·취소·강제 terminate)
+- 썸네일 loader sender 가드; AI retry 분할 sleep + cancel 비재시도; chat single-flight
+- blank/dedupe/sanitize 확인 다이얼로그; 배치 암호 기본 권한 안내
+- 취소 롤백 mtime 휴리스틱 제거; `list_annotations` text 계약
+- 상세: `PROJECT_AUDIT.md`, `CLAUDE.md` 2026-07-22 addendum
+- 검증: `python -m pyright` 0 errors; `python -m pytest -q` → 230 collected / 229 passed / 1 opt-in skip
+- 로드맵 유지: OCR, 드래그 교정 UX, compare 리포트 UI, SDK-level AI abort
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-21)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-22)*
