@@ -31,10 +31,17 @@ jobs:
         run: python -m PyInstaller pdf_master.spec --clean --noconfirm
 
       - name: Run packaged smoke
-        run: dist\PDF_Master_v4.5.5.exe --smoke
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist\PDF_Master_v*.exe | Select-Object -First 1
+          if (-not $exe) { throw "Built EXE not found under dist/" }
+          Write-Host "Smoke: $($exe.FullName)"
+          & $exe.FullName --smoke
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/PDF_Master_v4.5.5.exe
+          # pyproject/spec 버전에 맞춘 EXE 이름 (예: PDF_Master_v4.5.6.exe)
+          files: dist/PDF_Master_v*.exe
           generate_release_notes: true
+          fail_on_unmatched_files: true
