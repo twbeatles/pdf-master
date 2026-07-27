@@ -305,6 +305,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     )
                 custom_dialog_shown = True
             elif mode == "compare_pdfs":
+                # 페이지별 상세는 _format_compare_summary가 포함 (스크롤은 시스템 메시지박스/클리핑에 의존)
                 QMessageBox.information(
                     parent,
                     tm.get("compare_summary_title"),

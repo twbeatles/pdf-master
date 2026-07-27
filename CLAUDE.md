@@ -9,6 +9,7 @@
 - PyMuPDF deep-util pass (v4.5.6): `compress` can downsample/re-encode images and subset fonts (`compact`/`web`); cleanup package (`cleanup_ops` facade) covers blank/dedupe pages, bookmark split, auto TOC, sanitize, and N-up; crop supports `content` mode; `redact_area`, `flatten_form`, encrypt `permissions`, compare `visual`/`both`, and `convert_to_svg` are registered Worker modes with Advanced/Security UI.
 - SOLID split (2026-07-21): large worker domains live under `worker_ops/{annotation,extract,cleanup,page,transform,compare}/` with thin `*_ops.py` facades; settings/constants/undo use `_*-impl` packages; progress UI under `ui/progress/`.
 - 2026-07-22 PROJECT_AUDIT follow-up: `src/core/temp_cleanup.py` sweeps `pdf_master_ai_*` / `.pdf_master_*` orphans on startup/shutdown/cancel/force-terminate; thumbnail loader signals use sender guard; AI `retry_with_backoff` sleeps in slices and does not retry cancel; blank/dedupe/sanitize UI confirm dialogs; cancel cleanup uses only `created_output_paths` (no mtime heuristic); `list_annotations` OperationSpec is `output_kind=text`; batch encrypt tip documents default permissions; chat session create is single-flight per cache key.
+- 2026-07-27 PROJECT_AUDIT follow-up: functional audit SSOT is `PROJECT_AUDIT.md` (validation tests no longer require legacy FUNCTIONAL audit files); AI tab unlocks encrypted PDFs via preview password then Worker temp decrypt; `merge` fails when zero pages survive; AI chat `_get_or_create_chat` propagates `cancel_check` to upload; batch encrypt exposes permission checkboxes; blank/dedupe confirm dialogs show dry-run removal estimates; preview **drag region select** for `redact_area` (`src/ui/preview_widget/region_select.py` + `ZoomablePreviewWidget.set_region_select_mode`).
 - The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
 - Preview print now renders through the Qt print pipeline; it no longer delegates to `os.startfile(..., "print")` or `lpr`.
 - Thumbnail entry points in the AI and rotate flows are preview-synchronized: if they target a different PDF, preview is switched first and encrypted PDFs reuse the preview password session.
@@ -546,7 +547,7 @@ class ZoomablePreviewWidget(QWidget):
 - 검증 환경 준비: `pip install -e .[dev]`
 - 호환 shim: `requirements-dev.txt` -> `-e .[dev]`
 - `python -m pyright` -> `0 errors`
-- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용, 현재 기준 230 collected / 229 passed / 1 opt-in Gemini smoke skipped
+- `python -m pytest -q` -> repo-local `.pytest_tmp` 사용 (opt-in Gemini smoke 1건 skip 가능). 기능 감사 SSOT: `PROJECT_AUDIT.md`
 - `python -m build`
 - `python -m PyInstaller pdf_master.spec --clean`
 - `powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1` -> clean `PYTHONPATH` PyInstaller + EXE `--smoke`
@@ -644,7 +645,7 @@ class ZoomablePreviewWidget(QWidget):
   - README/가이드/spec/감사 문서/검증 설정 정합성 검증
 - `tests/_deps.py`
   - PyQt6/PyMuPDF 의존성 체크를 공용 helper로 통합
-- 현재 워크트리 기준 `python -m pytest -q`: 230 collected / 229 passed / 1 opt-in Gemini smoke skipped
+- 현재 워크트리 기준 `python -m pytest -q` (opt-in Gemini smoke skip 가능). 상세: `PROJECT_AUDIT.md`
 
 ### v4.5.6 PyMuPDF deep-util tests (2026-07-14)
 - `tests/test_worker_deep_compress.py`
@@ -662,6 +663,15 @@ class ZoomablePreviewWidget(QWidget):
 - `tests/test_audit_2026_07_22_followup.py`
   - temp_cleanup age/include_in_progress, retry interruptible cancel, list_annotations text spec,
     cancel cleanup without mtime delete, thumbnail stale-sender guard, chat create locks, i18n confirm keys
+
+### v4.5.6 PROJECT_AUDIT follow-up tests (2026-07-27)
+- `tests/test_region_select_mapping.py` / `tests/test_redact_drag_ui_flow.py`
+  - 미리보기 드래그 영역 좌표 매핑 및 UI 모드 토글
+- `tests/test_merge_all_skipped.py` — merge 0페이지 error
+- `tests/test_ai_encrypted_ui_access.py` — 암호 PDF AI preview 인증 후 run_worker
+- `tests/test_chat_session_cancel_check.py` — chat upload cancel_check 전파
+- `tests/test_cleanup_dry_run_estimate.py` — blank/dedupe dry-run 카운트
+- `tests/test_validation_docs_config.py` — `PROJECT_AUDIT.md` SSOT
 
 ### v4.5.5 audit follow-up tests (2026-06-24)
 - `tests/test_worker_batch_unknown_operation.py`
@@ -761,9 +771,22 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-22)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-27)*
 
 ---
+
+## 2026-07-27 PROJECT_AUDIT Follow-up Addendum
+
+- 기능 감사 SSOT: `PROJECT_AUDIT.md` (`tests/test_validation_docs_config.py`가 이를 강제).
+- AI UI: 암호 PDF는 미리보기 인증 후 Worker `_prepare_ai_pdf_path` 경로 사용 (탭 하드 차단 제거).
+- `merge`: 유효 페이지 0이면 `err_merge_no_pages`로 실패(빈 PDF 미저장).
+- AI chat: `_get_or_create_chat(..., cancel_check=)` → upload 전파; 취소 시 네트워크 대기 오버레이 문구.
+- 배치 encrypt: 권한 체크박스 UI → `permissions` kwargs.
+- blank/dedupe: dry-run 예상 제거 페이지 수 확인 다이얼로그.
+- **미리보기 드래그 영역 교정**: `RegionSelectOverlay` + 뷰포트↔PDF 포인트 매핑; 고급 탭「미리보기에서 영역 선택」→ `spn_redact_page`/`inp_redact_rect` 자동 입력.
+- 회귀: `tests/test_region_select_mapping.py`, `tests/test_redact_drag_ui_flow.py`, `tests/test_merge_all_skipped.py`, `tests/test_ai_encrypted_ui_access.py`, `tests/test_chat_session_cancel_check.py`, `tests/test_cleanup_dry_run_estimate.py`.
+- 검증: `python -m pyright` 0 errors; `python -m pytest -q` (opt-in Gemini smoke skip 가능).
+- 잔여 로드맵: OCR optional extra, compare 인터랙티브 리포트 UI 고도화, SDK-level AI HTTP abort.
 
 ## 2026-07-22 PROJECT_AUDIT Follow-up Addendum
 
@@ -773,8 +796,8 @@ for i, page in enumerate(pages):
 - UI: blank/dedupe/sanitize 확인 다이얼로그; 배치 암호 기본 권한 안내 문구.
 - Worker: 취소 롤백 mtime 휴리스틱 제거; `list_annotations` → `output_kind=text`.
 - 회귀: `tests/test_audit_2026_07_22_followup.py`.
-- 검증: `python -m pyright` 0 errors; `python -m pytest -q` → 230 collected / 229 passed / 1 opt-in Gemini smoke skipped.
-- 의도적 미구현(로드맵): OCR, 미리보기 드래그 교정, compare 인터랙티브 리포트, SDK-level AI abort.
+- 검증: `python -m pyright` 0 errors; `python -m pytest -q` (opt-in Gemini smoke skip 가능).
+- 후속: 2026-07-27 Addendum (드래그 교정 등).
 
 ## 2026-07-21 SOLID 코드 분할 Addendum
 
@@ -835,7 +858,7 @@ for i, page in enumerate(pages):
 
 ## 2026-05-22 Audit Follow-up Hardening
 
-- `FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md` is the current repo-local audit document; docs tests now reject maintained docs that reference missing functional-audit files.
+- `PROJECT_AUDIT.md` is the current repo-local functional audit SSOT; docs tests require it and reject maintained docs that reference missing legacy `FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md` files.
 - `get_pdf_info`, `search_text`, `extract_tables`, and `list_annotations` check `_check_cancelled()` at each page-loop start before writing output files.
 - `tests/test_worker_cancel_regression.py` covers those four modes and asserts cancelled runs do not leave result files behind.
 - `tests/test_ai_service_cache.py` uses fake `google-genai` objects to validate upload cache reuse, generate/stream calls, chat creation/reuse, structured JSON parsing, and upload fallback without credentials.

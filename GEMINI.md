@@ -131,7 +131,7 @@ error_signal = pyqtSignal(str)        # 에러 메시지
 | `auto_bookmarks` | 자동 목차 | `file_path`, `output_path` |
 | `sanitize_pdf` | 문서 위생 | `file_path`, `output_path` |
 | `impose_nup` | N-up | `file_path`, `nup`, `output_path` |
-| `redact_area` | 영역 교정 | `file_path`, `rects`, `output_path` |
+| `redact_area` | 영역 교정 (UI: 좌표 입력 또는 미리보기 드래그) | `file_path`, `rects`, `output_path` |
 | `flatten_form` | 양식 flatten | `file_path`, `output_path` |
 | `convert_to_svg` | SVG 내보내기 | `file_path`, `output_dir` |
 | `compare_pdfs` | 비교 (`text`/`visual`/`both`) | `file_path1`, `file_path2`, `compare_mode?`, `output_path` |
@@ -397,7 +397,7 @@ pip install -e .[build]   # 빌드 도구
 python -m pyright          # 0 errors 목표
 
 # 테스트
-python -m pytest -q        # 230 collected / 229 passed / 1 opt-in Gemini smoke skipped
+python -m pytest -q        # opt-in Gemini smoke 1건 skip 가능; 기능 감사 SSOT: PROJECT_AUDIT.md
 
 # 패키지 빌드
 python -m build
@@ -440,9 +440,11 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 - blank/dedupe/sanitize 확인 다이얼로그; 배치 암호 기본 권한 안내
 - 취소 롤백 mtime 휴리스틱 제거; `list_annotations` text 계약
 - 상세: `PROJECT_AUDIT.md`, `CLAUDE.md` 2026-07-22 addendum
-- 검증: `python -m pyright` 0 errors; `python -m pytest -q` → 230 collected / 229 passed / 1 opt-in skip
-- 로드맵 유지: OCR, 드래그 교정 UX, compare 리포트 UI, SDK-level AI abort
+- 검증: `python -m pyright` 0 errors; `python -m pytest -q` (opt-in Gemini smoke skip 가능)
+- 기능 감사 SSOT: `PROJECT_AUDIT.md`
+- **2026-07-27 후속**: 암호 PDF AI UI, merge 0페이지 fail-fast, chat cancel_check, 배치 암호 권한 UI, blank/dedupe dry-run, **미리보기 드래그 영역 교정** (`region_select.py`)
+- 잔여 로드맵: OCR optional extra, compare 인터랙티브 리포트 고도화, SDK-level AI HTTP abort — 상세는 `PROJECT_AUDIT.md`
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-22)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-27)*

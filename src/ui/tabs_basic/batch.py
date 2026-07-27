@@ -4,6 +4,7 @@ import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QComboBox,
     QFileDialog,
     QFormLayout,
@@ -94,6 +95,32 @@ def setup_batch_tab(self):
     opt_layout2.addWidget(self.inp_batch_opt)
     content_layout.addLayout(opt_layout2)
 
+    # 배치 암호화 권한 (단일 Security 탭과 정렬)
+    perm_row = QHBoxLayout()
+    self.chk_batch_perm_print = QCheckBox(tm.get("chk_perm_print"))
+    self.chk_batch_perm_print.setChecked(True)
+    self.chk_batch_perm_copy = QCheckBox(tm.get("chk_perm_copy"))
+    self.chk_batch_perm_copy.setChecked(True)
+    self.chk_batch_perm_modify = QCheckBox(tm.get("chk_perm_modify"))
+    self.chk_batch_perm_modify.setChecked(False)
+    self.chk_batch_perm_annotate = QCheckBox(tm.get("chk_perm_annotate"))
+    self.chk_batch_perm_annotate.setChecked(False)
+    self.chk_batch_perm_form = QCheckBox(tm.get("chk_perm_form"))
+    self.chk_batch_perm_form.setChecked(False)
+    self.chk_batch_perm_assemble = QCheckBox(tm.get("chk_perm_assemble"))
+    self.chk_batch_perm_assemble.setChecked(False)
+    for chk in (
+        self.chk_batch_perm_print,
+        self.chk_batch_perm_copy,
+        self.chk_batch_perm_modify,
+        self.chk_batch_perm_annotate,
+        self.chk_batch_perm_form,
+        self.chk_batch_perm_assemble,
+    ):
+        perm_row.addWidget(chk)
+    perm_row.addStretch()
+    content_layout.addLayout(perm_row)
+
     batch_encrypt_note = QLabel(tm.get("tip_batch_encrypt_permissions"))
     batch_encrypt_note.setObjectName("desc")
     batch_encrypt_note.setWordWrap(True)
@@ -143,4 +170,25 @@ def action_batch(self):
     opt = self.inp_batch_opt.text()
     if op in ("watermark", "encrypt") and not opt:
         return QMessageBox.warning(self, tm.get("info"), tm.get("ph_batch_option"))
-    self.run_worker("batch", files=files, output_dir=out_dir, operation=op, option=opt)
+    kwargs = {
+        "files": files,
+        "output_dir": out_dir,
+        "operation": op,
+        "option": opt,
+    }
+    if op == "encrypt":
+        permissions: list[str] = ["accessibility"]
+        if getattr(self, "chk_batch_perm_print", None) is not None and self.chk_batch_perm_print.isChecked():
+            permissions.append("print")
+        if getattr(self, "chk_batch_perm_copy", None) is not None and self.chk_batch_perm_copy.isChecked():
+            permissions.append("copy")
+        if getattr(self, "chk_batch_perm_modify", None) is not None and self.chk_batch_perm_modify.isChecked():
+            permissions.append("modify")
+        if getattr(self, "chk_batch_perm_annotate", None) is not None and self.chk_batch_perm_annotate.isChecked():
+            permissions.append("annotate")
+        if getattr(self, "chk_batch_perm_form", None) is not None and self.chk_batch_perm_form.isChecked():
+            permissions.append("form")
+        if getattr(self, "chk_batch_perm_assemble", None) is not None and self.chk_batch_perm_assemble.isChecked():
+            permissions.append("assemble")
+        kwargs["permissions"] = permissions
+    self.run_worker("batch", **kwargs)

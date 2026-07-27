@@ -73,7 +73,20 @@ class AIService(
             if client_class is None or self._types is None:
                 logger.error("google-genai SDK surface is incomplete")
                 return False
-            self._client = client_class(api_key=self._api_key)
+            # timeout은 SDK 버전마다 지원 여부가 달라 best-effort
+            client_kwargs: dict[str, Any] = {"api_key": self._api_key}
+            timeout_ms = int(self._timeout * 1000) if self._timeout else 0
+            if timeout_ms > 0:
+                try:
+                    client_kwargs["http_options"] = {"timeout": timeout_ms}
+                    self._client = client_class(**client_kwargs)
+                except TypeError:
+                    self._client = client_class(api_key=self._api_key)
+                except Exception as timeout_exc:
+                    logger.debug("Client init with timeout failed, retrying plain: %s", timeout_exc)
+                    self._client = client_class(api_key=self._api_key)
+            else:
+                self._client = client_class(api_key=self._api_key)
             self._configured = True
             return True
         except Exception as exc:
@@ -170,7 +183,11 @@ class AIService(
         schema = self._make_answer_schema()
         config = self._build_generate_config(schema)
         try:
-            chat = self._get_or_create_chat(pdf_path, conversation_history)
+            chat = self._get_or_create_chat(
+                pdf_path,
+                conversation_history,
+                cancel_check=cancel_check,
+            )
         except Exception as exc:
             if not self._should_fallback_from_file_api(exc):
                 raise

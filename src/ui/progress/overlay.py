@@ -235,11 +235,17 @@ class ProgressOverlayWidget(QFrame):
         """오버레이 숨기기"""
         self.hide()
 
-    def _on_cancel(self):
-        """취소 버튼 클릭"""
+    def set_cancelling(self, description: str | None = None):
+        """취소 요청 후 대기 UI (네트워크 블로킹 구간 포함)."""
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.setText(tm.get("progress_cancelling"))
-        self.desc_label.setText(tm.get("progress_cancelling_desc"))
+        self.title_label.setText(tm.get("progress_cancelling"))
+        self.desc_label.setText(description or tm.get("progress_cancelling_desc"))
+        self.icon_label.setText("⏳")
+
+    def _on_cancel(self):
+        """취소 버튼 클릭"""
+        self.set_cancelling(tm.get("progress_cancelling_desc"))
         self.cancelled.emit()
 
     def resizeEvent(self, a0: QResizeEvent | None):

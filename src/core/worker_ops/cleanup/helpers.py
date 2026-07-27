@@ -41,6 +41,30 @@ def _page_drawing_count(page: Any) -> int:
     except Exception:
         return 0
 
+def estimate_blank_page_removals(doc: Any, *, text_threshold: int = 0) -> tuple[int, int]:
+    """(제거 예상 페이지 수, 전체 페이지 수) dry-run."""
+    total = len(doc)
+    blank = 0
+    for i in range(total):
+        if _is_blank_page(doc[i], text_threshold=text_threshold):
+            blank += 1
+    return blank, total
+
+
+def estimate_dedupe_page_removals(doc: Any) -> tuple[int, int]:
+    """(제거 예상 중복 페이지 수, 전체 페이지 수) dry-run."""
+    total = len(doc)
+    seen: set[str] = set()
+    keep = 0
+    for i in range(total):
+        sig = _page_signature(doc[i])
+        if sig in seen:
+            continue
+        seen.add(sig)
+        keep += 1
+    return total - keep, total
+
+
 def _is_blank_page(page: Any, *, text_threshold: int = 0) -> bool:
     if _page_text_len(page) > text_threshold:
         return False

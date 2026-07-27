@@ -30,6 +30,9 @@ from .actions_markup import (
     action_remove_annotations,
     action_redact_text,
     action_redact_area,
+    action_start_redact_region_select,
+    _on_preview_region_selected_for_redact,
+    _on_redact_region_mode_changed,
     action_add_text_markup,
     action_add_background,
     action_add_sticky_note,
@@ -105,6 +108,9 @@ class MainWindowTabsAdvancedMixin(MainWindowHost):
     action_remove_annotations = action_remove_annotations
     action_redact_text = action_redact_text
     action_redact_area = action_redact_area
+    action_start_redact_region_select = action_start_redact_region_select
+    _on_preview_region_selected_for_redact = _on_preview_region_selected_for_redact
+    _on_redact_region_mode_changed = _on_redact_region_mode_changed
     action_add_text_markup = action_add_text_markup
     action_add_background = action_add_background
     action_add_sticky_note = action_add_sticky_note

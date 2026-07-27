@@ -40,7 +40,12 @@ class AIChatSessionMixin:
             )
         return contents
 
-    def _get_or_create_chat(self, pdf_path: str, conversation_history: list[dict[str, str]] | None) -> Any:
+    def _get_or_create_chat(
+        self,
+        pdf_path: str,
+        conversation_history: list[dict[str, str]] | None,
+        cancel_check: Callable[[], None] | None = None,
+    ) -> Any:
         if self._client is None or self._types is None:
             raise RuntimeError("Gemini client is not configured")
         cache_key = self._make_chat_session_cache_key(pdf_path)
@@ -53,7 +58,9 @@ class AIChatSessionMixin:
                 if cached is not None:
                     return cached
 
-            uploaded_file = self._upload_pdf_file(pdf_path)
+            self._run_cancel_check(cancel_check)
+            uploaded_file = self._upload_pdf_file(pdf_path, cancel_check=cancel_check)
+            self._run_cancel_check(cancel_check)
             part_factory = getattr(self._types, "Part", None)
             content_type = getattr(self._types, "Content", None)
             if part_factory is None or content_type is None:
@@ -74,6 +81,7 @@ class AIChatSessionMixin:
                 )
             ]
             history_contents.extend(self._history_to_contents(conversation_history or []))
+            self._run_cancel_check(cancel_check)
             chat = self._client.chats.create(model=self._model, history=history_contents)
             with cls._chat_sessions_lock:
                 # double-check: 대기 중 다른 경로가 채웠을 수 있음

@@ -52,6 +52,24 @@ def _on_worker_cancelled(self):
         if hasattr(self.worker, 'cancel'):
             self.worker.cancel()
         self.status_label.setText(tm.get("cancelling"))
+        # AI/네트워크 작업은 즉시 끊기지 않을 수 있음 — 대기 안내
+        mode = str(getattr(self.worker, "mode", "") or "")
+        if mode.startswith("ai_"):
+            desc = tm.get("progress_cancelling_network_desc")
+        else:
+            desc = tm.get("progress_cancelling_desc")
+        overlay = getattr(self, "progress_overlay", None)
+        if overlay is not None:
+            set_cancelling = getattr(overlay, "set_cancelling", None)
+            if callable(set_cancelling):
+                set_cancelling(desc)
+            else:
+                update = getattr(overlay, "update_progress", None)
+                if callable(update):
+                    try:
+                        update(self.progress_bar.value() if hasattr(self, "progress_bar") else 0, desc)
+                    except Exception:
+                        logger.debug("Failed to update overlay cancel state", exc_info=True)
 
 def _cleanup_cancelled_worker(self):
     """취소된 작업 정리 (임시 파일 포함)"""

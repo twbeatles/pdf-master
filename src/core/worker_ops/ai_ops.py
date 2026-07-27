@@ -35,12 +35,21 @@ class WorkerAiOpsMixin(WorkerHost):
             doc = self._open_pdf_document(file_path)
             fd, temp_path = tempfile.mkstemp(suffix=".pdf", prefix="pdf_master_ai_")
             os.close(fd)
+            # 가능하면 소유자 전용 권한으로 제한 (POSIX; Windows에서는 no-op/best-effort)
+            try:
+                os.chmod(temp_path, 0o600)
+            except OSError:
+                logger.debug("Could not chmod AI temp PDF", exc_info=True)
             # 인증된 문서를 비암호화 임시본으로 저장 (File API/텍스트 추출용)
             encrypt_none = int(getattr(fitz, "PDF_ENCRYPT_NONE", 0))
             try:
                 doc.save(temp_path, encryption=encrypt_none, garbage=3, deflate=True)
             except TypeError:
                 doc.save(temp_path, garbage=3, deflate=True)
+            try:
+                os.chmod(temp_path, 0o600)
+            except OSError:
+                logger.debug("Could not chmod AI temp PDF after save", exc_info=True)
             return temp_path, temp_path
         except Exception as exc:
             logger.warning("Failed to unlock encrypted PDF for AI: %s", exc)

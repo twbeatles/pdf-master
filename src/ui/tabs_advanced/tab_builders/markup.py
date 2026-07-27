@@ -154,11 +154,30 @@ def _create_markup_subtab(self):
     self.inp_redact_rect.setPlaceholderText(tm.get("ph_redact_rect"))
     area_row.addWidget(self.inp_redact_rect)
     l_redact.addLayout(area_row)
+    drag_row = QHBoxLayout()
+    b_redact_drag = QPushButton(tm.get("btn_redact_drag_select"))
+    b_redact_drag.setObjectName("secondaryBtn")
+    b_redact_drag.setToolTip(tm.get("tooltip_redact_drag_select"))
+    b_redact_drag.clicked.connect(self.action_start_redact_region_select)
+    drag_row.addWidget(b_redact_drag)
+    self.lbl_redact_drag_hint = QLabel(tm.get("hint_redact_drag_idle"))
+    self.lbl_redact_drag_hint.setObjectName("desc")
+    self.lbl_redact_drag_hint.setWordWrap(True)
+    drag_row.addWidget(self.lbl_redact_drag_hint, 1)
+    l_redact.addLayout(drag_row)
     b_redact_area = QPushButton(tm.get("btn_redact_area"))
     b_redact_area.setObjectName("dangerBtn")
     b_redact_area.clicked.connect(self.action_redact_area)
     l_redact.addWidget(b_redact_area)
     layout.addWidget(grp_redact)
+    # 미리보기 드래그 선택 시그널 (한 번만 연결)
+    if hasattr(self, "preview_image") and not getattr(self, "_redact_region_signal_connected", False):
+        try:
+            self.preview_image.regionSelected.connect(self._on_preview_region_selected_for_redact)
+            self.preview_image.regionSelectModeChanged.connect(self._on_redact_region_mode_changed)
+            self._redact_region_signal_connected = True
+        except Exception:
+            pass
 
     # v3.2: 스티키 노트 주석
     grp_sticky = QGroupBox(tm.get("grp_sticky"))

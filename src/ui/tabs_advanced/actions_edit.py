@@ -44,17 +44,59 @@ def action_crop(self):
         self.run_worker("crop_pdf", file_path=path, output_path=s, margins=margins, crop_mode=crop_mode)
 
 
+def _cleanup_confirm_with_estimate(self, path: str, *, kind: str) -> bool:
+    """blank/dedupe 확인 다이얼로그. dry-run 카운트를 가능하면 포함한다."""
+    base_key = (
+        "msg_confirm_remove_blank_pages"
+        if kind == "blank"
+        else "msg_confirm_dedupe_pages"
+    )
+    count_key = (
+        "msg_confirm_remove_blank_pages_count"
+        if kind == "blank"
+        else "msg_confirm_dedupe_pages_count"
+    )
+    message = tm.get(base_key)
+    try:
+        from ...core.optional_deps import fitz
+        from ...core.worker_ops.cleanup.helpers import (
+            estimate_blank_page_removals,
+            estimate_dedupe_page_removals,
+        )
+
+        doc = fitz.open(path)
+        try:
+            # preview 암호 세션이 있으면 인증 시도
+            password = getattr(self, "_current_preview_password", None)
+            if getattr(doc, "is_encrypted", False) and isinstance(password, str) and password:
+                try:
+                    doc.authenticate(password)
+                except Exception:
+                    pass
+            if kind == "blank":
+                removed, total = estimate_blank_page_removals(doc)
+            else:
+                removed, total = estimate_dedupe_page_removals(doc)
+            message = tm.get(count_key, removed, total)
+        finally:
+            doc.close()
+    except Exception:
+        message = f"{tm.get(base_key)}\n{tm.get('msg_dry_run_unavailable')}"
+
+    reply = QMessageBox.warning(
+        self,
+        tm.get("warning"),
+        message,
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+    )
+    return reply == QMessageBox.StandardButton.Yes
+
+
 def action_remove_blank_pages(self):
     path = self.sel_cleanup.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
-    reply = QMessageBox.warning(
-        self,
-        tm.get("warning"),
-        tm.get("msg_confirm_remove_blank_pages"),
-        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-    )
-    if reply != QMessageBox.StandardButton.Yes:
+    if not _cleanup_confirm_with_estimate(self, path, kind="blank"):
         return
     s, _ = self._choose_save_file(tm.get("save"), "no_blank.pdf", "PDF (*.pdf)")
     if s:
@@ -65,13 +107,7 @@ def action_dedupe_pages(self):
     path = self.sel_cleanup.get_path()
     if not path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
-    reply = QMessageBox.warning(
-        self,
-        tm.get("warning"),
-        tm.get("msg_confirm_dedupe_pages"),
-        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-    )
-    if reply != QMessageBox.StandardButton.Yes:
+    if not _cleanup_confirm_with_estimate(self, path, kind="dedupe"):
         return
     s, _ = self._choose_save_file(tm.get("save"), "deduped.pdf", "PDF (*.pdf)")
     if s:

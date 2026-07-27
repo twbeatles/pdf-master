@@ -67,6 +67,24 @@ def _save_summary_result(self):
     return None
 
 
+def _prepare_ai_pdf_access(self, path: str):
+    """AI 작업 전 미리보기 인증을 맞춘다. 암호 PDF는 preview 세션 암호를 재사용한다.
+
+    Returns:
+        (ok, password). ok=False면 호출측에서 중단. password는 선택(Worker passwords 주입용).
+    """
+    if not path:
+        return False, None
+    # 암호 PDF든 아니든 preview를 먼저 열어 세션·비밀번호를 정렬한다
+    ready, password = _ensure_preview_ready(self, path)
+    if not ready:
+        # preview 인증 실패 시 encrypted 안내(또는 preview 위젯이 이미 오류 표시)
+        if is_pdf_encrypted(path):
+            return False, None
+        return False, None
+    return True, password
+
+
 def action_ai_summarize(self):
     if not AI_AVAILABLE:
         return QMessageBox.critical(self, tm.get("error"), tm.get("msg_ai_unavailable"))
@@ -77,8 +95,14 @@ def action_ai_summarize(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
     if not api_key:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_key"))
-    if is_pdf_encrypted(path):
-        return QMessageBox.warning(self, tm.get("warning"), tm.get("err_pdf_encrypted", os.path.basename(path)))
+
+    ok, _password = _prepare_ai_pdf_access(self, path)
+    if not ok:
+        if is_pdf_encrypted(path):
+            return QMessageBox.warning(
+                self, tm.get("warning"), tm.get("err_pdf_encrypted", os.path.basename(path))
+            )
+        return QMessageBox.warning(self, tm.get("warning"), tm.get("preview_error", os.path.basename(path)))
 
     style = self.cmb_summary_style.currentData() or "concise"
     lang = self.cmb_summary_lang.currentData() or "ko"
@@ -114,10 +138,16 @@ def _ask_ai_question(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
     if not api_key:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_key"))
-    if is_pdf_encrypted(path):
-        return QMessageBox.warning(self, tm.get("warning"), tm.get("err_pdf_encrypted", os.path.basename(path)))
     if not question:
         return None
+
+    ok, _password = _prepare_ai_pdf_access(self, path)
+    if not ok:
+        if is_pdf_encrypted(path):
+            return QMessageBox.warning(
+                self, tm.get("warning"), tm.get("err_pdf_encrypted", os.path.basename(path))
+            )
+        return QMessageBox.warning(self, tm.get("warning"), tm.get("preview_error", os.path.basename(path)))
 
     history_key = _chat_history_key(path)
     conversation_history = list(self._chat_histories.get(history_key, []))
@@ -195,8 +225,14 @@ def _extract_keywords(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
     if not api_key:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_key"))
-    if is_pdf_encrypted(path):
-        return QMessageBox.warning(self, tm.get("warning"), tm.get("err_pdf_encrypted", os.path.basename(path)))
+
+    ok, _password = _prepare_ai_pdf_access(self, path)
+    if not ok:
+        if is_pdf_encrypted(path):
+            return QMessageBox.warning(
+                self, tm.get("warning"), tm.get("err_pdf_encrypted", os.path.basename(path))
+            )
+        return QMessageBox.warning(self, tm.get("warning"), tm.get("preview_error", os.path.basename(path)))
 
     max_keywords = self.spn_max_keywords.value()
     lang = self.cmb_summary_lang.currentData() or "ko"

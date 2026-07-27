@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6.QtCore import QModelIndex, QPointF, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QEvent, QModelIndex, QPointF, QRectF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
 from PyQt6.QtPdfWidgets import QPdfView
@@ -24,6 +24,12 @@ from ...core.i18n import tm
 logger = logging.getLogger(__name__)
 
 
+from .region_select import (
+    RegionSelectOverlay,
+    compute_page_display_rect,
+    format_rect_coords,
+    map_viewport_rect_to_page_points,
+)
 from .search import PreviewSearchLineEdit
 
 class ZoomablePreviewWidget(QWidget):
@@ -32,6 +38,9 @@ class ZoomablePreviewWidget(QWidget):
     printRequested = pyqtSignal()
     pageSetupRequested = pyqtSignal()
     searchVisibilityChanged = pyqtSignal(bool)
+    # 1-based page, x0,y0,x1,y1 in PDF points
+    regionSelected = pyqtSignal(int, float, float, float, float)
+    regionSelectModeChanged = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -42,6 +51,8 @@ class ZoomablePreviewWidget(QWidget):
         self._search_panel_visible = True
         self._active_search_query = ""
         self._pending_restore_search_row: int | None = None
+        self._region_select_mode = False
+        self._region_overlay: RegionSelectOverlay | None = None
 
         self._search_refresh_timer = QTimer(self)
         self._search_refresh_timer.setSingleShot(True)
@@ -156,6 +167,15 @@ class ZoomablePreviewWidget(QWidget):
         if navigator is not None:
             navigator.currentPageChanged.connect(self._on_page_changed)
         content.addWidget(self.pdf_view, 1)
+
+        # 드래그 영역 선택 오버레이 (pdf_view 자식)
+        self._region_overlay = RegionSelectOverlay(self.pdf_view)
+        self._region_overlay.selectionFinished.connect(self._on_region_selection_finished)
+        self._region_overlay.selectionCancelled.connect(self._on_region_selection_cancelled)
+        self.pdf_view.installEventFilter(self)
+        if self.pdf_view.viewport() is not None:
+            self.pdf_view.viewport().installEventFilter(self)
+        self._sync_region_overlay_geometry()
 
         layout.addLayout(content, 1)
 
@@ -518,8 +538,110 @@ class ZoomablePreviewWidget(QWidget):
         self.search_results.setStyleSheet(base_style)
         self.bookmark_tree.setStyleSheet(base_style)
 
+    # --- 드래그 영역 선택 (교정 등) ---
+
+    def is_region_select_mode(self) -> bool:
+        return bool(self._region_select_mode)
+
+    def set_region_select_mode(self, enabled: bool) -> None:
+        """미리보기에서 드래그로 사각형 영역을 고르는 모드."""
+        next_enabled = bool(enabled) and self._doc is not None and self._total_pages > 0
+        if self._region_select_mode == next_enabled and (
+            self._region_overlay is None or self._region_overlay.is_active() == next_enabled
+        ):
+            return
+        self._region_select_mode = next_enabled
+        if self._region_overlay is not None:
+            self._sync_region_overlay_geometry()
+            self._region_overlay.set_active(next_enabled)
+        self.regionSelectModeChanged.emit(next_enabled)
+
+    def eventFilter(self, a0, a1):  # type: ignore[no-untyped-def]
+        if a1 is not None and a1.type() == QEvent.Type.Resize:
+            if a0 is self.pdf_view or a0 is self.pdf_view.viewport():
+                self._sync_region_overlay_geometry()
+        return super().eventFilter(a0, a1)
+
+    def _sync_region_overlay_geometry(self) -> None:
+        if self._region_overlay is None:
+            return
+        # pdf_view 전체 위에 덮음 (viewport 스크롤 포함 좌표계는 변환 시 보정)
+        self._region_overlay.setGeometry(self.pdf_view.rect())
+        self._region_overlay.raise_()
+
+    def _page_display_rect_in_view(self) -> QRectF | None:
+        if self._doc is None or self._total_pages <= 0:
+            return None
+        page = max(0, min(self._current_page, self._total_pages - 1))
+        try:
+            page_size = self._doc.pagePointSize(page)
+        except Exception:
+            logger.debug("pagePointSize failed", exc_info=True)
+            return None
+        pw = float(page_size.width())
+        ph = float(page_size.height())
+        if pw <= 0 or ph <= 0:
+            return None
+
+        margins = self.pdf_view.documentMargins()
+        hbar = self.pdf_view.horizontalScrollBar()
+        vbar = self.pdf_view.verticalScrollBar()
+        scroll_x = float(hbar.value()) if hbar is not None else 0.0
+        scroll_y = float(vbar.value()) if vbar is not None else 0.0
+        # 오버레이는 pdf_view 기준 — viewport 원점을 보정
+        vp = self.pdf_view.viewport()
+        if vp is not None:
+            origin = vp.mapTo(self.pdf_view, vp.rect().topLeft())
+            viewport = QRectF(origin.x(), origin.y(), vp.width(), vp.height())
+        else:
+            viewport = QRectF(self.pdf_view.rect())
+
+        return compute_page_display_rect(
+            viewport=viewport,
+            page_width_pts=pw,
+            page_height_pts=ph,
+            zoom_factor=float(self.pdf_view.zoomFactor() or 1.0),
+            margin_left=float(margins.left()),
+            margin_top=float(margins.top()),
+            margin_right=float(margins.right()),
+            margin_bottom=float(margins.bottom()),
+            scroll_x=scroll_x,
+            scroll_y=scroll_y,
+        )
+
+    def _on_region_selection_finished(self, rect) -> None:
+        if self._doc is None or not self._region_select_mode:
+            return
+        page_display = self._page_display_rect_in_view()
+        if page_display is None:
+            logger.warning("Could not resolve page display rect for region select")
+            return
+        page = max(0, min(self._current_page, self._total_pages - 1))
+        try:
+            page_size = self._doc.pagePointSize(page)
+        except Exception:
+            return
+        selection = QRectF(rect)
+        mapped = map_viewport_rect_to_page_points(
+            selection,
+            page_display,
+            float(page_size.width()),
+            float(page_size.height()),
+        )
+        if mapped is None:
+            logger.info("Region selection too small or outside page")
+            return
+        # 선택 완료 후 모드 종료 (한 번 고르면 필드에 반영)
+        self.set_region_select_mode(False)
+        x0, y0, x1, y1 = mapped
+        self.regionSelected.emit(page + 1, x0, y0, x1, y1)
+
+    def _on_region_selection_cancelled(self) -> None:
+        self.set_region_select_mode(False)
+
     def closeEvent(self, a0: QCloseEvent | None):
         try:
+            self.set_region_select_mode(False)
             if self._doc is not None:
                 self._doc.close()
         except Exception:

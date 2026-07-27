@@ -84,7 +84,9 @@ def _format_compare_summary(payload: dict) -> str:
     if isinstance(results, list) and results:
         lines.append("")
         lines.append(tm.get("compare_summary_pages"))
-        for result in results[:8]:
+        # 인터랙티브 리포트 전 단계: 페이지별 상태 전체 나열 (스크롤 다이얼로그에서 소비)
+        max_rows = 200
+        for result in results[:max_rows]:
             if not isinstance(result, dict):
                 continue
             page = result.get("page", "?")
@@ -94,8 +96,8 @@ def _format_compare_summary(payload: dict) -> str:
             if isinstance(samples, list) and samples:
                 sample_text = f" - {samples[0]}"
             lines.append(tm.get("compare_summary_page_row", page, status, sample_text))
-        if len(results) > 8:
-            lines.append(tm.get("compare_summary_more", len(results) - 8))
+        if len(results) > max_rows:
+            lines.append(tm.get("compare_summary_more", len(results) - max_rows))
     return "\n".join(lines)
 
 def _replace_last_chat_block(chat_history, html: str) -> None:

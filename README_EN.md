@@ -83,7 +83,7 @@
 | **Add Hyperlinks** | URL or page navigation links |
 | **Insert Textbox** | Type text directly on the PDF |
 | **Redact Text** | Permanently remove sensitive text matches |
-| **Redact Area** | Permanently remove by coordinates |
+| **Redact Area** | Permanently remove by coordinates **or by dragging a region on the preview** |
 | **Add Background** | Change page background color |
 | **Freehand Signature** | Draw and embed a handwritten signature |
 
@@ -111,6 +111,7 @@
 ### 🎨 UI/UX
 - **Dark / Light Theme** — Glassmorphism design
 - **Zoom / Pan Preview** — Mouse wheel zoom, drag move, print
+- **Preview drag redaction** — In Advanced tab area redact, drag a rectangle on the preview to fill coordinates
 - **Preview Search / Bookmarks** — Collapsible side panel (`Ctrl+F`)
 - **Thumbnail Grid** — View all pages at a glance
 - **Drag & Drop** — Add files, reorder pages
@@ -274,7 +275,7 @@ Output: `dist/PDF_Master_v4.5.6.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
-Validation baseline: `python -m pytest -q` → **230 collected / 229 passed / 1 opt-in Gemini smoke skipped**. See `PROJECT_AUDIT.md` for the functional audit and 2026-07-15/2026-07-22 follow-up fixes.
+Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipped). See `PROJECT_AUDIT.md` for the functional audit SSOT and follow-up fixes.
 
 ---
 
@@ -291,6 +292,7 @@ Validation baseline: `python -m pytest -q` → **230 collected / 229 passed / 1 
 - **2026-07-15 audit follow-up**: AI cooperative cancel + encrypted-PDF password unlock, conservative blank-page keep, visual compare `visual_error` status, area-redact confirmation, batch/extract cancel and i18n hardening
 - **2026-07-21 SOLID code split**: Worker domain packages (`annotation`/`extract`/`cleanup`/`page`/`transform`/`compare`) plus settings/constants/undo impl packages and progress UI split; public imports and behavior contracts unchanged
 - **2026-07-22 audit follow-up**: thumbnail loader sender guard, AI temp/atomic orphan sweep (`temp_cleanup`), interruptible AI retry sleep + no retry on cancel, confirm dialogs for blank/dedupe/sanitize, cancel rollback without mtime heuristic, `list_annotations` text contract, batch encrypt permission note, chat session single-flight
+- **2026-07-27 audit follow-up**: functional audit SSOT is `PROJECT_AUDIT.md`; encrypted-PDF AI UI reuses preview password; merge empty-page fail-fast; AI chat `cancel_check` propagation; batch encrypt permission checkboxes; blank/dedupe dry-run counts; **preview drag area redaction**
 
 ### v4.5.5
 - Preview zoom, pan, and print stability (Qt print pipeline)

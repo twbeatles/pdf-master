@@ -73,6 +73,12 @@ class WorkerComposeOpsMixin(WorkerHost):
                     skipped_count += 1
                 self._emit_progress_if_due(int((idx + 1) / len(valid_files) * 100))
 
+            # 유효 페이지가 하나도 없으면 빈 PDF를 성공으로 저장하지 않는다
+            merged_pages = len(doc_merged)
+            if merged_pages == 0:
+                self.error_signal.emit(self._get_msg("err_merge_no_pages"))
+                return
+
             self._atomic_pdf_save(doc_merged, output_path)
 
             result_msg = self._get_msg("msg_merge_done", len(valid_files) - skipped_count)

@@ -46,6 +46,7 @@ FALLBACK_MESSAGES = {
     "msg_images_to_pdf_done": "✅ 이미지 → PDF 변환 완료!\n{}개 이미지 → 1개 PDF",
     "msg_merge_done": "✅ 병합 완료!\n{}개 파일 → 1개 PDF",
     "msg_merge_skipped": "\n⚠️ {}개 파일 건너뜀",
+    "err_merge_no_pages": "병합할 유효한 페이지가 없습니다. (암호·손상 파일만 있거나 모두 건너뛰었습니다)",
     "msg_reorder_done": "✅ 페이지 순서 변경 완료!\n{}페이지 재정렬됨",
     "msg_split_done": "✅ PDF 분할 완료!\n{}개 파일 생성됨",
     "msg_page_number_format_roman": "로마 숫자",

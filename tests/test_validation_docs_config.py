@@ -2,8 +2,9 @@ import re
 from pathlib import Path
 
 
-CURRENT_AUDIT_FILE = "FUNCTIONAL_IMPLEMENTATION_AUDIT_2026-05-22.md"
-AUDIT_FILE_PATTERN = re.compile(r"FUNCTIONAL_IMPLEMENTATION_AUDIT_\d{4}-\d{2}-\d{2}\.md")
+CURRENT_AUDIT_FILE = "PROJECT_AUDIT.md"
+# 레거시 감사 파일명 — maintained docs에 남아 있으면 존재하는 파일만 허용
+LEGACY_AUDIT_FILE_PATTERN = re.compile(r"FUNCTIONAL_IMPLEMENTATION_AUDIT_\d{4}-\d{2}-\d{2}\.md")
 
 
 def test_pytest_config_uses_repo_local_basetemp():
@@ -59,9 +60,12 @@ def test_docs_reference_validation_manifest_and_commands():
     assert "typings/" in readme_en
     assert "typings/" in claude
     assert "typings/" in gemini
-    audit_files = sorted(Path(".").glob("FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md"))
-    assert audit_files
-    assert audit_files[-1].name == CURRENT_AUDIT_FILE
+    # 현행 기능 감사 SSOT: PROJECT_AUDIT.md
+    assert Path(CURRENT_AUDIT_FILE).is_file()
+    assert CURRENT_AUDIT_FILE in readme
+    assert CURRENT_AUDIT_FILE in readme_en
+    assert CURRENT_AUDIT_FILE in claude
+    assert CURRENT_AUDIT_FILE in gemini
     assert "python -m PyInstaller pdf_master.spec --clean" in spec_text
     assert ".pytest_tmp/" in gitignore
     assert "build/" in gitignore
@@ -72,20 +76,34 @@ def test_docs_reference_validation_manifest_and_commands():
 
 
 def test_maintained_docs_do_not_reference_missing_functional_audits():
+    """레거시 FUNCTIONAL audit 파일명을 가리키면, 해당 파일이 실제로 존재해야 한다."""
     existing = {path.name for path in Path(".").glob("FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md")}
     maintained_docs = [
         Path("README.md"),
         Path("README_EN.md"),
         Path("CLAUDE.md"),
         Path("GEMINI.md"),
-        Path("PROJECT_ANALYSIS_AND_FEATURE_ROADMAP.md"),
+        Path("PROJECT_AUDIT.md"),
     ]
 
     missing = []
     for path in maintained_docs:
+        if not path.is_file():
+            missing.append(f"{path}: (file missing)")
+            continue
         text = path.read_text(encoding="utf-8")
-        for match in AUDIT_FILE_PATTERN.findall(text):
+        for match in LEGACY_AUDIT_FILE_PATTERN.findall(text):
             if match not in existing:
                 missing.append(f"{path}:{match}")
 
     assert not missing, "Missing audit files referenced by maintained docs:\n" + "\n".join(missing)
+
+
+def test_project_audit_is_current_ssot():
+    """PROJECT_AUDIT.md가 존재하고 감사 문서 구조를 갖춘다."""
+    path = Path(CURRENT_AUDIT_FILE)
+    assert path.is_file()
+    text = path.read_text(encoding="utf-8")
+    assert "# Project Audit" in text
+    assert "## 1. Executive Summary" in text
+    assert "## 3. High-Risk Issues" in text
