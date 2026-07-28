@@ -88,3 +88,5 @@ Desktop.ini
 *.swp
 *~
 *.bak
+.specify/
+specs/
