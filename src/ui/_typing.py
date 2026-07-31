@@ -47,6 +47,10 @@ class MainWindowHost:
     txt_textbox_content: Any
     _textbox_region_signal_connected: bool
     _region_select_target: str | None
+    _ensure_textbox_preview_ready: Any
+    _connect_textbox_preview_signals: Any
+    _textbox_current_style: Any
+    _sync_textbox_placement_overlay: Any
 
     _ai_worker_mode: bool
     _chat_worker_mode: bool

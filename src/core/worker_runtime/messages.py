@@ -81,6 +81,8 @@ FALLBACK_MESSAGES = {
     "msg_markup_label_squiggly": "물결선",
     "msg_text_markup_added": "✅ {} 추가 완료!\n'{}': {}개",
     "msg_textbox_inserted": "✅ 텍스트 상자 삽입 완료!\n페이지 {}",
+    "err_textbox_insert_failed": "텍스트를 페이지에 쓰지 못했습니다. 위치·크기·폰트를 확인한 뒤 다시 시도하세요.",
+    "msg_enter_text": "텍스트를 입력하세요.",
     "msg_sticky_note_added": "✅ 스티키 노트 추가 완료!\n페이지 {}, 아이콘: {}",
     "msg_ink_annotation_added": "✅ 프리핸드 드로잉 추가 완료!\n페이지 {}, {}개 포인트",
     "msg_stroke_required": "드로잉 데이터가 없습니다.",

@@ -7,6 +7,7 @@ from PyQt6.QtCore import QRectF
 from src.ui.preview_widget.region_select import (
     compute_page_display_rect,
     format_rect_coords,
+    map_page_points_to_viewport_rect,
     map_viewport_rect_to_page_points,
 )
 
@@ -92,3 +93,17 @@ def test_map_too_small_returns_none():
 
 def test_format_rect_coords():
     assert format_rect_coords((1.234, 5.678, 9.0, 10.1), decimals=1) == "1.2,5.7,9.0,10.1"
+def test_map_page_points_to_viewport_roundtrip():
+    page_display = QRectF(50, 50, 200, 300)
+    view = map_page_points_to_viewport_rect(
+        10, 20, 60, 80, page_display, page_width_pts=200, page_height_pts=300
+    )
+    assert view is not None
+    assert abs(view.x() - 60) < 0.5
+    assert abs(view.y() - (50 + 20)) < 0.5
+    mapped = map_viewport_rect_to_page_points(
+        view, page_display, page_width_pts=200, page_height_pts=300
+    )
+    assert mapped is not None
+    assert abs(mapped[0] - 10) < 1.0
+    assert abs(mapped[1] - 20) < 1.0

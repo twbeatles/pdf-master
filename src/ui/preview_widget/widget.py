@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6.QtCore import QEvent, QModelIndex, QPointF, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QCloseEvent
+from PyQt6.QtCore import QEvent, QModelIndex, QPointF, QRect, QRectF, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QCloseEvent, QColor
 from PyQt6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
 from PyQt6.QtPdfWidgets import QPdfView
 from PyQt6.QtWidgets import (
@@ -28,9 +28,11 @@ from .region_select import (
     RegionSelectOverlay,
     compute_page_display_rect,
     format_rect_coords,
+    map_page_points_to_viewport_rect,
     map_viewport_rect_to_page_points,
 )
 from .search import PreviewSearchLineEdit
+from .text_placement import TextPlacementOverlay
 
 class ZoomablePreviewWidget(QWidget):
     zoomChanged = pyqtSignal(float)
@@ -41,6 +43,9 @@ class ZoomablePreviewWidget(QWidget):
     # 1-based page, x0,y0,x1,y1 in PDF points
     regionSelected = pyqtSignal(int, float, float, float, float)
     regionSelectModeChanged = pyqtSignal(bool)
+    # 이동 가능한 텍스트 배치 박스 (1-based page + PDF points)
+    textPlacementMoved = pyqtSignal(int, float, float, float, float)
+    textPlacementModeChanged = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -53,6 +58,13 @@ class ZoomablePreviewWidget(QWidget):
         self._pending_restore_search_row: int | None = None
         self._region_select_mode = False
         self._region_overlay: RegionSelectOverlay | None = None
+        self._text_placement_mode = False
+        self._text_placement_overlay: TextPlacementOverlay | None = None
+        # PDF 포인트 기준 현재 배치 사각형 (x0,y0,x1,y1)
+        self._text_placement_pts: tuple[float, float, float, float] | None = None
+        self._text_placement_text = ""
+        self._text_placement_color = QColor(0, 0, 0)
+        self._text_placement_fontsize = 14.0
 
         self._search_refresh_timer = QTimer(self)
         self._search_refresh_timer.setSingleShot(True)
@@ -172,6 +184,10 @@ class ZoomablePreviewWidget(QWidget):
         self._region_overlay = RegionSelectOverlay(self.pdf_view)
         self._region_overlay.selectionFinished.connect(self._on_region_selection_finished)
         self._region_overlay.selectionCancelled.connect(self._on_region_selection_cancelled)
+        # 이동 가능 텍스트 배치 오버레이
+        self._text_placement_overlay = TextPlacementOverlay(self.pdf_view)
+        self._text_placement_overlay.boxMoved.connect(self._on_text_placement_box_moved)
+        self._text_placement_overlay.placementCancelled.connect(self._on_text_placement_cancelled)
         self.pdf_view.installEventFilter(self)
         if self.pdf_view.viewport() is not None:
             self.pdf_view.viewport().installEventFilter(self)
@@ -397,6 +413,8 @@ class ZoomablePreviewWidget(QWidget):
         self._set_custom_zoom(1.0)
 
     def _on_zoom_changed(self, zoom: float):
+        if self._text_placement_mode:
+            self._refresh_text_placement_overlay()
         percent = int(max(zoom, 0.1) * 100)
         self.zoom_label.setText(f"{percent}%")
         self.zoomChanged.emit(max(zoom, 0.1))
@@ -405,6 +423,8 @@ class ZoomablePreviewWidget(QWidget):
         if self._total_pages <= 0:
             return
         self.set_page_state(page, self._total_pages)
+        if self._text_placement_mode:
+            self._refresh_text_placement_overlay()
         self.pageChanged.emit(page)
 
     def _schedule_search_refresh(self, *_args):
@@ -546,6 +566,9 @@ class ZoomablePreviewWidget(QWidget):
     def set_region_select_mode(self, enabled: bool) -> None:
         """미리보기에서 드래그로 사각형 영역을 고르는 모드."""
         next_enabled = bool(enabled) and self._doc is not None and self._total_pages > 0
+        if next_enabled and self._text_placement_mode:
+            # 텍스트 배치 모드와 동시 사용 불가
+            self.set_text_placement_mode(False)
         if self._region_select_mode == next_enabled and (
             self._region_overlay is None or self._region_overlay.is_active() == next_enabled
         ):
@@ -556,18 +579,106 @@ class ZoomablePreviewWidget(QWidget):
             self._region_overlay.set_active(next_enabled)
         self.regionSelectModeChanged.emit(next_enabled)
 
+    # --- 이동 가능 텍스트 배치 ---
+
+    def is_text_placement_mode(self) -> bool:
+        return bool(self._text_placement_mode)
+
+    def set_text_placement_mode(
+        self,
+        enabled: bool,
+        *,
+        text: str = "",
+        rect_pts: tuple[float, float, float, float] | list[float] | None = None,
+        color: tuple[float, float, float] | list[float] | None = None,
+        fontsize: float = 14.0,
+    ) -> None:
+        """미리보기에 텍스트 상자를 표시하고 드래그로 위치를 조정한다."""
+        next_enabled = bool(enabled) and self._doc is not None and self._total_pages > 0
+        if next_enabled and self._region_select_mode:
+            self.set_region_select_mode(False)
+
+        if next_enabled:
+            self._text_placement_text = text or self._text_placement_text or " "
+            if rect_pts is not None and len(rect_pts) >= 4:
+                self._text_placement_pts = (
+                    float(rect_pts[0]),
+                    float(rect_pts[1]),
+                    float(rect_pts[2]),
+                    float(rect_pts[3]),
+                )
+            elif self._text_placement_pts is None:
+                self._text_placement_pts = (100.0, 100.0, 300.0, 150.0)
+            if color is not None and len(color) >= 3:
+                r, g, b = float(color[0]), float(color[1]), float(color[2])
+                self._text_placement_color = QColor(
+                    int(max(0, min(255, r * 255))),
+                    int(max(0, min(255, g * 255))),
+                    int(max(0, min(255, b * 255))),
+                )
+            self._text_placement_fontsize = max(6.0, float(fontsize))
+
+        was = self._text_placement_mode
+        self._text_placement_mode = next_enabled
+        if self._text_placement_overlay is not None:
+            self._sync_region_overlay_geometry()
+            if next_enabled:
+                self._refresh_text_placement_overlay()
+                self._text_placement_overlay.set_active(True)
+            else:
+                self._text_placement_overlay.set_active(False)
+        if was != next_enabled:
+            self.textPlacementModeChanged.emit(next_enabled)
+
+    def update_text_placement_content(
+        self,
+        *,
+        text: str | None = None,
+        rect_pts: tuple[float, float, float, float] | list[float] | None = None,
+        color: tuple[float, float, float] | list[float] | None = None,
+        fontsize: float | None = None,
+    ) -> None:
+        """배치 모드 중 텍스트/스타일/좌표를 갱신한다."""
+        if text is not None:
+            self._text_placement_text = text
+        if rect_pts is not None and len(rect_pts) >= 4:
+            self._text_placement_pts = (
+                float(rect_pts[0]),
+                float(rect_pts[1]),
+                float(rect_pts[2]),
+                float(rect_pts[3]),
+            )
+        if color is not None and len(color) >= 3:
+            r, g, b = float(color[0]), float(color[1]), float(color[2])
+            self._text_placement_color = QColor(
+                int(max(0, min(255, r * 255))),
+                int(max(0, min(255, g * 255))),
+                int(max(0, min(255, b * 255))),
+            )
+        if fontsize is not None:
+            self._text_placement_fontsize = max(6.0, float(fontsize))
+        if self._text_placement_mode:
+            self._refresh_text_placement_overlay()
+
     def eventFilter(self, a0, a1):  # type: ignore[no-untyped-def]
         if a1 is not None and a1.type() == QEvent.Type.Resize:
             if a0 is self.pdf_view or a0 is self.pdf_view.viewport():
                 self._sync_region_overlay_geometry()
+                if self._text_placement_mode:
+                    self._refresh_text_placement_overlay()
         return super().eventFilter(a0, a1)
 
     def _sync_region_overlay_geometry(self) -> None:
-        if self._region_overlay is None:
-            return
         # pdf_view 전체 위에 덮음 (viewport 스크롤 포함 좌표계는 변환 시 보정)
-        self._region_overlay.setGeometry(self.pdf_view.rect())
-        self._region_overlay.raise_()
+        geo = self.pdf_view.rect()
+        if self._region_overlay is not None:
+            self._region_overlay.setGeometry(geo)
+            if self._region_select_mode:
+                self._region_overlay.raise_()
+        if self._text_placement_overlay is not None:
+            self._text_placement_overlay.setGeometry(geo)
+            if self._text_placement_mode:
+                self._text_placement_overlay.raise_()
 
     def _page_display_rect_in_view(self) -> QRectF | None:
         if self._doc is None or self._total_pages <= 0:
@@ -639,9 +750,76 @@ class ZoomablePreviewWidget(QWidget):
     def _on_region_selection_cancelled(self) -> None:
         self.set_region_select_mode(False)
 
+    def _refresh_text_placement_overlay(self) -> None:
+        if self._text_placement_overlay is None or not self._text_placement_mode:
+            return
+        pts = self._text_placement_pts
+        if pts is None:
+            return
+        page_display = self._page_display_rect_in_view()
+        if page_display is None or self._doc is None:
+            return
+        page = max(0, min(self._current_page, self._total_pages - 1))
+        try:
+            page_size = self._doc.pagePointSize(page)
+        except Exception:
+            return
+        view_rect = map_page_points_to_viewport_rect(
+            pts[0],
+            pts[1],
+            pts[2],
+            pts[3],
+            page_display,
+            float(page_size.width()),
+            float(page_size.height()),
+        )
+        if view_rect is None:
+            return
+        zoom = float(self.pdf_view.zoomFactor() or 1.0)
+        font_px = max(8, int(round(self._text_placement_fontsize * zoom)))
+        box = QRect(
+            int(round(view_rect.x())),
+            int(round(view_rect.y())),
+            max(24, int(round(view_rect.width()))),
+            max(18, int(round(view_rect.height()))),
+        )
+        self._text_placement_overlay.set_content(
+            text=self._text_placement_text,
+            box=box,
+            color=self._text_placement_color,
+            font_px=font_px,
+        )
+
+    def _on_text_placement_box_moved(self, box: QRect) -> None:
+        if self._doc is None or not self._text_placement_mode:
+            return
+        page_display = self._page_display_rect_in_view()
+        if page_display is None:
+            return
+        page = max(0, min(self._current_page, self._total_pages - 1))
+        try:
+            page_size = self._doc.pagePointSize(page)
+        except Exception:
+            return
+        mapped = map_viewport_rect_to_page_points(
+            QRectF(box),
+            page_display,
+            float(page_size.width()),
+            float(page_size.height()),
+            min_size_pts=1.0,
+        )
+        if mapped is None:
+            return
+        self._text_placement_pts = mapped
+        self.textPlacementMoved.emit(page + 1, mapped[0], mapped[1], mapped[2], mapped[3])
+
+    def _on_text_placement_cancelled(self) -> None:
+        self.set_text_placement_mode(False)
+
     def closeEvent(self, a0: QCloseEvent | None):
         try:
             self.set_region_select_mode(False)
+            self.set_text_placement_mode(False)
             if self._doc is not None:
                 self._doc.close()
         except Exception:

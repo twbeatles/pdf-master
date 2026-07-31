@@ -334,17 +334,11 @@ def action_add_hyperlink(self):
                       page_num=page_num, link_type=link_type,
                       target=target, rect=rect)
 
-def action_start_textbox_region_select(self):
-    """미리보기에서 드래그로 텍스트/워터마크 영역을 선택한다."""
-    path = self.sel_textbox.get_path() if hasattr(self, "sel_textbox") else ""
-    if not path:
-        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
-
+def _ensure_textbox_preview_ready(self, path: str):
+    """텍스트 상자용 미리보기 동기화. 실패 시 warning 결과, 성공 시 preview 위젯."""
     preview = getattr(self, "preview_image", None)
-    if preview is None or not hasattr(preview, "set_region_select_mode"):
-        return QMessageBox.warning(self, tm.get("warning"), tm.get("err_textbox_drag_preview_unavailable"))
-
-    # 미리보기를 대상 PDF로 동기화
+    if preview is None:
+        return None
     ensure = getattr(self, "_ensure_preview_access", None)
     ready = False
     if callable(ensure):
@@ -358,43 +352,169 @@ def action_start_textbox_region_select(self):
             if callable(update):
                 update(path)
             if getattr(self, "_current_preview_doc", None) is None:
-                return QMessageBox.warning(
-                    self, tm.get("warning"), tm.get("err_textbox_drag_preview_unavailable")
-                )
+                return None
     else:
         update = getattr(self, "_update_preview", None)
         if callable(update):
             update(path)
+    return preview
 
-    # 시그널 지연 연결
-    if not getattr(self, "_textbox_region_signal_connected", False):
-        try:
+
+def _connect_textbox_preview_signals(self, preview) -> None:
+    if getattr(self, "_textbox_region_signal_connected", False):
+        return
+    try:
+        if hasattr(preview, "textPlacementMoved"):
+            preview.textPlacementMoved.connect(self._on_text_placement_moved)
+        if hasattr(preview, "textPlacementModeChanged"):
+            preview.textPlacementModeChanged.connect(self._on_textbox_placement_mode_changed)
+        # 레거시 영역 드래그도 유지
+        if hasattr(preview, "regionSelected"):
             preview.regionSelected.connect(self._on_preview_region_selected_for_textbox)
+        if hasattr(preview, "regionSelectModeChanged"):
             preview.regionSelectModeChanged.connect(self._on_textbox_region_mode_changed)
-            self._textbox_region_signal_connected = True
-        except Exception:
-            pass
+        self._textbox_region_signal_connected = True
+    except Exception:
+        pass
 
-    # 토글: 이미 선택 모드면 취소
-    if preview.is_region_select_mode():
-        preview.set_region_select_mode(False)
-        self._region_select_target = None
+
+def _textbox_current_style(self) -> tuple[str, tuple, int, float]:
+    text = ""
+    if hasattr(self, "txt_textbox_content"):
+        text = self.txt_textbox_content.text().strip()
+    color = (0, 0, 0)
+    if hasattr(self, "cmb_tb_color"):
+        color = self.cmb_tb_color.currentData() or (0, 0, 0)
+    fontsize = 14
+    if hasattr(self, "spn_tb_fontsize"):
+        fontsize = int(self.spn_tb_fontsize.value())
+    # 최소 높이: 폰트가 잘리지 않도록
+    min_h = max(28, int(fontsize * 1.6) + 8)
+    return text, color, fontsize, float(min_h)
+
+
+def action_start_textbox_region_select(self):
+    """미리보기에 텍스트 상자를 띄우고 드래그로 위치를 옮긴다."""
+    path = self.sel_textbox.get_path() if hasattr(self, "sel_textbox") else ""
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+
+    # 모듈 함수로 호출 (믹스인/테스트 더미 모두 호환)
+    text, color, fontsize, min_h = _textbox_current_style(self)
+    if not text:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_text"))
+
+    preview = _ensure_textbox_preview_ready(self, path)
+    if preview is None or not hasattr(preview, "set_text_placement_mode"):
+        return QMessageBox.warning(
+            self, tm.get("warning"), tm.get("err_textbox_drag_preview_unavailable")
+        )
+
+    _connect_textbox_preview_signals(self, preview)
+
+    # 토글 해제
+    if hasattr(preview, "is_text_placement_mode") and preview.is_text_placement_mode():
+        preview.set_text_placement_mode(False)
+        if hasattr(self, "lbl_tb_drag_hint"):
+            self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_drag_idle"))
         return None
 
-    self._region_select_target = "textbox"
-    preview.set_region_select_mode(True)
+    x = float(self.spn_tb_x.value()) if hasattr(self, "spn_tb_x") else 100.0
+    y = float(self.spn_tb_y.value()) if hasattr(self, "spn_tb_y") else 100.0
+    w = float(self.spn_tb_w.value()) if hasattr(self, "spn_tb_w") else 200.0
+    h = float(self.spn_tb_h.value()) if hasattr(self, "spn_tb_h") else min_h
+    h = max(h, min_h)
+    if hasattr(self, "spn_tb_h") and self.spn_tb_h.value() < min_h:
+        self.spn_tb_h.setValue(int(min_h))
+
+    # 미리보기 현재 페이지와 스핀 동기
+    try:
+        state = preview.capture_view_state() if hasattr(preview, "capture_view_state") else None
+        if isinstance(state, dict) and "page" in state and hasattr(self, "spn_tb_page"):
+            self.spn_tb_page.setValue(max(1, int(state["page"]) + 1))
+    except Exception:
+        pass
+
+    rect_pts = (x, y, x + w, y + h)
+    preview.set_text_placement_mode(
+        True,
+        text=text,
+        rect_pts=rect_pts,
+        color=color,
+        fontsize=fontsize,
+    )
     if hasattr(self, "lbl_tb_drag_hint"):
-        self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_drag_active"))
-    ToastWidget(tm.get("msg_textbox_drag_started"), toast_type="info", duration=2500).show_toast(self)
+        self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_place_active"))
+    ToastWidget(tm.get("msg_textbox_place_started"), toast_type="info", duration=2800).show_toast(self)
     return None
 
 
-def _on_preview_region_selected_for_textbox(self, page: int, x0: float, y0: float, x1: float, y1: float):
-    """미리보기 드래그 결과를 텍스트 상자 입력란에 채운다."""
-    if getattr(self, "_region_select_target", None) != "textbox":
-        return
+def _on_text_placement_moved(self, page: int, x0: float, y0: float, x1: float, y1: float):
+    """미리보기에서 박스를 옮긴 뒤 좌표 필드 반영."""
     w = max(10.0, abs(x1 - x0))
     h = max(10.0, abs(y1 - y0))
+    top_left_x = min(x0, x1)
+    top_left_y = min(y0, y1)
+
+    if hasattr(self, "spn_tb_page"):
+        self.spn_tb_page.setValue(max(1, int(page)))
+    if hasattr(self, "spn_tb_x"):
+        self.spn_tb_x.setValue(int(round(top_left_x)))
+    if hasattr(self, "spn_tb_y"):
+        self.spn_tb_y.setValue(int(round(top_left_y)))
+    if hasattr(self, "spn_tb_w"):
+        self.spn_tb_w.setValue(int(round(w)))
+    if hasattr(self, "spn_tb_h"):
+        self.spn_tb_h.setValue(int(round(h)))
+
+    if hasattr(self, "lbl_tb_drag_hint"):
+        self.lbl_tb_drag_hint.setText(
+            tm.get("hint_textbox_drag_done", page, f"{top_left_x:.1f}", f"{top_left_y:.1f}")
+        )
+
+
+def _on_textbox_placement_mode_changed(self, enabled: bool):
+    if not hasattr(self, "lbl_tb_drag_hint"):
+        return
+    if enabled:
+        self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_place_active"))
+    else:
+        current = self.lbl_tb_drag_hint.text()
+        if current in (
+            tm.get("hint_textbox_place_active"),
+            tm.get("hint_textbox_drag_active"),
+        ):
+            self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_drag_idle"))
+
+
+def _sync_textbox_placement_overlay(self, *_args):
+    """텍스트/스타일 변경 시 미리보기 박스 내용 갱신."""
+    preview = getattr(self, "preview_image", None)
+    if preview is None or not hasattr(preview, "is_text_placement_mode"):
+        return
+    if not preview.is_text_placement_mode():
+        return
+    text, color, fontsize, min_h = _textbox_current_style(self)
+    x = float(self.spn_tb_x.value()) if hasattr(self, "spn_tb_x") else 100.0
+    y = float(self.spn_tb_y.value()) if hasattr(self, "spn_tb_y") else 100.0
+    w = float(self.spn_tb_w.value()) if hasattr(self, "spn_tb_w") else 200.0
+    h = max(float(self.spn_tb_h.value()) if hasattr(self, "spn_tb_h") else min_h, min_h)
+    if hasattr(preview, "update_text_placement_content"):
+        preview.update_text_placement_content(
+            text=text or " ",
+            rect_pts=(x, y, x + w, y + h),
+            color=color,
+            fontsize=fontsize,
+        )
+
+
+def _on_preview_region_selected_for_textbox(self, page: int, x0: float, y0: float, x1: float, y1: float):
+    """(레거시) 고무줄 영역 선택 결과를 좌표에 반영."""
+    if getattr(self, "_region_select_target", None) != "textbox":
+        return
+    _, _, fontsize, min_h = _textbox_current_style(self)
+    w = max(40.0, abs(x1 - x0))
+    h = max(min_h, abs(y1 - y0))
     top_left_x = min(x0, x1)
     top_left_y = min(y0, y1)
 
@@ -414,6 +534,17 @@ def _on_preview_region_selected_for_textbox(self, page: int, x0: float, y0: floa
             tm.get("hint_textbox_drag_done", page, f"{top_left_x:.1f}", f"{top_left_y:.1f}")
         )
     self._region_select_target = None
+    # 영역 선택 후 바로 이동 가능 배치 모드로 전환
+    preview = getattr(self, "preview_image", None)
+    text, color, fontsize, _ = _textbox_current_style(self)
+    if preview is not None and hasattr(preview, "set_text_placement_mode") and text:
+        preview.set_text_placement_mode(
+            True,
+            text=text,
+            rect_pts=(top_left_x, top_left_y, top_left_x + w, top_left_y + h),
+            color=color,
+            fontsize=fontsize,
+        )
     ToastWidget(tm.get("msg_textbox_drag_applied"), toast_type="success", duration=2000).show_toast(self)
 
 
@@ -422,11 +553,6 @@ def _on_textbox_region_mode_changed(self, enabled: bool):
         return
     if enabled:
         self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_drag_active"))
-    else:
-        # preview 는 mode off 후 regionSelected 를 방출 → target 은 여기서 지우지 않음
-        current = self.lbl_tb_drag_hint.text()
-        if current == tm.get("hint_textbox_drag_active"):
-            self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_drag_idle"))
 
 
 def action_insert_textbox(self):
@@ -439,10 +565,12 @@ def action_insert_textbox(self):
     if not text:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_text"))
 
-    # 선택 모드 중이면 비활성화
     preview = getattr(self, "preview_image", None)
-    if preview is not None and hasattr(preview, "is_region_select_mode") and preview.is_region_select_mode():
-        preview.set_region_select_mode(False)
+    if preview is not None:
+        if hasattr(preview, "is_region_select_mode") and preview.is_region_select_mode():
+            preview.set_region_select_mode(False)
+        if hasattr(preview, "is_text_placement_mode") and preview.is_text_placement_mode():
+            preview.set_text_placement_mode(False)
 
     page_num = self.spn_tb_page.value() - 1
     x = self.spn_tb_x.value()
@@ -451,7 +579,18 @@ def action_insert_textbox(self):
     h = self.spn_tb_h.value() if hasattr(self, "spn_tb_h") else 50
 
     fontsize = self.spn_tb_fontsize.value()
+    # 폰트보다 낮은 박스는 Worker 에서 조용히 실패하므로 UI에서도 최소 높이 보정
+    min_h = max(28, int(fontsize * 1.6) + 8)
+    if h < min_h:
+        h = min_h
+        if hasattr(self, "spn_tb_h"):
+            self.spn_tb_h.setValue(int(h))
+
     color = self.cmb_tb_color.currentData() or (0, 0, 0)
+    if isinstance(color, (list, tuple)):
+        color = tuple(float(c) for c in color[:3])
+    else:
+        color = (0.0, 0.0, 0.0)
     fontname = self.cmb_tb_font.currentData() if hasattr(self, "cmb_tb_font") else "cjk"
     opacity = (self.spn_tb_opacity.value() / 100.0) if hasattr(self, "spn_tb_opacity") else 1.0
     rotation = self.spn_tb_rotation.value() if hasattr(self, "spn_tb_rotation") else 0

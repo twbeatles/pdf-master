@@ -78,6 +78,32 @@ def map_viewport_rect_to_page_points(
     return (left, top, right, bottom)
 
 
+def map_page_points_to_viewport_rect(
+    x0: float,
+    y0: float,
+    x1: float,
+    y1: float,
+    page_display: QRectF,
+    page_width_pts: float,
+    page_height_pts: float,
+) -> QRectF | None:
+    """PDF 페이지 포인트 사각형을 뷰포트(페이지 표시 좌표계) 사각형으로 변환."""
+    if page_display.width() <= 0 or page_display.height() <= 0:
+        return None
+    if page_width_pts <= 0 or page_height_pts <= 0:
+        return None
+    left, right = sorted((float(x0), float(x1)))
+    top, bottom = sorted((float(y0), float(y1)))
+    sx = page_display.width() / page_width_pts
+    sy = page_display.height() / page_height_pts
+    return QRectF(
+        page_display.left() + left * sx,
+        page_display.top() + top * sy,
+        max(1.0, (right - left) * sx),
+        max(1.0, (bottom - top) * sy),
+    )
+
+
 def format_rect_coords(coords: tuple[float, float, float, float], *, decimals: int = 1) -> str:
     return ",".join(f"{v:.{decimals}f}" for v in coords)
 
@@ -183,5 +209,6 @@ __all__ = [
     "RegionSelectOverlay",
     "compute_page_display_rect",
     "map_viewport_rect_to_page_points",
+    "map_page_points_to_viewport_rect",
     "format_rect_coords",
 ]

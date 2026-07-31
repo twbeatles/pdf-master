@@ -181,6 +181,31 @@ def test_insert_textbox_cjk_font_embeds_korean(tmp_path):
     assert "한글" in text
 
 
+def test_insert_textbox_expands_too_small_rect(tmp_path):
+    """높이가 폰트보다 작아도 텍스트가 기록되어야 한다 (기존 조용한 실패 방지)."""
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "out.pdf"
+    _make_pdf(src, ["base"])
+
+    worker = WorkerThread(
+        "insert_textbox",
+        file_path=str(src),
+        output_path=str(out),
+        page_num=0,
+        rect=[100, 700, 300, 710],  # h=10 < fontsize
+        text="SMALL_BOX_OK",
+        fontsize=14,
+        fontname="helv",
+    )
+    worker.insert_textbox()
+    doc = fitz.open(str(out))
+    assert "SMALL_BOX_OK" in doc[0].get_text("text")
+    doc.close()
+
+
 def test_insert_textbox_times_alias(tmp_path):
     require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread
