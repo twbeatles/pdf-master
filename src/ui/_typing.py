@@ -31,6 +31,7 @@ class MainWindowHost:
     btn_next_page: Any
     b_tb_drag: Any
     lbl_tb_drag_hint: Any
+    cmb_tb_preset: Any
     spn_tb_page: Any
     spn_tb_x: Any
     spn_tb_y: Any

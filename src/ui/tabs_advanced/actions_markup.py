@@ -334,6 +334,115 @@ def action_add_hyperlink(self):
                       page_num=page_num, link_type=link_type,
                       target=target, rect=rect)
 
+def _textbox_page_size_pts(self) -> tuple[float, float]:
+    """현재 대상 PDF 페이지 크기(pt). 실패 시 A4."""
+    from .textbox_presets import A4_HEIGHT_PT, A4_WIDTH_PT
+
+    path = ""
+    if hasattr(self, "sel_textbox"):
+        try:
+            path = self.sel_textbox.get_path() or ""
+        except Exception:
+            path = ""
+    page_idx = 0
+    if hasattr(self, "spn_tb_page"):
+        try:
+            page_idx = max(0, int(self.spn_tb_page.value()) - 1)
+        except Exception:
+            page_idx = 0
+    if path:
+        try:
+            from ...core.optional_deps import fitz
+
+            doc = fitz.open(path)
+            try:
+                if 0 <= page_idx < len(doc):
+                    rect = doc[page_idx].rect
+                    return float(rect.width), float(rect.height)
+            finally:
+                doc.close()
+        except Exception:
+            pass
+    return A4_WIDTH_PT, A4_HEIGHT_PT
+
+
+def _set_textbox_xywh(self, x: float, y: float, w: float | None = None, h: float | None = None) -> None:
+    """좌표 스핀 설정 (시그널 루프 방지 + 프리셋 custom 전환은 호출측에서)."""
+    blockers = []
+    for name in ("spn_tb_x", "spn_tb_y", "spn_tb_w", "spn_tb_h"):
+        wdg = getattr(self, name, None)
+        if wdg is not None and hasattr(wdg, "blockSignals"):
+            wdg.blockSignals(True)
+            blockers.append(wdg)
+    try:
+        if hasattr(self, "spn_tb_x"):
+            self.spn_tb_x.setValue(float(x))
+        if hasattr(self, "spn_tb_y"):
+            self.spn_tb_y.setValue(float(y))
+        if w is not None and hasattr(self, "spn_tb_w"):
+            self.spn_tb_w.setValue(float(w))
+        if h is not None and hasattr(self, "spn_tb_h"):
+            self.spn_tb_h.setValue(float(h))
+    finally:
+        for wdg in blockers:
+            wdg.blockSignals(False)
+
+
+def _mark_textbox_preset_custom(self) -> None:
+    cmb = getattr(self, "cmb_tb_preset", None)
+    if cmb is None:
+        return
+    # 이미 custom 이면 스킵
+    if cmb.currentData() == "custom":
+        return
+    cmb.blockSignals(True)
+    try:
+        for i in range(cmb.count()):
+            if cmb.itemData(i) == "custom":
+                cmb.setCurrentIndex(i)
+                break
+    finally:
+        cmb.blockSignals(False)
+
+
+def action_apply_textbox_preset(self, *_args):
+    """위치 프리셋 콤보 변경 시 X/Y 좌표 적용 (W/H 유지)."""
+    from .textbox_presets import resolve_textbox_preset_xy
+
+    cmb = getattr(self, "cmb_tb_preset", None)
+    if cmb is None:
+        return None
+    preset = cmb.currentData() or "custom"
+    if preset == "custom":
+        return None
+
+    w = float(self.spn_tb_w.value()) if hasattr(self, "spn_tb_w") else 220.0
+    h = float(self.spn_tb_h.value()) if hasattr(self, "spn_tb_h") else 40.0
+    # 폰트 최소 높이 보정
+    _, _, fontsize, min_h = _textbox_current_style(self)
+    if h < min_h:
+        h = min_h
+        if hasattr(self, "spn_tb_h"):
+            self.spn_tb_h.blockSignals(True)
+            self.spn_tb_h.setValue(h)
+            self.spn_tb_h.blockSignals(False)
+
+    page_w, page_h = _textbox_page_size_pts(self)
+    xy = resolve_textbox_preset_xy(str(preset), page_w, page_h, w, h)
+    if xy is None:
+        return None
+    x, y = xy
+    _set_textbox_xywh(self, x, y, w, h)
+    _sync_textbox_placement_overlay(self)
+
+    if hasattr(self, "lbl_tb_drag_hint"):
+        page = int(self.spn_tb_page.value()) if hasattr(self, "spn_tb_page") else 1
+        self.lbl_tb_drag_hint.setText(
+            tm.get("hint_textbox_preset_applied", cmb.currentText(), page, f"{x:.1f}", f"{y:.1f}")
+        )
+    return None
+
+
 def _ensure_textbox_preview_ready(self, path: str):
     """텍스트 상자용 미리보기 동기화. 실패 시 warning 결과, 성공 시 preview 위젯."""
     preview = getattr(self, "preview_image", None)
@@ -457,15 +566,15 @@ def _on_text_placement_moved(self, page: int, x0: float, y0: float, x1: float, y
     top_left_y = min(y0, y1)
 
     if hasattr(self, "spn_tb_page"):
-        self.spn_tb_page.setValue(max(1, int(page)))
-    if hasattr(self, "spn_tb_x"):
-        self.spn_tb_x.setValue(int(round(top_left_x)))
-    if hasattr(self, "spn_tb_y"):
-        self.spn_tb_y.setValue(int(round(top_left_y)))
-    if hasattr(self, "spn_tb_w"):
-        self.spn_tb_w.setValue(int(round(w)))
-    if hasattr(self, "spn_tb_h"):
-        self.spn_tb_h.setValue(int(round(h)))
+        page_spn = self.spn_tb_page
+        if hasattr(page_spn, "blockSignals"):
+            page_spn.blockSignals(True)
+        page_spn.setValue(max(1, int(page)))
+        if hasattr(page_spn, "blockSignals"):
+            page_spn.blockSignals(False)
+    # 드래그 이동 = 수동 위치 → 프리셋을 custom 으로
+    _mark_textbox_preset_custom(self)
+    _set_textbox_xywh(self, top_left_x, top_left_y, w, h)
 
     if hasattr(self, "lbl_tb_drag_hint"):
         self.lbl_tb_drag_hint.setText(
@@ -489,6 +598,22 @@ def _on_textbox_placement_mode_changed(self, enabled: bool):
 
 def _sync_textbox_placement_overlay(self, *_args):
     """텍스트/스타일 변경 시 미리보기 박스 내용 갱신."""
+    # 수동 좌표 편집 시 프리셋을 custom 으로 (프리셋 적용 중이 아닐 때만)
+    sender = None
+    try:
+        sender = self.sender() if hasattr(self, "sender") else None
+    except Exception:
+        sender = None
+    if sender is not None and sender is getattr(self, "cmb_tb_preset", None):
+        pass
+    elif sender in (
+        getattr(self, "spn_tb_x", None),
+        getattr(self, "spn_tb_y", None),
+        getattr(self, "spn_tb_w", None),
+        getattr(self, "spn_tb_h", None),
+    ):
+        _mark_textbox_preset_custom(self)
+
     preview = getattr(self, "preview_image", None)
     if preview is None or not hasattr(preview, "is_text_placement_mode"):
         return
@@ -520,14 +645,8 @@ def _on_preview_region_selected_for_textbox(self, page: int, x0: float, y0: floa
 
     if hasattr(self, "spn_tb_page"):
         self.spn_tb_page.setValue(max(1, int(page)))
-    if hasattr(self, "spn_tb_x"):
-        self.spn_tb_x.setValue(int(top_left_x))
-    if hasattr(self, "spn_tb_y"):
-        self.spn_tb_y.setValue(int(top_left_y))
-    if hasattr(self, "spn_tb_w"):
-        self.spn_tb_w.setValue(int(w))
-    if hasattr(self, "spn_tb_h"):
-        self.spn_tb_h.setValue(int(h))
+    _mark_textbox_preset_custom(self)
+    _set_textbox_xywh(self, top_left_x, top_left_y, w, h)
 
     if hasattr(self, "lbl_tb_drag_hint"):
         self.lbl_tb_drag_hint.setText(
@@ -573,18 +692,18 @@ def action_insert_textbox(self):
             preview.set_text_placement_mode(False)
 
     page_num = self.spn_tb_page.value() - 1
-    x = self.spn_tb_x.value()
-    y = self.spn_tb_y.value()
-    w = self.spn_tb_w.value() if hasattr(self, "spn_tb_w") else 200
-    h = self.spn_tb_h.value() if hasattr(self, "spn_tb_h") else 50
+    x = float(self.spn_tb_x.value())
+    y = float(self.spn_tb_y.value())
+    w = float(self.spn_tb_w.value()) if hasattr(self, "spn_tb_w") else 200.0
+    h = float(self.spn_tb_h.value()) if hasattr(self, "spn_tb_h") else 50.0
 
     fontsize = self.spn_tb_fontsize.value()
     # 폰트보다 낮은 박스는 Worker 에서 조용히 실패하므로 UI에서도 최소 높이 보정
-    min_h = max(28, int(fontsize * 1.6) + 8)
+    min_h = max(28.0, float(fontsize) * 1.6 + 8.0)
     if h < min_h:
         h = min_h
         if hasattr(self, "spn_tb_h"):
-            self.spn_tb_h.setValue(int(h))
+            self.spn_tb_h.setValue(float(h))
 
     color = self.cmb_tb_color.currentData() or (0, 0, 0)
     if isinstance(color, (list, tuple)):

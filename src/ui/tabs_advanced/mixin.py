@@ -40,6 +40,7 @@ from .actions_markup import (
     action_draw_shape,
     action_add_hyperlink,
     action_start_textbox_region_select,
+    action_apply_textbox_preset,
     _on_preview_region_selected_for_textbox,
     _on_textbox_region_mode_changed,
     _on_text_placement_moved,
@@ -124,6 +125,7 @@ class MainWindowTabsAdvancedMixin(MainWindowHost):
     action_draw_shape = action_draw_shape
     action_add_hyperlink = action_add_hyperlink
     action_start_textbox_region_select = action_start_textbox_region_select
+    action_apply_textbox_preset = action_apply_textbox_preset
     _on_preview_region_selected_for_textbox = _on_preview_region_selected_for_textbox
     _on_textbox_region_mode_changed = _on_textbox_region_mode_changed
     _on_text_placement_moved = _on_text_placement_moved

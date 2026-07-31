@@ -132,13 +132,16 @@ def test_start_textbox_placement_enables_mode(monkeypatch):
 def test_text_placement_moved_fills_fields():
     class Spin:
         def __init__(self, value=0):
-            self._v = value
+            self._v = float(value)
 
         def setValue(self, v):
-            self._v = int(v)
+            self._v = float(v)
 
         def value(self):
             return self._v
+
+        def blockSignals(self, *_a):
+            return True
 
     class Hint:
         def __init__(self):
@@ -155,14 +158,15 @@ def test_text_placement_moved_fills_fields():
             self.spn_tb_w = Spin(0)
             self.spn_tb_h = Spin(0)
             self.lbl_tb_drag_hint = Hint()
+            self.cmb_tb_preset = None
 
     dummy = Dummy()
     mod._on_text_placement_moved(dummy, 2, 80.0, 100.0, 180.0, 220.0)
     assert dummy.spn_tb_page.value() == 2
-    assert dummy.spn_tb_x.value() == 80
-    assert dummy.spn_tb_y.value() == 100
-    assert dummy.spn_tb_w.value() == 100
-    assert dummy.spn_tb_h.value() == 120
+    assert abs(dummy.spn_tb_x.value() - 80) < 0.01
+    assert abs(dummy.spn_tb_y.value() - 100) < 0.01
+    assert abs(dummy.spn_tb_w.value() - 100) < 0.01
+    assert abs(dummy.spn_tb_h.value() - 120) < 0.01
 
 
 def test_start_textbox_region_select_requires_path(monkeypatch):

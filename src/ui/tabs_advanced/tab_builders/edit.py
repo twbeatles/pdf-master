@@ -3,6 +3,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QDoubleSpinBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -227,7 +228,29 @@ def _create_edit_subtab(self):
     self.sel_textbox.pathChanged.connect(self._update_preview)
     l_textbox.addWidget(self.sel_textbox)
 
-    # 1) 미리보기 드래그 선택 버튼 & 힌트
+    # 1) 위치 프리셋 (A4/실제 페이지 기준) + 미리보기 배치
+    tb_preset_layout = QHBoxLayout()
+    tb_preset_layout.addWidget(QLabel(tm.get("lbl_textbox_preset")))
+    self.cmb_tb_preset = QComboBox()
+    tb_presets = [
+        (tm.get("pos_preset_custom"), "custom"),
+        (tm.get("pos_top_left"), "top-left"),
+        (tm.get("pos_top_center"), "top-center"),
+        (tm.get("pos_top_right"), "top-right"),
+        (tm.get("pos_center_left"), "center-left"),
+        (tm.get("pos_center"), "center"),
+        (tm.get("pos_center_right"), "center-right"),
+        (tm.get("pos_bottom_left"), "bottom-left"),
+        (tm.get("pos_bottom_center"), "bottom-center"),
+        (tm.get("pos_bottom_right"), "bottom-right"),
+    ]
+    for label, val in tb_presets:
+        self.cmb_tb_preset.addItem(label, val)
+    self.cmb_tb_preset.setToolTip(tm.get("tooltip_textbox_preset"))
+    self.cmb_tb_preset.currentIndexChanged.connect(self.action_apply_textbox_preset)
+    tb_preset_layout.addWidget(self.cmb_tb_preset, 1)
+    l_textbox.addLayout(tb_preset_layout)
+
     tb_drag_layout = QHBoxLayout()
     self.b_tb_drag = QPushButton(tm.get("btn_textbox_drag_select"))
     self.b_tb_drag.setObjectName("secondaryBtn")
@@ -240,7 +263,7 @@ def _create_edit_subtab(self):
     tb_drag_layout.addWidget(self.lbl_tb_drag_hint, 1)
     l_textbox.addLayout(tb_drag_layout)
 
-    # 2) 페이지 & 위치 좌표 (X, Y, W, H)
+    # 2) 페이지 & 위치 좌표 (X, Y, W, H) — 소수점 1자리로 정밀 배치
     tb_opts1 = QHBoxLayout()
     tb_opts1.addWidget(QLabel(tm.get("tab_page") + ":"))
     self.spn_tb_page = QSpinBox()
@@ -249,27 +272,35 @@ def _create_edit_subtab(self):
     tb_opts1.addWidget(self.spn_tb_page)
 
     tb_opts1.addWidget(QLabel(tm.get("lbl_textbox_x")))
-    self.spn_tb_x = QSpinBox()
-    self.spn_tb_x.setRange(0, 9999)
-    self.spn_tb_x.setValue(100)
+    self.spn_tb_x = QDoubleSpinBox()
+    self.spn_tb_x.setRange(0.0, 20000.0)
+    self.spn_tb_x.setDecimals(1)
+    self.spn_tb_x.setSingleStep(1.0)
+    self.spn_tb_x.setValue(36.0)  # A4 좌상단 여백 기본
     tb_opts1.addWidget(self.spn_tb_x)
 
     tb_opts1.addWidget(QLabel(tm.get("lbl_textbox_y")))
-    self.spn_tb_y = QSpinBox()
-    self.spn_tb_y.setRange(0, 9999)
-    self.spn_tb_y.setValue(100)
+    self.spn_tb_y = QDoubleSpinBox()
+    self.spn_tb_y.setRange(0.0, 20000.0)
+    self.spn_tb_y.setDecimals(1)
+    self.spn_tb_y.setSingleStep(1.0)
+    self.spn_tb_y.setValue(36.0)
     tb_opts1.addWidget(self.spn_tb_y)
 
     tb_opts1.addWidget(QLabel(tm.get("lbl_textbox_w")))
-    self.spn_tb_w = QSpinBox()
-    self.spn_tb_w.setRange(40, 9999)
-    self.spn_tb_w.setValue(220)
+    self.spn_tb_w = QDoubleSpinBox()
+    self.spn_tb_w.setRange(20.0, 20000.0)
+    self.spn_tb_w.setDecimals(1)
+    self.spn_tb_w.setSingleStep(1.0)
+    self.spn_tb_w.setValue(220.0)
     tb_opts1.addWidget(self.spn_tb_w)
 
     tb_opts1.addWidget(QLabel(tm.get("lbl_textbox_h")))
-    self.spn_tb_h = QSpinBox()
-    self.spn_tb_h.setRange(28, 9999)
-    self.spn_tb_h.setValue(40)
+    self.spn_tb_h = QDoubleSpinBox()
+    self.spn_tb_h.setRange(14.0, 20000.0)
+    self.spn_tb_h.setDecimals(1)
+    self.spn_tb_h.setSingleStep(1.0)
+    self.spn_tb_h.setValue(40.0)
     tb_opts1.addWidget(self.spn_tb_h)
     tb_opts1.addStretch()
     l_textbox.addLayout(tb_opts1)
