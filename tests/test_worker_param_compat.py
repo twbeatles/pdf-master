@@ -116,6 +116,97 @@ def test_insert_textbox_uses_xy_when_rect_missing(tmp_path):
     assert y0 >= 620
 
 
+def test_insert_textbox_rect_font_aliases_and_options(tmp_path):
+    """rect + 폰트 별칭 + opacity/align/layer/rotate 옵션 회귀."""
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "out.pdf"
+    _make_pdf(src, ["base"])
+
+    worker = WorkerThread(
+        "insert_textbox",
+        file_path=str(src),
+        output_path=str(out),
+        page_num=0,
+        rect=[50, 100, 350, 180],
+        text="ALIAS_BOX",
+        fontsize=14,
+        color=(0, 0, 0),
+        fontname="couri",  # → cour
+        opacity=0.85,
+        align=1,
+        rotation=90,
+        layer="foreground",
+    )
+    worker.insert_textbox()
+    assert out.exists()
+
+    doc = fitz.open(str(out))
+    text = doc[0].get_text("text")
+    doc.close()
+    assert "ALIAS_BOX" in text
+
+
+def test_insert_textbox_cjk_font_embeds_korean(tmp_path):
+    """fontname=cjk 는 insert_font 임베드 후 한글 삽입."""
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "out.pdf"
+    _make_pdf(src, ["base"])
+
+    worker = WorkerThread(
+        "insert_textbox",
+        file_path=str(src),
+        output_path=str(out),
+        page_num=0,
+        rect=[40, 80, 400, 200],
+        text="한글텍스트",
+        fontsize=16,
+        color=(0, 0, 0),
+        fontname="cjk",
+        opacity=1.0,
+        align=0,
+        rotation=0,
+        layer="foreground",
+    )
+    worker.insert_textbox()
+
+    doc = fitz.open(str(out))
+    text = doc[0].get_text("text")
+    doc.close()
+    assert "한글" in text
+
+
+def test_insert_textbox_times_alias(tmp_path):
+    require_pyqt6_and_pymupdf()
+    from src.core.worker import WorkerThread
+
+    src = tmp_path / "src.pdf"
+    out = tmp_path / "out.pdf"
+    _make_pdf(src, ["base"])
+
+    worker = WorkerThread(
+        "insert_textbox",
+        file_path=str(src),
+        output_path=str(out),
+        page_num=0,
+        x=60,
+        y=100,
+        w=250,
+        h=60,
+        text="TIMES_OK",
+        fontname="times",
+    )
+    worker.insert_textbox()
+    doc = fitz.open(str(out))
+    assert "TIMES_OK" in doc[0].get_text("text")
+    doc.close()
+
+
 def test_copy_page_between_docs_accepts_file_path_and_page_range(tmp_path):
     require_pyqt6_and_pymupdf()
     from src.core.worker import WorkerThread

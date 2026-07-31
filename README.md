@@ -81,7 +81,7 @@
 | **밑줄 / 취소선** | 텍스트 마크업 |
 | **도형 그리기** | 사각형, 원, 선 추가 |
 | **하이퍼링크 추가** | URL / 페이지 이동 링크 |
-| **텍스트 상자 삽입** | PDF에 텍스트 직접 추가 |
+| **텍스트 상자 삽입** | 좌표 직접 입력 **또는 미리보기 드래그**로 위치 지정 후 텍스트 추가 (폰트/투명도/회전/정렬/레이어) |
 | **텍스트 교정** | 검색어 기반 민감 정보 영구 삭제 |
 | **영역 교정** | 좌표 직접 입력 **또는 미리보기 드래그 선택** 후 영구 삭제 |
 | **배경색 추가** | 페이지 배경 변경 |
@@ -112,6 +112,7 @@
 - **다크 / 라이트 테마** — 글래스모피즘 디자인
 - **줌 / 패닝 미리보기** — 마우스 휠 줌, 드래그 이동, 인쇄
 - **미리보기 드래그 교정** — 고급 탭 영역 교정에서 미리보기에 사각형을 그려 좌표 자동 입력
+- **미리보기 드래그 텍스트 삽입** — 편집 탭 텍스트 상자에서 드래그로 위치·크기를 지정하고 폰트/투명도 등 옵션 적용
 - **미리보기 검색 / 북마크** — 접기·펼치기 가능한 사이드 패널 (`Ctrl+F`)
 - **썸네일 그리드** — 모든 페이지 한눈에 보기
 - **드래그 앤 드롭** — 파일 추가, 페이지 순서 변경
@@ -293,6 +294,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 - **2026-07-21 SOLID 코드 분할**: Worker 도메인 패키지(`annotation`/`extract`/`cleanup`/`page`/`transform`/`compare`) + settings/constants/undo 구현 패키지 + progress UI 분리. public import·동작 계약 유지
 - **2026-07-22 감사 후속**: 썸네일 로더 sender 가드, AI temp/atomic orphan 스윕(`temp_cleanup`), AI retry 분할 sleep+취소 비재시도, blank/dedupe/sanitize 확인 다이얼로그, 취소 롤백 mtime 휴리스틱 제거, `list_annotations` text 계약, 배치 암호 권한 안내, chat session single-flight
 - **2026-07-27 감사 후속**: 기능 감사 SSOT를 `PROJECT_AUDIT.md`로 통일, 암호 PDF AI UI(미리보기 암호 재사용), merge 0페이지 fail-fast, AI chat `cancel_check` 전파, 배치 암호 권한 체크박스, blank/dedupe dry-run 카운트, **미리보기 드래그 영역 교정**
+- **2026-07-31**: **미리보기 드래그 텍스트 삽입** — `insert_textbox`에 위치 드래그·W/H·CJK/Base-14 폰트·투명도·90° 회전·정렬·레이어 옵션, redact/textbox 드래그 타겟 격리
 
 ### v4.5.5
 - 미리보기 줌·패닝·인쇄 안정화 (Qt 인쇄 파이프라인)

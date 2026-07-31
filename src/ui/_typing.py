@@ -29,6 +29,24 @@ class MainWindowHost:
     page_counter: Any
     btn_prev_page: Any
     btn_next_page: Any
+    b_tb_drag: Any
+    lbl_tb_drag_hint: Any
+    spn_tb_page: Any
+    spn_tb_x: Any
+    spn_tb_y: Any
+    spn_tb_w: Any
+    spn_tb_h: Any
+    cmb_tb_font: Any
+    spn_tb_fontsize: Any
+    cmb_tb_color: Any
+    spn_tb_opacity: Any
+    spn_tb_rotation: Any
+    cmb_tb_align: Any
+    cmb_tb_layer: Any
+    sel_textbox: Any
+    txt_textbox_content: Any
+    _textbox_region_signal_connected: bool
+    _region_select_target: str | None
 
     _ai_worker_mode: bool
     _chat_worker_mode: bool

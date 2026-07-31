@@ -10,6 +10,7 @@
 - SOLID split (2026-07-21): large worker domains live under `worker_ops/{annotation,extract,cleanup,page,transform,compare}/` with thin `*_ops.py` facades; settings/constants/undo use `_*-impl` packages; progress UI under `ui/progress/`.
 - 2026-07-22 PROJECT_AUDIT follow-up: `src/core/temp_cleanup.py` sweeps `pdf_master_ai_*` / `.pdf_master_*` orphans on startup/shutdown/cancel/force-terminate; thumbnail loader signals use sender guard; AI `retry_with_backoff` sleeps in slices and does not retry cancel; blank/dedupe/sanitize UI confirm dialogs; cancel cleanup uses only `created_output_paths` (no mtime heuristic); `list_annotations` OperationSpec is `output_kind=text`; batch encrypt tip documents default permissions; chat session create is single-flight per cache key.
 - 2026-07-27 PROJECT_AUDIT follow-up: functional audit SSOT is `PROJECT_AUDIT.md` (validation tests no longer require legacy FUNCTIONAL audit files); AI tab unlocks encrypted PDFs via preview password then Worker temp decrypt; `merge` fails when zero pages survive; AI chat `_get_or_create_chat` propagates `cancel_check` to upload; batch encrypt exposes permission checkboxes; blank/dedupe confirm dialogs show dry-run removal estimates; preview **drag region select** for `redact_area` (`src/ui/preview_widget/region_select.py` + `ZoomablePreviewWidget.set_region_select_mode`).
+- 2026-07-31 positioned text insert: Advanced Edit `insert_textbox` supports preview drag placement (shared region-select overlay), W/H, CJK (`insert_font` embed) / Base-14 fonts, opacity, 90°-step rotation, align, layer; `_region_select_target` isolates redact vs textbox consumers.
 - The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
 - Preview print now renders through the Qt print pipeline; it no longer delegates to `os.startfile(..., "print")` or `lpr`.
 - Thumbnail entry points in the AI and rotate flows are preview-synchronized: if they target a different PDF, preview is switched first and encrypted PDFs reuse the preview password session.
@@ -673,6 +674,12 @@ class ZoomablePreviewWidget(QWidget):
 - `tests/test_cleanup_dry_run_estimate.py` — blank/dedupe dry-run 카운트
 - `tests/test_validation_docs_config.py` — `PROJECT_AUDIT.md` SSOT
 
+### v4.5.6 positioned text insert tests (2026-07-31)
+- `tests/test_textbox_drag_ui_flow.py`
+  - 텍스트 상자 미리보기 드래그 시작/토글, 좌표 필드 반영, redact 타겟 교차 오염 방지
+- `tests/test_worker_param_compat.py` (`insert_textbox` 확장)
+  - rect/폰트 별칭(`couri`/`times`), CJK 한글 임베드, 기존 x/y 호환 회귀
+
 ### v4.5.5 audit follow-up tests (2026-06-24)
 - `tests/test_worker_batch_unknown_operation.py`
   - 배치 미지원 operation silent copy 방지 및 preflight fail-fast 검증
@@ -771,9 +778,17 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-27)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-31)*
 
 ---
+
+## 2026-07-31 Positioned Text Insert Addendum
+
+- 고급 탭 **편집 → 텍스트 상자 삽입**: 미리보기 드래그로 page/X/Y/W/H 자동 입력; 폰트(CJK/helv/cour/tiro)·투명도·회전(0/90/180/270)·정렬·레이어.
+- Worker `insert_textbox`: CJK는 `fitz.Font("cjk")` 버퍼 임베드; Base-14 별칭 해석; `rotate` 90° 배수 정규화; empty text reject.
+- 드래그 소비자 격리: `_region_select_target` (`redact` | `textbox`) — 공용 `regionSelected` 교차 오염 방지.
+- 회귀: `tests/test_textbox_drag_ui_flow.py`, `tests/test_worker_param_compat.py` insert_textbox 확장.
+- 검증: 변경 파일 pyright 0 errors; `python -m pytest -q` (opt-in Gemini smoke skip 가능).
 
 ## 2026-07-27 PROJECT_AUDIT Follow-up Addendum
 

@@ -49,8 +49,8 @@ def _normalize_insert_textbox(kwargs: dict[str, Any]) -> None:
     if "rect" not in kwargs:
         x = float(kwargs.get("x", 100))
         y = float(kwargs.get("y", 100))
-        w = float(kwargs.get("width", 200))
-        h = float(kwargs.get("height", 50))
+        w = float(kwargs.get("w", kwargs.get("width", 200)))
+        h = float(kwargs.get("h", kwargs.get("height", 50)))
         kwargs["rect"] = [x, y, x + w, y + h]
 
 

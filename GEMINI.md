@@ -143,7 +143,7 @@ error_signal = pyqtSignal(str)        # 에러 메시지
 | `ai_extract_keywords` | AI 키워드 추출 | `file_path`, `api_key`, `max_keywords` |
 | `draw_shapes` | 도형 그리기 | `file_path`, `shapes` 또는 `shape_type/x/y/…`, `output_path` |
 | `add_link` | 하이퍼링크 | `file_path`, `link_type`, `target`, `rect`, `output_path` |
-| `insert_textbox` | 텍스트 상자 | `file_path`, `text`, `rect` 또는 `x/y`, `output_path` |
+| `insert_textbox` | 텍스트 상자 (UI: 좌표 또는 미리보기 드래그) | `file_path`, `text`, `rect` 또는 `x/y/w/h`, `fontname`, `fontsize`, `color`, `opacity`, `rotation`, `align`, `layer`, `output_path` |
 | `copy_page_between_docs` | 페이지 복사 | `file_path`, `source_path`, `page_range` |
 | `replace_page` | 페이지 교체 | `file_path`, `source_path`, `page_index`, `output_path` |
 | `set_bookmarks` | 북마크 설정 | `file_path`, `bookmarks`, `output_path` |
@@ -443,11 +443,12 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 - 검증: `python -m pyright` 0 errors; `python -m pytest -q` (opt-in Gemini smoke skip 가능)
 - 기능 감사 SSOT: `PROJECT_AUDIT.md`
 - **2026-07-27 후속**: 암호 PDF AI UI, merge 0페이지 fail-fast, chat cancel_check, 배치 암호 권한 UI, blank/dedupe dry-run, **미리보기 드래그 영역 교정** (`region_select.py`)
+- **2026-07-31**: **미리보기 드래그 텍스트 삽입** — `insert_textbox` 위치 드래그·폰트(CJK embed 포함)/투명도/회전/정렬/레이어; `_region_select_target`으로 redact와 타겟 격리
 - 잔여 로드맵: OCR optional extra, compare 인터랙티브 리포트 고도화, SDK-level AI HTTP abort — 상세는 `PROJECT_AUDIT.md`
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-27)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-31)*
 
 <!-- SPECKIT-AGENT-GUIDE:START -->
 
@@ -515,4 +516,3 @@ read specs/001-pdf-master-release-ux/tasks.md
 - 로컬 CLI: `specify` (uv tool, 버전은 `specify version`)
 
 <!-- SPECKIT-AGENT-GUIDE:END -->
-

@@ -104,34 +104,100 @@ class WorkerAnnotationMarkupMixin(WorkerHost):
             doc.close()
 
     def insert_textbox(self):
-        """PDF에 텍스트 상자 삽입"""
+        """PDF에 텍스트 상자/선택 위치 워터마크 삽입"""
         self._normalize_mode_kwargs()
         file_path = _as_str(self.kwargs.get('file_path'))
         output_path = _as_str(self.kwargs.get('output_path'))
         page_num = _as_int(self.kwargs.get('page_num'), 0)
-        rect = cast(list[float], self.kwargs.get('rect') or [100, 100, 300, 150])  # [x0, y0, x1, y1]
+
+        # rect or (x, y[, w, h])
+        rect_arg = self.kwargs.get('rect')
+        if rect_arg:
+            rect = cast(list[float], rect_arg)
+        else:
+            x = _as_float(self.kwargs.get('x'), 100.0)
+            y = _as_float(self.kwargs.get('y'), 100.0)
+            w = _as_float(self.kwargs.get('w'), _as_float(self.kwargs.get('width'), 200.0))
+            h = _as_float(self.kwargs.get('h'), _as_float(self.kwargs.get('height'), 50.0))
+            rect = [x, y, x + w, y + h]
+
         text = _as_str(self.kwargs.get('text'))
         fontsize = _as_int(self.kwargs.get('fontsize'), 12)
         color = tuple(self.kwargs.get('color', [0, 0, 0]))
         align = _as_int(self.kwargs.get('align'), 0)  # 0=left, 1=center, 2=right
+        fontname = _as_str(self.kwargs.get('fontname'), 'helv')
+        opacity = max(0.0, min(1.0, _as_float(self.kwargs.get('opacity'), 1.0)))
+        # insert_textbox 는 90° 배수만 허용
+        rotation = _as_int(self.kwargs.get('rotation'), 0) % 360
+        rotation = (round(rotation / 90) * 90) % 360
+        layer = _as_str(self.kwargs.get('layer'), 'foreground')
+
+        if not text.strip():
+            self.error_signal.emit(self._get_msg("msg_enter_text"))
+            return
 
         doc = self._open_pdf_document(file_path)
         try:
-            # 유효성 검사 추가
             if page_num < 0 or page_num >= len(doc):
-                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc))))
+                self.error_signal.emit(
+                    self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc)))
+                )
                 return
 
             page = doc[page_num]
+            fitz_rect = fitz.Rect(rect)
+            resolved_fontname = self._resolve_textbox_fontname(page, fontname)
+            overlay = layer != 'background'
 
-            page.insert_textbox(fitz.Rect(rect), text, fontsize=fontsize,
-                               fontname="helv", color=color, align=align)
+            page.insert_textbox(
+                fitz_rect,
+                text,
+                fontsize=fontsize,
+                fontname=resolved_fontname,
+                color=color,
+                align=align,
+                rotate=rotation,
+                fill_opacity=opacity,
+                stroke_opacity=opacity,
+                overlay=overlay,
+            )
 
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
             self.finished_signal.emit(self._get_msg("msg_textbox_inserted", page_num + 1))
         finally:
             doc.close()
+
+    def _resolve_textbox_fontname(self, page: Any, fontname: str) -> str:
+        """UI/별칭 폰트명을 PyMuPDF insert_textbox 가 받을 수 있는 이름으로 해석."""
+        key = (fontname or "helv").strip().lower()
+        # Base-14 / 흔한 별칭
+        aliases = {
+            "helv": "helv",
+            "helvetica": "helv",
+            "cour": "cour",
+            "courier": "cour",
+            "couri": "cour",
+            "tiro": "tiro",
+            "times": "tiro",
+            "times-roman": "tiro",
+            "timesroman": "tiro",
+        }
+        if key in aliases:
+            return aliases[key]
+
+        # CJK: fontname="cjk" 직접 전달 불가 → 임베드 후 등록명 사용
+        if key in {"cjk", "cjk_safe", "ko", "korean", "china-s", "china-t", "japan", "korea"}:
+            registered = "pdfmaster_cjk"
+            try:
+                page.insert_font(fontname=registered, fontbuffer=fitz.Font("cjk").buffer)
+                return registered
+            except Exception:
+                logger.warning("CJK font embed failed; falling back to helv", exc_info=True)
+                return "helv"
+
+        # 알 수 없는 이름은 그대로 시도 (커스텀 등록 폰트 등)
+        return fontname or "helv"
 
     def add_sticky_note(self):
         """PDF에 스티키 노트(텍스트 주석) 추가"""

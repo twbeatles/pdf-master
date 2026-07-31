@@ -220,52 +220,134 @@ def _create_edit_subtab(self):
     l_rev.addWidget(b_rev)
     layout.addWidget(grp_rev)
 
-    # v4.5: 텍스트 상자 삽입
+    # v4.5: 텍스트 상자/선택 위치 워터마크 삽입
     grp_textbox = QGroupBox(tm.get("grp_insert_textbox"))
     l_textbox = QVBoxLayout(grp_textbox)
     self.sel_textbox = FileSelectorWidget()
     self.sel_textbox.pathChanged.connect(self._update_preview)
     l_textbox.addWidget(self.sel_textbox)
+
+    # 1) 미리보기 드래그 선택 버튼 & 힌트
+    tb_drag_layout = QHBoxLayout()
+    self.b_tb_drag = QPushButton(tm.get("btn_textbox_drag_select"))
+    self.b_tb_drag.setObjectName("secondaryBtn")
+    self.b_tb_drag.setToolTip(tm.get("tooltip_textbox_drag_select"))
+    self.b_tb_drag.clicked.connect(self.action_start_textbox_region_select)
+    tb_drag_layout.addWidget(self.b_tb_drag)
+    self.lbl_tb_drag_hint = QLabel(tm.get("hint_textbox_drag_idle"))
+    self.lbl_tb_drag_hint.setObjectName("desc")
+    self.lbl_tb_drag_hint.setWordWrap(True)
+    tb_drag_layout.addWidget(self.lbl_tb_drag_hint, 1)
+    l_textbox.addLayout(tb_drag_layout)
+
+    # 2) 페이지 & 위치 좌표 (X, Y, W, H)
     tb_opts1 = QHBoxLayout()
     tb_opts1.addWidget(QLabel(tm.get("tab_page") + ":"))
     self.spn_tb_page = QSpinBox()
     self.spn_tb_page.setRange(1, 9999)
     self.spn_tb_page.setValue(1)
     tb_opts1.addWidget(self.spn_tb_page)
+
     tb_opts1.addWidget(QLabel(tm.get("lbl_textbox_x")))
     self.spn_tb_x = QSpinBox()
     self.spn_tb_x.setRange(0, 9999)
     self.spn_tb_x.setValue(100)
     tb_opts1.addWidget(self.spn_tb_x)
+
     tb_opts1.addWidget(QLabel(tm.get("lbl_textbox_y")))
     self.spn_tb_y = QSpinBox()
     self.spn_tb_y.setRange(0, 9999)
     self.spn_tb_y.setValue(700)
     tb_opts1.addWidget(self.spn_tb_y)
+
+    tb_opts1.addWidget(QLabel(tm.get("lbl_textbox_w")))
+    self.spn_tb_w = QSpinBox()
+    self.spn_tb_w.setRange(10, 9999)
+    self.spn_tb_w.setValue(200)
+    tb_opts1.addWidget(self.spn_tb_w)
+
+    tb_opts1.addWidget(QLabel(tm.get("lbl_textbox_h")))
+    self.spn_tb_h = QSpinBox()
+    self.spn_tb_h.setRange(10, 9999)
+    self.spn_tb_h.setValue(50)
+    tb_opts1.addWidget(self.spn_tb_h)
     tb_opts1.addStretch()
     l_textbox.addLayout(tb_opts1)
+
+    # 3) 폰트, 크기, 색상
     tb_opts2 = QHBoxLayout()
+    tb_opts2.addWidget(QLabel(tm.get("lbl_textbox_font")))
+    self.cmb_tb_font = QComboBox()
+    tb_fonts = [
+        (tm.get("font_cjk"), "cjk"),
+        (tm.get("font_helvetica"), "helv"),
+        (tm.get("font_courier"), "cour"),
+        (tm.get("font_times"), "tiro"),
+    ]
+    for label, val in tb_fonts:
+        self.cmb_tb_font.addItem(label, val)
+    tb_opts2.addWidget(self.cmb_tb_font)
+
     tb_opts2.addWidget(QLabel(tm.get("lbl_textbox_fontsize")))
     self.spn_tb_fontsize = QSpinBox()
-    self.spn_tb_fontsize.setRange(6, 72)
-    self.spn_tb_fontsize.setValue(12)
+    self.spn_tb_fontsize.setRange(6, 144)
+    self.spn_tb_fontsize.setValue(14)
     tb_opts2.addWidget(self.spn_tb_fontsize)
+
     tb_opts2.addWidget(QLabel(tm.get("lbl_textbox_color")))
     self.cmb_tb_color = QComboBox()
     tb_colors = [
         (tm.get("color_black"), (0, 0, 0)),
         (tm.get("color_blue"), (0, 0, 1)),
         (tm.get("color_red"), (1, 0, 0)),
+        (tm.get("color_green"), (0, 0.5, 0)),
+        (tm.get("color_white"), (1, 1, 1)),
+        (tm.get("color_gray"), (0.5, 0.5, 0.5)),
     ]
     for label, value in tb_colors:
         self.cmb_tb_color.addItem(label, value)
     tb_opts2.addWidget(self.cmb_tb_color)
     tb_opts2.addStretch()
     l_textbox.addLayout(tb_opts2)
+
+    # 4) 투명도, 회전각(90° 배수), 정렬, 레이어
+    tb_opts3 = QHBoxLayout()
+    tb_opts3.addWidget(QLabel(tm.get("lbl_textbox_opacity")))
+    self.spn_tb_opacity = QSpinBox()
+    self.spn_tb_opacity.setRange(10, 100)
+    self.spn_tb_opacity.setValue(100)
+    self.spn_tb_opacity.setSuffix("%")
+    tb_opts3.addWidget(self.spn_tb_opacity)
+
+    tb_opts3.addWidget(QLabel(tm.get("lbl_textbox_rotation")))
+    self.spn_tb_rotation = QSpinBox()
+    self.spn_tb_rotation.setRange(0, 270)
+    self.spn_tb_rotation.setSingleStep(90)
+    self.spn_tb_rotation.setValue(0)
+    self.spn_tb_rotation.setSuffix("°")
+    tb_opts3.addWidget(self.spn_tb_rotation)
+
+    tb_opts3.addWidget(QLabel(tm.get("lbl_textbox_align")))
+    self.cmb_tb_align = QComboBox()
+    self.cmb_tb_align.addItem(tm.get("align_left"), 0)
+    self.cmb_tb_align.addItem(tm.get("align_center"), 1)
+    self.cmb_tb_align.addItem(tm.get("align_right"), 2)
+    tb_opts3.addWidget(self.cmb_tb_align)
+
+    tb_opts3.addWidget(QLabel(tm.get("lbl_textbox_layer")))
+    self.cmb_tb_layer = QComboBox()
+    self.cmb_tb_layer.addItem(tm.get("msg_layer_foreground"), "foreground")
+    self.cmb_tb_layer.addItem(tm.get("msg_layer_background"), "background")
+    tb_opts3.addWidget(self.cmb_tb_layer)
+    tb_opts3.addStretch()
+    l_textbox.addLayout(tb_opts3)
+
+    # 5) 텍스트 내용 & 실행 버튼
     l_textbox.addWidget(QLabel(tm.get("lbl_textbox_content")))
     self.txt_textbox_content = QLineEdit()
     self.txt_textbox_content.setPlaceholderText(tm.get("ph_textbox_content"))
     l_textbox.addWidget(self.txt_textbox_content)
+
     b_textbox = QPushButton(tm.get("btn_insert_textbox"))
     b_textbox.setObjectName("actionBtn")
     b_textbox.clicked.connect(self.action_insert_textbox)

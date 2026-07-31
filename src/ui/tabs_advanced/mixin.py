@@ -39,6 +39,9 @@ from .actions_markup import (
     action_add_ink_annotation,
     action_draw_shape,
     action_add_hyperlink,
+    action_start_textbox_region_select,
+    _on_preview_region_selected_for_textbox,
+    _on_textbox_region_mode_changed,
     action_insert_textbox,
     action_add_annotation_basic,
 )
@@ -117,6 +120,9 @@ class MainWindowTabsAdvancedMixin(MainWindowHost):
     action_add_ink_annotation = action_add_ink_annotation
     action_draw_shape = action_draw_shape
     action_add_hyperlink = action_add_hyperlink
+    action_start_textbox_region_select = action_start_textbox_region_select
+    _on_preview_region_selected_for_textbox = _on_preview_region_selected_for_textbox
+    _on_textbox_region_mode_changed = _on_textbox_region_mode_changed
     action_insert_textbox = action_insert_textbox
     action_add_annotation_basic = action_add_annotation_basic
     action_detect_fields = action_detect_fields

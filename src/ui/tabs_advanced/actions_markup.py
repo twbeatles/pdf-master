@@ -87,8 +87,10 @@ def action_start_redact_region_select(self):
     # 토글: 이미 선택 모드면 취소
     if preview.is_region_select_mode():
         preview.set_region_select_mode(False)
+        self._region_select_target = None
         return None
 
+    self._region_select_target = "redact"
     preview.set_region_select_mode(True)
     if hasattr(self, "lbl_redact_drag_hint"):
         self.lbl_redact_drag_hint.setText(tm.get("hint_redact_drag_active"))
@@ -98,6 +100,8 @@ def action_start_redact_region_select(self):
 
 def _on_preview_region_selected_for_redact(self, page: int, x0: float, y0: float, x1: float, y1: float):
     """미리보기 드래그 결과를 영역 교정 입력란에 채운다."""
+    if getattr(self, "_region_select_target", None) != "redact":
+        return
     if hasattr(self, "spn_redact_page"):
         self.spn_redact_page.setValue(max(1, int(page)))
     if hasattr(self, "inp_redact_rect"):
@@ -106,6 +110,7 @@ def _on_preview_region_selected_for_redact(self, page: int, x0: float, y0: float
         self.lbl_redact_drag_hint.setText(
             tm.get("hint_redact_drag_done", page, f"{x0:.1f}", f"{y0:.1f}", f"{x1:.1f}", f"{y1:.1f}")
         )
+    self._region_select_target = None
     ToastWidget(tm.get("msg_redact_drag_applied"), toast_type="success", duration=2000).show_toast(self)
 
 
@@ -115,7 +120,8 @@ def _on_redact_region_mode_changed(self, enabled: bool):
     if enabled:
         self.lbl_redact_drag_hint.setText(tm.get("hint_redact_drag_active"))
     else:
-        # 선택 완료 직후 done 힌트가 있을 수 있으므로, 비어 있거나 active일 때만 idle
+        # 선택 완료 시 preview 가 mode off → regionSelected 순으로 방출하므로
+        # 여기서 target 을 지우면 선택 콜백이 유실된다. target 은 적용/토글 취소에서만 정리.
         current = self.lbl_redact_drag_hint.text()
         if current == tm.get("hint_redact_drag_active"):
             self.lbl_redact_drag_hint.setText(tm.get("hint_redact_drag_idle"))
@@ -328,8 +334,103 @@ def action_add_hyperlink(self):
                       page_num=page_num, link_type=link_type,
                       target=target, rect=rect)
 
+def action_start_textbox_region_select(self):
+    """미리보기에서 드래그로 텍스트/워터마크 영역을 선택한다."""
+    path = self.sel_textbox.get_path() if hasattr(self, "sel_textbox") else ""
+    if not path:
+        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
+
+    preview = getattr(self, "preview_image", None)
+    if preview is None or not hasattr(preview, "set_region_select_mode"):
+        return QMessageBox.warning(self, tm.get("warning"), tm.get("err_textbox_drag_preview_unavailable"))
+
+    # 미리보기를 대상 PDF로 동기화
+    ensure = getattr(self, "_ensure_preview_access", None)
+    ready = False
+    if callable(ensure):
+        result = ensure(path)
+        if isinstance(result, tuple) and len(result) >= 1:
+            ready = bool(result[0])
+        else:
+            ready = bool(result)
+        if not ready:
+            update = getattr(self, "_update_preview", None)
+            if callable(update):
+                update(path)
+            if getattr(self, "_current_preview_doc", None) is None:
+                return QMessageBox.warning(
+                    self, tm.get("warning"), tm.get("err_textbox_drag_preview_unavailable")
+                )
+    else:
+        update = getattr(self, "_update_preview", None)
+        if callable(update):
+            update(path)
+
+    # 시그널 지연 연결
+    if not getattr(self, "_textbox_region_signal_connected", False):
+        try:
+            preview.regionSelected.connect(self._on_preview_region_selected_for_textbox)
+            preview.regionSelectModeChanged.connect(self._on_textbox_region_mode_changed)
+            self._textbox_region_signal_connected = True
+        except Exception:
+            pass
+
+    # 토글: 이미 선택 모드면 취소
+    if preview.is_region_select_mode():
+        preview.set_region_select_mode(False)
+        self._region_select_target = None
+        return None
+
+    self._region_select_target = "textbox"
+    preview.set_region_select_mode(True)
+    if hasattr(self, "lbl_tb_drag_hint"):
+        self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_drag_active"))
+    ToastWidget(tm.get("msg_textbox_drag_started"), toast_type="info", duration=2500).show_toast(self)
+    return None
+
+
+def _on_preview_region_selected_for_textbox(self, page: int, x0: float, y0: float, x1: float, y1: float):
+    """미리보기 드래그 결과를 텍스트 상자 입력란에 채운다."""
+    if getattr(self, "_region_select_target", None) != "textbox":
+        return
+    w = max(10.0, abs(x1 - x0))
+    h = max(10.0, abs(y1 - y0))
+    top_left_x = min(x0, x1)
+    top_left_y = min(y0, y1)
+
+    if hasattr(self, "spn_tb_page"):
+        self.spn_tb_page.setValue(max(1, int(page)))
+    if hasattr(self, "spn_tb_x"):
+        self.spn_tb_x.setValue(int(top_left_x))
+    if hasattr(self, "spn_tb_y"):
+        self.spn_tb_y.setValue(int(top_left_y))
+    if hasattr(self, "spn_tb_w"):
+        self.spn_tb_w.setValue(int(w))
+    if hasattr(self, "spn_tb_h"):
+        self.spn_tb_h.setValue(int(h))
+
+    if hasattr(self, "lbl_tb_drag_hint"):
+        self.lbl_tb_drag_hint.setText(
+            tm.get("hint_textbox_drag_done", page, f"{top_left_x:.1f}", f"{top_left_y:.1f}")
+        )
+    self._region_select_target = None
+    ToastWidget(tm.get("msg_textbox_drag_applied"), toast_type="success", duration=2000).show_toast(self)
+
+
+def _on_textbox_region_mode_changed(self, enabled: bool):
+    if not hasattr(self, "lbl_tb_drag_hint"):
+        return
+    if enabled:
+        self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_drag_active"))
+    else:
+        # preview 는 mode off 후 regionSelected 를 방출 → target 은 여기서 지우지 않음
+        current = self.lbl_tb_drag_hint.text()
+        if current == tm.get("hint_textbox_drag_active"):
+            self.lbl_tb_drag_hint.setText(tm.get("hint_textbox_drag_idle"))
+
+
 def action_insert_textbox(self):
-    """텍스트 상자 삽입"""
+    """텍스트 상자/선택 위치 워터마크 삽입"""
     path = self.sel_textbox.get_path()
     text = self.txt_textbox_content.text().strip()
 
@@ -338,18 +439,44 @@ def action_insert_textbox(self):
     if not text:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_text"))
 
+    # 선택 모드 중이면 비활성화
+    preview = getattr(self, "preview_image", None)
+    if preview is not None and hasattr(preview, "is_region_select_mode") and preview.is_region_select_mode():
+        preview.set_region_select_mode(False)
+
     page_num = self.spn_tb_page.value() - 1
     x = self.spn_tb_x.value()
     y = self.spn_tb_y.value()
-    fontsize = self.spn_tb_fontsize.value()
+    w = self.spn_tb_w.value() if hasattr(self, "spn_tb_w") else 200
+    h = self.spn_tb_h.value() if hasattr(self, "spn_tb_h") else 50
 
+    fontsize = self.spn_tb_fontsize.value()
     color = self.cmb_tb_color.currentData() or (0, 0, 0)
+    fontname = self.cmb_tb_font.currentData() if hasattr(self, "cmb_tb_font") else "cjk"
+    opacity = (self.spn_tb_opacity.value() / 100.0) if hasattr(self, "spn_tb_opacity") else 1.0
+    rotation = self.spn_tb_rotation.value() if hasattr(self, "spn_tb_rotation") else 0
+    align = self.cmb_tb_align.currentData() if hasattr(self, "cmb_tb_align") else 0
+    layer = self.cmb_tb_layer.currentData() if hasattr(self, "cmb_tb_layer") else "foreground"
+
+    rect = [float(x), float(y), float(x + w), float(y + h)]
 
     s, _ = self._choose_save_file(tm.get("save"), "with_textbox.pdf", "PDF (*.pdf)")
     if s:
-        self.run_worker("insert_textbox", file_path=path, output_path=s,
-                      page_num=page_num, x=x, y=y, text=text,
-                      fontsize=fontsize, color=color)
+        self.run_worker(
+            "insert_textbox",
+            file_path=path,
+            output_path=s,
+            page_num=page_num,
+            rect=rect,
+            text=text,
+            fontsize=fontsize,
+            color=color,
+            fontname=fontname,
+            opacity=opacity,
+            rotation=rotation,
+            align=align,
+            layer=layer,
+        )
 
 def action_add_annotation_basic(self):
     """기본 주석 추가(text/freetext)"""

@@ -81,7 +81,7 @@
 | **Underline / Strikethrough** | Text markup |
 | **Draw Shapes** | Add rectangles, circles, lines |
 | **Add Hyperlinks** | URL or page navigation links |
-| **Insert Textbox** | Type text directly on the PDF |
+| **Insert Textbox** | Place text by coordinates **or by dragging on the preview** (font / opacity / rotation / align / layer) |
 | **Redact Text** | Permanently remove sensitive text matches |
 | **Redact Area** | Permanently remove by coordinates **or by dragging a region on the preview** |
 | **Add Background** | Change page background color |
@@ -112,6 +112,7 @@
 - **Dark / Light Theme** — Glassmorphism design
 - **Zoom / Pan Preview** — Mouse wheel zoom, drag move, print
 - **Preview drag redaction** — In Advanced tab area redact, drag a rectangle on the preview to fill coordinates
+- **Preview drag text insert** — In Edit tab textbox, drag to set position/size and apply font/opacity options
 - **Preview Search / Bookmarks** — Collapsible side panel (`Ctrl+F`)
 - **Thumbnail Grid** — View all pages at a glance
 - **Drag & Drop** — Add files, reorder pages
@@ -293,6 +294,7 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 - **2026-07-21 SOLID code split**: Worker domain packages (`annotation`/`extract`/`cleanup`/`page`/`transform`/`compare`) plus settings/constants/undo impl packages and progress UI split; public imports and behavior contracts unchanged
 - **2026-07-22 audit follow-up**: thumbnail loader sender guard, AI temp/atomic orphan sweep (`temp_cleanup`), interruptible AI retry sleep + no retry on cancel, confirm dialogs for blank/dedupe/sanitize, cancel rollback without mtime heuristic, `list_annotations` text contract, batch encrypt permission note, chat session single-flight
 - **2026-07-27 audit follow-up**: functional audit SSOT is `PROJECT_AUDIT.md`; encrypted-PDF AI UI reuses preview password; merge empty-page fail-fast; AI chat `cancel_check` propagation; batch encrypt permission checkboxes; blank/dedupe dry-run counts; **preview drag area redaction**
+- **2026-07-31**: **Preview drag text insert** — `insert_textbox` gains drag placement, W/H, CJK/Base-14 fonts, opacity, 90° rotation steps, align/layer, and isolated redact/textbox drag targets
 
 ### v4.5.5
 - Preview zoom, pan, and print stability (Qt print pipeline)
