@@ -36,17 +36,17 @@ class PreviewFullscreenHost(QMainWindow):
 
         toolbar = QHBoxLayout()
         self.btn_close = QPushButton(tm.get("btn_preview_fullscreen_exit"))
-        self.btn_close.setObjectName("secondaryBtn")
+        self.btn_close.setObjectName("toolbarSecondaryBtn")
         self.btn_close.clicked.connect(self.close)
         toolbar.addWidget(self.btn_close)
 
         self.btn_place = QPushButton(tm.get("btn_textbox_drag_select"))
-        self.btn_place.setObjectName("secondaryBtn")
+        self.btn_place.setObjectName("toolbarSecondaryBtn")
         self.btn_place.clicked.connect(self.placeTextboxRequested.emit)
         toolbar.addWidget(self.btn_place)
 
         self.btn_insert = QPushButton(tm.get("btn_insert_textbox"))
-        self.btn_insert.setObjectName("actionBtn")
+        self.btn_insert.setObjectName("toolbarBtn")
         self.btn_insert.clicked.connect(self.insertTextboxRequested.emit)
         toolbar.addWidget(self.btn_insert)
 

@@ -25,8 +25,7 @@ def _create_preview_panel(self):
     header.addWidget(self.preview_label, 1)
 
     self.btn_preview_focus = QPushButton(tm.get("btn_preview_focus_enter"))
-    self.btn_preview_focus.setObjectName("secondaryBtn")
-    self.btn_preview_focus.setFixedHeight(28)
+    self.btn_preview_focus.setObjectName("toolbarSecondaryBtn")
     self.btn_preview_focus.setToolTip(tm.get("tooltip_preview_focus_enter"))
     self.btn_preview_focus.clicked.connect(self._toggle_preview_focus_mode)
     header.addWidget(self.btn_preview_focus)
@@ -52,13 +51,13 @@ def _create_preview_panel(self):
     focus_bar_layout.setSpacing(8)
 
     self.btn_focus_place_textbox = QPushButton(tm.get("btn_textbox_drag_select"))
-    self.btn_focus_place_textbox.setObjectName("secondaryBtn")
+    self.btn_focus_place_textbox.setObjectName("toolbarSecondaryBtn")
     self.btn_focus_place_textbox.setToolTip(tm.get("tooltip_textbox_drag_select"))
     self.btn_focus_place_textbox.clicked.connect(self.action_start_textbox_region_select)
     focus_bar_layout.addWidget(self.btn_focus_place_textbox)
 
     self.btn_focus_insert_textbox = QPushButton(tm.get("btn_insert_textbox"))
-    self.btn_focus_insert_textbox.setObjectName("actionBtn")
+    self.btn_focus_insert_textbox.setObjectName("toolbarBtn")
     self.btn_focus_insert_textbox.clicked.connect(self.action_insert_textbox)
     focus_bar_layout.addWidget(self.btn_focus_insert_textbox)
 

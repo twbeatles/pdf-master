@@ -112,8 +112,10 @@ class ProgressOverlayWidget(QFrame):
         btn_layout.addStretch()
 
         self.cancel_btn = QPushButton(tm.get("progress_cancel"))
-        self.cancel_btn.setFixedSize(100, 36)
+        self.cancel_btn.setMinimumHeight(32)
+        self.cancel_btn.setMinimumWidth(88)
         self.cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        # 전역 QPushButton padding(12/24)을 덮어 텍스트 잘림 방지
         self.cancel_btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -122,6 +124,7 @@ class ProgressOverlayWidget(QFrame):
                 border-radius: 8px;
                 font-weight: 600;
                 font-size: 13px;
+                padding: 4px 12px;
             }
             QPushButton:hover {
                 background: rgba(239, 68, 68, 0.15);

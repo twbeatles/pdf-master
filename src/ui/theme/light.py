@@ -301,6 +301,45 @@ QPushButton#navBtn {
     padding: 8px 14px;
 }
 
+/* 미리보기/상태바 등 좁은 툴바용 — 전역 padding(12/24)과 fixed size 충돌 방지 */
+QPushButton#toolbarBtn {
+    padding: 4px 10px;
+    min-height: 28px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+QPushButton#toolbarIconBtn {
+    padding: 0px;
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 700;
+}
+QPushButton#toolbarSecondaryBtn {
+    background: #ffffff;
+    border: 1px solid #4f8cff;
+    color: #4f8cff;
+    padding: 4px 10px;
+    min-height: 28px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+QPushButton#toolbarSecondaryBtn:hover {
+    background: rgba(79, 140, 255, 0.1);
+    border-color: #3a7ae8;
+    color: #3a7ae8;
+}
+QPushButton#toolbarSecondaryBtn:disabled {
+    border-color: #cbd5e1;
+    color: #94a3b8;
+    background: #f8fafc;
+}
+
 QPushButton#accentBtn {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4f8cff, stop:1 #8b5cf6);
     color: white;

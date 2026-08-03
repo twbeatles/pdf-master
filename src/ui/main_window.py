@@ -212,9 +212,7 @@ class PDFMasterApp(
         status_layout.addWidget(self.progress_bar)
 
         self.btn_open_folder = QPushButton(tm.get("folder"))
-        self.btn_open_folder.setObjectName("secondaryBtn")
-        self.btn_open_folder.setFixedWidth(70)
-        self.btn_open_folder.setFixedHeight(24)
+        self.btn_open_folder.setObjectName("toolbarSecondaryBtn")
         self.btn_open_folder.setVisible(False)
         self.btn_open_folder.clicked.connect(self._open_last_folder)
         status_layout.addWidget(self.btn_open_folder)
