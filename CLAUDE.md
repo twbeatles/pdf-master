@@ -8,9 +8,12 @@
 
 - PyMuPDF deep-util pass (v4.5.6): `compress` can downsample/re-encode images and subset fonts (`compact`/`web`); cleanup package (`cleanup_ops` facade) covers blank/dedupe pages, bookmark split, auto TOC, sanitize, and N-up; crop supports `content` mode; `redact_area`, `flatten_form`, encrypt `permissions`, compare `visual`/`both`, and `convert_to_svg` are registered Worker modes with Advanced/Security UI.
 - SOLID split (2026-07-21): large worker domains live under `worker_ops/{annotation,extract,cleanup,page,transform,compare}/` with thin `*_ops.py` facades; settings/constants/undo use `_*-impl` packages; progress UI under `ui/progress/`.
+- SOLID split (2026-08-03): `tabs_advanced/markup_actions/` (annotations/redact/shapes_links/textbox + `deps`); Worker `annotation/highlight_markup.py` + `annotation/textbox.py` under `markup.py` facade; `preview_widget` mixins (`document_api`/`navigation`/`zoom`/`search_panel`/`theme_api`/`interaction_overlays`) composed in thin `widget.py`. Public imports `actions_markup`, `WorkerAnnotationMarkupMixin`, `ZoomablePreviewWidget` unchanged.
 - 2026-07-22 PROJECT_AUDIT follow-up: `src/core/temp_cleanup.py` sweeps `pdf_master_ai_*` / `.pdf_master_*` orphans on startup/shutdown/cancel/force-terminate; thumbnail loader signals use sender guard; AI `retry_with_backoff` sleeps in slices and does not retry cancel; blank/dedupe/sanitize UI confirm dialogs; cancel cleanup uses only `created_output_paths` (no mtime heuristic); `list_annotations` OperationSpec is `output_kind=text`; batch encrypt tip documents default permissions; chat session create is single-flight per cache key.
 - 2026-07-27 PROJECT_AUDIT follow-up: functional audit SSOT is `PROJECT_AUDIT.md` (validation tests no longer require legacy FUNCTIONAL audit files); AI tab unlocks encrypted PDFs via preview password then Worker temp decrypt; `merge` fails when zero pages survive; AI chat `_get_or_create_chat` propagates `cancel_check` to upload; batch encrypt exposes permission checkboxes; blank/dedupe confirm dialogs show dry-run removal estimates; preview **drag region select** for `redact_area` (`src/ui/preview_widget/region_select.py` + `ZoomablePreviewWidget.set_region_select_mode`).
 - 2026-07-31 positioned text insert: Advanced Edit `insert_textbox` supports preview drag placement (shared region-select overlay), W/H, CJK (`insert_font` embed) / Base-14 fonts, opacity, 90°-step rotation, align, layer; `_region_select_target` isolates redact vs textbox consumers.
+- 2026-08-03 preview focus + textbox editor UX: `F11` cycles normal→focus→fullscreen (`window_preview/focus.py` + `fullscreen_host.py`, `Ctrl+F11` direct fullscreen); Esc steps placement→region→fullscreen→focus; overlay move/resize/nudge/click-place + double-click/F2 inline edit; multiline content; same-path apply (confirm) + keep placing; multi-box queue with pinned `file_path` (`insert_textboxes`) and **queue ghost overlay** on preview; experimental region replace (`replace_text_in_rect` redact hard-fail) with **`extract_text_in_rect` Worker** fill; session state in `TextboxEditorSession`. Audit follow-up: post-flag clear on fail/cancel, busy disables focus-bar/fullscreen actions, partial queue failure message.
+
 - The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
 - Preview print now renders through the Qt print pipeline; it no longer delegates to `os.startfile(..., "print")` or `lpr`.
 - Thumbnail entry points in the AI and rotate flows are preview-synchronized: if they target a different PDF, preview is switched first and encrypted PDFs reuse the preview password session.
@@ -119,14 +122,20 @@ pdf-master/
         ├── main_window_undo.py           # 호환 shim
         ├── tabs_basic/
         ├── tabs_advanced/
+        │   ├── markup_actions/          # annotations/redact/shapes_links/textbox + deps
+        │   ├── actions_markup.py        # public facade
+        │   ├── textbox_session.py       # 큐·후처리 세션 상태
         │   └── tab_builders/
         ├── tabs_ai/
         ├── common_widgets/
-        ├── preview_widget/
+        ├── preview_widget/              # widget.py 셸 + document/nav/zoom/search/interaction mixins
+        │   ├── text_placement.py
+        │   ├── queue_overlay.py
+        │   └── region_select.py
         ├── thumbnail/
         ├── theme/
         ├── window_core/
-        ├── window_preview/
+        ├── window_preview/              # focus.py, fullscreen_host.py, panel, document…
         ├── window_worker/
         ├── window_undo/
         ├── progress/                    # overlay + spinner 구현
@@ -187,7 +196,10 @@ error_signal = pyqtSignal(str)         # 에러 메시지
 | `ai_extract_keywords` | AI 키워드 추출 (v4.5) | `ai_extract_keywords()` |
 | `draw_shapes` | 도형 그리기 (v4.5) | `draw_shapes()` |
 | `add_link` | 하이퍼링크 추가 (v4.5) | `add_link()` |
-| `insert_textbox` | 텍스트 상자 삽입 (v4.5) | `insert_textbox()` |
+| `insert_textbox` | 텍스트 상자 삽입 (v4.5+) | `insert_textbox()` |
+| `insert_textboxes` | 텍스트 상자 일괄 삽입 (큐) | `insert_textboxes()` |
+| `replace_text_in_rect` | 영역 텍스트 교체 (redact+insert) | `replace_text_in_rect()` |
+| `extract_text_in_rect` | 영역 클립 텍스트 추출 (memory) | `extract_text_in_rect()` |
 | `copy_page_between_docs` | 페이지 복사 (v4.5) | `copy_page_between_docs()` |
 | `replace_page` | 페이지 교체 (v4.5.3 UI 노출) | `replace_page()` |
 | `set_bookmarks` | 북마크 설정 (v4.5.3 UI 노출) | `set_bookmarks()` |
@@ -778,7 +790,7 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-31)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-08-03)*
 
 ---
 

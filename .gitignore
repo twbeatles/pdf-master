@@ -14,6 +14,12 @@ __pycache__/
 .hypothesis/
 .tox/
 .nox/
+# Local pytest/agent scratch logs (cwd)
+.pytest_*.txt
+.collect.txt
+.test_files.txt
+.b1.txt
+.b2.txt
 
 # Coverage
 .coverage
@@ -68,6 +74,12 @@ terminals/
 agent-tools/
 .sessions/
 *.session.md
+# Spec Kit / agent ephemeral (repo-local; not product source)
+.specify/
+specs/
+
+# Optional design notes under docs/ are tracked; ignore only local worktrees
+docs/**/worktrees/
 
 # Ephemeral agent/session scratch (never commit)
 .claude/
@@ -88,5 +100,3 @@ Desktop.ini
 *.swp
 *~
 *.bak
-.specify/
-specs/

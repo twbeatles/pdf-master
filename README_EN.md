@@ -81,7 +81,7 @@
 | **Underline / Strikethrough** | Text markup |
 | **Draw Shapes** | Add rectangles, circles, lines |
 | **Add Hyperlinks** | URL or page navigation links |
-| **Insert Textbox** | Place text by coordinates **or by dragging on the preview** (font / opacity / rotation / align / layer) |
+| **Insert Textbox** | Coordinates, presets, or preview **move/resize/inline edit**. Supports **apply to original**, **batch queue insert**, and experimental **region text replace** (redact+insert) |
 | **Redact Text** | Permanently remove sensitive text matches |
 | **Redact Area** | Permanently remove by coordinates **or by dragging a region on the preview** |
 | **Add Background** | Change page background color |
@@ -113,6 +113,7 @@
 - **Zoom / Pan Preview** — Mouse wheel zoom, drag move, print
 - **Preview drag redaction** — In Advanced tab area redact, drag a rectangle on the preview to fill coordinates
 - **Preview drag text insert** — In Edit tab textbox, drag to set position/size and apply font/opacity options
+- **Preview focus / fullscreen** — Collapse the left panel for a large viewer (`F11` cycle) or OS fullscreen (`Ctrl+F11`)
 - **Preview Search / Bookmarks** — Collapsible side panel (`Ctrl+F`)
 - **Thumbnail Grid** — View all pages at a glance
 - **Drag & Drop** — Add files, reorder pages
@@ -221,6 +222,9 @@ Menu bar → **Language** (🌐) → **Korean** or **English** → restart the a
 | `Ctrl+Q` | Quit |
 | `Ctrl+T` | Toggle dark / light theme |
 | `Ctrl+F` | Open preview search |
+| `F11` | Preview focus ↔ fullscreen ↔ normal cycle |
+| `Ctrl+F11` | Preview fullscreen (enter / exit) |
+| `Esc` | Cancel text placement / region select, then step out of fullscreen and focus |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` | Redo |
 | `Ctrl+1` | Merge tab |
@@ -295,6 +299,7 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 - **2026-07-22 audit follow-up**: thumbnail loader sender guard, AI temp/atomic orphan sweep (`temp_cleanup`), interruptible AI retry sleep + no retry on cancel, confirm dialogs for blank/dedupe/sanitize, cancel rollback without mtime heuristic, `list_annotations` text contract, batch encrypt permission note, chat session single-flight
 - **2026-07-27 audit follow-up**: functional audit SSOT is `PROJECT_AUDIT.md`; encrypted-PDF AI UI reuses preview password; merge empty-page fail-fast; AI chat `cancel_check` propagation; batch encrypt permission checkboxes; blank/dedupe dry-run counts; **preview drag area redaction**
 - **2026-07-31**: **Preview drag text insert** — `insert_textbox` gains drag placement, W/H, CJK/Base-14 fonts, opacity, 90° rotation steps, align/layer, and isolated redact/textbox drag targets
+- **2026-08-03**: **Preview focus/fullscreen** (`F11` cycle, `Ctrl+F11`), textbox resize/inline edit/apply-to-original/queue batch/experimental region replace; audit follow-up (post-flag reset, busy guards, redact hard-fail, queue path pin)
 
 ### v4.5.5
 - Preview zoom, pan, and print stability (Qt print pipeline)

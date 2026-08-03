@@ -152,6 +152,16 @@ class PDFMasterApp(
 
         # Tabs (left side)
         tabs_widget = QWidget()
+        self._content_left_widget = tabs_widget
+        self._preview_focus_mode = False
+        self._splitter_sizes_before_focus = None
+        self._preview_fullscreen_host = None
+        from .tabs_advanced.textbox_session import TextboxEditorSession
+
+        self._textbox_session = TextboxEditorSession()
+        self._textbox_queue = self._textbox_session.queue
+        self._textbox_reopen_placement_after_success = False
+        self._textbox_clear_queue_after_success = False
         tabs_layout = QVBoxLayout(tabs_widget)
         tabs_layout.setContentsMargins(0, 0, 0, 0)
         self.tabs = QTabWidget()
@@ -225,9 +235,19 @@ class PDFMasterApp(
         self.progress_overlay.cancelled.connect(self._on_worker_cancelled)
         self.progress_overlay.hide()
 
+        # 포커스 모드 설정 복원 (레이아웃 확정 후)
+        QTimer.singleShot(0, self._restore_preview_focus_on_startup)
+
     def closeEvent(self, a0):
         """앱 종료 시 리소스 정리 및 설정 저장"""
         logger.info("Application closing...")
+
+        # 0. 전체화면 호스트에서 미리보기 회수
+        if hasattr(self, "_is_preview_fullscreen") and self._is_preview_fullscreen():
+            try:
+                self._exit_preview_fullscreen(restore_focus=False)
+            except Exception:
+                logger.debug("Failed to exit preview fullscreen on close", exc_info=True)
 
         # 1. 실행 중인 Worker 정리
         if not _shutdown_worker_for_close(self, self.worker):

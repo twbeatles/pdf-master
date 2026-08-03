@@ -20,6 +20,8 @@ def test_legacy_shims_stay_thin_after_refactor():
         "src/core/undo_manager.py": 80,
         "src/ui/widgets.py": 80,
         "src/ui/tabs_advanced/builders.py": 80,
+        "src/ui/tabs_advanced/actions_markup.py": 160,  # facade re-export
+        "src/core/worker_ops/annotation/markup.py": 40,  # composed highlight+textbox facade
         "src/ui/thumbnail_grid.py": 80,
         "src/ui/zoomable_preview.py": 80,
         "src/ui/styles.py": 80,
@@ -94,6 +96,9 @@ def test_split_domain_packages_export_composed_mixins():
         "highlight_text",
         "add_text_markup",
         "insert_textbox",
+        "insert_textboxes",
+        "replace_text_in_rect",
+        "extract_text_in_rect",
         "add_sticky_note",
         "draw_shapes",
         "add_link",
@@ -104,6 +109,13 @@ def test_split_domain_packages_export_composed_mixins():
         "add_ink_annotation",
         "add_freehand_signature",
     }
+    # textbox 패키지 분리 surface
+    from src.core.worker_ops.annotation.textbox import WorkerAnnotationTextboxMixin
+    from src.core.worker_ops.annotation.highlight_markup import WorkerAnnotationHighlightMixin
+
+    assert hasattr(WorkerAnnotationTextboxMixin, "insert_textbox")
+    assert hasattr(WorkerAnnotationTextboxMixin, "extract_text_in_rect")
+    assert hasattr(WorkerAnnotationHighlightMixin, "highlight_text")
     extract_methods = {
         "extract_text",
         "get_pdf_info",

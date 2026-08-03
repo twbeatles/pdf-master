@@ -76,14 +76,17 @@ pdf-master/
         ├── main_window_*.py       # 호환 shim 계열 (worker 오버라이드 포함)
         ├── tabs_basic/
         ├── tabs_advanced/
+        │   ├── markup_actions/    # annotations/redact/shapes/textbox + deps
+        │   ├── actions_markup.py  # facade
+        │   ├── textbox_session.py
         │   └── tab_builders/
         ├── tabs_ai/
         ├── common_widgets/
-        ├── preview_widget/
+        ├── preview_widget/        # widget shell + document/nav/zoom/search/interaction mixins
         ├── thumbnail/
         ├── theme/
         ├── window_core/
-        ├── window_preview/
+        ├── window_preview/        # focus.py, fullscreen_host.py, panel, document…
         ├── window_worker/
         ├── window_undo/
         ├── progress/              # overlay + spinner
@@ -143,7 +146,10 @@ error_signal = pyqtSignal(str)        # 에러 메시지
 | `ai_extract_keywords` | AI 키워드 추출 | `file_path`, `api_key`, `max_keywords` |
 | `draw_shapes` | 도형 그리기 | `file_path`, `shapes` 또는 `shape_type/x/y/…`, `output_path` |
 | `add_link` | 하이퍼링크 | `file_path`, `link_type`, `target`, `rect`, `output_path` |
-| `insert_textbox` | 텍스트 상자 (UI: 좌표 또는 미리보기 드래그) | `file_path`, `text`, `rect` 또는 `x/y/w/h`, `fontname`, `fontsize`, `color`, `opacity`, `rotation`, `align`, `layer`, `output_path` |
+| `insert_textbox` | 텍스트 상자 (UI: 좌표·프리셋·미리보기 이동/리사이즈/인라인 편집) | `file_path`, `text`, `rect` 또는 `x/y/w/h`, `fontname`, `fontsize`, `color`, `opacity`, `rotation`, `align`, `layer`, `output_path` |
+| `insert_textboxes` | 텍스트 상자 일괄 삽입 (큐) | `file_path`, `boxes[]`, `output_path` |
+| `replace_text_in_rect` | 영역 텍스트 교체 (redact 후 삽입; redact 실패 시 hard-fail) | `file_path`, `page_num`, `rect`, `text`, …, `output_path` |
+| `extract_text_in_rect` | 영역 클립 텍스트 추출 (memory payload) | `file_path`, `page_num`, `rect` → payload `text` |
 | `copy_page_between_docs` | 페이지 복사 | `file_path`, `source_path`, `page_range` |
 | `replace_page` | 페이지 교체 | `file_path`, `source_path`, `page_index`, `output_path` |
 | `set_bookmarks` | 북마크 설정 | `file_path`, `bookmarks`, `output_path` |
@@ -444,11 +450,12 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 - 기능 감사 SSOT: `PROJECT_AUDIT.md`
 - **2026-07-27 후속**: 암호 PDF AI UI, merge 0페이지 fail-fast, chat cancel_check, 배치 암호 권한 UI, blank/dedupe dry-run, **미리보기 드래그 영역 교정** (`region_select.py`)
 - **2026-07-31**: **미리보기 드래그 텍스트 삽입** — `insert_textbox` 위치 드래그·폰트(CJK embed 포함)/투명도/회전/정렬/레이어; `_region_select_target`으로 redact와 타겟 격리
+- **2026-08-03**: **미리보기 포커스/전체화면** (`F11` 순환, `Ctrl+F11`), 텍스트 상자 리사이즈·인라인 편집·원본 바로 적용·큐 일괄·영역 교체·`extract_text_in_rect`; 감사 후속 안정화; **SOLID 분할** (`markup_actions/`, Worker textbox/highlight, preview mixins)
 - 잔여 로드맵: OCR optional extra, compare 인터랙티브 리포트 고도화, SDK-level AI HTTP abort — 상세는 `PROJECT_AUDIT.md`
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-07-31)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-08-03)*
 
 <!-- SPECKIT-AGENT-GUIDE:START -->
 

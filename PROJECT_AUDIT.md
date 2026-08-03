@@ -1,59 +1,71 @@
 # Project Audit
 
-> 감사 기준일: **2026-07-27**  
-> 후속 구현: **2026-07-27** (1·2단계 + 3단계 일부)  
+> 감사 기준일: **2026-08-03**  
 > 대상 버전: **PDF Master v4.5.6**  
-> 범위: 기능 구현 관점 (검증·예외·상태/비동기·보안·경로·설정·문서 정합·테스트)  
-> 분석 수단: `README.md`, `CLAUDE.md`, CodeGraph MCP (`codegraph_explore`), 보조 파일 열람·grep, `pytest` 실행  
-> **SSOT:** 본 파일 (`PROJECT_AUDIT.md`)이 현행 기능 감사 문서
+> 초점: **2026-08-03 미리보기 포커스/전체화면 + 텍스트 상자 편집기 고도화** (Phase 1–3)  
+> 범위: 기능 구현 관점 (예외·검증·상태/비동기·경로·설정·보안·문서 정합·테스트)  
+> 분석 수단: `README.md`, `CLAUDE.md`, CodeGraph MCP (`codegraph_explore`), 보조 파일 열람·grep  
+> **SSOT:** 본 파일 (`PROJECT_AUDIT.md`)이 현행 기능 감사 문서  
 
 ---
 
-## 0. Implementation Follow-up (2026-07-27)
+## 0. Implementation Follow-up (2026-08-03)
 
-감사 권고에 대한 구현 반영 상태.
+감사 §5 권고 반영 상태.
 
 | 우선순위 | 항목 | 상태 |
 |----------|------|------|
-| High §3.1 | 문서 SSOT → `PROJECT_AUDIT.md`, validation 테스트 이전 | **해결** |
-| High §3.2 | 암호 PDF AI UI — preview 인증 후 Worker 진행 (옵션 A) | **해결** |
-| Medium §3.5 | merge 0페이지 시 error (빈 PDF 미저장) | **해결** |
-| Medium §3.3 | chat `_get_or_create_chat`에 `cancel_check` 전파 | **해결** |
-| Medium | 취소 시 AI 네트워크 대기 안내 UI | **해결** |
-| Medium §3.4 | AI temp `chmod 0o600` best-effort | **해결** |
-| Low §3.7 | 배치 encrypt 권한 체크박스 UI | **해결** |
-| 3단계 | blank/dedupe dry-run 예상 개수 확인 다이얼로그 | **해결** |
-| 3단계 | compare 페이지 상세 행 확대 | **해결** |
-| 3단계 | AI Client `http_options.timeout` best-effort | **부분** |
-| 3단계 | OCR 엔진 optional extra | **잔여 로드맵** |
-| 3단계 | 미리보기 드래그 `redact_area` | **해결** (2026-07-27) — `RegionSelectOverlay` + 좌표 매핑 + 고급 탭 연동 |
-| 3단계 | SDK-level HTTP abort (요청 중 강제 중단) | **잔여 로드맵** |
+| High §3.1 | 실패/취소 시 textbox post 플래그 리셋 | **해결** — `_clear_textbox_post_flags` on fail/cancel/success |
+| High §3.2 | busy 시 포커스 바·전체화면 삽입 버튼 비활성 | **해결** — `set_ui_busy` + `set_actions_enabled` |
+| High §3.3 | 큐 항목 `file_path` 고정 + 커밋 경로 검증 | **해결** |
+| High §3.4 | `replace_text_in_rect` redact 실패 hard-fail | **해결** — `err_textbox_redact_failed` |
+| Medium §3.5 | 인라인 편집 FocusOut 정책 | **해결** — arm 디바운스 + reason 필터 |
+| Medium §3.6 | 영역 추출 암호 세션 | **부분** — preview password 전달 (Worker 이관은 잔여) |
+| Medium §3.7 | 호스트 F11 = 메인 순환 | **해결** — `layoutCycleExitRequested` |
+| Medium §3.8 | same-path 확인 다이얼로그 | **해결** |
+| Medium §3.9 | README/단축키 동기화 | **해결** |
+| Low §3.10 | insert_textboxes 부분 실패 보고 | **해결** — `msg_textboxes_inserted_partial` |
+| 3단계 | 큐 다중 박스 오버레이 미리보기 | **해결** — `QueueGhostOverlay` + `set_queue_ghost_boxes` |
+| 3단계 | 텍스트 상자 세션 단일 객체화 | **해결** — `TextboxEditorSession` |
+| 3단계 | 영역 텍스트 추출 Worker | **해결** — `extract_text_in_rect` (memory payload) |
 
-**검증 (구현 후):** `python -m pyright` → 0 errors; `python -m pytest -q` → pass (opt-in Gemini smoke skip).
+**검증:** `python -m pytest -q` (opt-in Gemini smoke skip 가능). 회귀: `tests/test_textbox_audit_followup.py` 등.
+
+### SOLID 분할 (2026-08-03, 후속)
+
+| 영역 | 구조 | facade 유지 |
+|------|------|-------------|
+| UI 마크업 액션 | `tabs_advanced/markup_actions/{annotations,redact,shapes_links,textbox,deps}.py` | `actions_markup.py` |
+| Worker 주석 마크업 | `annotation/highlight_markup.py` + `annotation/textbox.py` | `annotation/markup.py` |
+| 미리보기 위젯 | `preview_widget/{document_api,navigation,zoom,search_panel,theme_api,interaction_overlays}.py` | `widget.py` 합성 클래스 |
+
+원칙: move-only 본문, public import/mode 불변, structure budget 게이트 확장.
 
 ---
 
 ## 1. Executive Summary
 
-PDF Master v4.5.6은 **PyQt6 UI → `run_worker` → `WorkerThread`/`worker_runtime`(preflight·dispatch·atomic I/O) → 도메인 `worker_ops`** 구조가 명확한 올인원 PDF 편집 앱입니다. 2026-07-27 감사 후속으로 High 2건(문서 게이트·암호 PDF AI UI)과 주요 Medium 항목을 코드에 반영했습니다.
+PDF Master는 **PyQt6 UI → `run_worker` → `WorkerThread` / `worker_runtime` → `worker_ops`** 로 명확히 분리된 올인원 PDF 편집 앱이다. 2026-08-03에 추가된 **미리보기 포커스·전체화면**, **텍스트 상자 편집기형 UX**(리사이즈·인라인 편집·same-path·큐·영역 교체)는 기존 Worker 계약(`insert_textbox` same_path_safe/Undo) 위에 얹혀 있어 골격은 건전하다.
+
+다만 신규 기능 경계에서 **상태 플래그가 실패 경로에서 정리되지 않는 문제**, **전체화면 호스트가 busy 가드 밖**, **큐와 현재 파일 경로 불일치**, **영역 교체의 “지우고 쓰기” 실패 시 이중 기록 위험**, **README/단축키 문서 공백**이 확인된다. Critical 급 원격 보안 구멍은 없고, 사용자 데이터 손실·중복 실행 관점의 **High/Medium** 이슈가 핵심이다.
 
 ### 전체 위험도
 
 | 구분 | 평가 |
 |------|------|
-| **전체 위험도** | **Low–Medium** (후속 반영 후; 네트워크 AI cancel·OCR 등은 잔여) |
+| **전체 위험도** | **Medium** (신규 UX 경계; 코어 Worker 골격은 양호) |
 | Critical | **없음** |
-| High (잔여) | **없음** (게이트·암호 AI UI 계약 정리) |
-| Medium 잔여 | AI cooperative cancel(네트워크 블로킹), 평문 temp 본질, OCR 미구현 |
-| 문서 정합 | `PROJECT_AUDIT.md` SSOT |
-| 테스트 | 게이트 통과 목표; opt-in Gemini smoke 1건 skip 가능 |
+| High | 실패 시 텍스트상자 post-flag 잔존, 전체화면 중 busy 우회 가능, 큐–파일 경로 드리프트, 영역 교체 redact 실패 후 덮어쓰기 |
+| Medium | 인라인 편집 FocusOut, UI 스레드 fitz 추출, F11 순환 불일치, 문서 미반영 |
+| Low | reparent 레이아웃 취약성, 부분 실패 침묵, 테스트 갭 |
 
-### 감사 당시 핵심 문제 (구현 전 스냅샷)
+### 핵심 문제 (요약)
 
-1. **품질 게이트 실패** — legacy FUNCTIONAL audit / roadmap 삭제 → validation 테스트 실패 (**해결**)
-2. **암호 PDF AI UI 차단 vs Worker 지원** (**해결** — preview 세션 재사용)
-3. **AI 취소 cooperative** — chat upload cancel 미연결은 **개선**, SDK abort는 **잔여**
-4. **2026-07-22 후속** 다수는 유지
+1. **`_textbox_clear_queue_after_success` / `_textbox_reopen_placement_after_success`가 성공 훅에서만 소비** — 실패·취소 시 잔존 → 다음 성공 작업에 부작용.  
+2. **`PreviewFullscreenHost` 배치/삽입 버튼이 `set_ui_busy` 대상이 아님** — Worker 실행 중 중복 `run_worker` 가능.  
+3. **다중 박스 큐는 항목에 `file_path`를 저장하지 않음** — 커밋 시 현재 선택 PDF에 적용 → 잘못된 문서에 삽입 가능.  
+4. **`replace_text_in_rect`는 redact 실패를 로그만 하고 insert 계속** — “교체”가 “추가”로 변질 가능.  
+5. **README/단축키 표에 F11·전체화면·same-path·큐·교체 미기재** — CLAUDE Current Behavior와 제품 문서 불일치.
 
 ---
 
@@ -66,380 +78,291 @@ PDF Master v4.5.6은 **PyQt6 UI → `run_worker` → `WorkerThread`/`worker_runt
 | 제품 | 올인원 PDF 편집 데스크톱 앱 (병합·변환·페이지·보안·주석·추출·배치·AI) |
 | 스택 | Python 3.10+, PyQt6, PyMuPDF(`fitz`), optional `google-genai` / `keyring`, PyInstaller |
 | 버전 | v4.5.6 |
-| 배포 | Windows EXE 중심 (`dist/PDF_Master_v4.5.6.exe`), 소스는 크로스 실행 가능하나 폰트·인쇄·패키징은 Windows 중심 |
+| 배포 | Windows EXE 중심, 소스는 크로스 실행 가능 |
 
-### 2.2 아키텍처 (CodeGraph + 문서)
+### 2.2 아키텍처 개요
 
 ```
 main.py
-  ├─ setup_logging / global_exception_handler (i18n)
   └─ PDFMasterApp (믹스인 조립)
-       ├─ window_core / window_preview / window_undo / window_worker
+       ├─ window_core / window_preview / window_worker / window_undo
        ├─ tabs_basic / tabs_advanced / tabs_ai
-       └─ MainWindowWorkerMixin.run_worker()          # CodeGraph: 66+ UI callers
-            ├─ busy 가드 + _pending_workers FIFO (상한 8)
-            ├─ same-path preview 해제 / passwords 주입
-            └─ WorkerThread (QThread)
-                 └─ WorkerRuntimeMixin.run()
-                      ├─ _normalize_mode_kwargs()
-                      ├─ _preflight_inputs()           # OperationSpec + PDF header/size
-                      └─ handler in worker_ops/*
-                           └─ signals → on_success / on_fail / on_cancelled
+       └─ MainWindowWorkerMixin.run_worker()
+            ├─ busy 가드 + _pending_workers FIFO
+            ├─ same-path 시 미리보기 close → Worker → restore
+            └─ WorkerThread → worker_runtime preflight/dispatch
+                 └─ worker_ops (annotation/markup: insert_textbox*)
 ```
 
-### 2.3 CodeGraph 기반 핵심 호출 관계
+### 2.3 2026-08-03 신규 기능 실행 흐름 (CodeGraph)
 
-| 단계 | 심볼 | 위치 | 비고 |
-|------|------|------|------|
-| 진입 | `main()` | `main.py` | HiDPI, `--smoke`, `PDFMasterApp` |
-| UI 게이트 | `run_worker` | `src/ui/main_window_worker.py` | 탭 액션 다수 caller; busy 시 대기 큐 |
-| 스레드 | `WorkerThread` | `src/core/worker.py` | Runtime mixin 위임 |
-| 선검증 | `preflight_inputs` | `src/core/worker_runtime/preflight.py` | batch 화이트리스트, search_term, required_* |
-| 디스패치 | `OperationSpec` / `OPERATION_SPECS` | `src/core/worker_runtime/dispatch.py` | 50+ mode 계약 |
-| PDF open | `_open_pdf_document` | `src/core/worker_runtime/mixin.py` | `passwords` 맵 + authenticate |
-| AI | `ai_summarize` 등 | `src/core/worker_ops/ai_ops.py` | `cancel_check` + 임시 복호 |
-| 취소 정리 | `_cleanup_cancelled_worker` | `src/ui/window_worker/lifecycle.py` | `created_output_paths` only |
-| 종료 | `_shutdown_worker_for_close` | `src/ui/main_window.py` | cancel → 3s → 강제 terminate + temp 스윕 |
+**미리보기 레이아웃**
 
-### 2.4 안정화 메커니즘 (문서 ↔ 코드 일치 확인)
+| 단계 | 심볼 / 위치 | 동작 |
+|------|-------------|------|
+| 포커스 | `window_preview/focus.py` `_set_preview_focus_mode` | 좌측 탭 숨김 + 스플리터 확장, 설정 저장 |
+| F11 순환 | `_toggle_preview_focus_mode` | 일반 → 포커스 → 전체화면 → 일반 |
+| 전체화면 | `_enter_preview_fullscreen` + `PreviewFullscreenHost` | `preview_image` reparent → `showFullScreen` |
+| 복귀 | `_exit_preview_fullscreen` | detach → 패널 레이아웃 재삽입; `_preview_fullscreen_exiting` 재진입 가드 |
+| Esc | `_on_preview_focus_escape` | 인라인 편집 → 배치 → 영역선택 → 전체화면 → 포커스 |
 
-| 메커니즘 | 상태 |
-|----------|------|
-| Same-path 저장 전 preview 해제 + 완료 후 복원 | **일치** |
-| Undo 스냅샷 (`before`/`after` backup) | **일치** |
-| Atomic I/O + `created_output_paths` 취소 롤백 | **일치** (mtime 휴리스틱 제거됨) |
-| 첨부 추출 경로 정규화 + `output_dir` 하위 강제 | **일치** |
-| AI 캐시 클래스 변수 + lock / chat single-flight | **일치** |
-| 설정 JSON atomic write, API 키 keyring 우선 + 동의 기반 파일 폴백 | **일치** |
-| SOLID 도메인 패키지 + thin facade | **일치** |
-| 썸네일 `_is_active_loader_sender` | **일치** (ready/progress/complete 공통) |
-| temp orphan 스윕 (`temp_cleanup`) | **일치** (기동/취소/강제종료) |
+**텍스트 상자**
 
-### 2.5 README / CLAUDE.md vs 구현 정합성
+| 단계 | 심볼 / 위치 | 동작 |
+|------|-------------|------|
+| 배치 UI | `TextPlacementOverlay` + `ZoomablePreviewWidget.set_text_placement_mode` | 이동·8핸들 리사이즈·클릭 배치·너지·더블클릭 인라인 편집 |
+| 삽입 | `action_insert_textbox` | same-path 옵션 또는 저장 다이얼로그 → `run_worker("insert_textbox")` |
+| 성공 후 | `on_success` → `_on_textbox_worker_success` | 큐 비우기 / 연속 배치 `QTimer.singleShot(150, …)` |
+| 큐 | `action_textbox_queue_*` + Worker `insert_textboxes` | 메모리 큐 → 일괄 삽입 |
+| 교체 | `replace_text_in_rect` | 영역 redact 후 `insert_textbox` 계열 쓰기 |
 
-| 문서 주장 | 실제 | 판정 |
-|-----------|------|------|
-| v4.5.6 deep compress / cleanup / visual compare / redact_area | 도메인 패키지 + UI 존재 | **일치** |
-| SOLID 도메인 패키지 | facade + 구현 패키지 | **일치** |
-| zoomable_preview / Qt 인쇄 | preview 위젯 경로 | **일치** |
-| Worker preflight + shared `pdf_validation` | `preflight.py` → `validate_pdf_file` | **일치** |
-| 배치 미지원 op fail-fast | preflight + `batch_ops` | **일치** |
-| pending FIFO / busy 단축키 비활성 | lifecycle + `set_ui_busy` | **일치** |
-| **암호화 PDF AI: preview 암호 재사용** | Worker/테스트만 지원, **AI UI는 암호 PDF 차단** | **불일치** |
-| pytest **230 / 229 passed / 1 skip** | 실측 **230 / 228 passed / 1 skip / 2 failed** | **불일치** |
-| `legacy FUNCTIONAL audit document`가 현행 감사 문서 | 파일 **삭제됨** (git status `D`) | **불일치** |
-| OCR 미구현 | 의도적 후속 | **일치** |
+**설정**
 
-### 2.6 과거 High 이슈 재검증 (2026-07-15 → 현재)
+- `preview_focus_mode`, `splitter_sizes_before_focus` — `_settings_impl` 기본값·정규화.
+- 포커스 중 스플리터 드래그는 `_save_splitter_state`에서 일반 비율 덮어쓰기 방지.
 
-| 과거 이슈 | 현재 코드 근거 | 상태 |
-|-----------|----------------|------|
-| AI 취소 무시 / finished 경로 | `cancel_check` + `_reraise_if_cancelled` + stream 체크 | **해결** (네트워크 블로킹은 잔여) |
-| 암호 PDF AI hard reject (Worker) | `_prepare_ai_pdf_path` + passwords | **Worker 해결 / UI 미연결** |
-| blank 렌더 실패 → 삭제 | 예외 시 페이지 유지 | **해결** |
-| visual silent identical | `visual_error` status | **해결** |
-| redact_area 확인 없음 | `QMessageBox.warning` Yes/No | **해결** |
-| pending 큐 무한 | `_MAX_PENDING_WORKERS = 8` | **해결** |
-| 썸네일 ready sender 가드 | `_is_active_loader_sender` | **해결** |
-| 취소 mtime 휴리스틱 | `created_output_paths`만 삭제 | **해결** |
+### 2.4 이전 감사 잔여 (2026-07-27 기준, 신규 범위 외)
+
+- AI SDK-level HTTP abort, OCR optional extra 등 로드맵 잔여.  
+- 암호 PDF AI UI·merge 0페이지·PROJECT_AUDIT SSOT 게이트는 당시 후속으로 반영된 상태.
 
 ---
 
 ## 3. High-Risk Issues
 
-> 실제 코드·테스트 실행 근거가 있는 항목만 수록. 추정은 §4.
-
----
-
-### 3.1 유지 문서·감사 파일 삭제와 pytest 품질 게이트 실패
+### 3.1 텍스트 상자 성공 전용 플래그가 실패·취소 시 잔존
 
 * **위치:**  
-  - 삭제됨(git status): `legacy FUNCTIONAL audit document`, `PROJECT_ANALYSIS_AND_FEATURE_ROADMAP.md`  
-  - `tests/test_validation_docs_config.py` — `test_docs_reference_validation_manifest_and_commands`, `test_maintained_docs_do_not_reference_missing_functional_audits`  
-  - `CLAUDE.md` (FUNCTIONAL audit을 “current repo-local audit document”로 기술)  
-  - `README.md` / `README_EN.md` / `CLAUDE.md` / `GEMINI.md` — pytest 기준선 수치
-* **문제:**  
-  1) `FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md` glob 결과가 비어 `assert audit_files` 실패.  
-  2) 유지 문서 목록에 포함된 `PROJECT_ANALYSIS_AND_FEATURE_ROADMAP.md`가 없어 `read_text` → `FileNotFoundError`.  
-  3) 유지 문서가 “229 passed”를 주장하나 현재 워크트리는 **2 failed**.
-* **영향:** CI/로컬 검증이 깨진 상태. 신규 회귀를 “전원 통과”로 오인할 위험. 감사 SSOT 경로가 이중화·단절됨(`PROJECT_AUDIT.md` vs 삭제된 FUNCTIONAL audit).
+  - `src/ui/tabs_advanced/actions_markup.py` — `action_insert_textbox` / `action_textbox_queue_commit` / `action_replace_text_in_rect` (`_textbox_reopen_placement_after_success`, `_textbox_clear_queue_after_success`)  
+  - `src/ui/main_window_worker.py` — `on_success` (후크 호출) vs `on_fail` / `on_cancelled` (후크 없음)
+* **문제:** 큐 커밋·연속 배치 플래그가 **성공 경로에서만** 소비된다. Worker 실패·취소 시 플래그가 남은 채 다음 성공 작업에 적용될 수 있다.
+* **영향:**  
+  - 실패한 큐 커밋 이후 단건 삽입 성공 시 **의도치 않은 큐 삭제**.  
+  - keep-placing이 다음 성공 작업 후 예기치 않게 배치 모드를 재개.
 * **근거:**  
-  - 2026-07-27 실행: `python -m pytest -q` → 2 failed (위 테스트명).  
-  - `test_validation_docs_config.py` L5–6, L62–64, L74–81.  
-  - git status 스냅샷: 두 md 파일 `D`.
-* **권장 수정 방향:**  
-  - (A) FUNCTIONAL audit을 복원하거나, 테스트를 `PROJECT_AUDIT.md` 단일 SSOT로 이전.  
-  - roadmap 파일을 복원하거나 maintained_docs 목록에서 제거.  
-  - README/CLAUDE/GEMINI 기준선을 실측 수치로 갱신.
+  - 설정: `actions_markup.py` 약 904, 959–960, 1023행.  
+  - 소비: `main_window_worker.py` `on_success` 262–269행 + `_on_textbox_worker_success`.  
+  - `on_fail` 335+ / cancel 경로는 해당 플래그를 건드리지 않음.
+* **권장 수정 방향:** `on_fail` / `on_cancelled`에서도 플래그 리셋; 또는 `run_worker` 시작 시 요청 단위 컨텍스트 객체로 묶어 해당 job 완료 시에만 처리.
 * **우선순위:** **High**
 
 ---
 
-### 3.2 암호 PDF AI: UI 차단 vs Worker 지원 vs 문서 서술 불일치
+### 3.2 전체화면 호스트가 UI busy 가드 밖 — 중복 실행
 
 * **위치:**  
-  - UI: `src/ui/tabs_ai/actions.py` — `action_ai_summarize`, `_ask_ai_question`, `_extract_keywords`  
-  - Worker: `src/core/worker_ops/ai_ops.py` — `_prepare_ai_pdf_path`  
-  - 회귀: `tests/test_ai_ops_cancel_and_encrypted.py` — `test_ai_summarize_encrypted_with_password_unlocks`  
-  - 문서: `CLAUDE.md` 2026-07-15 Addendum (암호화 PDF AI unlock)
-* **문제:**  
-  AI 탭은 세 기능 모두에서:
-
-```python
-if is_pdf_encrypted(path):
-    return QMessageBox.warning(..., tm.get("err_pdf_encrypted", ...))
-```
-
-  로 암호 PDF를 **미리보기 인증 여부와 무관하게** 거부한다.  
-  반면 Worker는 `passwords` 맵으로 인증 후 `pdf_master_ai_*` 임시 평문 PDF를 만들고 File API/추출에 쓰며, 단위 테스트도 이를 검증한다. `run_worker`의 `_augment_worker_passwords_from_preview`는 AI UI가 먼저 return하므로 **실사용 경로에 도달하지 않는다**.
-* **영향:**  
-  - 문서/로드맵이 약속한 “암호 PDF AI”를 사용자가 쓸 수 없음.  
-  - Worker·테스트 커버 범위와 제품 UX 불일치 → 향후 수정 시 회귀 방향 혼선.  
-  - 의도적 안전장치(평문 temp 회피)라면 문서·Worker 공개 경로를 정리해야 함.
-* **근거:** `tabs_ai/actions.py` L80–81, L117–118, L198–199; `ai_ops.py` L18–44; CLAUDE Addendum; worker 테스트 존재.
-* **권장 수정 방향:**  
-  - **옵션 A (기능 완성):** AI 액션에서 `_ensure_preview_ready`/password 세션을 재사용하고 UI 차단 제거 → Worker unlock 경로와 정렬.  
-  - **옵션 B (의도적 비활성):** Worker unlock·관련 문서/테스트를 “내부/비UI”로 명확히 하고 CLAUDE 서술을 “UI 미지원”으로 수정.
-* **우선순위:** **High** (제품 계약·보안 기대치 모두 영향)
+  - `src/ui/window_worker/lifecycle.py` — `set_ui_busy` (tabs / `_app_shortcuts` / Open 메뉴만)  
+  - `src/ui/window_preview/fullscreen_host.py` — `btn_place` / `btn_insert`  
+  - `src/ui/window_preview/panel.py` — 포커스 바 버튼 (tabs 비활성 시 좌측은 막히나, 포커스 중 미리보기 패널은 우측에 남음)
+* **문제:** Worker 실행 중 메인 탭·단축키는 비활성화되지만, **전체화면 창의 배치/삽입 버튼**은 활성 상태다. 포커스 바 버튼도 우측 패널에 있으면 busy 중에도 클릭 가능할 수 있다(좌측 탭 비활성과 별개).
+* **영향:** `run_worker` 재진입 → 대기 큐 적재 또는 사용자 혼란; same-path 연속 쓰기의 레이스 체감.
+* **근거:** `set_ui_busy`가 tabs/`_app_shortcuts`/`_menu_open_action`만 제어. Fullscreen host는 별도 `QMainWindow`로 시그널을 `action_*`에 직결.
+* **권장 수정 방향:** busy 시 `PreviewFullscreenHost` 버튼 비활성; 또는 `run_worker` 진입을 단일 게이트로 유지하되 호스트 UI에 busy 미러링. 포커스 바 버튼도 동일.
+* **우선순위:** **High**
 
 ---
 
-### 3.3 AI 취소가 네트워크 블로킹 구간을 끊지 못함
+### 3.3 다중 박스 큐와 대상 PDF 경로 불일치
 
 * **위치:**  
-  - `src/core/ai/generation.py` — `_upload_pdf_file`, `_generate_content`, `_stream_generate_content`  
-  - `src/core/ai/errors.py` — `retry_with_backoff` / `_interruptible_sleep`  
-  - `src/core/ai/session.py` — `_get_or_create_chat`
-* **문제:** 취소는 cooperative이다.  
-  - stream: 청크 사이 `_run_cancel_check` **있음**.  
-  - retry sleep: 0.2s 슬라이스 + cancel_check **있음** (2026-07-22 개선).  
-  - `files_api.upload(file=...)` 호출 중: 체크 없음.  
-  - non-stream `generate_content(...)`: 단일 블로킹.  
-  - `_get_or_create_chat`의 `_upload_pdf_file(pdf_path)`: **`cancel_check` 인자 자체를 전달하지 않음**.
-* **영향:** 사용자가 오버레이에서 취소해도 업로드/생성 완료까지 UI busy·토큰/네트워크 비용이 남을 수 있다. finished 오발화는 `_reraise_if_cancelled`로 막는 구조이나 **응답성** 문제는 잔존.
-* **근거:** `generation.py` L117–118, L164–168; `session.py` L56; `errors.py` L46–107.
-* **권장 수정 방향:**  
-  - chat 생성 경로에 `cancel_check` 전파.  
-  - 취소 중 UI 상태 “요청 중단 대기 중…”.  
-  - SDK 수준 abort/timeout (로드맵).
+  - `actions_markup.py` — `action_textbox_queue_add` (큐 항목에 page/rect/style만 저장)  
+  - `action_textbox_queue_commit` (커밋 시 `sel_textbox.get_path()` 사용)
+* **문제:** 큐에 쌓을 때 **파일 경로를 고정하지 않는다**. 큐잉 후 파일 선택기를 바꾸면 다른 PDF에 좌표가 적용된다.
+* **영향:** 잘못된 문서에 텍스트 일괄 삽입; 페이지 수 부족 시 Worker `err_page_out_of_range`로 전체 실패(부분 저장 없음).
+* **근거:** 큐 아이템 구조는 page_num/rect/text/style; commit은 현재 `path`만 사용 (CodeGraph `action_textbox_queue_commit`).
+* **권장 수정 방향:** 큐 항목에 `file_path` 저장 + 커밋 시 불일치 거부; 또는 큐잉 중 파일 선택 변경 시 큐 무효화 확인 다이얼로그.
+* **우선순위:** **High**
+
+---
+
+### 3.4 `replace_text_in_rect` — redact 실패 후 insert 계속
+
+* **위치:** `src/core/worker_ops/annotation/markup.py` — `replace_text_in_rect` (약 333–341행)
+* **문제:** `add_redact_annot` / `apply_redactions` 예외를 로깅만 하고 **새 텍스트 삽입을 계속**한다. 사용자 확인 문구는 “지우고 덮어쓰기”인데 결과는 기존 텍스트 위에 추가될 수 있다.
+* **영향:** 민감 정보 제거 실패 인지 불가; 레이아웃/내용 이중 표시.
+* **근거:** `except Exception: logger.warning(...); # 교정 실패 시에도 덮어쓰기 시도` 후 `_write_textbox_content`.
+* **권장 수정 방향:** redact 실패 시 `error_signal`로 중단; 또는 명시적 “insert-only 폴백” 플래그와 사용자 경고. 성공 시 교체 여부를 payload로 보고.
+* **우선순위:** **High**
+
+---
+
+### 3.5 인라인 편집 `FocusOut` 즉시 커밋
+
+* **위치:** `src/ui/preview_widget/text_placement.py` — `TextPlacementOverlay.eventFilter` (`FocusOut` → `_finish_inline_edit(commit=True)`)
+* **문제:** 포커스 이탈 시 무조건 커밋. Qt에서 `setFocus` 직후 순간적 FocusOut, 또는 IME/다른 창 클릭 시 편집이 조기 종료되거나 빈 커밋이 발생할 수 있다. (추정 포함: 플랫폼·IME 의존)
+* **영향:** 편집 중 텍스트 유실 체감, 불필요한 `textEdited` → 본문 필드 덮어쓰기.
+* **근거:** FocusOut 분기에서 `reason`/`PopupFocusReason` 필터 없음; `_start_inline_edit`가 `setFocus` 직후 show.
+* **권장 수정 방향:** `QEvent.FocusOut` 시 `reason` 검사, 짧은 디바운스, 또는 명시 버튼(완료)만 커밋 + Esc 취소 유지.
 * **우선순위:** **Medium**
 
 ---
 
-### 3.4 암호 PDF AI 임시 평문 파일 (Worker 경로)
+### 3.6 영역 교체 시 UI 스레드 동기 `fitz.open`
 
-* **위치:** `src/core/worker_ops/ai_ops.py` — `_prepare_ai_pdf_path`, `_cleanup_ai_temp_path`; `src/core/temp_cleanup.py`
-* **문제:** 암호화 PDF는 인증 후 `tempfile.mkstemp(prefix="pdf_master_ai_")`에 **비암호화 PDF**를 기록한다. `finally` 삭제 + age 기반 orphan 스윕이 있으나, 프로세스 kill·디스크 오류·동시성 edge에서는 평문 잔존 가능.
-* **영향:** 민감 문서 로컬 temp 노출. (Gemini 업로드는 별도 클라우드 리스크.) UI가 암호 PDF를 막는 현재 상태에서는 사용자 노출 빈도는 낮지만, Worker/테스트·향후 UI 연결 시 재부각.
-* **근거:** `ai_ops.py` L36–44, L63–78; `temp_cleanup.py` L13–60.
-* **권장 수정 방향:** 제한 ACL/NamedTemporaryFile 수명 강화, 가능하면 메모리 경로; UI 연결 시 사용자 고지.
-* **우선순위:** **Medium** (UI 연결 시 상향)
-
----
-
-### 3.5 병합 시 전 파일 스킵이면 빈 PDF를 성공 저장
-
-* **위치:** `src/core/worker_ops/compose_ops.py` — `merge`
-* **문제:** 개별 파일 open/암호/손상 시 `skipped_count`만 올리고 계속 진행한다. 유효 페이지를 하나도 넣지 못해도 `_atomic_pdf_save` 후 `finished_signal`(성공)을 낸다. 메시지는 “merged 0 + skipped N” 형태가 될 수 있으나 **실패 시그널이 아니다**.
-* **영향:** 암호-only 목록·전부 손상 입력 시 빈/무의미 PDF가 “완료”로 저장됨. 사용자가 성공으로 오인.
-* **근거:**
-
-```python
-# compose_ops.merge
-doc = self._open_pdf_document(path)
-if doc.is_encrypted:
-    skipped_count += 1
-    ...
-    continue
-...
-self._atomic_pdf_save(doc_merged, output_path)
-result_msg = self._get_msg("msg_merge_done", len(valid_files) - skipped_count)
-```
-
-  (현 PyMuPDF에서 authenticate 성공 시 `is_encrypted`가 False가 되는 것을 로컬에서 확인 — 암호 미해결 파일은 exception 경로로 skip.)
-* **권장 수정 방향:** 병합 페이지 수 0이면 `error_signal`로 종료하고 출력 미생성(또는 생성 파일 롤백).
+* **위치:** `actions_markup.py` — `_extract_text_in_rect_sync` (region `textbox_replace` 콜백에서 호출)
+* **문제:** 미리보기 드래그 완료 직후 **UI 스레드에서 PDF를 열어** 클립 텍스트를 추출한다. 대용량·네트워크 드라이브 PDF에서 UI 스톨 가능.
+* **영향:** 드래그 UX 멈춤; 암호 PDF·잠금 파일에서 예외 삼킴 → 빈 본문(조용한 실패).
+* **근거:** `fitz.open(path)` + `page.get_text(..., clip=...)` 동기 호출; 예외 시 `""` 반환.
+* **권장 수정 방향:** Worker 모드로 추출 이전; 또는 이미 로드된 preview 문서/캐시 재사용; 암호 세션 연동.
 * **우선순위:** **Medium**
 
 ---
 
-### 3.6 강제 종료 시 `QThread.terminate()` 잔여 위험 (완화됨)
+### 3.7 전체화면 창 F11 vs 메인 F11 순환 의미 불일치
 
-* **위치:** `src/ui/main_window.py` — `_shutdown_worker_for_close`
-* **문제:** cancel 3초 초과 시 사용자 확인 후 `worker.terminate()` 호출. 원자 저장·AI temp 삭제는 스레드 협력 없이는 보장 불가. 이후 `cleanup_pdf_master_temp_files(include_in_progress=True)`로 **완화**.
-* **영향:** 드묾. 미완성 출력·파일 잠금 가능. 사용자 명시 선택 경로.
-* **근거:** `main_window.py` L38–69.
-* **권장 수정 방향:** cooperative 대기 옵션 연장; terminate 전 출력 경로 목록 로깅.
+* **위치:**  
+  - `focus.py` `_toggle_preview_focus_mode` — 전체화면 중 F11 → exit + **포커스 해제(일반)**  
+  - `fullscreen_host.py` — 호스트 내부 F11/Esc → `close` → `hostClosing` → `_exit_preview_fullscreen(restore_focus=True)` → **포커스 유지**
+* **문제:** 같은 F11이라도 **포커스 소유 창에 따라** 결과가 다르다 (일반 복귀 vs 포커스 잔류).
+* **영향:** “F11 한 번 더 = 일반” 학습 모델 붕괴; 지원/문서와 어긋남.
+* **근거:** CodeGraph `focus.py` 105–107행 vs `fullscreen_host.py` F11 → `self.close` + hostClosing `restore_focus=True`.
+* **권장 수정 방향:** 호스트 F11도 메인 순환과 동일하게 “exit fullscreen + exit focus”; 또는 호스트에서 메인 `_toggle` 호출.
+* **우선순위:** **Medium**
+
+---
+
+### 3.8 same-path 적용에 확인 다이얼로그 없음
+
+* **위치:** `actions_markup.py` — `_textbox_resolve_output_path` + 체크박스 `chk_tb_same_path`
+* **문제:** “원본에 바로 적용”이 켜진 채 삽입/큐/교체 시 **추가 확인 없이** 원본 PDF를 덮어쓴다. Undo는 가능하나 백업 실패 시 위험.
+* **영향:** 실수 클릭 시 원본 즉시 변경; 교체 모드는 파괴적(redact).
+* **근거:** same-path 시 path 그대로 반환; `replace`만 확인 다이얼로그 있음. 단건 insert same-path는 확인 없음.
+* **권장 수정 방향:** same-path 첫 적용 또는 세션당 확인; 교체+same-path는 이중 확인 유지.
+* **우선순위:** **Medium**
+
+---
+
+### 3.9 README / 단축키 표 vs CLAUDE·구현 불일치
+
+* **위치:** `README.md` (기능·단축키 절), `CLAUDE.md` Current Behavior Notes (2026-08-03 항목 있음)
+* **문제:** README UI/UX·단축키에 **F11/Ctrl+F11, 포커스/전체화면, same-path, 큐, 영역 교체, 인라인 편집**이 없다. 텍스트 상자는 “드래그 위치 지정” 수준만 기술.
+* **영향:** 사용자 발견성 저하; 검증 문서 게이트는 SSOT 존재만 검사하므로 README 기능 공백이 테스트에 안 잡힘.
+* **근거:** README 단축키 표 218–233행에 F11 없음; `F11|전체화면|insert_textboxes` grep 0건. CLAUDE L14에 상세 기술.
+* **권장 수정 방향:** README/README_EN 단축키·고급 편집·변경 이력 동기화.
+* **우선순위:** **Medium**
+
+---
+
+### 3.10 `insert_textboxes` 부분 실패 침묵
+
+* **위치:** `markup.py` `insert_textboxes` — 빈 rect/`ok=False` 시 `continue`, 마지막에 `wrote_count`만 보고
+* **문제:** 일부 박스 실패 시 어떤 인덱스가 빠졌는지 UI/메시지에 없음. 페이지 범위 오류만 hard-fail.
+* **영향:** “N개 삽입”이 큐 길이보다 작아도 원인 불명.
+* **근거:** `if fitz_rect.is_empty: continue`, `if ok: wrote_count += 1`.
+* **권장 수정 방향:** 실패 인덱스 목록을 payload/메시지에 포함; 0개일 때만 에러(현재).
 * **우선순위:** **Low–Medium**
 
 ---
 
-### 3.7 배치 암호화 UI가 단일 탭 권한 모델을 노출하지 않음
+### 3.11 전역 Esc 단축키와 폼 입력 충돌 가능
 
-* **위치:** Worker `batch_ops.py` (permissions/owner/user kwargs 지원) vs UI `tabs_basic/batch.py` (비밀번호 문자열만)
-* **문제:** 배치 결과는 기본 print/copy/accessibility 권한 + owner/user 동일 비밀번호. 단일 Security 탭과 기대 불일치 가능. 2026-07-22에 툴팁/안내 문구는 반영됨.
-* **영향:** 보안 정책 엄격 사용자의 결과물 기대 불일치. 기능 버그보다 **제품 갭**.
-* **근거:** batch UI kwargs vs `batch_ops` encrypt 분기; i18n `tip_batch_encrypt_permissions`.
-* **권장 수정 방향:** 배치 권한 UI 추가 또는 README에 한계를 더 명시.
-* **우선순위:** **Low**
+* **위치:** `window_core/shortcuts.py` — `QShortcut(Qt.Key.Key_Escape, self, _on_preview_focus_escape)`
+* **문제:** 메인 윈도우 Esc가 배치/포커스 해제에 연결됨. 포커스 모드가 아닐 때는 no-op에 가깝지만, **포커스 모드 + 다른 위젯 입력 중 Esc**가 레이아웃을 접을 수 있다.
+* **영향:** 의도치 않은 포커스 종료.
+* **근거:** Esc 핸들러가 배치 없으면 포커스 해제. Application/Window shortcut context 기본값.
+* **권장 수정 방향:** 포커스가 미리보기/오버레이일 때만 처리; 또는 `WidgetWithChildrenShortcut` 범위 축소.
+* **우선순위:** **Low–Medium**
 
 ---
 
 ## 4. Potential Functional Gaps
 
-### 4.1 확인된 gap (추정 아님)
-
-| 항목 | 설명 |
-|------|------|
-| OCR | 의도적 미구현. 스캔본 텍스트/검색/AI fallback 품질 한계 |
-| AI 즉시 abort | §3.3 |
-| 암호 PDF AI UI | §3.2 — Worker 있음 / UI 없음 |
-| redact 좌표 UX | 수동 텍스트 좌표; 미리보기 드래그 영역 선택 없음 |
-| compare 리포트 UI | 요약 다이얼로그 + 선택적 visual PDF. 페이지별 인터랙티브 리포트 없음 |
-| visual 샘플링 | 픽셀 step 샘플링 → 국소 차이 누락 가능 |
-| `auto_bookmarks` | 폰트 크기 휴리스틱; 다단/한글 제목 오탐·미탐 가능 |
-| 배치 작업 종류 | compress/watermark/encrypt/rotate만 (preflight 고정) |
-| 종료 시 pending 큐 | close 시 `_pending_workers` 폐기 (의도적) |
-| Windows 기본 폰트 | `Segoe UI` — 비 Windows 폴백 의존 |
-| 문서 SSOT | FUNCTIONAL audit 삭제 후 테스트·CLAUDE 미갱신 (§3.1) |
-
-### 4.2 추정 gap
-
-| 항목 | 설명 |
-|------|------|
-| **추정** — settings last-write-wins | 채팅 즉시 저장과 debounce settings save가 같은 dict를 공유; 단일 UI 스레드에서는 완화, 외부 파일 동시 편집 시 덮어쓰기 가능 |
-| **추정** — sanitize 완전성 | JS/OpenAction 등 best-effort. 포렌식급 위생 아님 |
-| **추정** — passwords/api_key kwargs 수명 | Worker kwargs에 평문 보관. 기본 로그는 mode 중심이나 디버그 확장 시 유출 여지 |
-| **추정** — Linux/macOS 인쇄·keyring | 소스 실행 가능하나 패키징/테스트 커버리지 얇을 수 있음 |
-| **추정** — 대용량 AI 업로드 | File API + 30k 텍스트 제한 meta는 있으나 장시간 업로드+취소 UX는 §3.3과 결합 |
-| **추정** — merge skip 사유 미구분 | 암호/손상/기타를 사용자에게 파일 단위로 보여주지 않음 |
-
-### 4.3 의도적 제품 한계
-
-- AI 요약 최대 30,000자, 렌더 8,000px, 파일 2GB  
-- Gemini 전용 AI  
-- 페이지 대상 작업의 엄격 페이지 리졸버 (`-1` last-page는 서명 계열 예약)
-
-### 4.4 강점 (감사 중 확인)
-
-- OperationSpec 중심 preflight·dispatch·undo·same-path 계약  
-- atomic save + created_output_paths 취소 정리  
-- 첨부 경로 탈출 차단 테스트  
-- AI meta(source/truncated) UI  
-- SOLID 분할 후 public facade·구조 예산 테스트  
-- i18n 카탈로그 + 하드코딩 스모크  
-- 2026-07-22 후속 회귀 테스트 존재
+| 항목 | 설명 | 구분 |
+|------|------|------|
+| 큐 항목 시각적 미리보기 | 목록 텍스트만 있고 페이지 썸네일/오버레이 다중 박스 표시 없음 | 기능 갭 |
+| 암호 PDF + 영역 추출 | `_extract_text_in_rect_sync`가 preview 암호 세션을 재사용하지 않음 → 추출 실패 가능 | **추정**(암호 파일에서 빈 문자열) |
+| 전체화면 중 검색/인쇄 | 호스트 툴바에 검색·인쇄 없음; 위젯 내장 툴바는 유지되나 포커스 전환 UX 미검증 | **추정** |
+| keep-placing 후 좌표 리셋 | 성공 후 같은 자리에 재배치 → 의도적일 수 있으나 “다음 위치” 프리셋 없음 | 기능 갭 / **추정** |
+| 인라인 편집 중 페이지 전환 | 페이지 변경 시 오버레이 좌표 동기화는 refresh 경로에 의존; 편집 중 페이지 이동 시 박스/페이지 불일치 가능 | **추정** |
+| `insert_textboxes` 진행률 UI | progress emit은 있으나 큐 크기·실패 요약 다이얼로그 없음 | 기능 갭 |
+| OCR/스캔 PDF 교체 | 영역 교체는 텍스트 레이어 전제; 스캔본은 redact+빈 추출 | 알려진 제품 한계 (기존 OCR 로드맵) |
+| 다중 모니터 전체화면 | `showFullScreen` 기본 스크린; 모니터 선택 없음 | **추정** 갭 |
+| 설정에 전체화면 복원 안 함 | 기동 시 포커스만 복원 — 의도적 | 문서화 필요 |
 
 ---
 
 ## 5. Recommended Fix Plan
 
-### 1단계 — 즉시 (품질 게이트·계약 정합)
+### 1단계 — 즉시 수정 (데이터 무결성·중복 실행)
 
-1. **문서/테스트 게이트 복구 (§3.1)**  
-   - `FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md` 복원 **또는** `test_validation_docs_config.py`를 `PROJECT_AUDIT.md` 기준으로 이전.  
-   - `PROJECT_ANALYSIS_AND_FEATURE_ROADMAP.md` 복원 또는 maintained 목록 제거.  
-   - README/CLAUDE/GEMINI pytest 기준선 실측 반영.  
-   - 목표: `python -m pytest -q` 실패 0.
-2. **암호 PDF AI 계약 결정 (§3.2)**  
-   - UI 연결(옵션 A) 또는 문서·Worker 경로 정리(옵션 B) 중 하나를 명시적으로 택함.
-3. **merge 0페이지 성공 저장 차단 (§3.5)**  
-   - 유효 페이지 없으면 error + 출력 미생성.
+1. **실패/취소 시 텍스트상자 플래그 리셋** (`_textbox_*_after_success` clear in `on_fail` / `on_cancelled`).  
+2. **busy 시 전체화면·포커스 바 삽입/배치 버튼 비활성** (또는 액션 진입 가드 강화).  
+3. **`replace_text_in_rect` redact 실패 시 hard-fail** (또는 명시적 폴백 + 사용자 경고).  
+4. **큐 항목에 `file_path` 고정 + 커밋 시 경로 검증**.
 
-### 2단계 — 안정성
+### 2단계 — 안정성 개선
 
-1. chat `_get_or_create_chat`에 `cancel_check` 전파 (§3.3).  
-2. AI 취소 중 UI “중단 대기” 상태.  
-3. AI 평문 temp 수명/ACL 강화 + UI 연결 시 고지 (§3.4).  
-4. 강제 종료 경로 로깅·대기 옵션 다듬기 (§3.6).  
-5. 배치 encrypt 권한 UI 또는 문서 강화 (§3.7).
+5. 인라인 편집 FocusOut 정책 개선 (reason/디바운스).  
+6. 영역 텍스트 추출을 Worker/preview 세션으로 이전.  
+7. 호스트 F11을 메인 순환과 일치.  
+8. same-path 확인 다이얼로그(특히 교체·첫 적용).  
+9. `insert_textboxes` 부분 실패 보고.
 
-### 3단계 — 구조·제품
+### 3단계 — 구조·문서·UX
 
-1. OCR optional extra 설계  
-2. compare 인터랙티브 리포트  
-3. 미리보기 드래그 `redact_area`  
-4. SDK-level AI abort  
-5. 비 Windows 런타임 스모크 (폰트·인쇄·keyring)  
-6. cleanup dry-run 카운트(예상 제거 페이지 수)
+10. README/README_EN 단축키·기능·변경 이력 동기화.  
+11. 큐 다중 박스 미리보기 오버레이(선택).  
+12. 텍스트 상자 편집 “세션” 상태를 단일 객체로 묶어 Worker 완료 콜백과 연결.  
+13. (로드맵) OCR·기존 텍스트 블록 리스트 선택 교체.
 
 ---
 
 ## 6. Test Recommendations
 
-### 6.1 즉시 필요한 테스트/수정
+### 6.1 즉시 추가 권장
 
-| 항목 | 목적 |
-|------|------|
-| `test_validation_docs_config` 수리 | 삭제 파일·SSOT 정책과 테스트 정합 |
-| UI 암호 PDF AI 회귀 | `action_ai_summarize` 등이 preview 암호 후 진행 **또는** 차단이 문서와 일치함을 고정 |
-| `test_merge_all_skipped_emits_error` | 전 파일 skip 시 finished 금지·출력 없음 |
-| `test_chat_upload_respects_cancel_check` | `_get_or_create_chat` → upload에 cancel 전파 후 검증 |
+| 테스트 | 검증 내용 |
+|--------|-----------|
+| `test_textbox_flags_cleared_on_fail` | 큐 커밋 실패/에러 시그널 후 `_textbox_clear_queue_after_success` / reopen 플래그가 False |
+| `test_textbox_flags_cleared_on_cancel` | 취소 경로 동일 |
+| `test_queue_commit_rejects_path_mismatch` | 큐잉 path ≠ 현재 path 시 거부 (구현 후) |
+| `test_replace_text_redact_failure_aborts` | redact mock 실패 시 insert 미호출 / error_signal |
+| `test_fullscreen_busy_disables_insert` | busy 중 호스트 insert가 no-op 또는 비활성 (구현 후) |
+| `test_f11_cycle_consistency` | 전체화면 종료 후 레이아웃 모드가 토글 정의와 일치 |
 
 ### 6.2 보강 권장
 
-| 테스트 | 검증 목표 |
+| 테스트 | 검증 내용 |
 |--------|-----------|
-| `test_ai_retry_interruptible_sleep` | retry 중 cancel 시 finished 미발생 (이미 일부 존재 시 확장) |
-| `test_ai_temp_cleanup_on_cancel` | 암호 PDF AI 취소 후 `pdf_master_ai_*` 미잔존 |
-| `test_batch_encrypt_default_permissions` | UI 미지정 시 기본 권한 마스크 |
-| `test_force_close_temp_sweep` | terminate 후 orphan 스윕 |
-| `test_docs_pytest_baseline_matches_ci` | README 수치와 실제 collect/pass 정책 동기화 (하드코딩 수치 지양 권장) |
+| 인라인 편집 | 더블클릭 → textEdited → 본문 필드 동기 (dummy overlay) |
+| keep-placing | 성공 후 `action_start_textbox_region_select` 예약 호출 (QTimer mock) |
+| same-path insert | preview prepare/restore 호출 여부 (기존 same-path 테스트 패턴 재사용) |
+| reparent | enter/exit fullscreen 후 `preview_image` parent가 panel (Qt 통합, skip if headless) |
+| 좌표 매핑 | 리사이즈 후 spinbox 동기 (기존 drag flow 확장) |
+| 문서 게이트 | README에 `F11` 또는 “포커스 모드” 키워드 포함 여부를 optional 스모크로 (문서 수정 후) |
 
-### 6.3 기존 회귀 (유지 필수)
+### 6.3 기존 커버리지 (양호)
 
-| 영역 | 대표 테스트 |
-|------|-------------|
-| AI cancel / 암호 Worker | `tests/test_ai_ops_cancel_and_encrypted.py` |
-| blank / visual_error / queue | `tests/test_audit_followup_stability.py` |
-| 2026-07-22 후속 | `tests/test_audit_2026_07_22_followup.py` |
-| preflight / batch fail-fast | `tests/test_worker_preflight.py`, `test_worker_batch_*` |
-| 첨부 경로 탈출 | `tests/test_worker_attachment_extract_security.py` |
-| 취소·롤백 | `tests/test_worker_cancel_cleanup.py`, `test_worker_cancel_regression.py` |
-| same-path preview | `tests/test_same_path_preview_restore.py` |
-| 구조/facade | `tests/test_worker_structure_budget.py` |
+- `tests/test_text_placement_overlay.py` — 핸들/리사이즈 단위  
+- `tests/test_preview_focus_mode.py` — 포커스 토글·Esc 순서  
+- `tests/test_textbox_queue_and_replace.py` — 큐 추가/same-path/Worker 일괄·교체 happy path  
+- `tests/test_textbox_drag_ui_flow.py` — 배치 필드 동기  
+- `tests/test_worker_param_compat.py` — 단건 `insert_textbox`  
 
-### 6.4 검증 명령
-
-```bash
-pip install -e .[dev]
-python -m pyright
-python -m pytest -q
-python main.py --smoke
-# 선택: PDF_MASTER_GEMINI_FILE_API_SMOKE=1 + GEMINI_API_KEY
-```
-
-**실측 기준선 (2026-07-27):**  
-`python -m pytest -q` → **230 collected / 228 passed / 1 opt-in Gemini smoke skipped / 2 failed**  
-(`test_validation_docs_config` 2건 — §3.1)
-
-문서에 적힌 “229 passed”는 **현재 워크트리에서 더 이상 유효하지 않음**.
+**갭:** 실패 경로 플래그, busy×fullscreen, 경로 드리프트, redact 실패 — 현재 테스트가 happy path 중심.
 
 ---
 
-## 7. Appendix
+## 부록 A. 문서·구현 정합 체크리스트
 
-### 7.1 분석 방법
-
-1. `README.md`, `CLAUDE.md` 정독 — 목적·아키텍처·Current Behavior·Addendum  
-2. CodeGraph `codegraph_explore` — entry/`run_worker`/preflight/AI/security/cancel/lifecycle 호출 관계·blast radius  
-3. 보조: 핵심 파일 구간 열람, `_check_cancelled`/암호/경로 패턴 grep  
-4. `python -m pytest -q` 및 docs 실패 테스트 상세 실행  
-5. PyMuPDF `is_encrypted` authenticate 전후 동작 로컬 확인 (merge 분기 해석용)
-
-### 7.2 이전 감사 대비
-
-| 시점 | 요약 |
+| 출처 | 상태 |
 |------|------|
-| 2026-07-15 | High 다수 (AI cancel, 암호 AI Worker, visual silent 등) |
-| 2026-07-22 | 후속 구현 후 잔여 Medium 중심, 문서상 Low |
-| **2026-07-27** | 후속 구현은 대체로 유지. **문서/테스트 게이트 붕괴**와 **암호 AI UI 계약**이 신규 High. 전체 **Medium** |
-
-### 7.3 비고
-
-- 본 감사는 **구현 수정 없이** 리포트만 작성했다.  
-- 과장 없이 코드·테스트 근거가 있는 문제와 추정을 분리했다.  
-- `PROJECT_AUDIT.md`를 현행 기능 감사 SSOT로 쓸 경우, `tests/test_validation_docs_config.py`와 `CLAUDE.md`의 FUNCTIONAL audit 참조를 함께 정리하는 것이 1단계 필수다.
+| CLAUDE.md 2026-08-03 노트 | 구현과 **대체로 일치** |
+| README 텍스트 상자 / 미리보기 UX | **부분 일치** (드래그만; 포커스·전체화면·큐·same-path·교체 없음) |
+| README 단축키 | **F11 / Ctrl+F11 누락** |
+| PROJECT_AUDIT SSOT 게이트 | 파일 존재·docs 참조 유지 필요 (본 개정 후 계속 SSOT) |
 
 ---
 
-*이 문서는 PDF Master v4.5.6 코드 기준 기능 구현 감사입니다. (2026-07-27)*
+## 부록 B. CodeGraph blast radius (신규 심볼)
+
+| 심볼 | 비고 |
+|------|------|
+| `insert_textboxes` / `replace_text_in_rect` | UI 1 caller + 전용 테스트 |
+| `action_insert_textbox` | mixin 노출; CodeGraph 기준 전용 UI 플로우 테스트 약함 |
+| `TextPlacementOverlay` | widget/__init__ 경유; 인라인 편집 단위 테스트 없음 |
+| `_toggle_preview_focus_mode` / fullscreen host | focus 단위 테스트 일부; reparent 통합 테스트 없음 |
+
+---
+
+*이 문서는 2026-08-03 코드 스냅샷 기준 기능 감사이다. 구현 수정은 포함하지 않는다.*

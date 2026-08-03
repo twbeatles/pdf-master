@@ -97,6 +97,7 @@ NORMALIZERS = {
     "draw_shapes": lambda kwargs, parse_page_range: _normalize_draw_shapes(kwargs),
     "add_link": lambda kwargs, parse_page_range: _normalize_add_link(kwargs),
     "insert_textbox": lambda kwargs, parse_page_range: _normalize_insert_textbox(kwargs),
+    "replace_text_in_rect": lambda kwargs, parse_page_range: _normalize_insert_textbox(kwargs),
     "copy_page_between_docs": _normalize_copy_page_between_docs,
     "image_watermark": lambda kwargs, parse_page_range: _normalize_image_watermark(kwargs),
 }

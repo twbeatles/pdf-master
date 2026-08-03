@@ -30,6 +30,17 @@ from .navigation import (
     _render_preview_page,
     _schedule_preview_rerender,
 )
+from .focus import (
+    _enter_preview_fullscreen,
+    _exit_preview_fullscreen,
+    _is_preview_focus_mode,
+    _is_preview_fullscreen,
+    _on_preview_focus_escape,
+    _restore_preview_focus_on_startup,
+    _set_preview_focus_mode,
+    _sync_preview_focus_chrome,
+    _toggle_preview_focus_mode,
+)
 from .panel import _create_preview_panel, _set_preview_navigation_enabled
 from .search import _focus_preview_search, _on_preview_search_visibility_changed
 from .update import _add_to_recent_files, _update_preview
@@ -69,3 +80,12 @@ class MainWindowPreviewMixin(MainWindowHost):
     _update_preview = _update_preview
     _watch_preview_file = _watch_preview_file
     _add_to_recent_files = _add_to_recent_files
+    _is_preview_focus_mode = _is_preview_focus_mode
+    _is_preview_fullscreen = _is_preview_fullscreen
+    _set_preview_focus_mode = _set_preview_focus_mode
+    _toggle_preview_focus_mode = _toggle_preview_focus_mode
+    _enter_preview_fullscreen = _enter_preview_fullscreen
+    _exit_preview_fullscreen = _exit_preview_fullscreen
+    _sync_preview_focus_chrome = _sync_preview_focus_chrome
+    _on_preview_focus_escape = _on_preview_focus_escape
+    _restore_preview_focus_on_startup = _restore_preview_focus_on_startup

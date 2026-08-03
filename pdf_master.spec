@@ -12,7 +12,10 @@
 #   impl packages + ui/progress; public import facades retained for PyInstaller analysis
 # - 2026-07-22: PROJECT_AUDIT follow-up — temp_cleanup orphan sweep, AI retry cancel,
 #   thumbnail loader sender guard, cleanup confirm dialogs, list_annotations text contract
-# Validation: python -m pyright; python -m pytest -q (~230 collected / 1 Gemini smoke skip);
+# - 2026-08-03: preview focus/fullscreen + textbox editor UX; SOLID split —
+#   tabs_advanced/markup_actions/, annotation/highlight_markup+textbox, preview_widget mixins;
+#   modes: insert_textboxes, replace_text_in_rect, extract_text_in_rect
+# Validation: python -m pyright; python -m pytest -q (opt-in Gemini smoke skip);
 #   python main.py --smoke; python -m PyInstaller pdf_master.spec --clean;
 #   powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 

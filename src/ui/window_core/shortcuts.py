@@ -2,7 +2,7 @@ import logging
 import os
 import subprocess
 
-from PyQt6.QtCore import QByteArray, QUrl
+from PyQt6.QtCore import QByteArray, Qt, QUrl
 from PyQt6.QtGui import QAction, QDesktopServices, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
@@ -41,6 +41,9 @@ def _setup_shortcuts(self):
         QShortcut(QKeySequence("Ctrl+Y"), self, self._redo_action),
         QShortcut(QKeySequence("Ctrl+F"), self, self._focus_preview_search),
         QShortcut(QKeySequence("F1"), self, self._show_help),
+        QShortcut(QKeySequence("F11"), self, self._toggle_preview_focus_mode),
+        QShortcut(QKeySequence("Ctrl+F11"), self, self._enter_preview_fullscreen),
+        QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._on_preview_focus_escape),
         QShortcut(QKeySequence("Ctrl+1"), self, lambda: self.tabs.setCurrentIndex(0)),
         QShortcut(QKeySequence("Ctrl+2"), self, lambda: self.tabs.setCurrentIndex(1)),
         QShortcut(QKeySequence("Ctrl+3"), self, lambda: self.tabs.setCurrentIndex(2)),

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from src.ui.tabs_advanced import actions_markup as mod
+from src.ui.tabs_advanced.markup_actions import deps as _deps
 
 
 def test_start_textbox_placement_requires_text(monkeypatch):
     warnings = []
     monkeypatch.setattr(
-        mod.QMessageBox,
+        _deps.QMessageBox,
         "warning",
         staticmethod(lambda *a, **k: warnings.append(a)),
     )
@@ -115,7 +116,7 @@ def test_start_textbox_placement_enables_mode(monkeypatch):
         def show_toast(self, *a, **k):
             pass
 
-    monkeypatch.setattr(mod, "ToastWidget", Toast)
+    monkeypatch.setattr(_deps, "ToastWidget", Toast)
 
     dummy = Dummy()
     result = mod.action_start_textbox_region_select(dummy)
@@ -169,10 +170,28 @@ def test_text_placement_moved_fills_fields():
     assert abs(dummy.spn_tb_h.value() - 120) < 0.01
 
 
+def test_textbox_content_text_supports_plain_and_line():
+    class Plain:
+        def toPlainText(self):
+            return "  multi\nline  "
+
+    class Line:
+        def text(self):
+            return "  single  "
+
+    class Dummy:
+        def __init__(self, w):
+            self.txt_textbox_content = w
+
+    assert mod._textbox_content_text(Dummy(Plain())) == "multi\nline"
+    assert mod._textbox_content_text(Dummy(Line())) == "single"
+
+
+
 def test_start_textbox_region_select_requires_path(monkeypatch):
     warnings = []
     monkeypatch.setattr(
-        mod.QMessageBox,
+        _deps.QMessageBox,
         "warning",
         staticmethod(lambda *a, **k: warnings.append(a)),
     )
@@ -220,7 +239,7 @@ def test_textbox_region_selected_ignores_other_target(monkeypatch):
         def show_toast(self, *a, **k):
             pass
 
-    monkeypatch.setattr(mod, "ToastWidget", Toast)
+    monkeypatch.setattr(_deps, "ToastWidget", Toast)
 
     dummy = Dummy()
     mod._on_preview_region_selected_for_textbox(dummy, 1, 10.0, 20.0, 30.0, 40.0)
@@ -249,7 +268,7 @@ def test_redact_region_selected_ignores_textbox_target(monkeypatch):
         def show_toast(self, *a, **k):
             pass
 
-    monkeypatch.setattr(mod, "ToastWidget", Toast)
+    monkeypatch.setattr(_deps, "ToastWidget", Toast)
 
     dummy = Dummy()
     mod._on_preview_region_selected_for_redact(dummy, 1, 1.0, 2.0, 3.0, 4.0)

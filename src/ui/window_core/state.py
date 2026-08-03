@@ -85,7 +85,9 @@ def _choose_output_directory(self, title: str) -> str:
     return selected
 
 def _save_splitter_state(self):
-    """Save splitter position"""
+    """Save splitter position (포커스 모드 중에는 일반 비율을 덮어쓰지 않음)"""
+    if getattr(self, "_preview_focus_mode", False):
+        return
     self.settings["splitter_sizes"] = self.content_splitter.sizes()
     if hasattr(self, "_schedule_settings_save"):
         self._schedule_settings_save()

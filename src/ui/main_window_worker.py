@@ -168,6 +168,13 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         self._cleanup_cancelled_worker()
         self._discard_pending_undo(delete_backups=True)
         self._restore_preview_after_same_path_output()
+        # 텍스트 상자 post 플래그 잔존 방지 (감사 §3.1)
+        clear_tb = getattr(self, "_clear_textbox_post_flags", None)
+        if callable(clear_tb):
+            try:
+                clear_tb()
+            except Exception:
+                logger.debug("clear textbox flags on cancel failed", exc_info=True)
         self._finalize_worker()
         self._run_pending_worker()
         QTimer.singleShot(3000, self._reset_progress_if_idle)
@@ -259,9 +266,26 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         self._restore_preview_after_same_path_output()
 
+        # 텍스트 상자 연속 배치 / 큐 정리
+        if mode in ("insert_textbox", "insert_textboxes", "replace_text_in_rect"):
+            on_tb = getattr(self, "_on_textbox_worker_success", None)
+            if callable(on_tb):
+                try:
+                    on_tb()
+                except Exception:
+                    logger.debug("textbox post-success hook failed", exc_info=True)
+
         custom_dialog_shown = False
         if self.worker and hasattr(self.worker, "kwargs"):
             mode = getattr(self.worker, "mode", "")
+            if mode == "extract_text_in_rect":
+                on_ex = getattr(self, "_on_extract_text_in_rect_success", None)
+                if callable(on_ex):
+                    try:
+                        on_ex(payload if isinstance(payload, dict) else {})
+                        custom_dialog_shown = True
+                    except Exception:
+                        logger.debug("extract_text_in_rect success hook failed", exc_info=True)
             if mode == "get_form_fields" and hasattr(self, "form_fields_list"):
                 fields = payload.get("fields", []) or []
                 self.form_fields_list.clear()
@@ -369,6 +393,13 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
 
         self._discard_pending_undo(delete_backups=True)
         self._restore_preview_after_same_path_output()
+        # 텍스트 상자 post 플래그 잔존 방지 (감사 §3.1)
+        clear_tb = getattr(self, "_clear_textbox_post_flags", None)
+        if callable(clear_tb):
+            try:
+                clear_tb()
+            except Exception:
+                logger.debug("clear textbox flags on fail failed", exc_info=True)
 
         toast = ToastWidget(tm.get("error"), toast_type="error", duration=5000)
         toast.show_toast(self)

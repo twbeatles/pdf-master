@@ -9,6 +9,7 @@ def test_load_settings_defaults_not_shared(tmp_path, monkeypatch):
 
     a = st.load_settings()
     assert a["preview_search_expanded"] is True
+    assert a["preview_focus_mode"] is False
     a["recent_files"].append("x.pdf")
     a["chat_histories"]["x.pdf"] = [{"role": "user", "content": "hi"}]
 

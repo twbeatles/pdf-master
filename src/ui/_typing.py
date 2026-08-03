@@ -26,9 +26,19 @@ class MainWindowHost:
     txt_api_key: Any
     preview_image: Any
     preview_label: Any
+    preview_panel: Any
+    preview_focus_bar: Any
+    btn_preview_focus: Any
+    btn_focus_place_textbox: Any
+    btn_focus_insert_textbox: Any
+    lbl_focus_hint: Any
     page_counter: Any
     btn_prev_page: Any
     btn_next_page: Any
+    content_splitter: Any
+    _content_left_widget: Any
+    _preview_focus_mode: bool
+    _splitter_sizes_before_focus: Any
     b_tb_drag: Any
     lbl_tb_drag_hint: Any
     cmb_tb_preset: Any
@@ -51,7 +61,29 @@ class MainWindowHost:
     _ensure_textbox_preview_ready: Any
     _connect_textbox_preview_signals: Any
     _textbox_current_style: Any
+    _textbox_content_text: Any
     _sync_textbox_placement_overlay: Any
+    _toggle_preview_focus_mode: Any
+    _set_preview_focus_mode: Any
+    _is_preview_focus_mode: Any
+    _is_preview_fullscreen: Any
+    _enter_preview_fullscreen: Any
+    _exit_preview_fullscreen: Any
+    _on_preview_focus_escape: Any
+    _restore_preview_focus_on_startup: Any
+    _preview_fullscreen_host: Any
+    _textbox_queue: Any
+    chk_tb_same_path: Any
+    chk_tb_keep_placing: Any
+    lst_tb_queue: Any
+    lbl_tb_queue_count: Any
+    action_textbox_queue_add: Any
+    action_textbox_queue_clear: Any
+    action_textbox_queue_commit: Any
+    action_start_textbox_replace_region: Any
+    action_replace_text_in_rect: Any
+    _on_textbox_worker_success: Any
+    _on_text_placement_text_edited: Any
 
     _ai_worker_mode: bool
     _chat_worker_mode: bool

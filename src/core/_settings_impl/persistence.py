@@ -64,6 +64,13 @@ def load_settings():
                     settings.get("preview_search_expanded"),
                     True,
                 )
+                settings["preview_focus_mode"] = _normalize_bool(
+                    settings.get("preview_focus_mode"),
+                    False,
+                )
+                settings["splitter_sizes_before_focus"] = _normalize_splitter_sizes(
+                    settings.get("splitter_sizes_before_focus")
+                )
                 return settings
         except json.JSONDecodeError as e:
             # 손상된 설정 파일 백업

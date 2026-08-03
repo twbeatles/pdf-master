@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from src.ui.tabs_advanced import actions_markup as mod
+from src.ui.tabs_advanced.markup_actions import deps as _deps
 
 
 def test_start_redact_region_select_enables_preview_mode(monkeypatch):
@@ -53,7 +54,7 @@ def test_start_redact_region_select_enables_preview_mode(monkeypatch):
 
     warnings = []
     monkeypatch.setattr(
-        mod.QMessageBox,
+        _deps.QMessageBox,
         "warning",
         staticmethod(lambda *a, **k: warnings.append(a)),
     )
@@ -66,7 +67,7 @@ def test_start_redact_region_select_enables_preview_mode(monkeypatch):
             pass
 
     # actions_markup 가 from ..widgets import ToastWidget 로 바인딩한 심볼을 패치
-    monkeypatch.setattr(mod, "ToastWidget", Toast)
+    monkeypatch.setattr(_deps, "ToastWidget", Toast)
 
     dummy = Dummy()
     result = mod.action_start_redact_region_select(dummy)
@@ -82,7 +83,7 @@ def test_start_redact_region_select_enables_preview_mode(monkeypatch):
 def test_start_redact_region_select_requires_path(monkeypatch):
     warnings = []
     monkeypatch.setattr(
-        mod.QMessageBox,
+        _deps.QMessageBox,
         "warning",
         staticmethod(lambda *a, **k: warnings.append(a)),
     )

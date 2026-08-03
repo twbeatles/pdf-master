@@ -56,6 +56,7 @@ def test_clamps_to_page():
 
 def test_apply_preset_sets_spins(monkeypatch):
     from src.ui.tabs_advanced import actions_markup as mod
+    from src.ui.tabs_advanced.markup_actions import deps as _deps
 
     class Spin:
         def __init__(self, v):

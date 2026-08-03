@@ -144,6 +144,21 @@ def set_ui_busy(self, busy):
     if open_action is not None:
         open_action.setEnabled(not busy)
 
+    # 텍스트 상자 / 포커스 바 / 전체화면 호스트 — busy 중 중복 run_worker 방지
+    enabled = not busy
+    for name in (
+        "btn_focus_place_textbox",
+        "btn_focus_insert_textbox",
+        "b_tb_drag",
+        "btn_preview_focus",
+    ):
+        w = getattr(self, name, None)
+        if w is not None and hasattr(w, "setEnabled"):
+            w.setEnabled(enabled)
+    host = getattr(self, "_preview_fullscreen_host", None)
+    if host is not None and hasattr(host, "set_actions_enabled"):
+        host.set_actions_enabled(enabled)
+
 def _finalize_worker(self):
     """현재 worker의 시그널 연결을 해제하고 Qt 메모리 정리를 예약합니다."""
     if not self.worker:

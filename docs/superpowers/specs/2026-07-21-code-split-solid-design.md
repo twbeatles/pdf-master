@@ -87,11 +87,11 @@
 | `progress_overlay` | `ui/progress/` (overlay + spinner) + facade |
 | structure budget | 신규 facade 경로 예산·심볼 보존 테스트 확장 |
 
-### 의도적 비분할 / 유지
+### 의도적 비분할 / 유지 (2026-07-21 당시)
 
 | 항목 | 사유 |
 |------|------|
-| `preview_widget/widget.py`, `thumbnail/grid.py` | PyQt 시그널·MRO·pyright 교차 속성 비용이 이득을 상회 |
+| `preview_widget/widget.py`, `thumbnail/grid.py` | PyQt 시그널·MRO·pyright 교차 속성 비용이 이득을 상회 *(preview_widget은 2026-08-03에 믹스인 분할 수행 — 아래 추가분)* |
 | `main_window_worker.py` 오버라이드 | `ToastWidget`/`WorkerThread` 모듈 단위 monkeypatch 테스트 계약 |
 | i18n `ko_base`/`en_base`, QSS dark/light | 데이터/스타일 문자열 |
 
@@ -99,3 +99,29 @@
 
 - `python -m pytest -q` — 통과
 - `python -m pyright` — 0 errors
+
+---
+
+## Addendum: 2026-08-03 SOLID 분할
+
+### 목표
+
+미리보기 포커스/텍스트 상자 고도화로 비대해진 UI·Worker 모듈을 도메인 단위로 분리. move-only, public import 유지.
+
+### 적용
+
+| 영역 | 구조 | facade |
+|------|------|--------|
+| UI 마크업 액션 | `tabs_advanced/markup_actions/{annotations,redact,shapes_links,textbox,deps}.py` | `actions_markup.py` |
+| Worker 주석 마크업 | `annotation/highlight_markup.py` + `annotation/textbox.py` | `annotation/markup.py` → `WorkerAnnotationMarkupMixin` |
+| 미리보기 위젯 | `preview_widget/{document_api,navigation,zoom,search_panel,theme_api,interaction_overlays}.py` | `widget.py` 합성 클래스 |
+
+### 도구
+
+- `scripts/run_solid_split_2026_08_03.py` — AST 줄 슬라이스 재현 스크립트
+- `scripts/split_mixin_package.py` — 공용 분할 유틸
+
+### 검증
+
+- `python -m pytest -q` — 통과 (opt-in Gemini smoke skip 가능)
+- structure budget: facade 경로 예산 확장 (`tests/test_worker_structure_budget.py`)

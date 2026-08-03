@@ -27,6 +27,8 @@ def default_settings() -> dict:
         "window_geometry": None,
         "language": "auto",  # auto, ko, en
         "preview_search_expanded": True,
+        "preview_focus_mode": False,
+        "splitter_sizes_before_focus": None,
         "chat_histories": {},
         # gemini_api_key는 keyring 미사용 시에만 파일에 저장됨
     }

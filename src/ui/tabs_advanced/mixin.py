@@ -45,8 +45,18 @@ from .actions_markup import (
     _on_textbox_region_mode_changed,
     _on_text_placement_moved,
     _on_textbox_placement_mode_changed,
+    _on_text_placement_text_edited,
     _sync_textbox_placement_overlay,
+    _textbox_content_text,
     action_insert_textbox,
+    action_textbox_queue_add,
+    action_textbox_queue_clear,
+    action_textbox_queue_commit,
+    action_start_textbox_replace_region,
+    action_replace_text_in_rect,
+    _on_textbox_worker_success,
+    _on_extract_text_in_rect_success,
+    _clear_textbox_post_flags,
     action_add_annotation_basic,
 )
 from .actions_misc import (
@@ -130,8 +140,18 @@ class MainWindowTabsAdvancedMixin(MainWindowHost):
     _on_textbox_region_mode_changed = _on_textbox_region_mode_changed
     _on_text_placement_moved = _on_text_placement_moved
     _on_textbox_placement_mode_changed = _on_textbox_placement_mode_changed
+    _on_text_placement_text_edited = _on_text_placement_text_edited
     _sync_textbox_placement_overlay = _sync_textbox_placement_overlay
+    _textbox_content_text = _textbox_content_text
     action_insert_textbox = action_insert_textbox
+    action_textbox_queue_add = action_textbox_queue_add
+    action_textbox_queue_clear = action_textbox_queue_clear
+    action_textbox_queue_commit = action_textbox_queue_commit
+    action_start_textbox_replace_region = action_start_textbox_replace_region
+    action_replace_text_in_rect = action_replace_text_in_rect
+    _on_textbox_worker_success = _on_textbox_worker_success
+    _on_extract_text_in_rect_success = _on_extract_text_in_rect_success
+    _clear_textbox_post_flags = _clear_textbox_post_flags
     action_add_annotation_basic = action_add_annotation_basic
     action_detect_fields = action_detect_fields
     _edit_form_field = _edit_form_field

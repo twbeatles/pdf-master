@@ -177,6 +177,16 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
     "insert_blank_page": _spec("insert_blank_page", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="btn_insert_blank"),
     "insert_signature": _spec("insert_signature", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_insert_signature", required_kwargs=("signature_path",)),
     "insert_textbox": _spec("insert_textbox", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_insert_textbox"),
+    "insert_textboxes": _spec("insert_textboxes", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_insert_textboxes", required_kwargs=("boxes",)),
+    "replace_text_in_rect": _spec("replace_text_in_rect", undo_eligible=True, same_path_safe=True, output_kind="pdf", title_key="mode_replace_text_in_rect"),
+    "extract_text_in_rect": _spec(
+        "extract_text_in_rect",
+        output_kind="memory",
+        result_kind="text_clip",
+        title_key="mode_extract_text_in_rect",
+        result_payload_keys=("text", "page_num", "rect"),
+        refresh_preview=False,
+    ),
     "list_annotations": _spec(
         "list_annotations",
         # 텍스트 리포트 파일 + result payload 병행 (UI는 output_path 필수)
