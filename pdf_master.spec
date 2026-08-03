@@ -36,10 +36,29 @@ def _module_exists(module_name: str) -> bool:
         return False
 
 
+# Optional/dev-only module fragments that must never be forced into the bundle.
+# google.genai local_tokenizer pulls transformers/torch and balloons EXE size.
+_HEAVY_OR_DEV_MARKERS = (
+    ".tests",
+    ".test_",
+    "._test_",
+    ".testing",
+    "local_tokenizer",
+    "_local_tokenizer",
+)
+
+
+def _is_heavy_or_dev_module(module_name: str) -> bool:
+    name = (module_name or "").strip()
+    if not name:
+        return True
+    return any(marker in name for marker in _HEAVY_OR_DEV_MARKERS)
+
+
 def _prune_hiddenimports(modules):
     """
     Remove non-runtime or unavailable modules from hiddenimports.
-    - drop test modules (build size/noise reduction)
+    - drop test / local-tokenizer modules (build size/noise reduction)
     - drop modules that are not importable in current environment
     - deduplicate while preserving order
     """
@@ -48,7 +67,7 @@ def _prune_hiddenimports(modules):
     for module_name in modules:
         if not module_name:
             continue
-        if ".tests" in module_name or ".test_" in module_name:
+        if _is_heavy_or_dev_module(module_name):
             continue
         if module_name in seen:
             continue
@@ -150,11 +169,12 @@ for package_name in [
 
 # v4.5: keyring (보안 API 키 저장)
 if _module_exists('keyring'):
-    hiddenimports += ['keyring', 'keyring.backends']
+    keyring_imports = ['keyring', 'keyring.backends']
     try:
-        hiddenimports += collect_submodules('keyring')
+        keyring_imports += collect_submodules('keyring')
     except Exception:
         pass
+    hiddenimports += _prune_hiddenimports(keyring_imports)
     print("[OK] keyring detected")
 else:
     print("[INFO] keyring not installed - API key will be stored in file")
@@ -230,6 +250,9 @@ if _module_exists('google.genai'):
 else:
     print("[INFO] google-genai SDK not installed - AI features disabled")
 
+# Final prune after all collect_submodules (keyring/google.genai/src packages).
+hiddenimports = _prune_hiddenimports(hiddenimports)
+
 # =====================================================================
 # PDF to Word 기능 제거 (v4.2) - pdf2docx 의존성 삭제
 # =====================================================================
@@ -239,11 +262,24 @@ print(f"[OK] Total hidden imports: {len(hiddenimports)}")
 # =====================================================================
 # Excludes (불필요한 모듈 - 경량화)
 # =====================================================================
+# NOTE: This machine may have torch/transformers/dask installed for other projects.
+# They are NOT runtime deps of PDF Master; keep them out of Analysis even when present.
 excludes = [
-    # 과학/데이터 (대용량)
-    'matplotlib', 'scipy', 'pandas', 'sklearn', 'numpy',
-    'cv2', 'tensorflow', 'torch', 'keras',
-    'IPython', 'notebook', 'jupyter',
+    # 과학/데이터/ML (대용량 — google.genai local_tokenizer optional chain)
+    'matplotlib', 'scipy', 'pandas', 'sklearn', 'scikit-learn', 'numpy',
+    'cv2', 'opencv', 'opencv-python',
+    'tensorflow', 'tensorboard', 'torch', 'torchvision', 'torchaudio', 'keras',
+    'jax', 'jaxlib', 'onnx', 'onnxruntime',
+    'transformers', 'huggingface_hub', 'tokenizers', 'safetensors',
+    'accelerate', 'datasets', 'peft', 'sentencepiece',
+    'pyarrow', 'dask', 'distributed', 'fsspec', 'partd', 'toolz',
+    'numba', 'llvmlite', 'sympy', 'networkx',
+    'IPython', 'notebook', 'jupyter', 'jupyter_client', 'jupyter_core',
+
+    # google-genai optional local tokenizer (forces transformers/torch)
+    'google.genai.local_tokenizer',
+    'google.genai._local_tokenizer_loader',
+    'google.genai._test_api_client',
 
     # PDF to Word 관련 (사용 안함)
     'pdf2docx', 'docx', 'pdfplumber', 'pdfminer',
@@ -271,11 +307,12 @@ excludes = [
     'PyQt6.QtRemoteObjects', 'PyQt6.QtTextToSpeech',
     'PyQt6.QtVirtualKeyboard',
 
-    # 표준 라이브러리 (개발용)
-    'unittest', 'test', 'tests', 'pytest',
+    # 표준 라이브러리 / 개발용
+    'unittest', 'test', 'tests', 'pytest', '_pytest', 'pluggy', 'iniconfig',
     'xmlrpc', 'pydoc', 'doctest',
     'lib2to3', 'idlelib', 'ensurepip',
     'venv', 'pdb', 'cProfile', 'profile',
+    'keyring.testing',
 ]
 
 # =====================================================================
@@ -299,8 +336,10 @@ a = Analysis(
 )
 
 # =====================================================================
-# 바이너리 필터링 (경량화)
+# 바이너리 / pure / data 필터링 (경량화 safety net)
 # =====================================================================
+# Even with excludes, Analysis can still pick up shared libs if a hook runs.
+# Strip known non-runtime ML/data stacks that may be installed globally.
 binary_excludes = [
     'qt6webengine', 'qt6multimedia', 'qt6quick', 'qt6qml',
     'qt63d', 'qt6charts', 'qt6datavisualization',
@@ -309,19 +348,70 @@ binary_excludes = [
     'qt6texttospeech', 'qt6virtualkeyboard', 'qt6webchannel',
     'qt6websockets',
     'opengl32sw.dll', 'd3dcompiler',
+    # ML / data-science native libs
+    'torch', 'torchvision', 'torchaudio', 'c10.', 'c10_', 'libtorch',
+    'cudnn', 'cublas', 'cufft', 'curand', 'cusolver', 'cusparse', 'nvToolsExt',
+    'transformers', 'pyarrow', 'arrow.', 'arrow_',
+    'scipy', 'pandas', 'numpy', 'mkl_', 'libopenblas', 'openblas',
+    'tensorflow', 'jaxlib', 'onnxruntime',
 ]
 
-a.binaries = [x for x in a.binaries if not any(
-    exclude in x[0].lower() for exclude in binary_excludes
-)]
+data_excludes = [
+    'translations', 'qml', 'webengine',
+    'torch', 'torchvision', 'transformers', 'huggingface',
+    'pyarrow', 'dask', 'scipy', 'pandas', 'numpy', 'tokenizers',
+    'sklearn', 'matplotlib',
+]
 
-# =====================================================================
-# 데이터 파일 필터링
-# =====================================================================
-data_excludes = ['translations', 'qml', 'webengine']
-a.datas = [x for x in a.datas if not any(
-    exclude in x[0].lower() for exclude in data_excludes
-)]
+pure_excludes_prefixes = (
+    'torch', 'torchvision', 'torchaudio',
+    'transformers', 'huggingface_hub', 'tokenizers', 'safetensors',
+    'accelerate', 'datasets', 'peft',
+    'pyarrow', 'dask', 'distributed', 'fsspec', 'partd', 'toolz',
+    'numpy', 'scipy', 'pandas', 'sklearn', 'matplotlib',
+    'tensorflow', 'tensorboard', 'keras', 'jax', 'jaxlib',
+    'numba', 'llvmlite', 'sympy', 'networkx',
+    'IPython', 'notebook', 'jupyter',
+    'google.genai.local_tokenizer',
+    'google.genai._local_tokenizer_loader',
+    'google.genai._test_api_client',
+    'keyring.testing',
+    'pytest', '_pytest',
+)
+
+
+def _toc_name(entry) -> str:
+    return str(entry[0] if isinstance(entry, (tuple, list)) else entry)
+
+
+def _matches_any(name: str, needles) -> bool:
+    lower = name.lower().replace("\\", "/")
+    return any(n in lower for n in needles)
+
+
+def _pure_is_excluded(name: str) -> bool:
+    lower = name.lower()
+    for prefix in pure_excludes_prefixes:
+        p = prefix.lower()
+        if lower == p or lower.startswith(p + "."):
+            return True
+    return False
+
+
+_before_bin = len(a.binaries)
+_before_data = len(a.datas)
+_before_pure = len(a.pure)
+
+a.binaries = [x for x in a.binaries if not _matches_any(_toc_name(x), binary_excludes)]
+a.datas = [x for x in a.datas if not _matches_any(_toc_name(x), data_excludes)]
+a.pure = [x for x in a.pure if not _pure_is_excluded(_toc_name(x))]
+
+print(
+    "[OK] Size filter removed: "
+    f"binaries={_before_bin - len(a.binaries)}, "
+    f"datas={_before_data - len(a.datas)}, "
+    f"pure={_before_pure - len(a.pure)}"
+)
 
 # =====================================================================
 # PYZ & EXE
