@@ -301,7 +301,7 @@ QPushButton#navBtn {
     padding: 8px 14px;
 }
 
-/* 미리보기/상태바 등 좁은 툴바용 — 전역 padding(12/24)과 fixed size 충돌 방지 */
+/* Narrow toolbars (preview/status): avoid global padding vs fixed-size clash */
 QPushButton#toolbarBtn {
     padding: 4px 10px;
     min-height: 28px;

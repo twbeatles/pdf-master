@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import logging
 import os
 
@@ -79,7 +80,8 @@ def _prepare_ai_pdf_access(self, path: str):
     ready, password = _ensure_preview_ready(self, path)
     if not ready:
         # preview 인증 실패 시 encrypted 안내(또는 preview 위젯이 이미 오류 표시)
-        if is_pdf_encrypted(path):
+        # is_pdf_encrypted 는 None(판별 실패)일 수 있음 — 암호화 오인 방지
+        if is_pdf_encrypted(path) is True:
             return False, None
         return False, None
     return True, password
@@ -98,7 +100,7 @@ def action_ai_summarize(self):
 
     ok, _password = _prepare_ai_pdf_access(self, path)
     if not ok:
-        if is_pdf_encrypted(path):
+        if is_pdf_encrypted(path) is True:
             return QMessageBox.warning(
                 self, tm.get("warning"), tm.get("err_pdf_encrypted", os.path.basename(path))
             )
@@ -143,7 +145,7 @@ def _ask_ai_question(self):
 
     ok, _password = _prepare_ai_pdf_access(self, path)
     if not ok:
-        if is_pdf_encrypted(path):
+        if is_pdf_encrypted(path) is True:
             return QMessageBox.warning(
                 self, tm.get("warning"), tm.get("err_pdf_encrypted", os.path.basename(path))
             )
@@ -154,7 +156,10 @@ def _ask_ai_question(self):
     self._record_chat_entry(history_key, "user", question)
     self._save_chat_histories()
 
-    self.txt_chat_history.append(f"<b>{tm.get('chat_user_prefix')}</b> {question}")
+    # HTML 주입 방지: 사용자 입력 이스케이프 (감사 §3.4)
+    self.txt_chat_history.append(
+        f"<b>{tm.get('chat_user_prefix')}</b> {html.escape(question, quote=True)}"
+    )
     self.txt_chat_history.append(f"<i>{tm.get('msg_ai_thinking')}</i>")
     self.txt_ai_question.clear()
     self._chat_result_meta = {}
@@ -188,11 +193,12 @@ def _load_chat_history_for_path(self, path: str):
     history = self._chat_histories.get(_chat_history_key(path), [])
     for entry in history:
         role = entry.get("role")
-        content = entry.get("content", "")
+        content = str(entry.get("content", "") or "")
+        safe = html.escape(content, quote=True)
         if role == "user":
-            self.txt_chat_history.append(f"<b>{tm.get('chat_user_prefix')}</b> {content}")
+            self.txt_chat_history.append(f"<b>{tm.get('chat_user_prefix')}</b> {safe}")
         elif role == "assistant":
-            self.txt_chat_history.append(f"<b>{tm.get('chat_assistant_prefix')}</b> {content}")
+            self.txt_chat_history.append(f"<b>{tm.get('chat_assistant_prefix')}</b> {safe}")
             self.txt_chat_history.append("<hr>")
 
 
@@ -228,7 +234,7 @@ def _extract_keywords(self):
 
     ok, _password = _prepare_ai_pdf_access(self, path)
     if not ok:
-        if is_pdf_encrypted(path):
+        if is_pdf_encrypted(path) is True:
             return QMessageBox.warning(
                 self, tm.get("warning"), tm.get("err_pdf_encrypted", os.path.basename(path))
             )

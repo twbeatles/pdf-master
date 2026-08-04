@@ -97,6 +97,7 @@ class WorkerAnnotationRedactionMixin(WorkerHost):
         try:
             page_count = len(doc)
             by_page: dict[int, list[Any]] = {}
+            skipped_invalid = 0
             for item in raw_rects:
                 if isinstance(item, dict):
                     page_num = _as_int(item.get("page"), 0)
@@ -105,17 +106,22 @@ class WorkerAnnotationRedactionMixin(WorkerHost):
                     page_num = int(item[0])
                     rect_vals = item[1:5]
                 else:
+                    skipped_invalid += 1
                     continue
                 if page_num < 1 or page_num > page_count:
+                    skipped_invalid += 1
                     continue
                 try:
                     coords = [float(v) for v in rect_vals]  # type: ignore[arg-type]
                     if len(coords) < 4:
+                        skipped_invalid += 1
                         continue
                     rect = fitz.Rect(coords[0], coords[1], coords[2], coords[3])
                 except Exception:
+                    skipped_invalid += 1
                     continue
                 if rect.is_empty or rect.width < 1 or rect.height < 1:
+                    skipped_invalid += 1
                     continue
                 by_page.setdefault(page_num - 1, []).append(rect)
 
@@ -138,6 +144,12 @@ class WorkerAnnotationRedactionMixin(WorkerHost):
                 self._emit_progress_if_due(int((idx + 1) / max(1, len(pages)) * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(self._get_msg("msg_redact_done", redact_count))
+            if skipped_invalid > 0:
+                self._update_result_payload(skipped_invalid_rects=skipped_invalid)
+                self.finished_signal.emit(
+                    self._get_msg("msg_redact_done_partial", redact_count, skipped_invalid)
+                )
+            else:
+                self.finished_signal.emit(self._get_msg("msg_redact_done", redact_count))
         finally:
             doc.close()

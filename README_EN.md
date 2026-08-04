@@ -31,7 +31,7 @@
 | **PDF Merge** | Merge multiple PDFs into one | Drag & Drop supported |
 | **PDF → Image** | Convert pages to images | PNG, JPG, WEBP, BMP, TIFF |
 | **Image → PDF** | Combine images into PDF | PNG, JPG, BMP, GIF, WEBP |
-| **Extract Text** | Extract text from PDF | Save as TXT |
+| **Extract Text** | Extract text from PDF (optional **OCR** for scans; system Tesseract required) | Save as TXT |
 
 ### ✂️ Page Editing
 | Feature | Description |
@@ -120,7 +120,8 @@
 - **Undo / Redo** — Undo and redo major editing operations
 - **Progress Overlay** — Full-screen cancellable progress dialog
 - **External File Watching** — Detects changes via `QFileSystemWatcher`; preview auto-reloads when the PDF is replaced externally
-- **Batch Processing** — Apply one operation to many files at once
+- **Batch Processing** — Apply one operation to many files (watermark CJK, font size/opacity)
+- **Preferences** — Completion alerts (toast/dialog), clear pending queue on cancel, chat history disk save on/off
 - **Multilingual** — Korean / English (auto-detect + manual switch)
 
 ---
@@ -300,6 +301,7 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 - **2026-07-27 audit follow-up**: functional audit SSOT is `PROJECT_AUDIT.md`; encrypted-PDF AI UI reuses preview password; merge empty-page fail-fast; AI chat `cancel_check` propagation; batch encrypt permission checkboxes; blank/dedupe dry-run counts; **preview drag area redaction**
 - **2026-07-31**: **Preview drag text insert** — `insert_textbox` gains drag placement, W/H, CJK/Base-14 fonts, opacity, 90° rotation steps, align/layer, and isolated redact/textbox drag targets
 - **2026-08-03**: **Preview focus/fullscreen** (`F11` cycle, `Ctrl+F11`), textbox resize/inline edit/apply-to-original/queue batch/experimental region replace; audit follow-up (post-flag reset, busy guards, redact hard-fail, queue path pin)
+- **2026-08-04 audit follow-up**: batch watermark CJK + options, strict page-range validation, outside-page textbox hard-fail, AI chat HTML escape, prefs for chat disk save / notify mode / clear pending on cancel, scrollable compare report, optional OCR extract (`use_ocr`), AI temp ACL + stream cancel hardening; `PROJECT_AUDIT.md` updated
 
 ### v4.5.5
 - Preview zoom, pan, and print stability (Qt print pipeline)

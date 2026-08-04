@@ -52,7 +52,7 @@ def is_valid_pdf(file_path: str) -> bool:
         logger.warning("Invalid PDF file (%s): %s", result.reason, file_path)
     return result.ok
 
-def is_pdf_encrypted(file_path: str) -> bool:
+def is_pdf_encrypted(file_path: str) -> bool | None:
     """
     PDF 파일 암호화 여부 확인 (v4.5: 공용 함수)
 
@@ -60,14 +60,15 @@ def is_pdf_encrypted(file_path: str) -> bool:
         file_path: 검사할 PDF 파일 경로
 
     Returns:
-        암호화된 PDF인지 여부
+        True/False: 판별 성공
+        None: 열기 실패·엔진 미가용 — 비암호화로 오인하지 말 것
     """
     if not file_path or not os.path.exists(file_path):
-        return False
+        return None
 
     if not FITZ_AVAILABLE:
         logger.debug("PyMuPDF not available; skipping encrypted PDF check for %s", file_path)
-        return False
+        return None
 
     try:
         doc = fitz.open(file_path)
@@ -77,7 +78,7 @@ def is_pdf_encrypted(file_path: str) -> bool:
             doc.close()
     except Exception as e:
         logger.debug(f"Cannot check PDF encryption: {file_path}: {e}")
-        return False
+        return None
 
 class WheelEventFilter(QObject):
     """QSpinBox, QComboBox 등에서 스크롤 휠로 값이 변경되는 것을 방지"""

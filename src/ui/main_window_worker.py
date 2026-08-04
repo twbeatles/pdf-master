@@ -214,9 +214,11 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     self._save_chat_histories()
                 selected_chat_path = _chat_history_key_for(self.sel_chat_pdf.get_path()) if hasattr(self, "sel_chat_pdf") else ""
                 if hasattr(self, "txt_chat_history") and pending_path == selected_chat_path:
+                    import html as _html
+
                     _replace_last_chat_block(
                         self.txt_chat_history,
-                        f"<b>{tm.get('chat_assistant_prefix')}</b> {answer}",
+                        f"<b>{tm.get('chat_assistant_prefix')}</b> {_html.escape(answer, quote=True)}",
                     )
                     self.txt_chat_history.append("<hr>")
             self._chat_pending_path = None
@@ -329,18 +331,30 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     )
                 custom_dialog_shown = True
             elif mode == "compare_pdfs":
-                # 페이지별 상세는 _format_compare_summary가 포함 (스크롤은 시스템 메시지박스/클리핑에 의존)
-                QMessageBox.information(
-                    parent,
-                    tm.get("compare_summary_title"),
-                    _format_compare_summary(payload),
-                )
+                # 스크롤 가능 전용 리포트 다이얼로그 (긴 diff 클리핑 방지)
+                try:
+                    from .window_worker.compare_report import show_compare_report_dialog
+
+                    show_compare_report_dialog(parent, payload)
+                except Exception:
+                    logger.debug("compare report dialog failed; fallback QMessageBox", exc_info=True)
+                    QMessageBox.information(
+                        parent,
+                        tm.get("compare_summary_title"),
+                        _format_compare_summary(payload),
+                    )
                 custom_dialog_shown = True
 
         toast = ToastWidget(tm.get("completed"), toast_type="success", duration=4000)
         toast.show_toast(self)
 
-        if not custom_dialog_shown:
+        # notify_mode: toast = 모달 생략, dialog = 기존 toast+정보 모달
+        notify_mode = "dialog"
+        try:
+            notify_mode = str((getattr(self, "settings", {}) or {}).get("notify_mode") or "dialog")
+        except Exception:
+            notify_mode = "dialog"
+        if not custom_dialog_shown and notify_mode != "toast":
             QMessageBox.information(parent, tm.get("info"), msg)
         self._finalize_worker()
         self._run_pending_worker()

@@ -30,6 +30,7 @@ from .._pdf_helpers import (
     _normalize_stroke_points,
     _page_asset_placeholders,
     _sample_diff_text,
+    text_needs_cjk,
 )
 logger = logging.getLogger(__name__)
 
@@ -87,19 +88,14 @@ class WorkerAnnotationTextboxMixin(WorkerHost):
 
             page = doc[page_num]
             fitz_rect = fitz.Rect(rect)
-            # 페이지 밖으로 완전히 벗어나면 클램프
+            # 페이지 밖으로 완전히 벗어나면 침묵 폴백하지 않고 hard-fail (감사 §3.9)
             page_rect = page.rect
             fitz_rect = fitz_rect & page_rect
             if fitz_rect.is_empty or fitz_rect.width < 2 or fitz_rect.height < 2:
-                # 페이지 밖이면 기본 위치로 폴백
-                fitz_rect = fitz.Rect(
-                    50,
-                    50,
-                    min(page_rect.width - 50, 50 + max(120.0, fontsize * 8)),
-                    min(page_rect.height - 50, 50 + max(float(fontsize) * 2.0, 28.0)),
-                )
+                self.error_signal.emit(self._get_msg("err_textbox_rect_outside_page"))
+                return
 
-            resolved_fontname = self._resolve_textbox_fontname(page, fontname)
+            resolved_fontname = self._resolve_textbox_fontname(page, fontname, text)
             overlay = layer != 'background'
             wrote = self._write_textbox_content(
                 page,
@@ -183,7 +179,7 @@ class WorkerAnnotationTextboxMixin(WorkerHost):
                 if fitz_rect.is_empty or fitz_rect.width < 2 or fitz_rect.height < 2:
                     failed_indices.append(idx + 1)
                     continue
-                resolved_fontname = self._resolve_textbox_fontname(page, fontname)
+                resolved_fontname = self._resolve_textbox_fontname(page, fontname, text)
                 ok = self._write_textbox_content(
                     page,
                     fitz_rect,
@@ -295,7 +291,7 @@ class WorkerAnnotationTextboxMixin(WorkerHost):
                 return
             self._check_cancelled()
 
-            resolved_fontname = self._resolve_textbox_fontname(page, fontname)
+            resolved_fontname = self._resolve_textbox_fontname(page, fontname, text)
             wrote = self._write_textbox_content(
                 page,
                 fitz_rect,
@@ -487,9 +483,12 @@ class WorkerAnnotationTextboxMixin(WorkerHost):
                 return True
         return False
 
-    def _resolve_textbox_fontname(self, page: Any, fontname: str) -> str:
+    def _resolve_textbox_fontname(self, page: Any, fontname: str, text: str = "") -> str:
         """UI/별칭 폰트명을 PyMuPDF insert_textbox 가 받을 수 있는 이름으로 해석."""
-        key = (fontname or "helv").strip().lower()
+        key = (fontname or "").strip().lower()
+        # 자동: 텍스트에 CJK가 있으면 cjk 임베드 (배치 워터마크 등)
+        if not key or key in {"auto", "default"}:
+            key = "cjk" if text_needs_cjk(text) else "helv"
         # Base-14 / 흔한 별칭
         aliases = {
             "helv": "helv",
@@ -503,7 +502,11 @@ class WorkerAnnotationTextboxMixin(WorkerHost):
             "timesroman": "tiro",
         }
         if key in aliases:
-            return aliases[key]
+            # helv 지정인데 CJK 텍스트면 자동 승격
+            if key == "helv" and text_needs_cjk(text):
+                key = "cjk"
+            else:
+                return aliases[key]
 
         # CJK: fontname="cjk" 직접 전달 불가 → 임베드 후 등록명 사용
         if key in {"cjk", "cjk_safe", "ko", "korean", "china-s", "china-t", "japan", "korea"}:

@@ -13,13 +13,17 @@ logger = logging.getLogger(__name__)
 
 
 def parse_page_range(host: Any, page_range_str: str, total_pages: int) -> list[int]:
-    """페이지 범위 문자열을 파싱하여 페이지 번호 리스트(0-indexed) 반환."""
+    """페이지 범위 문자열을 파싱하여 페이지 번호 리스트(0-indexed) 반환.
+
+    무효 토큰(비숫자) 또는 문서 범위 밖만 가리키는 토큰은 hard-fail 한다.
+    """
     if not page_range_str:
         return []
 
     pages: list[int] = []
     seen: set[int] = set()
     parts = page_range_str.split(",")
+    invalid_tokens: list[str] = []
 
     for part in parts:
         part = part.strip()
@@ -28,28 +32,46 @@ def parse_page_range(host: Any, page_range_str: str, total_pages: int) -> list[i
 
         try:
             if "-" in part:
-                start_str, end_str = part.split("-")
-                start = int(start_str)
-                end = int(end_str)
+                start_str, end_str = part.split("-", 1)
+                start = int(start_str.strip())
+                end = int(end_str.strip())
                 page_iter = range(start, end + 1) if start <= end else range(start, end - 1, -1)
+                added = 0
                 for p in page_iter:
                     if 1 <= p <= total_pages and (p - 1) not in seen:
+                        pages.append(p - 1)
+                        seen.add(p - 1)
+                        added += 1
+                        if len(pages) >= MAX_PAGE_RANGE_LENGTH:
+                            logger.warning("페이지 범위가 최대 제한(%s)에 도달했습니다.", MAX_PAGE_RANGE_LENGTH)
+                            return pages
+                if added == 0:
+                    invalid_tokens.append(part)
+            else:
+                p = int(part)
+                if 1 <= p <= total_pages:
+                    if (p - 1) not in seen:
                         pages.append(p - 1)
                         seen.add(p - 1)
                         if len(pages) >= MAX_PAGE_RANGE_LENGTH:
                             logger.warning("페이지 범위가 최대 제한(%s)에 도달했습니다.", MAX_PAGE_RANGE_LENGTH)
                             return pages
-            else:
-                p = int(part)
-                if 1 <= p <= total_pages and (p - 1) not in seen:
-                    pages.append(p - 1)
-                    seen.add(p - 1)
-                    if len(pages) >= MAX_PAGE_RANGE_LENGTH:
-                        logger.warning("페이지 범위가 최대 제한(%s)에 도달했습니다.", MAX_PAGE_RANGE_LENGTH)
-                        return pages
+                else:
+                    invalid_tokens.append(part)
         except ValueError:
-            logger.warning("잘못된 페이지 형식 무시됨: %s", part)
+            invalid_tokens.append(part)
             continue
+
+    if invalid_tokens:
+        preview = ", ".join(invalid_tokens[:5])
+        if len(invalid_tokens) > 5:
+            preview += "…"
+        # hard-fail: error_signal + 빈 목록 (호출측이 빈 목록을 거부)
+        try:
+            host.error_signal.emit(host._get_msg("err_invalid_page_range", preview))
+        except Exception:
+            logger.warning("Failed to emit invalid page range error", exc_info=True)
+        return []
 
     return pages
 
@@ -223,14 +245,20 @@ def preflight_inputs(host: Any) -> bool:
     return True
 
 
-def is_pdf_encrypted(file_path: str) -> bool:
-    """암호화된 PDF 여부 확인."""
+def is_pdf_encrypted(file_path: str) -> bool | None:
+    """암호화된 PDF 여부 확인.
+
+    Returns:
+        True/False: 판별 성공
+        None: 열기 실패(손상·권한·미존재 등) — 비암호화로 오인하지 말 것
+    """
     doc = None
     try:
         doc = fitz.open(file_path)
         return bool(doc.is_encrypted)
     except Exception:
-        return False
+        logger.debug("is_pdf_encrypted probe failed for %s", file_path, exc_info=True)
+        return None
     finally:
         if doc:
             doc.close()

@@ -134,17 +134,33 @@ class AIGenerationMixin:
         self._run_cancel_check(cancel_check)
         config = self._build_generate_config(schema)
         chunks: list[str] = []
-        for chunk in self._client.models.generate_content_stream(
-            model=self._model,
-            contents=contents,
-            config=config,
-        ):
-            self._run_cancel_check(cancel_check)
-            text = _response_text(chunk)
-            if text:
-                chunks.append(text)
-                if partial_callback is not None:
-                    partial_callback(text)
+        stream = None
+        try:
+            stream = self._client.models.generate_content_stream(
+                model=self._model,
+                contents=contents,
+                config=config,
+            )
+            for chunk in stream:
+                # 청크 경계에서만 취소 가능 — SDK HTTP abort 미지원 시 한계
+                self._run_cancel_check(cancel_check)
+                text = _response_text(chunk)
+                if text:
+                    chunks.append(text)
+                    if partial_callback is not None:
+                        partial_callback(text)
+        except Exception as exc:
+            # 취소 시 스트림 소비를 끊고 재전파 (클라이언트 전체 close 는 후속 세션 보호를 위해 생략)
+            if exc.__class__.__name__ == "CancelledError" or "취소" in str(exc) or "cancel" in str(exc).lower():
+                logger.info("AI stream cancelled by user")
+                close_stream = getattr(stream, "close", None) if stream is not None else None
+                if callable(close_stream):
+                    try:
+                        close_stream()
+                    except Exception:
+                        logger.debug("stream.close() after cancel failed", exc_info=True)
+                raise
+            raise
         self._run_cancel_check(cancel_check)
         raw_text = "".join(chunks)
         return self._parse_structured_response(None, raw_text, schema)

@@ -71,6 +71,16 @@ def load_settings():
                 settings["splitter_sizes_before_focus"] = _normalize_splitter_sizes(
                     settings.get("splitter_sizes_before_focus")
                 )
+                settings["save_chat_histories"] = _normalize_bool(
+                    settings.get("save_chat_histories"),
+                    True,
+                )
+                notify = settings.get("notify_mode", "dialog")
+                settings["notify_mode"] = notify if notify in {"dialog", "toast"} else "dialog"
+                settings["clear_pending_on_cancel"] = _normalize_bool(
+                    settings.get("clear_pending_on_cancel"),
+                    True,
+                )
                 return settings
         except json.JSONDecodeError as e:
             # 손상된 설정 파일 백업

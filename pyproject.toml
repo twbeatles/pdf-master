@@ -19,6 +19,8 @@ dependencies = [
 ai = [
   "google-genai>=1.13.0",
 ]
+# OCR: 시스템 Tesseract 바이너리 + (선택) PyMuPDF OCR 경로. 별도 Python 패키지는 필수가 아님.
+ocr = []
 build = [
   "build>=1.2.2",
   "PyInstaller>=6.0",

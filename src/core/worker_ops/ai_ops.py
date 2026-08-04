@@ -1,5 +1,7 @@
 import logging
 import os
+import subprocess
+import sys
 import tempfile
 from typing import Any, cast
 
@@ -7,6 +9,32 @@ from .._typing import WorkerHost
 from ..optional_deps import fitz
 
 logger = logging.getLogger(__name__)
+
+
+def _restrict_temp_file_permissions(path: str) -> None:
+    """임시 평문 PDF를 현재 사용자 전용으로 제한 (best-effort)."""
+    if not path or not os.path.isfile(path):
+        return
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        logger.debug("chmod 0o600 failed for %s", path, exc_info=True)
+    if sys.platform != "win32":
+        return
+    # Windows: 상속 제거 후 현재 사용자 Full control
+    try:
+        user = os.environ.get("USERNAME") or os.environ.get("USER") or ""
+        if not user:
+            return
+        # icacls "path" /inheritance:r /grant:r "USER:(F)"
+        subprocess.run(
+            ["icacls", path, "/inheritance:r", f"/grant:r", f"{user}:(F)"],
+            check=False,
+            capture_output=True,
+            timeout=8,
+        )
+    except Exception:
+        logger.debug("Windows ACL restrict failed for %s", path, exc_info=True)
 
 
 class WorkerAiOpsMixin(WorkerHost):
@@ -26,8 +54,13 @@ class WorkerAiOpsMixin(WorkerHost):
             self.error_signal.emit(self._get_msg("err_pdf_not_found"))
             return None, None
 
-        if not self._is_pdf_encrypted(file_path):
+        enc = self._is_pdf_encrypted(file_path)
+        if enc is False:
             return file_path, None
+        if enc is None:
+            # 열기 실패 — 암호화 오인 방지, 일반 경로 시도 대신 오류
+            self.error_signal.emit(self._get_msg("err_pdf_corrupted"))
+            return None, None
 
         doc = None
         temp_path: str | None = None
@@ -35,21 +68,14 @@ class WorkerAiOpsMixin(WorkerHost):
             doc = self._open_pdf_document(file_path)
             fd, temp_path = tempfile.mkstemp(suffix=".pdf", prefix="pdf_master_ai_")
             os.close(fd)
-            # 가능하면 소유자 전용 권한으로 제한 (POSIX; Windows에서는 no-op/best-effort)
-            try:
-                os.chmod(temp_path, 0o600)
-            except OSError:
-                logger.debug("Could not chmod AI temp PDF", exc_info=True)
+            _restrict_temp_file_permissions(temp_path)
             # 인증된 문서를 비암호화 임시본으로 저장 (File API/텍스트 추출용)
             encrypt_none = int(getattr(fitz, "PDF_ENCRYPT_NONE", 0))
             try:
                 doc.save(temp_path, encryption=encrypt_none, garbage=3, deflate=True)
             except TypeError:
                 doc.save(temp_path, garbage=3, deflate=True)
-            try:
-                os.chmod(temp_path, 0o600)
-            except OSError:
-                logger.debug("Could not chmod AI temp PDF after save", exc_info=True)
+            _restrict_temp_file_permissions(temp_path)
             return temp_path, temp_path
         except Exception as exc:
             logger.warning("Failed to unlock encrypted PDF for AI: %s", exc)

@@ -3,13 +3,13 @@ import os
 
 from .._typing import WorkerHost
 from ..optional_deps import fitz
-from ..worker_runtime.args import _as_list, _as_str  # noqa: F401 — batch encrypt uses _as_str
+from ..worker_runtime.args import _as_float, _as_int, _as_list, _as_str
 from ..worker_runtime.save_profiles import (
     DEFAULT_COMPRESSION_SAVE_PROFILE,
     normalize_save_profile,
     resolve_image_optimize_options,
 )
-from ._pdf_helpers import optimize_pdf_images, subset_document_fonts
+from ._pdf_helpers import optimize_pdf_images, subset_document_fonts, text_needs_cjk
 from .security_ops import (
     FITZ_PDF_ENCRYPT_AES_256,
     FITZ_PDF_PERM_ACCESSIBILITY,
@@ -89,23 +89,47 @@ class WorkerBatchOpsMixin(WorkerHost):
                         save_profile=save_profile,
                     )
                 elif operation == "watermark":
+                    # 단일 워터마크/텍스트 상자와 동일 계열: CJK 자동 임베드 + 옵션 kwargs
+                    wm_fontsize = max(1, _as_int(self.kwargs.get("fontsize"), 40))
+                    wm_opacity = max(0.0, min(1.0, _as_float(self.kwargs.get("opacity"), 0.3)))
+                    wm_rotation = _as_int(self.kwargs.get("rotation"), 0) % 360
+                    wm_rotation = int(round(wm_rotation / 90.0) * 90) % 360
+                    wm_fontname = _as_str(self.kwargs.get("fontname"), "")
+                    if not wm_fontname:
+                        wm_fontname = "cjk" if text_needs_cjk(option) else "helv"
+                    raw_color = self.kwargs.get("color", (0.5, 0.5, 0.5))
+                    try:
+                        wm_color = tuple(float(c) for c in raw_color[:3])  # type: ignore[index]
+                        if len(wm_color) < 3:
+                            wm_color = (0.5, 0.5, 0.5)
+                    except Exception:
+                        wm_color = (0.5, 0.5, 0.5)
+                    wrote_any = False
                     for page in doc:
                         self._check_cancelled()
                         text_rect = fitz.Rect(
                             40,
-                            (page.rect.height / 2) - 30,
+                            (page.rect.height / 2) - max(30.0, float(wm_fontsize)),
                             page.rect.width - 40,
-                            (page.rect.height / 2) + 30,
+                            (page.rect.height / 2) + max(30.0, float(wm_fontsize) * 1.5),
                         )
-                        page.insert_textbox(
+                        resolved = self._resolve_textbox_fontname(page, wm_fontname, option)
+                        ok = self._write_textbox_content(
+                            page,
                             text_rect,
                             option,
-                            fontsize=40,
-                            fontname="helv",
-                            color=(0.5, 0.5, 0.5),
-                            fill_opacity=0.3,
+                            fontsize=wm_fontsize,
+                            fontname=resolved,
+                            color=wm_color,
                             align=1,
+                            rotation=wm_rotation,
+                            opacity=wm_opacity,
+                            overlay=True,
                         )
+                        if ok:
+                            wrote_any = True
+                    if not wrote_any:
+                        raise ValueError(self._get_msg("err_textbox_insert_failed"))
                     self._atomic_pdf_save(doc, out_path)
                 elif operation == "encrypt":
                     # 단일 protect와 동일 권한 해석 (미지정 시 기본 accessibility/print/copy)

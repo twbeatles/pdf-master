@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
+    QCheckBox,
     QPushButton,
     QScrollArea,
     QSpinBox,
@@ -155,6 +156,9 @@ def setup_convert_tab(self):
     btn_layout_txt.addWidget(btn_add_txt)
     btn_layout_txt.addWidget(btn_clear_txt)
     l_txt.addLayout(btn_layout_txt)
+    self.chk_extract_ocr = QCheckBox(tm.get("chk_extract_ocr"))
+    self.chk_extract_ocr.setChecked(False)
+    l_txt.addWidget(self.chk_extract_ocr)
     b_txt = QPushButton(tm.get("btn_save_text"))
     b_txt.clicked.connect(self.action_txt)
     l_txt.addWidget(b_txt)
@@ -211,4 +215,11 @@ def action_txt(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_pdf_files"))
     d = self._choose_output_directory(tm.get("dlg_select_output_dir"))
     if d:
-        self.run_worker("extract_text", file_paths=paths, output_dir=d)
+        use_ocr = bool(getattr(self, "chk_extract_ocr", None) and self.chk_extract_ocr.isChecked())
+        self.run_worker(
+            "extract_text",
+            file_paths=paths,
+            output_dir=d,
+            use_ocr=use_ocr,
+            ocr_language="kor+eng",
+        )

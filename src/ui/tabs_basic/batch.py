@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
+    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -93,6 +94,22 @@ def setup_batch_tab(self):
     self.inp_batch_opt.setPlaceholderText(tm.get("ph_batch_option"))
     self.inp_batch_opt.setToolTip(tm.get("tip_batch_encrypt_permissions"))
     opt_layout2.addWidget(self.inp_batch_opt)
+
+    # 배치 워터마크 옵션 (단일 워터마크와 일부 패리티)
+    wm_row = QHBoxLayout()
+    wm_row.addWidget(QLabel(tm.get("lbl_batch_wm_fontsize")))
+    self.spn_batch_wm_fontsize = QSpinBox()
+    self.spn_batch_wm_fontsize.setRange(8, 120)
+    self.spn_batch_wm_fontsize.setValue(40)
+    wm_row.addWidget(self.spn_batch_wm_fontsize)
+    wm_row.addWidget(QLabel(tm.get("lbl_batch_wm_opacity")))
+    self.spn_batch_wm_opacity = QDoubleSpinBox()
+    self.spn_batch_wm_opacity.setRange(0.05, 1.0)
+    self.spn_batch_wm_opacity.setSingleStep(0.05)
+    self.spn_batch_wm_opacity.setValue(0.3)
+    wm_row.addWidget(self.spn_batch_wm_opacity)
+    wm_row.addStretch()
+    content_layout.addLayout(wm_row)
     content_layout.addLayout(opt_layout2)
 
     # 배치 암호화 권한 (단일 Security 탭과 정렬)
@@ -191,4 +208,9 @@ def action_batch(self):
         if getattr(self, "chk_batch_perm_assemble", None) is not None and self.chk_batch_perm_assemble.isChecked():
             permissions.append("assemble")
         kwargs["permissions"] = permissions
+    if op == "watermark":
+        if getattr(self, "spn_batch_wm_fontsize", None) is not None:
+            kwargs["fontsize"] = int(self.spn_batch_wm_fontsize.value())
+        if getattr(self, "spn_batch_wm_opacity", None) is not None:
+            kwargs["opacity"] = float(self.spn_batch_wm_opacity.value())
     self.run_worker("batch", **kwargs)

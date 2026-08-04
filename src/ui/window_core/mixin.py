@@ -1,9 +1,12 @@
 from .menu import (
     _change_language,
     _create_menu_bar,
+    _set_notify_mode,
     _show_about,
     _show_help,
     _show_shortcuts,
+    _toggle_clear_pending_on_cancel,
+    _toggle_save_chat_histories,
     _update_recent_menu_bar,
 )
 from .shortcuts import _install_wheel_filters, _setup_shortcuts, _shortcut_open_file
@@ -34,6 +37,9 @@ class MainWindowCoreMixin(MainWindowHost):
     _restore_window_geometry = _restore_window_geometry
     _create_menu_bar = _create_menu_bar
     _change_language = _change_language
+    _set_notify_mode = _set_notify_mode
+    _toggle_clear_pending_on_cancel = _toggle_clear_pending_on_cancel
+    _toggle_save_chat_histories = _toggle_save_chat_histories
     _update_recent_menu_bar = _update_recent_menu_bar
     _show_shortcuts = _show_shortcuts
     _show_about = _show_about

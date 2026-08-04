@@ -451,11 +451,12 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 - **2026-07-27 후속**: 암호 PDF AI UI, merge 0페이지 fail-fast, chat cancel_check, 배치 암호 권한 UI, blank/dedupe dry-run, **미리보기 드래그 영역 교정** (`region_select.py`)
 - **2026-07-31**: **미리보기 드래그 텍스트 삽입** — `insert_textbox` 위치 드래그·폰트(CJK embed 포함)/투명도/회전/정렬/레이어; `_region_select_target`으로 redact와 타겟 격리
 - **2026-08-03**: **미리보기 포커스/전체화면** (`F11` 순환, `Ctrl+F11`), 텍스트 상자 리사이즈·인라인 편집·원본 바로 적용·큐 일괄·영역 교체·`extract_text_in_rect`; 감사 후속 안정화; **SOLID 분할** (`markup_actions/`, Worker textbox/highlight, preview mixins)
+- **2026-08-04 감사 후속**: 배치 워터마크 CJK·옵션, 페이지 범위 엄격 검증, textbox 페이지 밖 hard-fail, 채팅 HTML 이스케이프·저장/알림/큐 환경설정, 비교 스크롤 리포트, OCR 추출 옵션, AI temp ACL·스트림 취소 보강; `PROJECT_AUDIT.md` 갱신
 - 잔여 로드맵: OCR optional extra, compare 인터랙티브 리포트 고도화, SDK-level AI HTTP abort — 상세는 `PROJECT_AUDIT.md`
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-08-03)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-08-04)*
 
 <!-- SPECKIT-AGENT-GUIDE:START -->
 

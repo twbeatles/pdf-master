@@ -94,7 +94,7 @@ class WorkerHost:
     def _record_created_output_path(self, path: str) -> None:
         ...
 
-    def _is_pdf_encrypted(self, file_path: str) -> bool:
+    def _is_pdf_encrypted(self, file_path: str) -> bool | None:
         ...
 
     def _normalize_mode_kwargs(self) -> None:

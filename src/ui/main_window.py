@@ -57,6 +57,8 @@ def _shutdown_worker_for_close(parent, worker) -> bool:
         return False
 
     logger.warning("User requested forced termination during close")
+    # QThread.terminate 는 네이티브 강제 종료 — 파일 원자 저장 이후라면 원본은 대체로 안전하나
+    # 진행 중 네이티브/파이썬 상태는 불명. 사용자 확인 문구에 위험 고지(i18n) 포함.
     worker.terminate()
     worker.wait(1000)
     # 강제 종료 후 orphan temp 스윕 (진행 중 파일 포함)

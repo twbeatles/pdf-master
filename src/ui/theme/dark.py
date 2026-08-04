@@ -375,7 +375,7 @@ QPushButton#navBtn:hover {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7fb3ff, stop:1 #5a95ff);
 }
 
-/* 미리보기/상태바 등 좁은 툴바용 — 전역 padding(12/24)과 fixed size 충돌 방지 */
+/* Narrow toolbars (preview/status): avoid global padding vs fixed-size clash */
 QPushButton#toolbarBtn {
     padding: 4px 10px;
     min-height: 28px;

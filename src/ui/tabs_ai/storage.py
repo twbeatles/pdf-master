@@ -54,6 +54,11 @@ def _trim_chat_histories(self):
 def _save_chat_histories(self):
     """채팅 히스토리를 저장한다."""
     self._trim_chat_histories()
+    # save_chat_histories=False 이면 디스크에는 비우고 세션 메모리만 유지
+    if not bool(self.settings.get("save_chat_histories", True)):
+        self.settings["chat_histories"] = {}
+        save_settings(self.settings)
+        return
     self.settings["chat_histories"] = self._chat_histories
     save_settings(self.settings)
 

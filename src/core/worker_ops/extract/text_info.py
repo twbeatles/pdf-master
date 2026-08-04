@@ -41,9 +41,14 @@ class WorkerExtractTextInfoMixin(WorkerHost):
         output_path = _as_str(self.kwargs.get('output_path'))
         output_dir = _as_str(self.kwargs.get('output_dir'))
         include_details = _as_bool(self.kwargs.get('include_details'), False)  # v3.2: 상세 정보 포함 옵션
+        use_ocr = _as_bool(self.kwargs.get("use_ocr"), False) or _as_bool(self.kwargs.get("ocr"), False)
+        ocr_language = _as_str(self.kwargs.get("ocr_language"), "kor+eng") or "kor+eng"
+        ocr_dpi = max(72, _as_int(self.kwargs.get("ocr_dpi"), 200))
 
         total_files = len(file_paths)
         used_output_stems: set[str] = set()
+        any_ocr_used = False
+        ocr_hard_fail: str | None = None
 
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
@@ -61,7 +66,20 @@ class WorkerExtractTextInfoMixin(WorkerHost):
                     self._check_cancelled()  # 취소 체크포인트
                     text_chunks.append(f"\n--- Page {i+1} ---\n")
 
-                    if include_details:
+                    if use_ocr:
+                        any_ocr_used = True
+                        try:
+                            get_tp = getattr(page, "get_textpage_ocr", None)
+                            if not callable(get_tp):
+                                raise RuntimeError("page.get_textpage_ocr is not available in this PyMuPDF build")
+                            tp = get_tp(dpi=ocr_dpi, language=ocr_language, full=True)
+                            text_chunks.append(page.get_text("text", textpage=tp) or "")
+                        except Exception as exc:
+                            logger.warning("OCR failed page %s: %s", i + 1, exc, exc_info=True)
+                            ocr_hard_fail = str(exc)
+                            # 네이티브 레이어 폴백
+                            text_chunks.append(page.get_text() or "")
+                    elif include_details:
                         # v3.2: 상세 정보 추출 (폰트, 크기, 색상)
                         text_dict = _as_dict(page.get_text("dict"))
                         blocks = cast(list[dict[str, Any]], text_dict.get("blocks", []))
@@ -103,6 +121,19 @@ class WorkerExtractTextInfoMixin(WorkerHost):
             self._atomic_text_save(out_path, full_text)
 
             self._emit_progress_if_due(int((file_idx + 1) / max(1, total_files) * 100))
+
+        if use_ocr and ocr_hard_fail and not any_ocr_used:
+            self.error_signal.emit(self._get_msg("err_ocr_unavailable", ocr_hard_fail))
+            return
+
+        if any_ocr_used:
+            # OCR 모드 완료 메시지 (부분 폴백이 있어도 결과 파일은 저장됨)
+            self._update_result_payload(ocr=True, ocr_fallback=bool(ocr_hard_fail))
+            self.finished_signal.emit(
+                self._get_msg("msg_ocr_extract_done", total_files)
+                + (f"\n({ocr_hard_fail})" if ocr_hard_fail else "")
+            )
+            return
 
         self.finished_signal.emit(
             self._get_msg(

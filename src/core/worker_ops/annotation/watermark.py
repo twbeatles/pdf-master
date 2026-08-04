@@ -30,6 +30,7 @@ from .._pdf_helpers import (
     _normalize_stroke_points,
     _page_asset_placeholders,
     _sample_diff_text,
+    text_needs_cjk,
 )
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,23 @@ class WorkerAnnotationWatermarkMixin(WorkerHost):
 
             total_pages = max(1, len(doc))
             margin = 50  # 가장자리 여백
+            # CJK 텍스트면 임베드 폰트명 사용 (helv 고정 실패 방지)
+            resolved_font = fontname
+            if text_needs_cjk(text) or (fontname or "").strip().lower() in {
+                "cjk", "cjk_safe", "ko", "korean", "auto", "default", ""
+            }:
+                if hasattr(self, "_resolve_textbox_fontname"):
+                    resolved_font = self._resolve_textbox_fontname(  # type: ignore[attr-defined]
+                        doc[0], fontname or "cjk", text
+                    )
+                else:
+                    try:
+                        registered = "pdfmaster_cjk"
+                        doc[0].insert_font(fontname=registered, fontbuffer=fitz.Font("cjk").buffer)
+                        resolved_font = registered
+                    except Exception:
+                        logger.warning("CJK watermark font embed failed", exc_info=True)
+                        resolved_font = fontname or "helv"
 
             for i in range(len(doc)):
                 page = doc[i]
@@ -92,14 +110,14 @@ class WorkerAnnotationWatermarkMixin(WorkerHost):
                             for x in range(0, int(rect.width), 300):
                                 shape.insert_text(
                                     fitz.Point(x, y), text, fontsize=actual_fontsize,
-                                    fontname=fontname, rotate=rotation,
+                                    fontname=resolved_font, rotate=rotation,
                                     color=color, fill_opacity=opacity
                                 )
                     else:
                         x, y = positions.get(position, positions['center'])
                         shape.insert_text(
                             fitz.Point(x, y), text, fontsize=actual_fontsize,
-                            fontname=fontname, rotate=rotation,
+                            fontname=resolved_font, rotate=rotation,
                             color=color, fill_opacity=opacity
                         )
                     shape.commit(overlay=False)
@@ -109,14 +127,14 @@ class WorkerAnnotationWatermarkMixin(WorkerHost):
                             for x in range(0, int(rect.width), 300):
                                 page.insert_text(
                                     fitz.Point(x, y), text, fontsize=actual_fontsize,
-                                    fontname=fontname, rotate=rotation,
+                                    fontname=resolved_font, rotate=rotation,
                                     color=color, fill_opacity=opacity
                                 )
                     else:
                         x, y = positions.get(position, positions['center'])
                         page.insert_text(
                             fitz.Point(x, y), text, fontsize=actual_fontsize,
-                            fontname=fontname, rotate=rotation,
+                            fontname=resolved_font, rotate=rotation,
                             color=color, fill_opacity=opacity
                         )
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))

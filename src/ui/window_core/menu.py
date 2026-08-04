@@ -78,6 +78,36 @@ def _create_menu_bar(self):
     en_action.triggered.connect(lambda: self._change_language("en"))
     self.lang_menu.addAction(en_action)
 
+    # 환경설정 메뉴
+    pref_menu = menubar.addMenu(tm.get("menu_preferences"))
+
+    self._act_notify_dialog = QAction(tm.get("pref_notify_dialog"), self)
+    self._act_notify_dialog.setCheckable(True)
+    self._act_notify_dialog.setChecked(self.settings.get("notify_mode", "dialog") != "toast")
+    self._act_notify_dialog.triggered.connect(lambda: self._set_notify_mode("dialog"))
+    pref_menu.addAction(self._act_notify_dialog)
+
+    self._act_notify_toast = QAction(tm.get("pref_notify_toast"), self)
+    self._act_notify_toast.setCheckable(True)
+    self._act_notify_toast.setChecked(self.settings.get("notify_mode", "dialog") == "toast")
+    self._act_notify_toast.triggered.connect(lambda: self._set_notify_mode("toast"))
+    pref_menu.addAction(self._act_notify_toast)
+
+    pref_menu.addSeparator()
+
+    self._act_clear_pending = QAction(tm.get("pref_clear_pending_on_cancel"), self)
+    self._act_clear_pending.setCheckable(True)
+    self._act_clear_pending.setChecked(bool(self.settings.get("clear_pending_on_cancel", True)))
+    self._act_clear_pending.triggered.connect(self._toggle_clear_pending_on_cancel)
+    pref_menu.addAction(self._act_clear_pending)
+
+    self._act_save_chat = QAction(tm.get("chk_save_chat_histories"), self)
+    self._act_save_chat.setCheckable(True)
+    self._act_save_chat.setChecked(bool(self.settings.get("save_chat_histories", True)))
+    self._act_save_chat.setToolTip(tm.get("tip_save_chat_histories"))
+    self._act_save_chat.triggered.connect(self._toggle_save_chat_histories)
+    pref_menu.addAction(self._act_save_chat)
+
     # 도움말 메뉴
     help_menu = menubar.addMenu(tm.get("menu_help"))
 
@@ -90,6 +120,34 @@ def _create_menu_bar(self):
     about_action = QAction(tm.get("menu_about"), self)
     about_action.triggered.connect(self._show_about)
     help_menu.addAction(about_action)
+
+
+def _set_notify_mode(self, mode: str):
+    mode = mode if mode in {"dialog", "toast"} else "dialog"
+    self.settings["notify_mode"] = mode
+    save_settings(self.settings)
+    if getattr(self, "_act_notify_dialog", None) is not None:
+        self._act_notify_dialog.setChecked(mode != "toast")
+    if getattr(self, "_act_notify_toast", None) is not None:
+        self._act_notify_toast.setChecked(mode == "toast")
+
+
+def _toggle_clear_pending_on_cancel(self, checked: bool = False):
+    enabled = bool(checked) if isinstance(checked, bool) else bool(
+        getattr(self, "_act_clear_pending", None) and self._act_clear_pending.isChecked()
+    )
+    self.settings["clear_pending_on_cancel"] = enabled
+    save_settings(self.settings)
+
+
+def _toggle_save_chat_histories(self, checked: bool = False):
+    enabled = bool(checked) if isinstance(checked, bool) else bool(
+        getattr(self, "_act_save_chat", None) and self._act_save_chat.isChecked()
+    )
+    self.settings["save_chat_histories"] = enabled
+    if not enabled:
+        self.settings["chat_histories"] = {}
+    save_settings(self.settings)
 
 def _change_language(self, lang_code):
     """언어 변경 및 재시작 안내"""

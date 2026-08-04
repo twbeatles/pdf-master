@@ -83,6 +83,18 @@ def _cleanup_cancelled_worker(self):
     self._has_output = False
     self._cancel_pending = False
     self._cancel_handled = True
+    # 설정: 취소 시 대기 큐 폐기 (기본 True — 감사 권고)
+    clear_pending = True
+    try:
+        settings = getattr(self, "settings", None) or {}
+        clear_pending = bool(settings.get("clear_pending_on_cancel", True))
+    except Exception:
+        clear_pending = True
+    if clear_pending:
+        pending = getattr(self, "_pending_workers", None)
+        if isinstance(pending, list) and pending:
+            pending.clear()
+            logger.info("Cleared pending worker queue on cancel")
     worker = getattr(self, "worker", None)
     spec = get_operation_spec(getattr(worker, "mode", "")) if worker else None
     cleanup_policy = spec.cancel_cleanup if spec is not None else "created_outputs"
