@@ -45,6 +45,19 @@ def test_legacy_shims_stay_thin_after_refactor():
         "src/ui/tabs_basic/security.py": 80,
         "src/ui/tabs_advanced/tab_builders/misc.py": 80,
         "src/core/i18n_catalogs/shared.py": 80,
+        # Track B: 본체 모듈 재비대화 가드 (엄격 facade 보다 여유)
+        "src/core/worker_ops/ai/ops.py": 40,  # thin facade after prepare/handlers split
+        "src/core/worker_ops/ai/handlers.py": 280,
+        "src/core/worker_ops/ai/prepare.py": 160,
+        "src/core/worker_ops/ai/temp_acl.py": 80,
+        "src/core/worker_ops/annotation/textbox.py": 450,
+        "src/core/worker_ops/compare/ops.py": 420,
+        "src/core/worker_ops/compare/helpers.py": 120,
+        "src/ui/preview_widget/text_placement.py": 500,
+        "src/ui/window_worker/lifecycle.py": 280,
+        "src/ui/window_worker/helpers.py": 120,
+        "src/ui/thumbnail/pixmap_lru.py": 60,
+        "src/ui/contracts/monkeypatch_surfaces.py": 80,
     }
     for path, max_lines in budgets.items():
         assert _line_count(path) <= max_lines, path

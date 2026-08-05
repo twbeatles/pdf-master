@@ -148,6 +148,14 @@ def _toggle_save_chat_histories(self, checked: bool = False):
     if not enabled:
         self.settings["chat_histories"] = {}
     save_settings(self.settings)
+    # 디스크 저장 ON 시 프라이버시 안내 (설정 파일 평문)
+    if enabled:
+        try:
+            from ..widgets import ToastWidget
+
+            ToastWidget(tm.get("msg_chat_history_disk_warning"), toast_type="warning", duration=4500).show_toast(self)
+        except Exception:
+            pass
 
 def _change_language(self, lang_code):
     """언어 변경 및 재시작 안내"""

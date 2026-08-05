@@ -207,14 +207,13 @@ class AIService(
             )
         else:
             if partial_callback is not None:
-                chunks: list[str] = []
-                for chunk in chat.send_message_stream(question, config=config):
-                    self._run_cancel_check(cancel_check)
-                    text = _response_text(chunk)
-                    if text:
-                        chunks.append(text)
-                        partial_callback(text)
-                self._run_cancel_check(cancel_check)
+                # 요약 스트림과 동일: 청크 cancel + close best-effort
+                stream = chat.send_message_stream(question, config=config)
+                chunks = self._consume_stream_chunks(
+                    stream,
+                    partial_callback=partial_callback,
+                    cancel_check=cancel_check,
+                )
                 raw_text = "".join(chunks)
                 payload = self._parse_structured_response(None, raw_text, schema)
             else:

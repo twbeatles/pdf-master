@@ -158,6 +158,7 @@ def setup_convert_tab(self):
     l_txt.addLayout(btn_layout_txt)
     self.chk_extract_ocr = QCheckBox(tm.get("chk_extract_ocr"))
     self.chk_extract_ocr.setChecked(False)
+    self.chk_extract_ocr.setToolTip(tm.get("tip_extract_ocr"))
     l_txt.addWidget(self.chk_extract_ocr)
     b_txt = QPushButton(tm.get("btn_save_text"))
     b_txt.clicked.connect(self.action_txt)

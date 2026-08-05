@@ -100,6 +100,23 @@ def _format_compare_summary(payload: dict) -> str:
             lines.append(tm.get("compare_summary_more", len(results) - max_rows))
     return "\n".join(lines)
 
+def escape_chat_html(text: str) -> str:
+    """채팅 HTML 표시용 이스케이프 (partial/최종/히스토리 공용)."""
+    import html as _html
+
+    return _html.escape(str(text or ""), quote=True)
+
+
+def format_chat_assistant_html(prefix: str, text: str) -> str:
+    """어시스턴트 채팅 한 블록 HTML."""
+    return f"<b>{prefix}</b> {escape_chat_html(text)}"
+
+
+def format_chat_user_html(prefix: str, text: str) -> str:
+    """사용자 채팅 한 블록 HTML."""
+    return f"<b>{prefix}</b> {escape_chat_html(text)}"
+
+
 def _replace_last_chat_block(chat_history, html: str) -> None:
     cursor = chat_history.textCursor()
     cursor.movePosition(cursor.MoveOperation.End)

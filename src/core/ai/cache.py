@@ -154,12 +154,17 @@ class AICacheMixin:
 
     @classmethod
     def shutdown_executor(cls):
+        """업로드·채팅·텍스트 캐시 정리 (프로세스 종료·closeEvent 공용)."""
         stale_upload_entries: list[dict[str, Any]] = []
         with cls._uploaded_file_cache_lock:
             stale_upload_entries = list(cls._uploaded_file_cache.values())
             cls._uploaded_file_cache.clear()
         with cls._chat_sessions_lock:
             cls._chat_sessions.clear()
+        # 추출 본문 캐시(최대 ~16MB)도 비워 종료 후 메모리 잔존 완화
+        with cls._text_cache_lock:
+            cls._text_cache.clear()
+            cls._text_cache_bytes = 0
 
         service = cls()
         for entry in stale_upload_entries:

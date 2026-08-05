@@ -47,11 +47,11 @@ def apply_ai_success_state(host: Any, payload: dict[str, Any]) -> None:
                 else ""
             )
             if hasattr(host, "txt_chat_history") and pending_path == selected_chat_path:
-                import html as _html
+                from .results import format_chat_assistant_html
 
                 _replace_last_chat_block(
                     host.txt_chat_history,
-                    f"<b>{tm.get('chat_assistant_prefix')}</b> {_html.escape(answer, quote=True)}",
+                    format_chat_assistant_html(tm.get("chat_assistant_prefix"), answer),
                 )
                 host.txt_chat_history.append("<hr>")
         host._chat_pending_path = None

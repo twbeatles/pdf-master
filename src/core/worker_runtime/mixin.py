@@ -245,9 +245,12 @@ class WorkerRuntimeMixin(WorkerHost):
     def _preflight_inputs(self) -> bool:
         return preflight_inputs(self)
 
-    def _is_pdf_encrypted(self, file_path: str) -> bool:
-        # is_pdf_encrypted 는 판별 실패 시 None — 암호화로 간주하지 않음
-        return is_pdf_encrypted(file_path) is True
+    def _is_pdf_encrypted(self, file_path: str) -> bool | None:
+        """암호화 여부 삼상 반환: True/False, 판별 실패 시 None.
+
+        None 을 False 로 붕괴하지 않는다 — AI 임시 복호 등에서 손상 PDF 오인을 막기 위함.
+        """
+        return is_pdf_encrypted(file_path)
 
     def run(self) -> None:
         logger.info("Starting task: %s", self.mode)

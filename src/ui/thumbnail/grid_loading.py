@@ -25,14 +25,33 @@ from .tile import ThumbnailLabel
 
 
 class ThumbnailGridLoadingMixin(ThumbnailGridHost):
+    def _thumbnail_cache_key(self, page_index: int) -> tuple[str, int, int]:
+        from ...core.path_utils import normalize_path_key
+
+        path_key = normalize_path_key(getattr(self, "_pdf_path", "") or "")
+        mtime_ns = int(getattr(self, "_pdf_mtime_ns", 0) or 0)
+        return path_key, mtime_ns, int(page_index)
+
     def load_pdf(self, pdf_path: str, password: str | None = None):
         if not pdf_path:
             self.clear()
             return
 
         self._cleanup_loader_thread()
+        prev_path = getattr(self, "_pdf_path", "") or ""
         self._pdf_path = pdf_path
         self._pdf_password = password
+        try:
+            import os
+
+            self._pdf_mtime_ns = int(os.stat(pdf_path).st_mtime_ns)
+        except OSError:
+            self._pdf_mtime_ns = 0
+        # 다른 파일이면 LRU 전체 비움 (동일 경로 재로드는 mtime 키로 자동 무효)
+        if prev_path and prev_path != pdf_path:
+            lru = getattr(self, "_pixmap_lru", None)
+            if lru is not None:
+                lru.clear()
         self._clear_thumbnails()
 
         doc = None
@@ -82,8 +101,17 @@ class ThumbnailGridLoadingMixin(ThumbnailGridHost):
                     thread.finished.connect(thread.deleteLater)
                 except Exception:
                     pass
-                if not thread.wait(300):
-                    logger.info("ThumbnailLoaderThread is stopping in background")
+                try:
+                    from ...core.constants import THUMBNAIL_LOADER_WAIT_MS
+
+                    wait_ms = int(THUMBNAIL_LOADER_WAIT_MS)
+                except Exception:
+                    wait_ms = 1000
+                if not thread.wait(max(300, wait_ms)):
+                    logger.info(
+                        "ThumbnailLoaderThread is stopping in background (wait_ms=%s)",
+                        wait_ms,
+                    )
             else:
                 thread.deleteLater()
 
@@ -99,6 +127,25 @@ class ThumbnailGridLoadingMixin(ThumbnailGridHost):
             return
         if not self._pending_indices:
             return
+
+        # LRU 적중 페이지는 로더 없이 즉시 적용
+        lru = getattr(self, "_pixmap_lru", None)
+        if lru is not None:
+            for idx in list(self._pending_indices):
+                cached = lru.get(self._thumbnail_cache_key(idx))
+                if cached is None:
+                    continue
+                self._pending_indices.discard(idx)
+                if idx < len(self._thumbnails):
+                    self._thumbnails[idx].set_pixmap(cached)
+                    self._loaded_indices.add(idx)
+                    self._requested_indices.discard(idx)
+            if self._loaded_indices:
+                self.loadingProgress.emit(
+                    int((len(self._loaded_indices) / max(1, self._total_pages)) * 100)
+                )
+            if not self._pending_indices:
+                return
 
         batch = sorted(self._pending_indices)[: self._MAX_BATCH_SIZE]
         for idx in batch:
@@ -137,6 +184,9 @@ class ThumbnailGridLoadingMixin(ThumbnailGridHost):
             self._thumbnails[index].set_pixmap(pixmap)
             self._loaded_indices.add(index)
             self._requested_indices.discard(index)
+            lru = getattr(self, "_pixmap_lru", None)
+            if lru is not None:
+                lru.put(self._thumbnail_cache_key(index), pixmap)
         self.loadingProgress.emit(int((len(self._loaded_indices) / max(1, self._total_pages)) * 100))
 
     @pyqtSlot(int)

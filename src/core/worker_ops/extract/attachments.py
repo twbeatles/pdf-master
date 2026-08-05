@@ -63,12 +63,30 @@ class WorkerExtractAttachmentsMixin(WorkerHost):
 
     def add_attachment(self):
         """PDF에 파일 첨부"""
+        from ...constants import MAX_ATTACHMENT_SIZE
+
         file_path = _as_str(self.kwargs.get("file_path"))
         output_path = _as_str(self.kwargs.get("output_path"))
         attach_path = _as_str(self.kwargs.get("attach_path"))
         doc = None
         try:
             self._check_cancelled()
+            if not attach_path or not os.path.isfile(attach_path):
+                self.error_signal.emit(self._get_msg("err_input_file_missing"))
+                return
+            try:
+                attach_size = os.path.getsize(attach_path)
+            except OSError:
+                self.error_signal.emit(self._get_msg("err_file_access_denied", attach_path))
+                return
+            if attach_size > MAX_ATTACHMENT_SIZE:
+                size_mb = attach_size / (1024 * 1024)
+                max_mb = MAX_ATTACHMENT_SIZE / (1024 * 1024)
+                self.error_signal.emit(
+                    self._get_msg("err_attachment_too_large", f"{size_mb:.1f}", f"{max_mb:.0f}")
+                )
+                return
+
             doc = self._open_pdf_document(file_path)
             with open(attach_path, "rb") as handle:
                 data = handle.read()

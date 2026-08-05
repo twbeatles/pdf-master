@@ -34,6 +34,7 @@ from .window_worker.results import (
     _get_worker_payload,
     _replace_last_chat_block,
     _set_meta_label,
+    format_chat_assistant_html,
 )
 from .window_worker.success import (
     apply_ai_success_state,
@@ -98,6 +99,18 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         self._prepare_preview_for_same_path_output(mode, kwargs)
         self._augment_worker_passwords_from_preview(kwargs)
 
+        # pending 큐에서 api_key 를 빼 둔 경우 실행 직전 재주입
+        mode_text = str(mode or "")
+        if mode_text.startswith("ai_") and not kwargs.get("api_key"):
+            try:
+                from ..core.settings import get_api_key
+
+                key = get_api_key()
+                if key:
+                    kwargs["api_key"] = key
+            except Exception:
+                logger.debug("Failed to rehydrate api_key for AI worker", exc_info=True)
+
         self._pending_undo = None
         if _is_undo_eligible_mode(mode, kwargs):
             source = kwargs.get("file_path", "")
@@ -137,6 +150,9 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         sender = self.sender()
         if sender is not None and sender is not self.worker:
             return
+        # 취소 요청 이후 partial 갱신 차단 (레이아웃 오염·잔여 스트림 표시 방지)
+        if getattr(self, "_cancel_pending", False) or getattr(self, "_cancel_handled", False):
+            return
         if not isinstance(payload, dict):
             return
         text = payload.get("text", "")
@@ -152,7 +168,7 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             self._chat_partial_text = getattr(self, "_chat_partial_text", "") + text
             _replace_last_chat_block(
                 self.txt_chat_history,
-                f"<b>{tm.get('chat_assistant_prefix')}</b> {self._chat_partial_text}",
+                format_chat_assistant_html(tm.get("chat_assistant_prefix"), self._chat_partial_text),
             )
 
     def on_cancelled(self, msg):

@@ -63,6 +63,11 @@ class ThumbnailGridWidget(ThumbnailGridLayoutMixin, ThumbnailGridLoadingMixin, T
         self._active_batch_indices: list[int] = []
         self._total_pages = 0
         self._pdf_password: str | None = None
+        self._pdf_mtime_ns: int = 0
+        # 화면 밖 재스크롤 시 재렌더 비용 완화 (경로+mtime+페이지 키)
+        from .pixmap_lru import ThumbnailPixmapLru
+
+        self._pixmap_lru = ThumbnailPixmapLru(max_items=128)
 
         self._setup_ui()
 

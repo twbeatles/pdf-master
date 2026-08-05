@@ -53,6 +53,10 @@ class ThumbnailGridLayoutMixin(ThumbnailGridHost):
         self._cleanup_loader_thread()
         self._pdf_path = ""
         self._pdf_password = None
+        self._pdf_mtime_ns = 0
+        lru = getattr(self, "_pixmap_lru", None)
+        if lru is not None:
+            lru.clear()
         self._clear_thumbnails()
         self._set_loading_message(tm.get("thumb_select_pdf"))
 

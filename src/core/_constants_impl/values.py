@@ -69,9 +69,15 @@ PDF_DEFAULT_PERMISSIONS = ['accessibility', 'print', 'copy']
 
 MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024
 
+# 첨부 파일 메모리 적재 상한 (전체 read 경로 보호)
+MAX_ATTACHMENT_SIZE = 100 * 1024 * 1024
+
 MIN_PDF_SIZE = 100
 
 MAX_PAGE_RANGE_LENGTH = 1000
+
+# 썸네일 로더 종료 대기 (ms) — 너무 짧으면 백그라운드 스레드 잔존
+THUMBNAIL_LOADER_WAIT_MS = 1000
 
 TOAST_DURATION_DEFAULT = 3000
 
@@ -98,6 +104,9 @@ UNDO_BACKUP_MAX_SIZE_MB = 500
 UNDO_BACKUP_MAX_FILES = 100
 
 UNDO_BACKUP_MAX_AGE_HOURS = 24
+
+# 단일 파일 Undo 백업 복사 상한 (이보다 크면 백업 스킵 → undo unavailable)
+UNDO_BACKUP_MAX_SOURCE_BYTES = 200 * 1024 * 1024
 
 RECENT_FILES_MAX = 20
 

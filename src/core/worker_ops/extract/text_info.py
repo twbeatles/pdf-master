@@ -47,8 +47,10 @@ class WorkerExtractTextInfoMixin(WorkerHost):
 
         total_files = len(file_paths)
         used_output_stems: set[str] = set()
-        any_ocr_used = False
+        ocr_success_pages = 0
+        ocr_fail_pages = 0
         ocr_hard_fail: str | None = None
+        pages_processed = 0
 
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
@@ -65,18 +67,20 @@ class WorkerExtractTextInfoMixin(WorkerHost):
                     page = doc[i]
                     self._check_cancelled()  # 취소 체크포인트
                     text_chunks.append(f"\n--- Page {i+1} ---\n")
+                    pages_processed += 1
 
                     if use_ocr:
-                        any_ocr_used = True
                         try:
                             get_tp = getattr(page, "get_textpage_ocr", None)
                             if not callable(get_tp):
                                 raise RuntimeError("page.get_textpage_ocr is not available in this PyMuPDF build")
                             tp = get_tp(dpi=ocr_dpi, language=ocr_language, full=True)
                             text_chunks.append(page.get_text("text", textpage=tp) or "")
+                            ocr_success_pages += 1
                         except Exception as exc:
                             logger.warning("OCR failed page %s: %s", i + 1, exc, exc_info=True)
                             ocr_hard_fail = str(exc)
+                            ocr_fail_pages += 1
                             # 네이티브 레이어 폴백
                             text_chunks.append(page.get_text() or "")
                     elif include_details:
@@ -122,17 +126,37 @@ class WorkerExtractTextInfoMixin(WorkerHost):
 
             self._emit_progress_if_due(int((file_idx + 1) / max(1, total_files) * 100))
 
-        if use_ocr and ocr_hard_fail and not any_ocr_used:
-            self.error_signal.emit(self._get_msg("err_ocr_unavailable", ocr_hard_fail))
+        # OCR 요청인데 성공 페이지가 0이면 hard-fail (네이티브 폴백만 남은 경우 포함)
+        if use_ocr and pages_processed > 0 and ocr_success_pages == 0:
+            detail = ocr_hard_fail or "OCR produced no successful pages"
+            self._update_result_payload(
+                ocr=True,
+                ocr_fallback=True,
+                ocr_success_pages=0,
+                ocr_fail_pages=ocr_fail_pages,
+            )
+            self.error_signal.emit(self._get_msg("err_ocr_unavailable", detail))
             return
 
-        if any_ocr_used:
-            # OCR 모드 완료 메시지 (부분 폴백이 있어도 결과 파일은 저장됨)
-            self._update_result_payload(ocr=True, ocr_fallback=bool(ocr_hard_fail))
-            self.finished_signal.emit(
-                self._get_msg("msg_ocr_extract_done", total_files)
-                + (f"\n({ocr_hard_fail})" if ocr_hard_fail else "")
+        if use_ocr and ocr_success_pages > 0:
+            # 부분 폴백이 있어도 결과 파일은 저장됨 — 경고 메타 포함
+            self._update_result_payload(
+                ocr=True,
+                ocr_fallback=bool(ocr_fail_pages),
+                ocr_success_pages=ocr_success_pages,
+                ocr_fail_pages=ocr_fail_pages,
             )
+            if ocr_fail_pages:
+                self.finished_signal.emit(
+                    self._get_msg(
+                        "msg_ocr_extract_done_partial",
+                        total_files,
+                        ocr_fail_pages,
+                        ocr_hard_fail or "",
+                    )
+                )
+            else:
+                self.finished_signal.emit(self._get_msg("msg_ocr_extract_done", total_files))
             return
 
         self.finished_signal.emit(
@@ -170,20 +194,22 @@ class WorkerExtractTextInfoMixin(WorkerHost):
             if doc:
                 doc.close()
 
+        font_list = ", ".join(sorted(fonts_used)) if fonts_used else self._get_msg("pdf_info_fonts_none")
+        file_kb = os.path.getsize(file_path) / 1024
         lines = [
-            f"# PDF 정보: {os.path.basename(file_path)}",
+            self._get_msg("pdf_info_title", os.path.basename(file_path)),
             "",
-            "## 기본 정보",
-            f"- 페이지 수: {page_count}",
-            f"- 파일 크기: {os.path.getsize(file_path) / 1024:.1f} KB",
-            f"- 제목: {meta.get('title', '-')}",
-            f"- 작성자: {meta.get('author', '-')}",
-            f"- 생성일: {meta.get('creationDate', '-')}",
+            self._get_msg("pdf_info_section_basic"),
+            self._get_msg("pdf_info_pages", page_count),
+            self._get_msg("pdf_info_file_size_kb", f"{file_kb:.1f}"),
+            self._get_msg("pdf_info_doc_title", meta.get("title") or "-"),
+            self._get_msg("pdf_info_author", meta.get("author") or "-"),
+            self._get_msg("pdf_info_created", meta.get("creationDate") or "-"),
             "",
-            "## 통계",
-            f"- 총 글자 수: {total_chars:,}",
-            f"- 총 이미지 수: {total_images}",
-            f"- 사용 폰트: {', '.join(sorted(fonts_used)) if fonts_used else '없음'}",
+            self._get_msg("pdf_info_section_stats"),
+            self._get_msg("pdf_info_total_chars", f"{total_chars:,}"),
+            self._get_msg("pdf_info_total_images", total_images),
+            self._get_msg("pdf_info_fonts", font_list),
             "",
         ]
         self._atomic_text_save(output_path, "\n".join(lines))

@@ -281,7 +281,7 @@ Output: `dist/PDF_Master_v4.5.6.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
-Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipped). See `PROJECT_AUDIT.md` for the functional audit SSOT and follow-up fixes.
+Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipped). See `PROJECT_AUDIT.md` for the functional audit SSOT and `PROJECT_AUDIT_QUALITY.md` for the quality/architecture track.
 
 ---
 
@@ -303,6 +303,8 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 - **2026-08-03**: **Preview focus/fullscreen** (`F11` cycle, `Ctrl+F11`), textbox resize/inline edit/apply-to-original/queue batch/experimental region replace; audit follow-up (post-flag reset, busy guards, redact hard-fail, queue path pin)
 - **2026-08-04 audit follow-up**: batch watermark CJK + options, strict page-range validation, outside-page textbox hard-fail, AI chat HTML escape, prefs for chat disk save / notify mode / clear pending on cancel, scrollable compare report, optional OCR extract (`use_ocr`), AI temp ACL + stream cancel hardening; `PROJECT_AUDIT.md` updated
 - **2026-08-05 SOLID Round 2**: package remaining Worker domains (`ai`/`batch`/`compose`/`form`/`security`/`_pdf_helpers_impl`); UI textbox_impl, tab section builders, thumbnail grid mixins, preview interaction split; `PreviewWidgetHost`/`ThumbnailGridHost`; public imports and mode/kwargs contracts unchanged. Design: `docs/superpowers/specs/2026-08-05-code-split-solid-round2-design.md`
+- **2026-08-05 functional audit residual follow-up**: chat partial HTML escape, tri-state `_is_pdf_encrypted`, OCR zero-success hard-fail, shared AI stream cancel+close, 100MB attachment cap, etc. See `PROJECT_AUDIT.md` and `tests/test_audit_2026_08_05_followup.py`
+- **2026-08-05 quality audit Track B**: AI text-cache shutdown, sensitive kwargs scrub, `get_pdf_info` i18n, FITZ missing startup guard, large undo-source skip, AI ops package split, thumbnail pixmap LRU, monkeypatch contract SSOT. See `PROJECT_AUDIT_QUALITY.md`, `tests/test_audit_2026_08_05_quality_followup.py`, `tests/test_monkeypatch_contracts.py`, `tests/test_thumbnail_pixmap_lru.py`
 
 ### v4.5.5
 - Preview zoom, pan, and print stability (Qt print pipeline)

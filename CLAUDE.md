@@ -16,6 +16,9 @@
 - 2026-07-31 positioned text insert: Advanced Edit `insert_textbox` supports preview drag placement (shared region-select overlay), W/H, CJK (`insert_font` embed) / Base-14 fonts, opacity, 90°-step rotation, align, layer; `_region_select_target` isolates redact vs textbox consumers.
 - 2026-08-03 preview focus + textbox editor UX: `F11` cycles normal→focus→fullscreen (`window_preview/focus.py` + `fullscreen_host.py`, `Ctrl+F11` direct fullscreen); Esc steps placement→region→fullscreen→focus; overlay move/resize/nudge/click-place + double-click/F2 inline edit; multiline content; same-path apply (confirm) + keep placing; multi-box queue with pinned `file_path` (`insert_textboxes`) and **queue ghost overlay** on preview; experimental region replace (`replace_text_in_rect` redact hard-fail) with **`extract_text_in_rect` Worker** fill; session state in `TextboxEditorSession`. Audit follow-up: post-flag clear on fail/cancel, busy disables focus-bar/fullscreen actions, partial queue failure message.
 - 2026-08-04 PROJECT_AUDIT follow-up: batch watermark CJK via `_write_textbox_content`/`text_needs_cjk` + fontsize/opacity UI; strict `parse_page_range` invalid-token hard-fail; `insert_textbox` outside-page hard-fail; AI chat `html.escape`; settings `save_chat_histories` / `notify_mode` / `clear_pending_on_cancel` (Preferences menu); compare scroll report (`window_worker/compare_report.py`); `extract_text(use_ocr=…)` OCR path; AI temp ACL (chmod+icacls) + stream cancel `stream.close`; `is_pdf_encrypted` → `bool|None`. Regression: `tests/test_audit_2026_08_04_followup.py`.
+- 2026-08-05 PROJECT_AUDIT residual follow-up: chat **partial** HTML escape + cancel 중 partial 차단; `WorkerRuntimeMixin._is_pdf_encrypted` 삼상(`bool|None`) 복구; OCR 0성공 hard-fail + 부분 폴백 메시지; AI 요약/채팅 공용 `_consume_stream_chunks` (cancel 시 close); 강제 종료 스윕 로그; 채팅 디스크 저장 프라이버시 안내; AI temp ACL 실패 가시화; 첨부 `MAX_ATTACHMENT_SIZE`(100MB); 썸네일 로더 wait 1s; OCR 체크박스 tip. Regression: `tests/test_audit_2026_08_05_followup.py`.
+- 2026-08-05 PROJECT_AUDIT **Quality Track B** follow-up: `AIService.shutdown_executor` clears text cache + `closeEvent` call; scrub `api_key`/passwords on finalize/cancel/pending queue (AI rehydrate via `get_api_key`); `get_pdf_info` i18n; FITZ missing startup dialog; undo skip when source > `UNDO_BACKUP_MAX_SOURCE_BYTES` (200MB); FALLBACK⊆catalog smoke; structure budget for body modules. SSOT: `PROJECT_AUDIT_QUALITY.md`. Regression: `tests/test_audit_2026_08_05_quality_followup.py`.
+- 2026-08-05 Quality Track B **Phase 3**: AI ops split (`temp_acl`/`prepare`/`handlers` + thin facade); compare `pixel_diff_ratio` helper; thumbnail `ThumbnailPixmapLru` (path+mtime+page); monkeypatch SSOT `src/ui/contracts/monkeypatch_surfaces.py`. Regression: `tests/test_monkeypatch_contracts.py`, `tests/test_thumbnail_pixmap_lru.py`.
 
 - The main right-side preview is wired through `src/ui/zoomable_preview.py`, not a plain `QLabel`, so zoom/pan/page navigation and preview print are part of the real runtime path.
 - Preview print now renders through the Qt print pipeline; it no longer delegates to `os.startfile(..., "print")` or `lpr`.
@@ -110,11 +113,12 @@ pdf-master/
     │       ├── compose/ + compose_ops.py
     │       ├── security/ + security_ops.py
     │       ├── batch/ + batch_ops.py
-    │       ├── ai/ + ai_ops.py
+    │       ├── ai/ + ai_ops.py          # temp_acl/prepare/handlers + thin facade
     │       ├── _pdf_helpers_impl/ + _pdf_helpers.py
     │       └── pdf_ops.py               # compatibility shim
     └── ui/
         ├── _typing.py                   # MainWindowHost + PreviewWidgetHost + ThumbnailGridHost
+        ├── contracts/                   # monkeypatch SSOT (Track B)
         ├── main_window.py
         ├── main_window_config.py
         ├── main_window_tabs_basic.py     # 호환 shim
@@ -136,7 +140,7 @@ pdf-master/
         │   ├── text_placement.py + text_placement_geometry.py
         │   ├── queue_overlay.py
         │   └── region_select.py
-        ├── thumbnail/                   # grid shell + grid_{layout,loading,selection,theme}
+        ├── thumbnail/                   # grid shell + grid_* + pixmap_lru
         ├── theme/
         ├── window_core/
         ├── window_preview/              # focus.py, fullscreen_host.py, panel, document…
@@ -804,9 +808,17 @@ for i, page in enumerate(pages):
 - Worker: `ai`/`batch`/`compose`/`form`/`security` 패키지 + thin `*_ops.py`; `_pdf_helpers_impl/`; `annotation/textbox_helpers.py`; `compare/helpers.py`.
 - UI: `markup_actions/textbox_impl/`; tab_builders `edit|markup|misc_sections/`; thumbnail `grid_*` mixins; `text_placement_geometry`; `interaction_{region,placement,queue}`; `common_widgets` drop_zone/file_selector; `window_worker/success|fail`.
 - pyright: `PreviewWidgetHost` / `ThumbnailGridHost` (cooperative `__init__`). `src/core`+`src/ui` 0 errors.
-- 의도적 유지: `main_window_worker.py` ToastWidget/WorkerThread 모듈 monkeypatch; `tabs_ai/actions.py` 단일 파일 (`AI_AVAILABLE`/`__module__` 계약).
+- 의도적 유지: `main_window_worker.py` ToastWidget/WorkerThread 모듈 monkeypatch; `tabs_ai/actions.py` 단일 파일 (`AI_AVAILABLE`/`__module__` 계약). 계약 SSOT: `src/ui/contracts/monkeypatch_surfaces.py`.
 - public import·Worker mode·kwargs 불변. structure budget: `tests/test_worker_structure_budget.py`.
 - 검증: `python -m pyright src/core src/ui`; `python -m pytest -q` (opt-in Gemini smoke skip 가능).
+
+## 2026-08-05 Quality Track B Addendum
+
+- 품질 감사 SSOT: `PROJECT_AUDIT_QUALITY.md` (기능 감사는 `PROJECT_AUDIT.md`).
+- AI: text cache shutdown, stream `_consume_stream_chunks`, ops 분할 (`temp_acl`/`prepare`/`handlers`).
+- Worker/UI: kwargs scrub, pending 큐 민감키 미저장, `get_pdf_info` i18n, FITZ 기동 가드, Undo 200MB 소스 스킵.
+- Thumbnail: `pixmap_lru.ThumbnailPixmapLru` (path+mtime+page).
+- 회귀: `tests/test_audit_2026_08_05_followup.py`, `tests/test_audit_2026_08_05_quality_followup.py`, `tests/test_monkeypatch_contracts.py`, `tests/test_thumbnail_pixmap_lru.py`.
 
 ## 2026-07-31 Positioned Text Insert Addendum
 

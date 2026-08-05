@@ -281,7 +281,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 타입 스텁은 `typings/` 디렉터리에 있으며 `pyrightconfig.json`에서 참조합니다.
 
-검증 기준선: `python -m pytest -q` (opt-in Gemini smoke 1건 skip 가능). 기능 감사 SSOT는 `PROJECT_AUDIT.md`를 참고하세요.
+검증 기준선: `python -m pytest -q` (opt-in Gemini smoke 1건 skip 가능). 기능 감사 SSOT는 `PROJECT_AUDIT.md`, 품질·아키텍처 감사는 `PROJECT_AUDIT_QUALITY.md`를 참고하세요.
 
 ---
 
@@ -303,6 +303,9 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 - **2026-08-03**: **미리보기 포커스/전체화면** (`F11` 순환, `Ctrl+F11`), 텍스트 상자 리사이즈·인라인 편집·원본 바로 적용·큐 일괄 삽입·실험적 영역 교체; 감사 후속(실패 플래그 리셋, busy 가드, redact hard-fail, 큐 경로 고정)
 - **2026-08-04 감사 후속**: 배치 워터마크 CJK·옵션(글자 크기/투명도), 페이지 범위 엄격 검증, 페이지 밖 텍스트 상자 hard-fail, AI 채팅 HTML 이스케이프, 채팅 디스크 저장/완료 알림/취소 시 대기 큐 환경설정, 비교 스크롤 리포트, OCR 텍스트 추출 옵션(`use_ocr`, Tesseract), AI 임시 평문 ACL·스트림 취소 보강; `PROJECT_AUDIT.md` 갱신
 - **2026-08-05 SOLID Round 2**: Worker 잔여 도메인(`ai`/`batch`/`compose`/`form`/`security`/`_pdf_helpers_impl`) 패키지화; UI textbox_impl·tab section builders·thumbnail grid mixins·preview interaction 분할; `PreviewWidgetHost`/`ThumbnailGridHost`; public import·mode/kwargs 불변. 설계: `docs/superpowers/specs/2026-08-05-code-split-solid-round2-design.md`
+- **2026-08-05 감사 잔여 후속**: 채팅 partial HTML 이스케이프·취소 중 partial 차단; `_is_pdf_encrypted` 삼상 복구; OCR 0성공 hard-fail; AI 요약/채팅 공용 스트림 cancel+close; 강제 종료 스윕 로그; 채팅 디스크 저장 프라이버시 안내; AI temp ACL 경고; 첨부 100MB 상한; 썸네일 로더 wait 보강; `tests/test_audit_2026_08_05_followup.py`
+- **2026-08-05 품질 감사(Track B) 후속**: AI 텍스트 캐시 종료 청소·closeEvent 연동; Worker/pending 민감 kwargs scrub; `get_pdf_info` i18n; PyMuPDF 미설치 기동 안내; 대용량 Undo 백업 스킵(200MB); FALLBACK 키 동기 스모크; structure budget 본체 가드; `PROJECT_AUDIT_QUALITY.md` / `tests/test_audit_2026_08_05_quality_followup.py`
+- **2026-08-05 품질 Track B 3단계**: AI Worker 도메인 분할; compare 픽셀 헬퍼 추출; 썸네일 pixmap LRU; monkeypatch 계약 SSOT(`src/ui/contracts`); `tests/test_monkeypatch_contracts.py`, `tests/test_thumbnail_pixmap_lru.py`
 
 ### v4.5.5
 - 미리보기 줌·패닝·인쇄 안정화 (Qt 인쇄 파이프라인)

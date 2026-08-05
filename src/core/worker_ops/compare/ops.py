@@ -38,6 +38,7 @@ from .helpers import (
     diff_blocks,
     draw_overlay_rect,
     normalize_block_text,
+    pixel_diff_ratio,
     scale_rect,
 )
 
@@ -81,33 +82,7 @@ class WorkerCompareOpsMixin(WorkerHost):
             max_pages = max(len(doc1), len(doc2))
 
             def _pixel_diff_ratio(p1: Any, p2: Any) -> float:
-                zoom = visual_dpi / 72.0
-                mat = fitz.Matrix(zoom, zoom)
-                pix1 = p1.get_pixmap(matrix=mat, alpha=False)
-                pix2 = p2.get_pixmap(matrix=mat, alpha=False)
-                # 크기 맞추기
-                w = min(pix1.width, pix2.width)
-                h = min(pix1.height, pix2.height)
-                if w <= 0 or h <= 0:
-                    return 1.0
-                if pix1.width != w or pix1.height != h:
-                    pix1 = fitz.Pixmap(pix1, w, h, None)
-                if pix2.width != w or pix2.height != h:
-                    pix2 = fitz.Pixmap(pix2, w, h, None)
-                s1 = pix1.samples
-                s2 = pix2.samples
-                n = min(len(s1), len(s2))
-                if n == 0:
-                    return 1.0
-                # 샘플링으로 속도 확보
-                step = max(1, n // 120000)
-                diff = 0
-                total = 0
-                for i in range(0, n, step):
-                    total += 1
-                    if s1[i] != s2[i]:
-                        diff += 1
-                return diff / max(1, total)
+                return pixel_diff_ratio(p1, p2, visual_dpi=visual_dpi)
 
             for index in range(max_pages):
                 self._check_cancelled()

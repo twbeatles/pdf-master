@@ -214,11 +214,15 @@ def test_shutdown_executor_deletes_cached_remote_uploads():
         }
     )
     AIService._chat_sessions = {("model", "a", 1): object()}
+    AIService._text_cache = OrderedDict({("p", 1, None, 1): ("secret-pdf-text", 10, {})})
+    AIService._text_cache_bytes = 10
 
     AIService.shutdown_executor()
 
     assert AIService._uploaded_file_cache == {}
     assert AIService._chat_sessions == {}
+    assert AIService._text_cache == {}
+    assert AIService._text_cache_bytes == 0
     assert client.files.deleted == ["files/a", "files/b"]
 
 

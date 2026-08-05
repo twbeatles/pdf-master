@@ -142,6 +142,14 @@ def _cleanup_cancelled_worker(self):
     except Exception:
         logger.debug("Temp cleanup after cancel failed", exc_info=True)
 
+    # 취소 경로에서도 민감 kwargs scrub
+    try:
+        from .helpers import scrub_sensitive_worker_kwargs
+
+        scrub_sensitive_worker_kwargs(getattr(worker, "kwargs", None))
+    except Exception:
+        logger.debug("Failed to scrub worker kwargs on cancel cleanup", exc_info=True)
+
     toast = ToastWidget(tm.get("msg_worker_cancelled"), toast_type='warning', duration=3000)
     toast.show_toast(self)
 
@@ -182,15 +190,23 @@ def _finalize_worker(self):
         self.worker.cancelled_signal.disconnect()
     except (TypeError, RuntimeError):
         pass  # 이미 해제되었거나 연결이 없는 경우
+    # 민감 kwargs 잔존 완화 (api_key / passwords 등)
+    try:
+        from .helpers import scrub_sensitive_worker_kwargs
+
+        scrub_sensitive_worker_kwargs(getattr(self.worker, "kwargs", None))
+    except Exception:
+        logger.debug("Failed to scrub worker kwargs on finalize", exc_info=True)
     self.worker.deleteLater()
     self.worker = None
 
 # 대기 큐 상한 — 과도한 연속 요청으로 메모리/UX 폭주 방지
 _MAX_PENDING_WORKERS = 8
 
-
 def _enqueue_pending_worker(self, mode, output_path=None, kwargs=None) -> bool:
     """대기 작업 FIFO 큐에 추가. 상한 초과 시 False."""
+    from .helpers import copy_kwargs_for_pending
+
     pending_workers = getattr(self, "_pending_workers", None)
     if pending_workers is None:
         self._pending_workers = []
@@ -203,11 +219,11 @@ def _enqueue_pending_worker(self, mode, output_path=None, kwargs=None) -> bool:
         {
             "mode": mode,
             "output_path": output_path,
-            "kwargs": dict(kwargs or {}),
+            # api_key/passwords 는 큐에 저장하지 않음 — 실행 직전 재주입
+            "kwargs": copy_kwargs_for_pending(kwargs),
         }
     )
     return True
-
 
 def _run_pending_worker(self):
     """대기 중인 작업이 있으면 자동 실행"""

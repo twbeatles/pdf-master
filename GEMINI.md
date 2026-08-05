@@ -453,7 +453,9 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 - **2026-08-03**: **미리보기 포커스/전체화면** (`F11` 순환, `Ctrl+F11`), 텍스트 상자 리사이즈·인라인 편집·원본 바로 적용·큐 일괄·영역 교체·`extract_text_in_rect`; 감사 후속 안정화; **SOLID 분할** (`markup_actions/`, Worker textbox/highlight, preview mixins)
 - **2026-08-04 감사 후속**: 배치 워터마크 CJK·옵션, 페이지 범위 엄격 검증, textbox 페이지 밖 hard-fail, 채팅 HTML 이스케이프·저장/알림/큐 환경설정, 비교 스크롤 리포트, OCR 추출 옵션, AI temp ACL·스트림 취소 보강; `PROJECT_AUDIT.md` 갱신
 - **2026-08-05 SOLID Round 2**: Worker `ai|batch|compose|form|security|_pdf_helpers_impl` 패키지 + UI textbox_impl/tab sections/thumbnail mixins/preview interaction Host 타입; public 계약 유지. 설계 `docs/superpowers/specs/2026-08-05-code-split-solid-round2-design.md`
-- 잔여 로드맵: compare 인터랙티브 리포트 고도화, SDK-level AI HTTP abort — 상세는 `PROJECT_AUDIT.md` (OCR optional 경로는 2026-08-04에 반영)
+- **2026-08-05 기능 감사 잔여 후속**: 채팅 partial HTML 이스케이프, `_is_pdf_encrypted` 삼상, OCR 0성공 hard-fail, AI 스트림 공용 cancel+close, 첨부 100MB 상한 등 — `PROJECT_AUDIT.md`, `tests/test_audit_2026_08_05_followup.py`
+- **2026-08-05 품질 감사 Track B**: AI text cache shutdown, kwargs scrub, `get_pdf_info` i18n, FITZ 기동 안내, Undo 대용량 스킵, AI ops 분할, 썸네일 pixmap LRU, monkeypatch 계약 SSOT — `PROJECT_AUDIT_QUALITY.md`, `tests/test_audit_2026_08_05_quality_followup.py`, `tests/test_monkeypatch_contracts.py`, `tests/test_thumbnail_pixmap_lru.py`
+- 잔여 로드맵: compare 인터랙티브 리포트 고도화, SDK-level AI HTTP abort, i18n 카탈로그 추가 분할 — 상세는 `PROJECT_AUDIT.md` / `PROJECT_AUDIT_QUALITY.md` (OCR optional 경로는 2026-08-04에 반영)
 
 ---
 

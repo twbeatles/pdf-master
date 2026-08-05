@@ -56,7 +56,12 @@ def _shutdown_worker_for_close(parent, worker) -> bool:
     if result != QMessageBox.StandardButton.Close:
         return False
 
-    logger.warning("User requested forced termination during close")
+    mode = str(getattr(worker, "mode", "") or "?")
+    logger.warning(
+        "User requested forced termination during close (mode=%s). "
+        "Output integrity is not guaranteed if a save was in progress.",
+        mode,
+    )
     # QThread.terminate 는 네이티브 강제 종료 — 파일 원자 저장 이후라면 원본은 대체로 안전하나
     # 진행 중 네이티브/파이썬 상태는 불명. 사용자 확인 문구에 위험 고지(i18n) 포함.
     worker.terminate()
@@ -65,9 +70,14 @@ def _shutdown_worker_for_close(parent, worker) -> bool:
     try:
         from ..core.temp_cleanup import cleanup_pdf_master_temp_files
 
-        cleanup_pdf_master_temp_files(include_in_progress=True, max_age_seconds=None)
+        removed = cleanup_pdf_master_temp_files(include_in_progress=True, max_age_seconds=None)
+        logger.warning(
+            "Force-terminate temp sweep finished (mode=%s, removed=%s)",
+            mode,
+            removed,
+        )
     except Exception:
-        logger.debug("Temp cleanup after force terminate failed", exc_info=True)
+        logger.warning("Temp cleanup after force terminate failed", exc_info=True)
     return True
 
 
@@ -278,10 +288,18 @@ class PDFMasterApp(
         except Exception:
             logger.debug("Shutdown temp cleanup failed", exc_info=True)
 
-        # 5. 채팅 히스토리 저장
+        # 5. AI 캐시·원격 업로드·텍스트 캐시 정리 (atexit 와 이중 호출 안전)
+        try:
+            from ..core.ai_service import AIService
+
+            AIService.shutdown_executor()
+        except Exception:
+            logger.debug("AIService.shutdown_executor on close failed", exc_info=True)
+
+        # 6. 채팅 히스토리 저장
         self._save_chat_histories()
 
-        # 6. 설정 저장
+        # 7. 설정 저장
         self._flush_settings_save()
         self._save_settings_on_exit()
 

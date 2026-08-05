@@ -18,6 +18,10 @@
 # - 2026-08-05: SOLID Round 2 — worker_ops ai/batch/compose/form/security + _pdf_helpers_impl;
 #   UI textbox_impl, tab_*_sections, thumbnail grid_* mixins, interaction_* , window_worker success/fail;
 #   PreviewWidgetHost/ThumbnailGridHost; public facades retained for analysis
+# - 2026-08-05: PROJECT_AUDIT residual + Quality Track B — AI stream/cancel, encrypted probe,
+#   OCR hard-fail, kwargs scrub, AI text-cache shutdown, get_pdf_info i18n, FITZ startup guard,
+#   undo large-source skip, AI ops split (temp_acl/prepare/handlers), thumbnail pixmap LRU,
+#   ui.contracts monkeypatch SSOT; see PROJECT_AUDIT.md + PROJECT_AUDIT_QUALITY.md
 # Validation: python -m pyright; python -m pytest -q (opt-in Gemini smoke skip);
 #   python main.py --smoke; python -m PyInstaller pdf_master.spec --clean;
 #   powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
@@ -126,6 +130,12 @@ hiddenimports += [
     'src.ui.tabs_ai.actions',  # Canonical AI tab actions implementation
     'src.ui.tabs_ai.actions_meta',  # Compatibility shim for legacy hidden imports
     'src.ui.tabs_ai.storage',  # Versioned path+mtime chat history storage helpers
+    # 2026-08-05 Quality Track B surfaces (also covered via collect_submodules below)
+    'src.ui.contracts',  # Monkeypatch contract SSOT (import-light)
+    'src.ui.thumbnail.pixmap_lru',  # Thumbnail pixmap LRU
+    'src.core.worker_ops.ai.temp_acl',
+    'src.core.worker_ops.ai.prepare',
+    'src.core.worker_ops.ai.handlers',
 ]
 
 # v4.5.3+: 폴더 기반 모듈 분할(hidden import 보강)
@@ -169,6 +179,7 @@ for package_name in [
     'src.ui.tabs_ai',
     'src.ui.preview_widget',
     'src.ui.thumbnail',
+    'src.ui.contracts',
     'src.ui.theme',
     'src.ui.progress',
     'src.ui.window_core',

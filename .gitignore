@@ -86,7 +86,12 @@ docs/**/worktrees/
 *.pyright.txt
 pyright-out*.txt
 .pytest_last_failed.txt
-
+# pytest / agent capture dumps written to repo root (not under .pytest_tmp/)
+/pytest_out.txt
+/pytest_full.txt
+/pytest_*.txt
+# Occasional local verification dumps
+/pyright_*.txt
 # Ephemeral agent/session scratch (never commit)
 .claude/
 .cursor/

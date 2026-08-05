@@ -4,7 +4,7 @@ import logging
 import os
 from typing import Any
 
-from ..constants import MAX_FILE_SIZE, MAX_PAGE_RANGE_LENGTH
+from ..constants import MAX_ATTACHMENT_SIZE, MAX_FILE_SIZE, MAX_PAGE_RANGE_LENGTH
 from ..optional_deps import fitz
 from ..pdf_validation import validate_pdf_file
 from .dispatch import get_operation_spec
@@ -207,8 +207,24 @@ def preflight_inputs(host: Any) -> bool:
 
     for key in ("image_path", "signature_path", "attach_path"):
         path = kwargs.get(key)
-        if isinstance(path, str) and not validate_non_pdf_size(host, path, emit_error=True):
+        if not isinstance(path, str) or not path:
+            continue
+        if not validate_non_pdf_size(host, path, emit_error=True):
             return False
+        # 첨부는 메모리 전체 적재 — 별도 상한
+        if key == "attach_path":
+            try:
+                attach_size = os.path.getsize(path)
+            except OSError:
+                host.error_signal.emit(host._get_msg("err_file_access_denied", path))
+                return False
+            if attach_size > MAX_ATTACHMENT_SIZE:
+                size_mb = attach_size / (1024 * 1024)
+                max_mb = MAX_ATTACHMENT_SIZE / (1024 * 1024)
+                host.error_signal.emit(
+                    host._get_msg("err_attachment_too_large", f"{size_mb:.1f}", f"{max_mb:.0f}")
+                )
+                return False
 
     for key in ("files", "file_paths"):
         if key not in kwargs:

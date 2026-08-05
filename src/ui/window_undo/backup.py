@@ -14,6 +14,22 @@ def _create_backup_for_undo(self, source_path: str) -> str:
     if not source_path or not os.path.exists(source_path):
         return ""
     try:
+        from ...core.constants import UNDO_BACKUP_MAX_SOURCE_BYTES
+
+        try:
+            source_size = os.path.getsize(source_path)
+        except OSError:
+            source_size = 0
+        if source_size > int(UNDO_BACKUP_MAX_SOURCE_BYTES):
+            # 대용량 전체 복사 비용 회피 — 호출측에서 undo unavailable 안내
+            logger.info(
+                "Skip undo backup for large source (%s bytes > %s): %s",
+                source_size,
+                UNDO_BACKUP_MAX_SOURCE_BYTES,
+                source_path,
+            )
+            return ""
+
         import uuid
         backup_name = f"undo_{uuid.uuid4().hex[:8]}_{os.path.basename(source_path)}"
         backup_path = os.path.join(self._undo_backup_dir, backup_name)

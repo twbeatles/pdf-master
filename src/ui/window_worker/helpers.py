@@ -10,6 +10,36 @@ from ...core.worker_runtime import get_operation_spec
 logger = logging.getLogger(__name__)
 
 
+# Worker kwargs / pending 큐에서 제거·비우기 대상 민감 키
+SENSITIVE_WORKER_KWARG_KEYS = frozenset(
+    {
+        "api_key",
+        "password",
+        "passwords",
+        "owner_password",
+        "user_password",
+        "user_pw",
+        "owner_pw",
+    }
+)
+
+
+def scrub_sensitive_worker_kwargs(kwargs: object) -> None:
+    """민감 키를 kwargs dict에서 제거 (in-place)."""
+    if not isinstance(kwargs, dict):
+        return
+    for key in list(kwargs.keys()):
+        if key in SENSITIVE_WORKER_KWARG_KEYS:
+            kwargs.pop(key, None)
+
+
+def copy_kwargs_for_pending(kwargs: object) -> dict:
+    """대기 큐용 kwargs 복사 — 민감 키는 저장하지 않는다."""
+    base = dict(kwargs) if isinstance(kwargs, dict) else {}
+    scrub_sensitive_worker_kwargs(base)
+    return base
+
+
 def _is_undo_eligible_mode(mode, kwargs) -> bool:
     spec = get_operation_spec(mode)
     if spec is None or not spec.undo_eligible:

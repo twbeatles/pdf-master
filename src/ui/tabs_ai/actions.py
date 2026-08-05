@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 import logging
 import os
 
@@ -156,9 +155,11 @@ def _ask_ai_question(self):
     self._record_chat_entry(history_key, "user", question)
     self._save_chat_histories()
 
-    # HTML 주입 방지: 사용자 입력 이스케이프 (감사 §3.4)
+    # HTML 주입 방지: 사용자 입력 이스케이프 (감사 §3.1)
+    from ..window_worker.results import format_chat_user_html
+
     self.txt_chat_history.append(
-        f"<b>{tm.get('chat_user_prefix')}</b> {html.escape(question, quote=True)}"
+        format_chat_user_html(tm.get("chat_user_prefix"), question)
     )
     self.txt_chat_history.append(f"<i>{tm.get('msg_ai_thinking')}</i>")
     self.txt_ai_question.clear()
@@ -190,15 +191,18 @@ def _load_chat_history_for_path(self, path: str):
     self.txt_chat_history.clear()
     if not path:
         return
+    from ..window_worker.results import format_chat_assistant_html, format_chat_user_html
+
     history = self._chat_histories.get(_chat_history_key(path), [])
     for entry in history:
         role = entry.get("role")
         content = str(entry.get("content", "") or "")
-        safe = html.escape(content, quote=True)
         if role == "user":
-            self.txt_chat_history.append(f"<b>{tm.get('chat_user_prefix')}</b> {safe}")
+            self.txt_chat_history.append(format_chat_user_html(tm.get("chat_user_prefix"), content))
         elif role == "assistant":
-            self.txt_chat_history.append(f"<b>{tm.get('chat_assistant_prefix')}</b> {safe}")
+            self.txt_chat_history.append(
+                format_chat_assistant_html(tm.get("chat_assistant_prefix"), content)
+            )
             self.txt_chat_history.append("<hr>")
 
 

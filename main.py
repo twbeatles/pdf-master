@@ -80,6 +80,21 @@ def main() -> int:
     logger.info("PDF Master starting...")
 
     try:
+        # PyMuPDF 미설치 시 조기 안내 (proxy 예외 전에 사용자 메시지)
+        try:
+            from src.core.optional_deps import FITZ_AVAILABLE
+        except Exception:
+            FITZ_AVAILABLE = True  # import 실패 시 기존 경로 유지
+        if not FITZ_AVAILABLE and not smoke_mode:
+            app = QApplication(app_argv)
+            QMessageBox.critical(
+                None,
+                tm.get("err_fitz_required_title"),
+                tm.get("err_fitz_required_body"),
+            )
+            logger.critical("PyMuPDF (fitz) is not available; aborting startup")
+            return 1
+
         app = QApplication(app_argv)
         app.setFont(QFont("Segoe UI", 9))  # Windows 기본 폰트 크기 설정
         app_icon_path = resource_path("assets", "app_icon.png")
