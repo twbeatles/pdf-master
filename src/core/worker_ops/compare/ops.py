@@ -33,6 +33,14 @@ from .._pdf_helpers import (
     _sample_diff_text,
 )
 
+from .helpers import (
+    collect_text_blocks,
+    diff_blocks,
+    draw_overlay_rect,
+    normalize_block_text,
+    scale_rect,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -40,50 +48,11 @@ class WorkerCompareOpsMixin(WorkerHost):
     def _legacy_compare_pdfs(self):
         import difflib
 
-        def _normalize_block_text(text: Any) -> str:
-            return " ".join(str(text or "").split()).casefold()
-
-        def _collect_text_blocks(page: Any) -> list[dict[str, Any]]:
-            blocks: list[dict[str, Any]] = []
-            for block in page.get_text("blocks"):
-                if len(block) < 7 or block[6] != 0:
-                    continue
-                normalized = _normalize_block_text(block[4])
-                if not normalized:
-                    continue
-                blocks.append({"text": normalized, "rect": fitz.Rect(block[:4])})
-            return blocks
-
-        def _diff_blocks(source_blocks: list[dict[str, Any]], target_blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
-            source_counter = Counter(block["text"] for block in source_blocks)
-            target_counter = Counter(block["text"] for block in target_blocks)
-            remaining = source_counter - target_counter
-            consumed: Counter[str] = Counter()
-            diff_blocks: list[dict[str, Any]] = []
-            for block in source_blocks:
-                key = block["text"]
-                if remaining[key] <= consumed[key]:
-                    continue
-                consumed[key] += 1
-                diff_blocks.append(block)
-            return diff_blocks
-
-        def _scale_rect(rect: Any, source_rect: Any, canvas_rect: Any) -> Any:
-            width_scale = canvas_rect.width / source_rect.width if source_rect.width else 1.0
-            height_scale = canvas_rect.height / source_rect.height if source_rect.height else 1.0
-            return fitz.Rect(
-                rect.x0 * width_scale,
-                rect.y0 * height_scale,
-                rect.x1 * width_scale,
-                rect.y1 * height_scale,
-            )
-
-        def _draw_overlay_rect(page: Any, rect: Any, *, stroke: tuple[float, float, float], fill: tuple[float, float, float]):
-            page.draw_rect(rect, color=stroke, width=1.5)
-            shape = page.new_shape()
-            shape.draw_rect(rect)
-            shape.finish(color=stroke, fill=fill, fill_opacity=0.25)
-            shape.commit()
+        _normalize_block_text = normalize_block_text
+        _collect_text_blocks = collect_text_blocks
+        _diff_blocks = diff_blocks
+        _scale_rect = scale_rect
+        _draw_overlay_rect = draw_overlay_rect
 
         file_path1 = _as_str(self.kwargs.get("file_path1"))
         file_path2 = _as_str(self.kwargs.get("file_path2"))

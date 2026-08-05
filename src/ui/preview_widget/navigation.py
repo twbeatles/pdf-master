@@ -1,5 +1,6 @@
 from __future__ import annotations
-from __future__ import annotations
+
+from .._typing import PreviewWidgetHost
 import logging
 from PyQt6.QtCore import QEvent, QModelIndex, QPointF, QRect, QRectF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QCloseEvent, QColor
@@ -31,7 +32,7 @@ from .search import PreviewSearchLineEdit
 from .text_placement import TextPlacementOverlay
 
 
-class PreviewNavigationMixin(object):
+class PreviewNavigationMixin(PreviewWidgetHost):
     def go_to_page(self, page_index: int, emit_signal: bool = False):
         _ = emit_signal
         if self._doc is None or self._total_pages <= 0:

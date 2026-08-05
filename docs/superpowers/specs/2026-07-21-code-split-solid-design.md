@@ -125,3 +125,10 @@
 
 - `python -m pytest -q` — 통과 (opt-in Gemini smoke skip 가능)
 - structure budget: facade 경로 예산 확장 (`tests/test_worker_structure_budget.py`)
+
+---
+
+## See also: Round 2 (2026-08-05)
+
+후속 분할·Host 타입·잔여 Worker 패키지 대칭은  
+`docs/superpowers/specs/2026-08-05-code-split-solid-round2-design.md` 를 참고한다.

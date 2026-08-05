@@ -74,12 +74,18 @@ terminals/
 agent-tools/
 .sessions/
 *.session.md
-# Spec Kit / agent ephemeral (repo-local; not product source)
+# Spec Kit / agent ephemeral at **repo root only**
+# (do NOT use bare `specs/` — it also matched `docs/superpowers/specs/` and hid design docs)
 .specify/
-specs/
+/specs/
 
 # Optional design notes under docs/ are tracked; ignore only local worktrees
 docs/**/worktrees/
+
+# Local one-off analysis dumps occasionally created in cwd
+*.pyright.txt
+pyright-out*.txt
+.pytest_last_failed.txt
 
 # Ephemeral agent/session scratch (never commit)
 .claude/

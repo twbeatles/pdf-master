@@ -1,5 +1,6 @@
 from __future__ import annotations
-from __future__ import annotations
+
+from .._typing import PreviewWidgetHost
 import logging
 from PyQt6.QtCore import QEvent, QModelIndex, QPointF, QRect, QRectF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QCloseEvent, QColor
@@ -31,7 +32,7 @@ from .search import PreviewSearchLineEdit
 from .text_placement import TextPlacementOverlay
 
 
-class PreviewZoomMixin(object):
+class PreviewZoomMixin(PreviewWidgetHost):
     def _current_zoom_factor(self) -> float:
         zoom = float(self.pdf_view.zoomFactor() or 1.0)
         return max(0.1, min(5.0, zoom))

@@ -302,6 +302,7 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 - **2026-07-31**: **Preview drag text insert** — `insert_textbox` gains drag placement, W/H, CJK/Base-14 fonts, opacity, 90° rotation steps, align/layer, and isolated redact/textbox drag targets
 - **2026-08-03**: **Preview focus/fullscreen** (`F11` cycle, `Ctrl+F11`), textbox resize/inline edit/apply-to-original/queue batch/experimental region replace; audit follow-up (post-flag reset, busy guards, redact hard-fail, queue path pin)
 - **2026-08-04 audit follow-up**: batch watermark CJK + options, strict page-range validation, outside-page textbox hard-fail, AI chat HTML escape, prefs for chat disk save / notify mode / clear pending on cancel, scrollable compare report, optional OCR extract (`use_ocr`), AI temp ACL + stream cancel hardening; `PROJECT_AUDIT.md` updated
+- **2026-08-05 SOLID Round 2**: package remaining Worker domains (`ai`/`batch`/`compose`/`form`/`security`/`_pdf_helpers_impl`); UI textbox_impl, tab section builders, thumbnail grid mixins, preview interaction split; `PreviewWidgetHost`/`ThumbnailGridHost`; public imports and mode/kwargs contracts unchanged. Design: `docs/superpowers/specs/2026-08-05-code-split-solid-round2-design.md`
 
 ### v4.5.5
 - Preview zoom, pan, and print stability (Qt print pipeline)

@@ -1,5 +1,6 @@
 from __future__ import annotations
-from __future__ import annotations
+
+from .._typing import PreviewWidgetHost
 import logging
 from PyQt6.QtCore import QEvent, QModelIndex, QPointF, QRect, QRectF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QCloseEvent, QColor
@@ -31,7 +32,7 @@ from .search import PreviewSearchLineEdit
 from .text_placement import TextPlacementOverlay
 
 
-class PreviewSearchPanelMixin(object):
+class PreviewSearchPanelMixin(PreviewWidgetHost):
     def set_search_panel_visible(self, visible: bool) -> None:
         next_visible = bool(visible)
         changed = self._search_panel_visible != next_visible

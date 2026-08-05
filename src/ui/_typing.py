@@ -181,3 +181,161 @@ class MainWindowHost:
 
     def _remember_output_location(self, selected_path: str) -> None:
         ...
+
+class PreviewWidgetHost:
+    """ZoomablePreviewWidget 믹스인 교차 속성/메서드 surface (pyright)."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        # QWidget 등 MRO 상위와 cooperative super
+        super().__init__(*args, **kwargs)
+
+    # 문서/페이지
+    _doc: Any
+    _current_page: int
+    _total_pages: int
+    _navigation_enabled: bool
+    pdf_view: Any
+    page_label: Any
+    btn_prev: Any
+    btn_next: Any
+    btn_print: Any
+    btn_page_setup: Any
+    zoom_label: Any
+    pageChanged: Any
+    zoomChanged: Any
+    printRequested: Any
+    pageSetupRequested: Any
+
+    # 검색/북마크
+    _search_panel_visible: bool
+    _active_search_query: str
+    _pending_restore_search_row: int | None
+    _search_refresh_timer: Any
+    search_model: Any
+    bookmark_model: Any
+    search_input: Any
+    search_results: Any
+    bookmark_tree: Any
+    side_tabs: Any
+    btn_toggle_search: Any
+    searchVisibilityChanged: Any
+
+    # 영역 선택 / 텍스트 배치 / 큐 고스트
+    _region_select_mode: bool
+    _region_overlay: Any
+    _text_placement_mode: bool
+    _text_placement_overlay: Any
+    _queue_ghost_overlay: Any
+    _queue_ghost_boxes: list
+    _text_placement_pts: Any
+    _text_placement_text: str
+    _text_placement_color: Any
+    _text_placement_fontsize: float
+    _text_placement_align: int
+    _text_placement_opacity: float
+    regionSelected: Any
+    regionSelectModeChanged: Any
+    textPlacementMoved: Any
+    textPlacementModeChanged: Any
+    textPlacementTextEdited: Any
+
+    # 교차 메서드 (믹스인 간 호출)
+    go_to_page: Any
+    set_document: Any
+    set_page_state: Any
+    set_navigation_enabled: Any
+    set_search_panel_visible: Any
+    set_region_select_mode: Any
+    set_text_placement_mode: Any
+    _update_navigation_buttons: Any
+    _schedule_search_refresh: Any
+    _refresh_search_results: Any
+    _on_search_requested: Any
+    _select_relative_search_result: Any
+    _update_search_toggle_text: Any
+    _set_custom_zoom: Any
+    _current_zoom_factor: Any
+    _sync_region_overlay_geometry: Any
+    _refresh_text_placement_overlay: Any
+    _refresh_queue_ghost_overlay: Any
+    _page_display_rect_in_view: Any
+    _on_region_selection_finished: Any
+    _on_region_selection_cancelled: Any
+    _on_text_placement_box_moved: Any
+    _on_text_placement_cancelled: Any
+    _on_text_placement_text_edited: Any
+    closeEvent: Any
+    eventFilter: Any
+
+
+class ThumbnailGridHost:
+    """ThumbnailGridWidget 믹스인 교차 속성/메서드 surface (pyright)."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+    _pdf_path: str
+    _thumbnails: list
+    _active_index: int
+    _selected_indices: set
+    _selection_anchor_index: int
+    _selection_mode: str
+    _columns: int
+    _loader_thread: Any
+    _is_dark_theme: bool
+    _loaded_indices: set
+    _requested_indices: set
+    _pending_indices: set
+    _active_batch_indices: list
+    _total_pages: int
+    _pdf_password: str | None
+    _ROW_HEIGHT: int
+    _PREFETCH_ROWS: int
+    _MAX_BATCH_SIZE: int
+
+    grid_layout: Any
+    grid_container: Any
+    scroll_area: Any
+    loading_label: Any
+    info_label: Any
+    columns_spin: Any
+
+    pageSelected: Any
+    pageDoubleClicked: Any
+    loadingProgress: Any
+    selectedPagesChanged: Any
+
+    _setup_ui: Any
+    _set_loading_message: Any
+    show_status_message: Any
+    load_pdf: Any
+    _disconnect_loader_thread: Any
+    _cleanup_loader_thread: Any
+    _clear_thumbnails: Any
+    clear: Any
+    _arrange_grid: Any
+    _visible_index_window: Any
+    _request_visible_thumbnails: Any
+    _start_next_loader: Any
+    _is_active_loader_sender: Any
+    _on_thumbnail_ready: Any
+    _on_loader_progress: Any
+    _on_loading_complete: Any
+    _on_columns_changed: Any
+    _on_scroll_changed: Any
+    _refresh_thumbnail_states: Any
+    _emit_selected_pages_changed: Any
+    _set_selected_indices: Any
+    set_selection_mode: Any
+    set_active_page: Any
+    _apply_single_selection: Any
+    _on_thumbnail_clicked: Any
+    get_selected_page: Any
+    selection_mode: Any
+    get_selected_pages: Any
+    get_active_page: Any
+    select_page: Any
+    set_theme: Any
+    closeEvent: Any
+    sender: Any
+

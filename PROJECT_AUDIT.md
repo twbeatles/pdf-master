@@ -1,10 +1,28 @@
 # Project Audit
 
-> 감사 기준일: **2026-08-04**  
+> 감사 기준일: **2026-08-04** (구조 분할 후속: **2026-08-05**)  
 > 대상 버전: **PDF Master v4.5.6**  
 > 범위: 기능 구현 관점 (예외·검증·상태/비동기·경로·설정·보안·문서 정합·테스트)  
 > 분석 수단: `README.md`, `CLAUDE.md`, CodeGraph MCP (`codegraph_explore`), 보조 파일 열람·grep·`pytest`  
 > **SSOT:** 본 파일 (`PROJECT_AUDIT.md`)이 현행 기능 감사 문서  
+
+---
+
+## 0b. Structure Follow-up (2026-08-05 SOLID Round 2)
+
+기능 동작 변경 없이 **코드 분할·Host 타입·facade 대칭** 후속. 상세 설계: `docs/superpowers/specs/2026-08-05-code-split-solid-round2-design.md`.
+
+| 영역 | 상태 |
+|------|------|
+| Worker `ai`/`batch`/`compose`/`form`/`security` 패키지 + `*_ops.py` facade | **완료** |
+| `_pdf_helpers_impl` + facade | **완료** |
+| UI textbox_impl / tab section builders / thumbnail mixins / interaction split | **완료** |
+| `PreviewWidgetHost` / `ThumbnailGridHost` | **완료** (`src/core`+`src/ui` pyright 0) |
+| `main_window_worker` Toast/WorkerThread monkeypatch surface | **유지** (본문 helper 분리) |
+| `tabs_ai/actions.py` 단일 파일 monkeypatch 계약 | **유지** |
+| public import / mode / kwargs | **불변** |
+
+**검증:** `python -m pytest -q` 통과 (opt-in Gemini smoke skip 가능); structure budget `tests/test_worker_structure_budget.py`.
 
 ---
 
@@ -347,11 +365,13 @@ python -m pytest -q
 
 | 출처 | 상태 |
 |------|------|
-| CLAUDE.md Current Behavior / 아키텍처 | 구현과 **대체로 일치** (SOLID 분할, textbox, focus, cancel 정책) |
-| README 기능·단축키 (F11 등) | **정합 양호** (2026-08-03 문서 공백은 해소된 상태) |
-| README/CLAUDE `pytest -q` 그린 기준선 | **현재 불일치** — i18n UI 스모크 1 fail (§3.2) |
-| OCR·SDK abort 등 로드맵 | 문서의 “잔여” 서술과 구현 공백 **일치** |
+| CLAUDE.md Current Behavior / 아키텍처 | 구현과 **일치** (SOLID Round 1–2, textbox, focus, cancel 정책, Host 타입) |
+| README / README_EN 변경 이력 | **2026-08-05 SOLID Round 2** 반영 |
+| GEMINI.md / `pdf_master.spec` 주석 | Round 2 패키지·검증 경로 반영 |
+| README/CLAUDE `pytest -q` 그린 기준선 | **정합** — 2026-08-04 §3.2 테마 QSS 이슈 해결 후 그린 유지 |
+| OCR 경로 | optional `use_ocr` 구현 반영; SDK-level AI HTTP abort는 잔여 |
 | `cancel_cleanup=same_path_restore` 명칭 | 문서/스펙 이름이 “복원”을 암시하나 구현은 보존 중심 — **부분 불일치** |
+| `.gitignore` `specs/` | 루트 전용 `/specs/` 로 수정 — `docs/superpowers/specs/` 설계 문서 추적 가능 |
 
 ---
 

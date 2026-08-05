@@ -302,6 +302,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 - **2026-07-31**: **미리보기 드래그 텍스트 삽입** — `insert_textbox`에 위치 드래그·W/H·CJK/Base-14 폰트·투명도·90° 회전·정렬·레이어 옵션, redact/textbox 드래그 타겟 격리
 - **2026-08-03**: **미리보기 포커스/전체화면** (`F11` 순환, `Ctrl+F11`), 텍스트 상자 리사이즈·인라인 편집·원본 바로 적용·큐 일괄 삽입·실험적 영역 교체; 감사 후속(실패 플래그 리셋, busy 가드, redact hard-fail, 큐 경로 고정)
 - **2026-08-04 감사 후속**: 배치 워터마크 CJK·옵션(글자 크기/투명도), 페이지 범위 엄격 검증, 페이지 밖 텍스트 상자 hard-fail, AI 채팅 HTML 이스케이프, 채팅 디스크 저장/완료 알림/취소 시 대기 큐 환경설정, 비교 스크롤 리포트, OCR 텍스트 추출 옵션(`use_ocr`, Tesseract), AI 임시 평문 ACL·스트림 취소 보강; `PROJECT_AUDIT.md` 갱신
+- **2026-08-05 SOLID Round 2**: Worker 잔여 도메인(`ai`/`batch`/`compose`/`form`/`security`/`_pdf_helpers_impl`) 패키지화; UI textbox_impl·tab section builders·thumbnail grid mixins·preview interaction 분할; `PreviewWidgetHost`/`ThumbnailGridHost`; public import·mode/kwargs 불변. 설계: `docs/superpowers/specs/2026-08-05-code-split-solid-round2-design.md`
 
 ### v4.5.5
 - 미리보기 줌·패닝·인쇄 안정화 (Qt 인쇄 파이프라인)

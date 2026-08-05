@@ -72,6 +72,26 @@ class WorkerHost:
     def _check_cancelled(self) -> None:
         ...
 
+    # annotation textbox helpers (batch watermark 등 교차 호출)
+    def _resolve_textbox_fontname(self, page: Any, fontname: str, text: str = "") -> str:
+        ...
+
+    def _write_textbox_content(
+        self,
+        page: Any,
+        fitz_rect: Any,
+        text: str,
+        *,
+        fontsize: int,
+        fontname: str,
+        color: tuple[float, ...],
+        align: int,
+        rotation: int,
+        opacity: float,
+        overlay: bool,
+    ) -> bool:
+        ...
+
     def _resolve_page_index(
         self,
         raw_page_index: object,

@@ -15,6 +15,9 @@
 # - 2026-08-03: preview focus/fullscreen + textbox editor UX; SOLID split —
 #   tabs_advanced/markup_actions/, annotation/highlight_markup+textbox, preview_widget mixins;
 #   modes: insert_textboxes, replace_text_in_rect, extract_text_in_rect
+# - 2026-08-05: SOLID Round 2 — worker_ops ai/batch/compose/form/security + _pdf_helpers_impl;
+#   UI textbox_impl, tab_*_sections, thumbnail grid_* mixins, interaction_* , window_worker success/fail;
+#   PreviewWidgetHost/ThumbnailGridHost; public facades retained for analysis
 # Validation: python -m pyright; python -m pytest -q (opt-in Gemini smoke skip);
 #   python main.py --smoke; python -m PyInstaller pdf_master.spec --clean;
 #   powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
@@ -141,6 +144,12 @@ for package_name in [
     'src.core.worker_ops.page',
     'src.core.worker_ops.transform',
     'src.core.worker_ops.compare',
+    'src.core.worker_ops.ai',
+    'src.core.worker_ops.batch',
+    'src.core.worker_ops.compose',
+    'src.core.worker_ops.form',
+    'src.core.worker_ops.security',
+    'src.core.worker_ops._pdf_helpers_impl',
     'src.core.worker_runtime',
     'src.core.ai',
     'src.core.i18n_catalogs',
@@ -149,8 +158,14 @@ for package_name in [
     'src.core._undo_impl',
     'src.ui.common_widgets',
     'src.ui.tabs_basic',
+    'src.ui.tabs_basic.security_impl',
     'src.ui.tabs_advanced',
     'src.ui.tabs_advanced.tab_builders',
+    'src.ui.tabs_advanced.tab_builders.edit_sections',
+    'src.ui.tabs_advanced.tab_builders.markup_sections',
+    'src.ui.tabs_advanced.tab_builders.misc_sections',
+    'src.ui.tabs_advanced.markup_actions',
+    'src.ui.tabs_advanced.markup_actions.textbox_impl',
     'src.ui.tabs_ai',
     'src.ui.preview_widget',
     'src.ui.thumbnail',

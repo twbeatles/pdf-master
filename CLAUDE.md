@@ -9,6 +9,8 @@
 - PyMuPDF deep-util pass (v4.5.6): `compress` can downsample/re-encode images and subset fonts (`compact`/`web`); cleanup package (`cleanup_ops` facade) covers blank/dedupe pages, bookmark split, auto TOC, sanitize, and N-up; crop supports `content` mode; `redact_area`, `flatten_form`, encrypt `permissions`, compare `visual`/`both`, and `convert_to_svg` are registered Worker modes with Advanced/Security UI.
 - SOLID split (2026-07-21): large worker domains live under `worker_ops/{annotation,extract,cleanup,page,transform,compare}/` with thin `*_ops.py` facades; settings/constants/undo use `_*-impl` packages; progress UI under `ui/progress/`.
 - SOLID split (2026-08-03): `tabs_advanced/markup_actions/` (annotations/redact/shapes_links/textbox + `deps`); Worker `annotation/highlight_markup.py` + `annotation/textbox.py` under `markup.py` facade; `preview_widget` mixins (`document_api`/`navigation`/`zoom`/`search_panel`/`theme_api`/`interaction_overlays`) composed in thin `widget.py`. Public imports `actions_markup`, `WorkerAnnotationMarkupMixin`, `ZoomablePreviewWidget` unchanged.
+- SOLID split Round 2 (2026-08-05): UI `markup_actions/textbox_impl/`; Worker `textbox_helpers` + `compare/helpers`; thumbnail `grid_*` mixins; `text_placement_geometry`; tab_builders `edit_sections/`·`markup_sections/`; Worker `ai|batch|compose|form|security` packages + `_pdf_helpers_impl/` facades. Public import paths and mode/kwargs contracts unchanged.
+- SOLID Round 2 cleanup: `PreviewWidgetHost`/`ThumbnailGridHost`; `interaction_{region,placement,queue}`; `window_worker/success|fail`; `file_selection`→drop_zone/file_selector; `tabs_basic/security_impl`; `misc_sections`. `tabs_ai/actions.py` remains single-file (monkeypatch/`__module__` contract). ToastWidget/WorkerThread surface stays on `main_window_worker.py`.
 - 2026-07-22 PROJECT_AUDIT follow-up: `src/core/temp_cleanup.py` sweeps `pdf_master_ai_*` / `.pdf_master_*` orphans on startup/shutdown/cancel/force-terminate; thumbnail loader signals use sender guard; AI `retry_with_backoff` sleeps in slices and does not retry cancel; blank/dedupe/sanitize UI confirm dialogs; cancel cleanup uses only `created_output_paths` (no mtime heuristic); `list_annotations` OperationSpec is `output_kind=text`; batch encrypt tip documents default permissions; chat session create is single-flight per cache key.
 - 2026-07-27 PROJECT_AUDIT follow-up: functional audit SSOT is `PROJECT_AUDIT.md` (validation tests no longer require legacy FUNCTIONAL audit files); AI tab unlocks encrypted PDFs via preview password then Worker temp decrypt; `merge` fails when zero pages survive; AI chat `_get_or_create_chat` propagates `cancel_check` to upload; batch encrypt exposes permission checkboxes; blank/dedupe confirm dialogs show dry-run removal estimates; preview **drag region select** for `redact_area` (`src/ui/preview_widget/region_select.py` + `ZoomablePreviewWidget.set_region_select_mode`).
 - 2026-07-31 positioned text insert: Advanced Edit `insert_textbox` supports preview drag placement (shared region-select overlay), W/H, CJK (`insert_font` embed) / Base-14 fonts, opacity, 90°-step rotation, align, layer; `_region_select_target` isolates redact vs textbox consumers.
@@ -104,14 +106,15 @@ pdf-master/
     │       ├── page/ + page_ops.py
     │       ├── transform/ + transform_ops.py
     │       ├── compare/ + compare_ops.py
-    │       ├── form_ops.py
-    │       ├── compose_ops.py
-    │       ├── security_ops.py
-    │       ├── batch_ops.py
-    │       ├── pdf_ops.py          # compatibility shim
-    │       └── ai_ops.py
+    │       ├── form/ + form_ops.py      # Round 2 package + facade
+    │       ├── compose/ + compose_ops.py
+    │       ├── security/ + security_ops.py
+    │       ├── batch/ + batch_ops.py
+    │       ├── ai/ + ai_ops.py
+    │       ├── _pdf_helpers_impl/ + _pdf_helpers.py
+    │       └── pdf_ops.py               # compatibility shim
     └── ui/
-        ├── _typing.py                   # UI mixin host contracts
+        ├── _typing.py                   # MainWindowHost + PreviewWidgetHost + ThumbnailGridHost
         ├── main_window.py
         ├── main_window_config.py
         ├── main_window_tabs_basic.py     # 호환 shim
@@ -121,23 +124,23 @@ pdf-master/
         ├── main_window_preview.py        # 호환 shim
         ├── main_window_worker.py         # run_worker/on_success 등 (Toast monkeypatch 계약)
         ├── main_window_undo.py           # 호환 shim
-        ├── tabs_basic/
+        ├── tabs_basic/                  # security_impl/ + security.py facade 등
         ├── tabs_advanced/
-        │   ├── markup_actions/          # annotations/redact/shapes_links/textbox + deps
+        │   ├── markup_actions/          # annotations/redact/shapes_links/textbox + textbox_impl/
         │   ├── actions_markup.py        # public facade
         │   ├── textbox_session.py       # 큐·후처리 세션 상태
-        │   └── tab_builders/
-        ├── tabs_ai/
-        ├── common_widgets/
-        ├── preview_widget/              # widget.py 셸 + document/nav/zoom/search/interaction mixins
-        │   ├── text_placement.py
+        │   └── tab_builders/            # edit_sections/ markup_sections/ misc_sections/
+        ├── tabs_ai/                     # actions.py 단일 유지 (monkeypatch 계약)
+        ├── common_widgets/              # drop_zone + file_selector + file_selection facade
+        ├── preview_widget/              # shell + mixins + interaction_{region,placement,queue}
+        │   ├── text_placement.py + text_placement_geometry.py
         │   ├── queue_overlay.py
         │   └── region_select.py
-        ├── thumbnail/
+        ├── thumbnail/                   # grid shell + grid_{layout,loading,selection,theme}
         ├── theme/
         ├── window_core/
         ├── window_preview/              # focus.py, fullscreen_host.py, panel, document…
-        ├── window_worker/
+        ├── window_worker/               # lifecycle + success.py + fail.py
         ├── window_undo/
         ├── progress/                    # overlay + spinner 구현
         ├── progress_overlay.py          # thin facade
@@ -791,9 +794,19 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-08-03)*
+*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-08-05)*
 
 ---
+
+## 2026-08-05 SOLID Round 2 코드 분할 Addendum
+
+- 설계: `docs/superpowers/specs/2026-08-05-code-split-solid-round2-design.md` (이전 `2026-07-21` 설계 후속).
+- Worker: `ai`/`batch`/`compose`/`form`/`security` 패키지 + thin `*_ops.py`; `_pdf_helpers_impl/`; `annotation/textbox_helpers.py`; `compare/helpers.py`.
+- UI: `markup_actions/textbox_impl/`; tab_builders `edit|markup|misc_sections/`; thumbnail `grid_*` mixins; `text_placement_geometry`; `interaction_{region,placement,queue}`; `common_widgets` drop_zone/file_selector; `window_worker/success|fail`.
+- pyright: `PreviewWidgetHost` / `ThumbnailGridHost` (cooperative `__init__`). `src/core`+`src/ui` 0 errors.
+- 의도적 유지: `main_window_worker.py` ToastWidget/WorkerThread 모듈 monkeypatch; `tabs_ai/actions.py` 단일 파일 (`AI_AVAILABLE`/`__module__` 계약).
+- public import·Worker mode·kwargs 불변. structure budget: `tests/test_worker_structure_budget.py`.
+- 검증: `python -m pyright src/core src/ui`; `python -m pytest -q` (opt-in Gemini smoke skip 가능).
 
 ## 2026-07-31 Positioned Text Insert Addendum
 
@@ -831,10 +844,10 @@ for i, page in enumerate(pages):
 
 - Worker 대형 도메인: `annotation` / `extract` / `cleanup` / `page` / `transform` / `compare` 패키지 + thin `*_ops.py` facade.
 - Core: `settings` → `_settings_impl/`, `constants` → `_constants_impl/`, `undo_manager` → `_undo_impl/`.
-- UI: `progress_overlay` → `ui/progress/` facade. preview/thumbnail 위젯 본체는 PyQt 시그널·MRO·pyright 안정성을 위해 단일 파일 유지.
-- `main_window_worker.py`의 `run_worker`/`on_success` 등은 ToastWidget·WorkerThread 모듈 monkeypatch 계약 때문에 유지.
-- public import 경로·mode 이름·kwargs 계약 불변. 설계: `docs/superpowers/specs/2026-07-21-code-split-solid-design.md`.
-- 검증(당시 SOLID 분할 직후): 222 collected / 221 passed / 1 skip. 현재 기준선은 2026-07-22 Addendum.
+- UI: `progress_overlay` → `ui/progress/` facade. (preview/thumbnail 본체 단일 파일 유지는 당시 결정 — **2026-08-05 Round 2** 에서 grid/preview interaction 믹스인·Host 타입으로 추가 분할.)
+- `main_window_worker.py`의 `run_worker`/`on_success` 등은 ToastWidget·WorkerThread 모듈 monkeypatch 계약 때문에 유지 (Round 2에서도 facade 메서드 유지, 본문은 `window_worker/success|fail`).
+- public import 경로·mode 이름·kwargs 계약 불변. 설계: `docs/superpowers/specs/2026-07-21-code-split-solid-design.md` → Round 2: `2026-08-05-code-split-solid-round2-design.md`.
+- 검증(당시 SOLID 분할 직후): 222 collected / 221 passed / 1 skip. 이후 기준선은 2026-07-22 이후 addendum·2026-08-05 Round 2.
 
 ## 2026-07-15 PROJECT_AUDIT Follow-up Addendum
 

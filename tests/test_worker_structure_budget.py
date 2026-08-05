@@ -14,6 +14,12 @@ def test_legacy_shims_stay_thin_after_refactor():
         "src/core/worker_ops/page_ops.py": 80,
         "src/core/worker_ops/transform_ops.py": 80,
         "src/core/worker_ops/compare_ops.py": 80,
+        "src/core/worker_ops/ai_ops.py": 80,
+        "src/core/worker_ops/batch_ops.py": 80,
+        "src/core/worker_ops/compose_ops.py": 80,
+        "src/core/worker_ops/form_ops.py": 80,
+        "src/core/worker_ops/security_ops.py": 80,
+        "src/core/worker_ops/_pdf_helpers.py": 80,
         "src/core/ai_service.py": 80,
         "src/core/settings.py": 80,
         "src/core/constants.py": 120,
@@ -21,13 +27,23 @@ def test_legacy_shims_stay_thin_after_refactor():
         "src/ui/widgets.py": 80,
         "src/ui/tabs_advanced/builders.py": 80,
         "src/ui/tabs_advanced/actions_markup.py": 160,  # facade re-export
+        "src/ui/tabs_advanced/markup_actions/textbox.py": 120,  # textbox_impl re-export facade
+        "src/ui/tabs_advanced/tab_builders/edit.py": 80,
+        "src/ui/tabs_advanced/tab_builders/markup.py": 80,
         "src/core/worker_ops/annotation/markup.py": 40,  # composed highlight+textbox facade
         "src/ui/thumbnail_grid.py": 80,
+        "src/ui/thumbnail/grid.py": 160,  # shell + mixins
         "src/ui/zoomable_preview.py": 80,
         "src/ui/styles.py": 80,
         "src/ui/progress_overlay.py": 80,
         # main_window_worker keeps run_worker/on_success overrides for ToastWidget monkeypatch 계약
-        "src/ui/main_window_worker.py": 450,
+        "src/ui/main_window_worker.py": 320,
+        "src/ui/preview_widget/interaction_overlays.py": 40,
+        "src/ui/common_widgets/file_selection.py": 40,
+        # AI actions keep monkeypatch/__module__ contract (AI_AVAILABLE, QDialog, atomic_text_write source)
+        "src/ui/tabs_ai/actions.py": 320,
+        "src/ui/tabs_basic/security.py": 80,
+        "src/ui/tabs_advanced/tab_builders/misc.py": 80,
         "src/core/i18n_catalogs/shared.py": 80,
     }
     for path, max_lines in budgets.items():
@@ -141,6 +157,80 @@ def test_split_domain_packages_export_composed_mixins():
         assert hasattr(WorkerTransformOpsMixin, name), name
     assert hasattr(WorkerCompareOpsMixin, "compare_pdfs")
     assert hasattr(WorkerCompareOpsMixin, "_legacy_compare_pdfs")
+
+    from src.core.worker_ops.ai_ops import WorkerAiOpsMixin
+    from src.core.worker_ops.batch_ops import WorkerBatchOpsMixin
+    from src.core.worker_ops.compose_ops import WorkerComposeOpsMixin
+    from src.core.worker_ops.form_ops import WorkerFormOpsMixin
+    from src.core.worker_ops.security_ops import WorkerSecurityOpsMixin, _resolve_permissions
+    from src.core.worker_ops._pdf_helpers import text_needs_cjk
+    from src.core.worker_ops.annotation.textbox_helpers import (
+        ensure_textbox_rect,
+        resolve_textbox_fontname,
+        write_textbox_content,
+    )
+    from src.core.worker_ops.compare.helpers import collect_text_blocks, diff_blocks
+    from src.ui.tabs_advanced.markup_actions.textbox import (
+        action_insert_textbox,
+        action_textbox_queue_add,
+    )
+    from src.ui.preview_widget.text_placement import TextPlacementOverlay, hit_test_handle
+    from src.ui.preview_widget.text_placement_geometry import apply_resize
+    from src.ui.thumbnail.grid import ThumbnailGridWidget
+    from src.ui.thumbnail.grid_loading import ThumbnailGridLoadingMixin
+    from src.ui.tabs_advanced.tab_builders.edit import _create_edit_subtab
+    from src.ui.tabs_advanced.tab_builders.markup import _create_markup_subtab
+
+    for name in ("ai_summarize", "ai_ask_question", "ai_extract_keywords"):
+        assert hasattr(WorkerAiOpsMixin, name), name
+    assert hasattr(WorkerBatchOpsMixin, "batch")
+    for name in ("merge", "images_to_pdf", "copy_page_between_docs"):
+        assert hasattr(WorkerComposeOpsMixin, name), name
+    for name in ("get_form_fields", "fill_form", "flatten_form"):
+        assert hasattr(WorkerFormOpsMixin, name), name
+    for name in ("protect", "decrypt_pdf"):
+        assert hasattr(WorkerSecurityOpsMixin, name), name
+    assert callable(_resolve_permissions)
+    assert callable(text_needs_cjk)
+    assert callable(ensure_textbox_rect)
+    assert callable(write_textbox_content)
+    assert callable(resolve_textbox_fontname)
+    assert callable(collect_text_blocks)
+    assert callable(diff_blocks)
+    assert callable(action_insert_textbox)
+    assert callable(action_textbox_queue_add)
+    assert callable(TextPlacementOverlay)
+    assert callable(hit_test_handle)
+    assert callable(apply_resize)
+    assert hasattr(ThumbnailGridWidget, "load_pdf")
+    assert hasattr(ThumbnailGridLoadingMixin, "load_pdf")
+    assert callable(_create_edit_subtab)
+    assert callable(_create_markup_subtab)
+
+    from src.ui.preview_widget.interaction_overlays import PreviewInteractionMixin
+    from src.ui.preview_widget.interaction_region import PreviewRegionInteractionMixin
+    from src.ui.common_widgets.file_selection import DropZoneWidget, FileSelectorWidget
+    from src.ui.tabs_ai.actions import action_ai_summarize, _extract_keywords, AI_AVAILABLE
+    from src.ui.tabs_basic.security import setup_edit_sec_tab, action_protect
+    from src.ui.tabs_advanced.tab_builders.misc import _create_misc_subtab
+    from src.ui.main_window_worker import MainWindowWorkerMixin, ToastWidget, WorkerThread
+    from src.ui._typing import PreviewWidgetHost, ThumbnailGridHost
+
+    assert hasattr(PreviewInteractionMixin, "set_region_select_mode")
+    assert hasattr(PreviewRegionInteractionMixin, "set_region_select_mode")
+    assert callable(DropZoneWidget)
+    assert callable(FileSelectorWidget)
+    assert callable(action_ai_summarize)
+    assert callable(_extract_keywords)
+    assert isinstance(AI_AVAILABLE, bool)
+    assert callable(setup_edit_sec_tab)
+    assert callable(action_protect)
+    assert callable(_create_misc_subtab)
+    assert callable(MainWindowWorkerMixin)
+    assert callable(ToastWidget)
+    assert callable(WorkerThread)
+    assert PreviewWidgetHost is not None
+    assert ThumbnailGridHost is not None
 
 
 def test_worker_domain_modules_do_not_reintroduce_legacy_pdf_aliases():

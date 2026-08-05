@@ -9,9 +9,14 @@ from PyQt6.QtWidgets import QMessageBox, QWidget
 
 from ..core.i18n import tm
 from ..core.worker import WorkerThread
-from .tabs_ai.meta import normalize_ai_meta
 from .widgets import ToastWidget
 from .window_worker import MainWindowWorkerMixin as _MainWindowWorkerMixin
+from .window_worker.fail import (
+    clear_ai_worker_flags_on_cancel,
+    clear_ai_worker_flags_on_fail,
+    clear_textbox_post_flags,
+    rollback_chat_on_fail,
+)
 from .window_worker.helpers import (
     _chat_history_key_for,
     _collect_payload_input_paths,
@@ -29,6 +34,12 @@ from .window_worker.results import (
     _get_worker_payload,
     _replace_last_chat_block,
     _set_meta_label,
+)
+from .window_worker.success import (
+    apply_ai_success_state,
+    apply_undo_registration,
+    handle_mode_success_dialogs,
+    invoke_textbox_success_hook,
 )
 
 logger = logging.getLogger(__name__)
@@ -149,32 +160,11 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         if sender is not None and sender is not self.worker:
             return
 
-        if hasattr(self, "_ai_worker_mode"):
-            self._ai_worker_mode = False
-            self._summary_partial_text = ""
-            self._summary_result_meta = {}
-            _clear_meta_label(getattr(self, "lbl_summary_meta", None))
-        if hasattr(self, "_keyword_worker_mode"):
-            self._keyword_worker_mode = False
-            self._keywords_result_meta = {}
-            _clear_meta_label(getattr(self, "lbl_keywords_meta", None))
-        if hasattr(self, "_chat_worker_mode"):
-            self._chat_worker_mode = False
-            self._chat_pending_path = None
-            self._chat_partial_text = ""
-            self._chat_result_meta = {}
-            _clear_meta_label(getattr(self, "lbl_chat_meta", None))
-
+        clear_ai_worker_flags_on_cancel(self)
         self._cleanup_cancelled_worker()
         self._discard_pending_undo(delete_backups=True)
         self._restore_preview_after_same_path_output()
-        # 텍스트 상자 post 플래그 잔존 방지 (감사 §3.1)
-        clear_tb = getattr(self, "_clear_textbox_post_flags", None)
-        if callable(clear_tb):
-            try:
-                clear_tb()
-            except Exception:
-                logger.debug("clear textbox flags on cancel failed", exc_info=True)
+        clear_textbox_post_flags(self, context="cancel")
         self._finalize_worker()
         self._run_pending_worker()
         QTimer.singleShot(3000, self._reset_progress_if_idle)
@@ -193,157 +183,17 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         mode = getattr(self.worker, "mode", "") if self.worker else ""
         payload = _coerce_payload_defaults(mode, _get_worker_payload(self.worker) if self.worker else {})
 
-        if hasattr(self, "_ai_worker_mode") and self._ai_worker_mode:
-            self._ai_worker_mode = False
-            self._summary_partial_text = ""
-            summary_text = _format_summary_payload(payload)
-            self._summary_result_meta = normalize_ai_meta(payload.get("meta"))
-            _set_meta_label(getattr(self, "lbl_summary_meta", None), self._summary_result_meta)
-            if summary_text and hasattr(self, "txt_summary_result"):
-                self.txt_summary_result.setPlainText(summary_text)
-
-        if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode:
-            self._chat_worker_mode = False
-            self._chat_result_meta = normalize_ai_meta(payload.get("meta"))
-            _set_meta_label(getattr(self, "lbl_chat_meta", None), self._chat_result_meta)
-            answer = str(payload.get("answer", "") or "")
-            if answer:
-                pending_path = _chat_history_key_for(self._chat_pending_path)
-                if pending_path:
-                    self._record_chat_entry(pending_path, "assistant", answer)
-                    self._save_chat_histories()
-                selected_chat_path = _chat_history_key_for(self.sel_chat_pdf.get_path()) if hasattr(self, "sel_chat_pdf") else ""
-                if hasattr(self, "txt_chat_history") and pending_path == selected_chat_path:
-                    import html as _html
-
-                    _replace_last_chat_block(
-                        self.txt_chat_history,
-                        f"<b>{tm.get('chat_assistant_prefix')}</b> {_html.escape(answer, quote=True)}",
-                    )
-                    self.txt_chat_history.append("<hr>")
-            self._chat_pending_path = None
-            self._chat_partial_text = ""
-
-        if hasattr(self, "_keyword_worker_mode") and self._keyword_worker_mode:
-            self._keyword_worker_mode = False
-            self._keywords_result_meta = normalize_ai_meta(payload.get("meta"))
-            _set_meta_label(getattr(self, "lbl_keywords_meta", None), self._keywords_result_meta)
-            keywords = payload.get("keywords", [])
-            if keywords and hasattr(self, "lbl_keywords_result"):
-                self.lbl_keywords_result.setText(" • ".join(keywords))
-            else:
-                self.lbl_keywords_result.setText(tm.get("msg_no_keywords"))
-
-        if hasattr(self, "_pending_undo") and self._pending_undo:
-            undo_info = self._pending_undo
-            self._pending_undo = None
-            after_backup = self._create_backup_for_undo(undo_info["output_path"])
-
-            if after_backup:
-                before_state = {
-                    "before_backup_path": undo_info["before_backup_path"],
-                    "target_path": undo_info["output_path"],
-                }
-                after_state = {
-                    "after_backup_path": after_backup,
-                    "target_path": undo_info["output_path"],
-                }
-
-                self.undo_manager.push(
-                    action_type=undo_info["action_type"],
-                    description=undo_info["description"],
-                    before_state=before_state,
-                    after_state=after_state,
-                    undo_callback=self._restore_from_backup,
-                    redo_callback=self._redo_from_output,
-                )
-                logger.info("Registered undo for: %s", undo_info["action_type"])
-            else:
-                _delete_undo_backup_file(undo_info.get("before_backup_path", ""))
-                logger.warning(
-                    "Skipping undo registration for %s: after snapshot creation failed",
-                    undo_info["action_type"],
-                )
-                ToastWidget(tm.get("msg_undo_unavailable"), toast_type="warning", duration=3000).show_toast(self)
-
+        apply_ai_success_state(self, payload)
+        apply_undo_registration(self, ToastWidget)
         self._restore_preview_after_same_path_output()
-
-        # 텍스트 상자 연속 배치 / 큐 정리
-        if mode in ("insert_textbox", "insert_textboxes", "replace_text_in_rect"):
-            on_tb = getattr(self, "_on_textbox_worker_success", None)
-            if callable(on_tb):
-                try:
-                    on_tb()
-                except Exception:
-                    logger.debug("textbox post-success hook failed", exc_info=True)
+        invoke_textbox_success_hook(self, mode)
 
         custom_dialog_shown = False
         if self.worker and hasattr(self.worker, "kwargs"):
             mode = getattr(self.worker, "mode", "")
-            if mode == "extract_text_in_rect":
-                on_ex = getattr(self, "_on_extract_text_in_rect_success", None)
-                if callable(on_ex):
-                    try:
-                        on_ex(payload if isinstance(payload, dict) else {})
-                        custom_dialog_shown = True
-                    except Exception:
-                        logger.debug("extract_text_in_rect success hook failed", exc_info=True)
-            if mode == "get_form_fields" and hasattr(self, "form_fields_list"):
-                fields = payload.get("fields", []) or []
-                self.form_fields_list.clear()
-                self._form_field_data = {}
-                from PyQt6.QtCore import Qt
-                from PyQt6.QtWidgets import QListWidgetItem
-
-                for field in fields:
-                    name = field.get("name", f"field_{self.form_fields_list.count()}")
-                    value = field.get("value", "")
-                    item = QListWidgetItem(f"📋 {name}: {value}")
-                    item.setData(Qt.ItemDataRole.UserRole, name)
-                    item.setToolTip(
-                        tm.get("msg_field_tooltip", field.get("type", "-"), field.get("page", 0))
-                    )
-                    self.form_fields_list.addItem(item)
-                    self._form_field_data[name] = value
-                if not fields:
-                    QMessageBox.information(parent, tm.get("info"), tm.get("msg_no_form_fields"))
-                else:
-                    toast = ToastWidget(
-                        tm.get("msg_form_fields_detected", len(fields)),
-                        toast_type="success",
-                        duration=2000,
-                    )
-                    toast.show_toast(self)
-                custom_dialog_shown = True
-            elif mode == "list_attachments":
-                attachments = payload.get("attachments", []) or []
-                if not attachments:
-                    QMessageBox.information(parent, tm.get("info"), tm.get("msg_no_attachments"))
-                else:
-                    rows = [
-                        tm.get("msg_attachment_row", att.get("name", "Unknown"), att.get("size", 0))
-                        for att in attachments
-                    ]
-                    QMessageBox.information(
-                        parent,
-                        tm.get("title_attachment_list"),
-                        tm.get("msg_attachment_list_body", len(attachments), "\n".join(rows)),
-                    )
-                custom_dialog_shown = True
-            elif mode == "compare_pdfs":
-                # 스크롤 가능 전용 리포트 다이얼로그 (긴 diff 클리핑 방지)
-                try:
-                    from .window_worker.compare_report import show_compare_report_dialog
-
-                    show_compare_report_dialog(parent, payload)
-                except Exception:
-                    logger.debug("compare report dialog failed; fallback QMessageBox", exc_info=True)
-                    QMessageBox.information(
-                        parent,
-                        tm.get("compare_summary_title"),
-                        _format_compare_summary(payload),
-                    )
-                custom_dialog_shown = True
+            custom_dialog_shown = handle_mode_success_dialogs(
+                self, mode, payload, parent, ToastWidget, QMessageBox
+            )
 
         toast = ToastWidget(tm.get("completed"), toast_type="success", duration=4000)
         toast.show_toast(self)
@@ -366,54 +216,17 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         if sender is not None and sender is not self.worker:
             return
 
-        if hasattr(self, "_ai_worker_mode"):
-            self._ai_worker_mode = False
-            self._summary_partial_text = ""
-            self._summary_result_meta = {}
-            _clear_meta_label(getattr(self, "lbl_summary_meta", None))
-        if hasattr(self, "_keyword_worker_mode"):
-            self._keyword_worker_mode = False
-            self._keywords_result_meta = {}
-            _clear_meta_label(getattr(self, "lbl_keywords_meta", None))
-
+        clear_ai_worker_flags_on_fail(self)
         self.set_ui_busy(False)
         self.progress_overlay.hide_progress()
         self.status_label.setText(tm.get("error"))
         self.progress_bar.setValue(0)
         self.btn_open_folder.setVisible(False)
 
-        if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode:
-            self._chat_worker_mode = False
-            raw_pending_path = self._chat_pending_path
-            pending_path = _chat_history_key_for(raw_pending_path)
-            self._chat_pending_path = None
-            self._chat_partial_text = ""
-            self._chat_result_meta = {}
-            _clear_meta_label(getattr(self, "lbl_chat_meta", None))
-            history_keys = [key for key in (pending_path, raw_pending_path) if isinstance(key, str) and key]
-            seen_history_keys: set[str] = set()
-            for history_key in history_keys:
-                if history_key in seen_history_keys or history_key not in self._chat_histories:
-                    continue
-                seen_history_keys.add(history_key)
-                history = self._chat_histories.get(history_key, [])
-                if history and history[-1].get("role") == "user":
-                    history.pop()
-                    if not history:
-                        del self._chat_histories[history_key]
-                    self._save_chat_histories()
-            if hasattr(self, "txt_chat_history"):
-                _replace_last_chat_block(self.txt_chat_history, f"<span style='color:#ef4444'>❌ {msg}</span>")
-
+        rollback_chat_on_fail(self, msg)
         self._discard_pending_undo(delete_backups=True)
         self._restore_preview_after_same_path_output()
-        # 텍스트 상자 post 플래그 잔존 방지 (감사 §3.1)
-        clear_tb = getattr(self, "_clear_textbox_post_flags", None)
-        if callable(clear_tb):
-            try:
-                clear_tb()
-            except Exception:
-                logger.debug("clear textbox flags on fail failed", exc_info=True)
+        clear_textbox_post_flags(self, context="fail")
 
         toast = ToastWidget(tm.get("error"), toast_type="error", duration=5000)
         toast.show_toast(self)
