@@ -122,6 +122,9 @@ hiddenimports += [
     'src.core.settings',  # Settings facade (impl under _settings_impl)
     'src.core.constants',  # Constants facade (impl under _constants_impl)
     'src.core.undo_manager',  # Undo facade (impl under _undo_impl)
+    'src.core.update_manifest',
+    'src.core.update_installer',
+    'src.ui.update_mixin',
     'src.ui._typing',  # Pyright/Pylance host contracts imported by UI mixins
     'src.ui.zoomable_preview',  # Runtime-critical preview widget path (main preview panel)
     'src.ui.thumbnail_grid',  # Runtime-loaded thumbnail grid path used by AI/page flows

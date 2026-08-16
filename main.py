@@ -68,6 +68,20 @@ def global_exception_handler(exc_type, exc_value, exc_tb):
         )
 
 def main() -> int:
+    if "--apply-update" in sys.argv:
+        from src.core.update_installer import apply_update
+
+        def update_argument(name: str) -> str:
+            try:
+                return sys.argv[sys.argv.index(name) + 1]
+            except (ValueError, IndexError):
+                return ""
+
+        return apply_update(
+            update_argument("--update-target"),
+            update_argument("--update-staged"),
+            int(update_argument("--update-parent-pid") or 0),
+        )
     # 전역 예외 핸들러 설정
     sys.excepthook = global_exception_handler
     smoke_mode = "--smoke" in sys.argv

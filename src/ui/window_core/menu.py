@@ -117,6 +117,16 @@ def _create_menu_bar(self):
 
     help_menu.addSeparator()
 
+    update_action = QAction(tm.get("menu_check_updates"), self)
+    update_action.triggered.connect(self.check_for_updates)
+    help_menu.addAction(update_action)
+
+    releases_action = QAction(tm.get("menu_release_page"), self)
+    releases_action.triggered.connect(self.open_release_page)
+    help_menu.addAction(releases_action)
+
+    help_menu.addSeparator()
+
     about_action = QAction(tm.get("menu_about"), self)
     about_action.triggered.connect(self._show_about)
     help_menu.addAction(about_action)

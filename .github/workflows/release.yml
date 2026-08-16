@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,6 +12,9 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
+    env:
+      PM_UPDATE_PRIVATE_KEY_B64: ${{ secrets.PM_UPDATE_PRIVATE_KEY_B64 }}
+      PM_UPDATE_PUBLIC_KEY_B64: ${{ secrets.PM_UPDATE_PUBLIC_KEY_B64 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,7 +32,15 @@ jobs:
         run: python -c "from pathlib import Path; png=Path('assets/app_icon.png'); ico=Path('assets/app_icon.ico'); assert png.is_file() and ico.is_file(), 'Missing app icon assets'; assert png.stat().st_size < 512*1024, 'PNG icon too large'; assert ico.stat().st_size < 512*1024, 'ICO icon too large'"
 
       - name: Build executable
-        run: python -m PyInstaller pdf_master.spec --clean --noconfirm
+        shell: pwsh
+        run: |
+          if (-not $env:PM_UPDATE_PRIVATE_KEY_B64) { throw "PM_UPDATE_PRIVATE_KEY_B64 is required" }
+          if (-not $env:PM_UPDATE_PUBLIC_KEY_B64) { throw "PM_UPDATE_PUBLIC_KEY_B64 is required" }
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          if ($version -notmatch '^\d+(\.\d+)*$') { throw "Tag must use vX.Y.Z" }
+          $configured = (python -c "from src.core.constants import VERSION; print(VERSION)").Trim()
+          if ($configured -ne $version) { throw "Tag $version does not match VERSION $configured" }
+          python -m PyInstaller pdf_master.spec --clean --noconfirm
 
       - name: Run packaged smoke
         shell: pwsh
@@ -38,10 +50,39 @@ jobs:
           Write-Host "Smoke: $($exe.FullName)"
           & $exe.FullName --smoke
 
+      - name: Build signed update manifest
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          $artifact = Get-ChildItem "dist/PDF_Master_v$version.exe" | Select-Object -First 1
+          if (-not $artifact) { throw "Release executable not found" }
+          $url = "https://github.com/twbeatles/pdf-master/releases/download/v$version/PDF_Master_v$version.exe"
+          python scripts/build_update_manifest.py --version $version --artifact $artifact.FullName --artifact-url $url --output "$env:RUNNER_TEMP/latest.json"
+
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
           # pyproject/spec 버전에 맞춘 EXE 이름 (예: PDF_Master_v4.5.6.exe)
-          files: dist/PDF_Master_v*.exe
+          files: |
+            dist/PDF_Master_v*.exe
+            ${{ runner.temp }}/latest.json
           generate_release_notes: true
           fail_on_unmatched_files: true
+
+      - name: Publish update manifest
+        shell: pwsh
+        run: |
+          git fetch origin main
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+          if ($LASTEXITCODE -ne 0) { throw "Release tag commit must be contained in main" }
+          git checkout -B main origin/main
+          New-Item -ItemType Directory -Force updates | Out-Null
+          Copy-Item "$env:RUNNER_TEMP/latest.json" updates/latest.json -Force
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f updates/latest.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+          git commit -m "chore: publish update manifest for ${{ github.ref_name }} [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main

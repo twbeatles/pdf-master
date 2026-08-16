@@ -29,6 +29,7 @@ from .main_window_tabs_ai import MainWindowTabsAiMixin
 from .main_window_tabs_basic import MainWindowTabsBasicMixin
 from .main_window_undo import MainWindowUndoMixin
 from .main_window_worker import MainWindowWorkerMixin
+from .update_mixin import UpdateMixin
 from .progress_overlay import ProgressOverlayWidget
 from .widgets import WheelEventFilter
 
@@ -90,6 +91,7 @@ class PDFMasterApp(
     MainWindowTabsBasicMixin,
     MainWindowTabsAdvancedMixin,
     MainWindowTabsAiMixin,
+    UpdateMixin,
 ):
     def __init__(self):
         super().__init__()
@@ -153,6 +155,8 @@ class PDFMasterApp(
         # Header - 컴팩트하게
         header = self._create_header()
         main_layout.addLayout(header)
+
+        self._initialize_updates()
 
         # Menu bar
         self._create_menu_bar()

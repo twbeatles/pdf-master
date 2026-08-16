@@ -3,6 +3,9 @@ from __future__ import annotations
 from ._constants_impl import (
     APP_NAME,
     VERSION,
+    UPDATE_MANIFEST_URL,
+    UPDATE_RELEASES_URL,
+    UPDATE_PUBLIC_KEY_B64,
     MAX_CHAT_HISTORY_ENTRIES,
     MAX_CHAT_HISTORY_PDFS,
     PAGE_SIZES,
@@ -45,6 +48,9 @@ from ._constants_impl import (
 __all__ = [
     "APP_NAME",
     "VERSION",
+    "UPDATE_MANIFEST_URL",
+    "UPDATE_RELEASES_URL",
+    "UPDATE_PUBLIC_KEY_B64",
     "MAX_CHAT_HISTORY_ENTRIES",
     "MAX_CHAT_HISTORY_PDFS",
     "PAGE_SIZES",

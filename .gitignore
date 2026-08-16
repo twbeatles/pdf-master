@@ -42,6 +42,7 @@ warn-*.txt
 xref-*.html
 # package_smoke / local EXE leftovers outside dist (if any)
 PDF_Master_v*.exe
+updates/latest.json
 
 # App/runtime temp files
 backup/

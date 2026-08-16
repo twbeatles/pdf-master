@@ -13,6 +13,7 @@ authors = [{ name = "PDF Master" }]
 dependencies = [
   "PyQt6>=6.5",
   "PyMuPDF>=1.24",
+  "cryptography>=42.0",
 ]
 
 [project.optional-dependencies]

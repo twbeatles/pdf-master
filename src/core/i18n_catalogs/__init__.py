@@ -178,4 +178,33 @@ TRANSLATIONS["en"].update(
     }
 )
 
+TRANSLATIONS["ko"].update(
+    {
+        "menu_check_updates": "업데이트 확인",
+        "menu_release_page": "릴리스 페이지",
+        "update_title": "업데이트",
+        "update_check_failed": "업데이트 확인 실패",
+        "update_current": "현재 최신 버전을 사용 중입니다.",
+        "update_dev_available": "새 버전 {}이 있습니다.\n개발 실행에서는 자동 설치를 사용할 수 없습니다.",
+        "update_found": "업데이트 발견",
+        "update_offer": "새 버전 {}을 다운로드해 설치할까요?",
+        "update_failure": "업데이트 실패",
+        "update_staged": "무결성을 확인했습니다. 프로그램을 종료하고 업데이트를 적용합니다.",
+    }
+)
+TRANSLATIONS["en"].update(
+    {
+        "menu_check_updates": "Check for Updates",
+        "menu_release_page": "Release Page",
+        "update_title": "Update",
+        "update_check_failed": "Update Check Failed",
+        "update_current": "You are using the latest version.",
+        "update_dev_available": "Version {} is available.\nAutomatic installation is unavailable in a development run.",
+        "update_found": "Update Available",
+        "update_offer": "Download and install version {}?",
+        "update_failure": "Update Failed",
+        "update_staged": "Integrity verification succeeded. The app will close to apply the update.",
+    }
+)
+
 __all__ = ["EN_TRANSLATIONS", "KO_TRANSLATIONS", "TRANSLATIONS"]
