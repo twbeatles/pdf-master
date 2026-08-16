@@ -36,7 +36,7 @@ block_cipher = None
 IS_WINDOWS = (os.name == "nt") or sys.platform.startswith("win")
 ENABLE_STRIP = not IS_WINDOWS
 _VERSION_SOURCE = os.path.join(os.path.dirname(os.path.abspath(SPEC)), "src", "core", "_constants_impl", "values.py")
-_VERSION_MATCH = re.search(r'^VERSION\\s*=\\s*["\']([^"\']+)["\']', open(_VERSION_SOURCE, encoding="utf-8").read(), re.MULTILINE)
+_VERSION_MATCH = re.search(r'^VERSION\s*=\s*["\']([^"\']+)["\']', open(_VERSION_SOURCE, encoding="utf-8").read(), re.MULTILINE)
 if _VERSION_MATCH is None:
     raise RuntimeError("Could not read application VERSION")
 APP_VERSION = _VERSION_MATCH.group(1)

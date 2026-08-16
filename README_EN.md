@@ -1,4 +1,4 @@
-# PDF Master v4.5.6
+# PDF Master v4.5.7
 
 📑 **All-in-One PDF Editor** — PyQt6 Desktop Application
 
@@ -130,7 +130,7 @@
 
 ### Use the Prebuilt Executable (Windows)
 
-Run `dist/PDF_Master_v4.5.6.exe` directly — no installation required.
+Run `dist/PDF_Master_v4.5.7.exe` directly — no installation required.
 
 ### Run from Source
 
@@ -283,7 +283,7 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-Output: `dist/PDF_Master_v4.5.6.exe` (~30–40 MB)
+Output: `dist/PDF_Master_v4.5.7.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
@@ -292,6 +292,10 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 ---
 
 ## 📝 Changelog
+
+### v4.5.7
+- Hardened signed GitHub Release updates: single-flight state, background download, result reporting, rollback recovery, and helper cleanup.
+- Release workflow now fetches complete history, accepts a manual version input, and derives package/EXE metadata from `VERSION`.
 
 ### v4.5.6
 - **Deep compress**: image downsample, JPEG re-encode, and font subsetting for `compact`/`web`

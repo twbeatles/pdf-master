@@ -1,4 +1,4 @@
-# PDF Master v4.5.6
+# PDF Master v4.5.7
 
 📑 **올인원 PDF 편집 프로그램** — PyQt6 기반 데스크톱 앱
 
@@ -130,7 +130,7 @@
 
 ### 빌드된 실행 파일 사용 (Windows)
 
-`dist/PDF_Master_v4.5.6.exe` 파일을 바로 실행하면 됩니다. 별도 설치 불필요.
+`dist/PDF_Master_v4.5.7.exe` 파일을 바로 실행하면 됩니다. 별도 설치 불필요.
 
 ### 소스에서 직접 실행
 
@@ -283,7 +283,7 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-빌드 결과: `dist/PDF_Master_v4.5.6.exe` (~30–40MB)
+빌드 결과: `dist/PDF_Master_v4.5.7.exe` (~30–40MB)
 
 타입 스텁은 `typings/` 디렉터리에 있으며 `pyrightconfig.json`에서 참조합니다.
 
@@ -292,6 +292,10 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ---
 
 ## 📝 변경 이력
+
+### v4.5.7
+- GitHub Release 기반 자동 업데이트 안정화: 서명·해시 검증, 단일 실행 상태, 백그라운드 다운로드, 교체 결과/롤백 안내, helper 정리
+- 릴리스 workflow 전체 이력 fetch·수동 버전 입력 및 VERSION 기반 패키지/EXE 이름 동기화
 
 ### v4.5.6
 - **Deep compress**: `compact`/`web` 프로필에서 이미지 다운샘플·JPEG 재인코딩·폰트 서브셋

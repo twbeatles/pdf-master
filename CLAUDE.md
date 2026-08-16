@@ -52,7 +52,7 @@
 
 ## 📌 프로젝트 개요
 
-**PDF Master v4.5.6**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
+**PDF Master v4.5.7**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
 
 | 항목 | 내용 |
 |------|------|
@@ -731,7 +731,7 @@ python -m PyInstaller pdf_master.spec --clean
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 # 결과물
-dist/PDF_Master_v4.5.6.exe (~30-40MB)
+dist/PDF_Master_v4.5.7.exe (~30-40MB)
 ```
 
 ### 경량화 최적화
@@ -798,7 +798,7 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-08-05)*
+*이 문서는 PDF Master v4.5.7 기준으로 작성되었습니다. (2026-08-16)*
 
 ---
 

@@ -1,4 +1,4 @@
-# GEMINI.md — PDF Master v4.5.6 개발 가이드
+# GEMINI.md — PDF Master v4.5.7 개발 가이드
 
 AI 어시스턴트(Gemini)가 PDF Master 코드베이스를 이해하고 개발을 지원하기 위한 레퍼런스 문서입니다.
 현재 동작 기준 메모 및 전체 구현 계약은 `CLAUDE.md`를 참조하세요.
@@ -11,7 +11,7 @@ AI 어시스턴트(Gemini)가 PDF Master 코드베이스를 이해하고 개발�
 
 | 항목 | 내용 |
 |------|------|
-| **버전** | v4.5.6 |
+| **버전** | v4.5.7 |
 | **언어** | Python 3.10+ |
 | **UI 프레임워크** | PyQt6 6.5+ |
 | **PDF 엔진** | PyMuPDF (fitz) |
@@ -459,7 +459,7 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 
 ---
 
-*이 문서는 PDF Master v4.5.6 기준으로 작성되었습니다. (2026-08-05)*
+*이 문서는 PDF Master v4.5.7 기준으로 작성되었습니다. (2026-08-16)*
 
 <!-- SPECKIT-AGENT-GUIDE:START -->
 

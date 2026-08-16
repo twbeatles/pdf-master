@@ -2,7 +2,7 @@ from __future__ import annotations
 
 APP_NAME = "PDF Master"
 
-VERSION = "4.5.6"
+VERSION = "4.5.7"
 UPDATE_MANIFEST_URL = "https://raw.githubusercontent.com/twbeatles/pdf-master/main/updates/latest.json"
 UPDATE_RELEASES_URL = "https://github.com/twbeatles/pdf-master/releases/latest"
 UPDATE_PUBLIC_KEY_B64 = "9SbSykUBFyT8I4ri3CPEGRJkVkP6mYFPJcmD2XUBRfs="
