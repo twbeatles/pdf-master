@@ -250,6 +250,12 @@ Menu bar → **Language** (🌐) → **Korean** or **English** → restart the a
 
 ---
 
+## 🔄 Updates
+
+Windows builds check for signed GitHub Release updates after startup. Use **Help → Check for Updates** to check manually. The app verifies the release manifest signature and the downloaded file hash before replacing the executable; if its smoke check fails, it restores the prior executable.
+
+For maintainers, update releases use a `vX.Y.Z` tag (or the Release workflow's `version` input). Keep `VERSION` current; package metadata and the EXE name are derived from it. GitHub Actions requires `PM_UPDATE_PRIVATE_KEY_B64` and `PM_UPDATE_PUBLIC_KEY_B64`; never commit the private key.
+
 ## 📦 Build (PyInstaller)
 
 To build the Windows executable from source:

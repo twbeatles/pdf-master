@@ -250,6 +250,12 @@ python main.py
 
 ---
 
+## 🔄 업데이트
+
+Windows 빌드는 시작 후 서명된 GitHub Release 업데이트를 확인하며, **도움말 → 업데이트 확인**으로 수동 확인할 수 있습니다. 앱은 매니페스트 서명과 다운로드 파일 해시를 검증한 뒤 EXE를 교체하고, smoke 검증에 실패하면 이전 EXE로 복구합니다.
+
+관리자는 `vX.Y.Z` 태그(또는 Release workflow의 `version` 입력값)로 릴리스합니다. `VERSION`만 최신화하면 패키지 메타데이터와 EXE 이름은 이를 기준으로 생성됩니다. GitHub Actions에는 `PM_UPDATE_PRIVATE_KEY_B64`, `PM_UPDATE_PUBLIC_KEY_B64`가 필요하며 개인키는 절대 커밋하지 않습니다.
+
 ## 📦 빌드 (PyInstaller)
 
 소스에서 Windows 실행 파일을 직접 빌드하려는 경우:

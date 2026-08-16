@@ -190,6 +190,8 @@ TRANSLATIONS["ko"].update(
         "update_offer": "새 버전 {}을 다운로드해 설치할까요?",
         "update_failure": "업데이트 실패",
         "update_staged": "무결성을 확인했습니다. 프로그램을 종료하고 업데이트를 적용합니다.",
+        "update_downloading": "업데이트 다운로드 중",
+        "update_recovered": "업데이트 적용에 실패해 이전 버전으로 복구했습니다.",
     }
 )
 TRANSLATIONS["en"].update(
@@ -204,6 +206,8 @@ TRANSLATIONS["en"].update(
         "update_offer": "Download and install version {}?",
         "update_failure": "Update Failed",
         "update_staged": "Integrity verification succeeded. The app will close to apply the update.",
+        "update_downloading": "Downloading update",
+        "update_recovered": "The update failed and the previous version was restored.",
     }
 )
 
