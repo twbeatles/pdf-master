@@ -79,6 +79,7 @@ jobs:
       - name: Publish update manifest
         shell: pwsh
         run: |
+          $version = '${{ inputs.version || github.ref_name }}'.TrimStart('v')
           git fetch origin main
           if ('${{ github.event_name }}' -eq 'push') {
             git merge-base --is-ancestor $env:GITHUB_SHA origin/main
@@ -92,6 +93,6 @@ jobs:
           git add -f updates/latest.json
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { exit 0 }
-          git commit -m "chore: publish update manifest for v${{ inputs.version || github.ref_name }} [skip ci]"
+          git commit -m "chore: publish update manifest for v$version [skip ci]"
           git pull --rebase origin main
           git push origin HEAD:main
