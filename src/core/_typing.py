@@ -120,6 +120,9 @@ class WorkerHost:
     def _normalize_mode_kwargs(self) -> None:
         ...
 
+    def _preflight_inputs(self) -> bool:
+        ...
+
     def _set_result_payload(self, payload: dict[str, Any] | None = None, **extra: Any) -> None:
         ...
 

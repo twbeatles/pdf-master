@@ -1,60 +1,29 @@
+"""WorkerCompareOpsMixin — compare 단계 오케스트레이션 facade.
+
+실제 단계 구현은 `text_diff` / `visual_diff` / `report` 믹스인에 있다.
+public surface (`compare_pdfs`, `_legacy_compare_pdfs`) 는 그대로 유지된다.
+"""
 from __future__ import annotations
 
-import csv
-import io
-import json
-import logging
 import os
-from collections import Counter
-from typing import Any, cast
+from typing import Any
 
-from ..._typing import WorkerHost
-from ...constants import (
-    DEFAULT_PAGE_SIZE,
-    WATERMARK_DEFAULTS,
-    WATERMARK_TILE_SPACING_X,
-    WATERMARK_TILE_SPACING_Y,
-)
-from ...optional_deps import fitz
 from ...worker_runtime.args import (
     _as_bool,
-    _as_dict,
     _as_float,
-    _as_int,
-    _as_list,
     _as_str,
 )
-from .._pdf_helpers import (
-    _extract_page_markdown,
-    _fallback_markdown_from_text,
-    _markdown_front_matter,
-    _normalize_stroke_points,
-    _page_asset_placeholders,
-    _sample_diff_text,
-)
-
-from .helpers import (
-    collect_text_blocks,
-    diff_blocks,
-    draw_overlay_rect,
-    normalize_block_text,
-    pixel_diff_ratio,
-    scale_rect,
-)
-
-logger = logging.getLogger(__name__)
+from .report import WorkerCompareReportMixin
+from .text_diff import WorkerCompareTextMixin
+from .visual_diff import WorkerCompareVisualMixin
 
 
-class WorkerCompareOpsMixin(WorkerHost):
+class WorkerCompareOpsMixin(
+    WorkerCompareTextMixin,
+    WorkerCompareVisualMixin,
+    WorkerCompareReportMixin,
+):
     def _legacy_compare_pdfs(self):
-        import difflib
-
-        _normalize_block_text = normalize_block_text
-        _collect_text_blocks = collect_text_blocks
-        _diff_blocks = diff_blocks
-        _scale_rect = scale_rect
-        _draw_overlay_rect = draw_overlay_rect
-
         file_path1 = _as_str(self.kwargs.get("file_path1"))
         file_path2 = _as_str(self.kwargs.get("file_path2"))
         output_path = _as_str(self.kwargs.get("output_path"))
@@ -81,9 +50,6 @@ class WorkerCompareOpsMixin(WorkerHost):
             diff_pages: list[dict[str, Any]] = []
             max_pages = max(len(doc1), len(doc2))
 
-            def _pixel_diff_ratio(p1: Any, p2: Any) -> float:
-                return pixel_diff_ratio(p1, p2, visual_dpi=visual_dpi)
-
             for index in range(max_pages):
                 self._check_cancelled()
                 self._emit_progress_if_due(int((index + 1) / max(1, max_pages) * 100))
@@ -107,12 +73,13 @@ class WorkerCompareOpsMixin(WorkerHost):
                 visual_diff = False
                 visual_error: str | None = None
                 if do_visual:
-                    try:
-                        visual_ratio = _pixel_diff_ratio(page1, page2)
-                        visual_diff = visual_ratio > visual_threshold
-                    except Exception as exc:
-                        logger.warning("visual compare failed page %s: %s", index + 1, exc)
-                        visual_error = str(exc)[:160]
+                    visual_ratio, visual_diff, visual_error = self._measure_visual_diff(
+                        page1,
+                        page2,
+                        page_number=index + 1,
+                        visual_dpi=visual_dpi,
+                        visual_threshold=visual_threshold,
+                    )
 
                 if visual_error is not None:
                     results.append(
@@ -168,62 +135,17 @@ class WorkerCompareOpsMixin(WorkerHost):
                     # both 모드에서 텍스트 같고 시각 차이 없으면 위에서 continue
                     continue
 
-                lines1 = text1.splitlines()
-                lines2 = text2.splitlines()
-                matcher = difflib.SequenceMatcher(a=lines1, b=lines2)
-                added = 0
-                deleted = 0
-                modified = 0
-                samples: list[str] = []
-                first_added_text = ""
-                first_deleted_text = ""
-
-                for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-                    if tag == "equal":
-                        continue
-                    if tag == "insert":
-                        added += j2 - j1
-                        if not first_added_text:
-                            first_added_text = _sample_diff_text(lines2[j1:j2])
-                    elif tag == "delete":
-                        deleted += i2 - i1
-                        if not first_deleted_text:
-                            first_deleted_text = _sample_diff_text(lines1[i1:i2])
-                    elif tag == "replace":
-                        modified += max(i2 - i1, j2 - j1)
-                        if len(samples) < 3:
-                            before = _sample_diff_text(lines1[i1:i2], 2)
-                            after = _sample_diff_text(lines2[j1:j2], 2)
-                            paired_sample = f"~ {before} -> {after}"
-                            if paired_sample not in samples:
-                                samples.append(paired_sample)
-
-                before_page_sample = _sample_diff_text(lines1, 2)
-                after_page_sample = _sample_diff_text(lines2, 2)
-                if before_page_sample != after_page_sample:
-                    page_sample = f"~ {before_page_sample} -> {after_page_sample}"
-                    if page_sample not in samples:
-                        samples.insert(0, page_sample)
-                        samples = samples[:3]
-
-                if first_added_text and len(samples) < 3:
-                    samples.append(f"+ {first_added_text}")
-                if first_deleted_text and len(samples) < 3:
-                    samples.append(f"- {first_deleted_text}")
-
-                file1_blocks = _collect_text_blocks(page1)
-                file2_blocks = _collect_text_blocks(page2)
-                file1_only = _diff_blocks(file1_blocks, file2_blocks)
-                file2_only = _diff_blocks(file2_blocks, file1_blocks)
+                text_stats = self._diff_page_texts(text1, text2)
+                file1_only, file2_only = self._collect_page_diff_blocks(page1, page2)
 
                 results.append(
                     {
                         "page": index + 1,
                         "status": "diff",
-                        "added": added,
-                        "deleted": deleted,
-                        "modified": modified,
-                        "samples": samples,
+                        "added": text_stats["added"],
+                        "deleted": text_stats["deleted"],
+                        "modified": text_stats["modified"],
+                        "samples": text_stats["samples"],
                     }
                 )
                 diff_pages.append(
@@ -240,125 +162,20 @@ class WorkerCompareOpsMixin(WorkerHost):
             if generate_visual_diff and diff_pages:
                 base_output_path, _ext = os.path.splitext(output_path)
                 visual_diff_path = f"{base_output_path}_visual_diff.pdf"
-                diff_doc = fitz.open()
-                try:
-                    for diff_page in diff_pages:
-                        page1 = diff_page["page1"]
-                        page2 = diff_page["page2"]
-                        rect1 = page1.rect if page1 is not None else None
-                        rect2 = page2.rect if page2 is not None else None
-                        canvas_width = max(rect1.width if rect1 else 0, rect2.width if rect2 else 0, 1)
-                        canvas_height = max(rect1.height if rect1 else 0, rect2.height if rect2 else 0, 1)
-                        new_page = diff_doc.new_page(width=canvas_width, height=canvas_height)
-                        canvas_rect = new_page.rect
+                self._write_visual_diff_pdf(diff_pages, doc1, doc2, visual_diff_path)
 
-                        if page1 is not None:
-                            new_page.show_pdf_page(canvas_rect, doc1, diff_page["page_index"])
-                        elif page2 is not None:
-                            new_page.show_pdf_page(canvas_rect, doc2, diff_page["page_index"])
-
-                        if page1 is None and page2 is not None:
-                            _draw_overlay_rect(new_page, canvas_rect, stroke=(0.1, 0.2, 0.8), fill=(0.7, 0.8, 1.0))
-                        elif page2 is None and page1 is not None:
-                            _draw_overlay_rect(new_page, canvas_rect, stroke=(0.9, 0.1, 0.1), fill=(1.0, 0.8, 0.8))
-                        else:
-                            for block in diff_page["file1_only"]:
-                                _draw_overlay_rect(
-                                    new_page,
-                                    _scale_rect(block["rect"], rect1, canvas_rect),
-                                    stroke=(0.9, 0.1, 0.1),
-                                    fill=(1.0, 0.8, 0.8),
-                                )
-                            for block in diff_page["file2_only"]:
-                                _draw_overlay_rect(
-                                    new_page,
-                                    _scale_rect(block["rect"], rect2, canvas_rect),
-                                    stroke=(0.1, 0.2, 0.8),
-                                    fill=(0.7, 0.8, 1.0),
-                                )
-
-                        legend_rect = fitz.Rect(18, 18, min(canvas_width - 18, 280), min(canvas_height - 18, 72))
-                        new_page.draw_rect(legend_rect, color=(0.3, 0.3, 0.3), fill=(1, 1, 1), fill_opacity=0.85)
-                        new_page.insert_text(
-                            fitz.Point(26, 36),
-                            self._get_msg("visual_diff_legend_removed"),
-                            fontsize=9,
-                            color=(0.9, 0.1, 0.1),
-                        )
-                        new_page.insert_text(
-                            fitz.Point(26, 54),
-                            self._get_msg("visual_diff_legend_added"),
-                            fontsize=9,
-                            color=(0.1, 0.2, 0.8),
-                        )
-                    self._atomic_pdf_save(diff_doc, visual_diff_path)
-                finally:
-                    diff_doc.close()
-
-            report_lines = [
-                f"# {self._get_msg('compare_report_title')}",
-                "",
-                f"{self._get_msg('compare_report_file1')}: {os.path.basename(file_path1)}",
-                f"{self._get_msg('compare_report_file2')}: {os.path.basename(file_path2)}",
-                "",
-            ]
-            if results:
-                for result in results:
-                    page_number = result["page"]
-                    status = result["status"]
-                    report_lines.append(f"## {self._get_msg('compare_report_page', page_number)}")
-                    if status == "missing_file1":
-                        report_lines.append(f"- {self._get_msg('compare_report_missing_file1')}")
-                    elif status == "missing_file2":
-                        report_lines.append(f"- {self._get_msg('compare_report_missing_file2')}")
-                    elif status == "visual_error":
-                        report_lines.append(f"- {self._get_msg('compare_report_visual_error')}")
-                        for sample in result.get("samples", []):
-                            report_lines.append(f"- {self._get_msg('compare_report_sample', sample)}")
-                    elif status == "visual_diff":
-                        report_lines.append(f"- {self._get_msg('compare_report_visual_diff')}")
-                        for sample in result.get("samples", []):
-                            report_lines.append(f"- {self._get_msg('compare_report_sample', sample)}")
-                    else:
-                        report_lines.append(
-                            f"- {self._get_msg('compare_report_added', result.get('added', 0))}"
-                        )
-                        report_lines.append(
-                            f"- {self._get_msg('compare_report_deleted', result.get('deleted', 0))}"
-                        )
-                        report_lines.append(
-                            f"- {self._get_msg('compare_report_modified', result.get('modified', 0))}"
-                        )
-                        for sample in result.get("samples", []):
-                            report_lines.append(f"- {self._get_msg('compare_report_sample', sample)}")
-                    report_lines.append("")
-            else:
-                report_lines.append(self._get_msg("compare_report_identical"))
-            if visual_diff_path:
-                report_lines.extend(
-                    [
-                        "",
-                        f"- {self._get_msg('compare_report_visual_path', os.path.basename(visual_diff_path))}",
-                    ]
-                )
-            report_lines.append("")
+            report_lines = self._build_compare_report_lines(
+                file_path1=file_path1,
+                file_path2=file_path2,
+                results=results,
+                visual_diff_path=visual_diff_path,
+            )
             self._atomic_text_save(output_path, "\n".join(report_lines))
 
-            visual_error_count = sum(1 for result in results if result.get("status") == "visual_error")
-            diff_count = sum(1 for result in results if result.get("status") not in {"same", "visual_error"})
-            self._set_result_payload(
-                diff_count=diff_count,
-                visual_error_count=visual_error_count,
+            self._finish_compare(
                 results=results,
-                report_path=output_path,
-                visual_diff_path=visual_diff_path or "",
-            )
-            self.finished_signal.emit(
-                self._get_msg(
-                    "msg_compare_pdfs_done",
-                    diff_count,
-                    self._get_msg("msg_compare_pdfs_visual_diff_suffix") if visual_diff_path else "",
-                )
+                output_path=output_path,
+                visual_diff_path=visual_diff_path,
             )
         finally:
             if doc1:
@@ -369,3 +186,6 @@ class WorkerCompareOpsMixin(WorkerHost):
     def compare_pdfs(self):
         """두 PDF 비교"""
         return self._legacy_compare_pdfs()
+
+
+__all__ = ["WorkerCompareOpsMixin"]

@@ -58,14 +58,14 @@ pdf-master/
     │   ├── undo_manager.py        # facade → _undo_impl/
     │   ├── _undo_impl/
     │   ├── worker.py              # QThread facade
-    │   ├── worker_runtime/        # 공통 runtime/dispatch/preflight
+    │   ├── worker_runtime/        # 공통 runtime (mixin_payload/progress/files/access/run + mixin facade)
     │   └── worker_ops/            # 도메인 패키지 + thin *_ops facade
-    │       ├── annotation/ + annotation_ops.py
+    │       ├── annotation/ + annotation_ops.py  # textbox는 textbox_impl/ + facade
     │       ├── extract/ + extract_ops.py
     │       ├── cleanup/ + cleanup_ops.py
     │       ├── page/ + page_ops.py
     │       ├── transform/ + transform_ops.py
-    │       ├── compare/ + compare_ops.py
+    │       ├── compare/ + compare_ops.py  # text_diff/visual_diff/report + ops facade
     │       ├── form_ops.py / compose_ops.py / security_ops.py / batch_ops.py
     │       ├── _pdf_impl.py / pdf_ops.py  # compatibility shim
     │       └── ai_ops.py
@@ -455,6 +455,7 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 - **2026-08-05 SOLID Round 2**: Worker `ai|batch|compose|form|security|_pdf_helpers_impl` 패키지 + UI textbox_impl/tab sections/thumbnail mixins/preview interaction Host 타입; public 계약 유지. 설계 `docs/superpowers/specs/2026-08-05-code-split-solid-round2-design.md`
 - **2026-08-05 기능 감사 잔여 후속**: 채팅 partial HTML 이스케이프, `_is_pdf_encrypted` 삼상, OCR 0성공 hard-fail, AI 스트림 공용 cancel+close, 첨부 100MB 상한 등 — `PROJECT_AUDIT.md`, `tests/test_audit_2026_08_05_followup.py`
 - **2026-08-05 품질 감사 Track B**: AI text cache shutdown, kwargs scrub, `get_pdf_info` i18n, FITZ 기동 안내, Undo 대용량 스킵, AI ops 분할, 썸네일 pixmap LRU, monkeypatch 계약 SSOT — `PROJECT_AUDIT_QUALITY.md`, `tests/test_audit_2026_08_05_quality_followup.py`, `tests/test_monkeypatch_contracts.py`, `tests/test_thumbnail_pixmap_lru.py`
+- **2026-09-20 SOLID Round 3**: `annotation/textbox.py` → `textbox_impl/`(single/batch/replace/extract+args/base), `compare/ops.py` → text/visual/report 단계 믹스인 + facade, `worker_runtime/mixin.py` → mixin 5분할 + facade; public 계약 유지, `WorkerHost`에 `_preflight_inputs` 추가; pyright 0 errors, pytest 330 collected/exit 0/1 skip
 - 잔여 로드맵: compare 인터랙티브 리포트 고도화, SDK-level AI HTTP abort, i18n 카탈로그 추가 분할 — 상세는 `PROJECT_AUDIT.md` / `PROJECT_AUDIT_QUALITY.md` (OCR optional 경로는 2026-08-04에 반영)
 
 ---

@@ -6,6 +6,7 @@
 
 ## Current Behavior Notes
 
+- SOLID split Round 3 (2026-09-20): `annotation/textbox.py` → `textbox_impl/` (single/batch/replace/extract + args/base), `compare/ops.py` → text/visual/report 단계 믹스인 + 오케스트레이션 facade, `worker_runtime/mixin.py` → mixin_payload/progress/files/access/run + 합성 facade; public import·mode·kwargs 불변, `WorkerHost`에 `_preflight_inputs` 선언 추가.
 - PyMuPDF deep-util pass (v4.5.6): `compress` can downsample/re-encode images and subset fonts (`compact`/`web`); cleanup package (`cleanup_ops` facade) covers blank/dedupe pages, bookmark split, auto TOC, sanitize, and N-up; crop supports `content` mode; `redact_area`, `flatten_form`, encrypt `permissions`, compare `visual`/`both`, and `convert_to_svg` are registered Worker modes with Advanced/Security UI.
 - SOLID split (2026-07-21): large worker domains live under `worker_ops/{annotation,extract,cleanup,page,transform,compare}/` with thin `*_ops.py` facades; settings/constants/undo use `_*-impl` packages; progress UI under `ui/progress/`.
 - SOLID split (2026-08-03): `tabs_advanced/markup_actions/` (annotations/redact/shapes_links/textbox + `deps`); Worker `annotation/highlight_markup.py` + `annotation/textbox.py` under `markup.py` facade; `preview_widget` mixins (`document_api`/`navigation`/`zoom`/`search_panel`/`theme_api`/`interaction_overlays`) composed in thin `widget.py`. Public imports `actions_markup`, `WorkerAnnotationMarkupMixin`, `ZoomablePreviewWidget` unchanged.
@@ -97,10 +98,11 @@ pdf-master/
     │   ├── undo_manager.py         # facade → _undo_impl/
     │   ├── _undo_impl/             # ActionRecord + UndoManager
     │   ├── worker.py               # QThread facade
-    │   ├── worker_runtime/         # 공통 runtime/dispatch/preflight
+    │   ├── worker_runtime/         # 공통 runtime (mixin_payload/progress/files/access/run + mixin 합성 facade)
     │   └── worker_ops/             # 실제 Worker 기능 구현 (도메인 패키지 + facade)
     │       ├── _pdf_impl.py        # compatibility shim
     │       ├── annotation/         # watermark/markup/redaction/signatures …
+    │       │   └── textbox_impl/   # single/batch/replace/extract + args/base (textbox.py facade)
     │       ├── annotation_ops.py   # thin facade
     │       ├── extract/            # text/bookmarks/attachments/markdown …
     │       ├── extract_ops.py
@@ -108,7 +110,7 @@ pdf-master/
     │       ├── cleanup_ops.py
     │       ├── page/ + page_ops.py
     │       ├── transform/ + transform_ops.py
-    │       ├── compare/ + compare_ops.py
+    │       ├── compare/ + compare_ops.py  # text_diff/visual_diff/report + ops.py facade
     │       ├── form/ + form_ops.py      # Round 2 package + facade
     │       ├── compose/ + compose_ops.py
     │       ├── security/ + security_ops.py
@@ -801,6 +803,21 @@ for i, page in enumerate(pages):
 *이 문서는 PDF Master v4.5.7 기준으로 작성되었습니다. (2026-08-16)*
 
 ---
+
+## 2026-09-20 SOLID 코드 분할 Round 3 Addendum
+
+- `annotation/textbox.py`(382줄) → `textbox_impl/` 패키지: `single`/`batch`/`replace`/`extract` 믹스인 + `args`(rect·스타일
+  3중복 파싱 통합)/`base`(공용 프리머티브) + 28줄 합성 facade. 배치 `w`/`h` 별칭 미지원·extract 기본값(0/0/100/50) 등
+  기존 기본값 차이는 그대로 보존.
+- `compare/ops.py`(339줄) → `text_diff`(라인 diff+블록 수집)/`visual_diff`(픽셀 측정+visual PDF)/`report`(리포트+payload)
+  단계 믹스인 + 191줄 오케스트레이션 facade. `_legacy_compare_pdfs`·`compare_pdfs` surface 유지.
+- `worker_runtime/mixin.py`(303줄) → `mixin_payload`/`mixin_progress`/`mixin_files`/`mixin_access`/`mixin_run` +
+  30줄 합성 facade. `WorkerHost` 계약에 `_preflight_inputs` 선언 추가(믹스인 접근 규칙 준수).
+- `tabs_ai/actions.py`·`main_window_worker.py`는 monkeypatch 계약상 단일 유지(분할 제외).
+- public import 경로·Worker mode·kwargs 계약 불변. structure budget: `tests/test_worker_structure_budget.py`에
+  신규 16개 예산 등록 + 얇아진 facade 상한 하향(textbox 450→60, compare/ops 420→240).
+- 검증: `python -m pyright src/core src/ui` 0 errors; `python -m pytest -q` 330 collected / exit 0 / 1 skip
+  (opt-in Gemini smoke).
 
 ## 2026-08-05 SOLID Round 2 코드 분할 Addendum
 
