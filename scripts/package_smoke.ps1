@@ -5,7 +5,6 @@ $SpecPath = Join-Path $RepoRoot "pdf_master.spec"
 $SmokeRoot = Join-Path $RepoRoot "build\package_smoke"
 $SmokeDist = Join-Path $SmokeRoot "dist"
 $SmokeWork = Join-Path $SmokeRoot "work"
-$ExePath = Join-Path $SmokeDist "PDF_Master_v4.5.5.exe"
 
 Push-Location $RepoRoot
 try {
@@ -21,9 +20,15 @@ try {
         throw "PyInstaller failed with exit code $LASTEXITCODE"
     }
 
-    if (-not (Test-Path -LiteralPath $ExePath)) {
-        throw "Packaged executable was not found: $ExePath"
+    # EXE 이름은 APP_VERSION을 따라가므로 하드코딩하지 않고 산출물에서 찾는다.
+    # (SmokeRoot는 매 실행마다 정리되므로 보통 1개만 존재)
+    $builtExe = Get-ChildItem -LiteralPath $SmokeDist -Filter "PDF_Master_v*.exe" -File |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if (-not $builtExe) {
+        throw "Packaged executable was not found in: $SmokeDist"
     }
+    $ExePath = $builtExe.FullName
 
     $process = Start-Process -FilePath $ExePath -ArgumentList "--smoke" -PassThru -Wait -WindowStyle Hidden
     if ($process.ExitCode -ne 0) {
