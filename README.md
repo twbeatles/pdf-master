@@ -1,4 +1,4 @@
-# PDF Master v4.5.7
+# PDF Master v4.5.8
 
 📑 **올인원 PDF 편집 프로그램** — PyQt6 기반 데스크톱 앱
 
@@ -130,7 +130,7 @@
 
 ### 빌드된 실행 파일 사용 (Windows)
 
-`dist/PDF_Master_v4.5.7.exe` 파일을 바로 실행하면 됩니다. 별도 설치 불필요.
+`dist/PDF_Master_v4.5.8.exe` 파일을 바로 실행하면 됩니다. 별도 설치 불필요.
 
 ### 소스에서 직접 실행
 
@@ -252,9 +252,9 @@ python main.py
 
 ## 🔄 업데이트
 
-Windows 빌드는 시작 후 서명된 GitHub Release 업데이트를 확인하며, **도움말 → 업데이트 확인**으로 수동 확인할 수 있습니다. 앱은 매니페스트 서명과 다운로드 파일 해시를 검증한 뒤 EXE를 교체하고, smoke 검증에 실패하면 이전 EXE로 복구합니다.
+Windows 빌드는 시작 후 서명된 GitHub Release 업데이트를 확인하며, **도움말 → 업데이트 확인**으로 수동 확인할 수 있습니다. 앱은 매니페스트 서명과 다운로드 파일 해시를 검증한 뒤 EXE를 교체하고, smoke 검증에 실패하면 이전 EXE로 복구합니다. 자동 확인 실패는 상태바에 한 줄 힌트로만 표시되고 5분 후 1회 자동 재시도되며, 수동 확인은 실패 원인을 대화상자로 보여줍니다. 다운로드는 일시 네트워크 오류 시 최대 3회 재시도합니다. 자동 업데이트는 Windows 빌드 전용이며, 다른 플랫폼에서는 릴리스 페이지에서 직접 다운로드하세요.
 
-관리자는 `vX.Y.Z` 태그(또는 Release workflow의 `version` 입력값)로 릴리스합니다. `VERSION`만 최신화하면 패키지 메타데이터와 EXE 이름은 이를 기준으로 생성됩니다. GitHub Actions에는 `PM_UPDATE_PRIVATE_KEY_B64`, `PM_UPDATE_PUBLIC_KEY_B64`가 필요하며 개인키는 절대 커밋하지 않습니다.
+관리자는 `vX.Y.Z` 태그(또는 Release workflow의 `version` 입력값)로 릴리스합니다. `VERSION`만 최신화하면 패키지 메타데이터와 EXE 이름은 이를 기준으로 생성됩니다. GitHub Actions에는 `PM_UPDATE_PRIVATE_KEY_B64`, `PM_UPDATE_PUBLIC_KEY_B64`가 필요하며 개인키는 절대 커밋하지 않습니다. 서명 매니페스트(`updates/latest.json`)의 기본 유효기간은 **발행 후 365일**이며, 만료 30일 전부터 제안 대화상자에 경고가 표시됩니다. 1년 이상 무릴리스 시 정상 앱도 업데이트를 실패하므로 만료 전 재발행하세요. 상세 절차는 `docs/release-checklist.md`를 참고하세요.
 
 ## 📦 빌드 (PyInstaller)
 
@@ -283,7 +283,7 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-빌드 결과: `dist/PDF_Master_v4.5.7.exe` (~30–40MB)
+빌드 결과: `dist/PDF_Master_v4.5.8.exe` (~30–40MB)
 
 타입 스텁은 `typings/` 디렉터리에 있으며 `pyrightconfig.json`에서 참조합니다.
 
@@ -293,6 +293,11 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 ## 📝 변경 이력
 
+### v4.5.8
+- 업데이트 운영 신뢰: 매니페스트 게시 `pull --rebase + push` 최대 3회 재시도, 다운로드 일시 오류 최대 3회 재시도
+- 조용한 자동 확인 실패의 상태바 힌트 + 마지막 실패 원인 표시 + 5분 뒤 1회 자동 재시도
+- 실행 중 작업 요청의 모달 확인 제거 → 대기열 자동 추가 + 비모달 안내
+- 매니페스트 만료 정책 표면화: 365일 유효·30일 전 경고·`docs/release-checklist.md`·만료 감시 CI + 수동 E2E 게이트
 ### v4.5.7
 - GitHub Release 기반 자동 업데이트 안정화: 서명·해시 검증, 단일 실행 상태, 백그라운드 다운로드, 교체 결과/롤백 안내, helper 정리
 - 릴리스 workflow 전체 이력 fetch·수동 버전 입력 및 VERSION 기반 패키지/EXE 이름 동기화

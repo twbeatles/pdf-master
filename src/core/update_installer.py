@@ -51,26 +51,69 @@ def _cleanup_old_helpers(root: Path) -> None:
         except OSError: pass
 
 
-def stage_update(manifest: ReleaseManifest, progress: Callable[[int], None] | None = None) -> Path:
+#: 일시적 네트워크 오류 시 다운로드 재시도 횟수 (PROJECT_AUDIT.md ISSUE-003 대응).
+STAGE_UPDATE_MAX_RETRIES = 3
+
+#: 재시도 사이 백오프 기준 (초, 지수 백오프 배율로 사용).
+STAGE_UPDATE_RETRY_BACKOFF = 1.0
+
+_TRANSIENT_MARKERS = ("integrity check failed", "size mismatch")
+
+
+def _is_transient_stage_error(exc: BaseException) -> bool:
+    """재시도할 가치가 있는 일시 오류인지 판정. 서명/HTTPS 정책 오류는 제외."""
+    message = str(exc)
+    if "HTTPS" in message or "signature" in message.lower():
+        return False
+    if isinstance(exc, ValueError):
+        return any(marker in message for marker in _TRANSIENT_MARKERS)
+    return isinstance(exc, (OSError, TimeoutError, ConnectionError))
+
+
+def _stage_update_once(manifest: ReleaseManifest, progress: Callable[[int], None] | None, staged: Path) -> Path:
+    digest, total = hashlib.sha256(), 0
+    with urlopen(Request(manifest.artifact_url, headers={"User-Agent": "PDF-Master-Updater"}), timeout=30) as response, open(staged, "xb") as out:
+        final = urlsplit(response.geturl())
+        if final.scheme.lower() != "https" or not final.hostname:
+            raise ValueError("Artifact redirect must remain HTTPS")
+        while chunk := response.read(1024 * 1024):
+            total += len(chunk)
+            if total > manifest.artifact_size: raise ValueError("Update artifact size mismatch")
+            digest.update(chunk); out.write(chunk)
+            if progress: progress(min(99, int(total * 100 / manifest.artifact_size)))
+    if total != manifest.artifact_size or digest.hexdigest().lower() != manifest.artifact_sha256:
+        raise ValueError("Update artifact integrity check failed")
+    if progress: progress(100)
+    return staged
+
+
+def stage_update(
+    manifest: ReleaseManifest,
+    progress: Callable[[int], None] | None = None,
+    *,
+    max_retries: int = STAGE_UPDATE_MAX_RETRIES,
+    retry_backoff: float = STAGE_UPDATE_RETRY_BACKOFF,
+) -> Path:
+    """서명 아티팩트를 스테이징. 일시 네트워크 오류에 한해 재시도한다."""
     root = update_root(); root.mkdir(parents=True, exist_ok=True); _cleanup_old_helpers(root)
     staged = root / f"PDF_Master_v{manifest.version}-{uuid4().hex}.exe"
-    digest, total = hashlib.sha256(), 0
-    try:
-        with urlopen(Request(manifest.artifact_url, headers={"User-Agent": "PDF-Master-Updater"}), timeout=30) as response, open(staged, "xb") as out:
-            final = urlsplit(response.geturl())
-            if final.scheme.lower() != "https" or not final.hostname:
-                raise ValueError("Artifact redirect must remain HTTPS")
-            while chunk := response.read(1024 * 1024):
-                total += len(chunk)
-                if total > manifest.artifact_size: raise ValueError("Update artifact size mismatch")
-                digest.update(chunk); out.write(chunk)
-                if progress: progress(min(99, int(total * 100 / manifest.artifact_size)))
-        if total != manifest.artifact_size or digest.hexdigest().lower() != manifest.artifact_sha256:
-            raise ValueError("Update artifact integrity check failed")
-        if progress: progress(100)
-        return staged
-    except Exception:
-        staged.unlink(missing_ok=True); raise
+    attempts = max(1, int(max_retries))
+    last_error: BaseException | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return _stage_update_once(manifest, progress, staged)
+        except Exception as exc:
+            last_error = exc
+            staged.unlink(missing_ok=True)
+            if attempt >= attempts or not _is_transient_stage_error(exc):
+                raise
+            # 부분 진행률 잔상 방지: 다음 시도 전 0%로 되돌림
+            if progress:
+                try: progress(0)
+                except Exception: pass
+            time.sleep(retry_backoff * (2 ** (attempt - 1)))
+    assert last_error is not None
+    raise last_error
 
 
 def launch_update_helper(*, target: Path, staged: Path) -> None:

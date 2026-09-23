@@ -8,17 +8,26 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from src.core.constants import UPDATE_PUBLIC_KEY_B64
-from src.core.update_manifest import canonical_manifest_payload
+from src.core.update_manifest import MANIFEST_DEFAULT_VALIDITY_DAYS, canonical_manifest_payload
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description="Sign a release artifact into updates/latest.json")
 parser.add_argument("--version", required=True); parser.add_argument("--artifact", required=True)
 parser.add_argument("--artifact-url", required=True); parser.add_argument("--output", required=True)
+parser.add_argument(
+    "--expires-days",
+    type=int,
+    default=MANIFEST_DEFAULT_VALIDITY_DAYS,
+    help=f"Manifest validity in days (default {MANIFEST_DEFAULT_VALIDITY_DAYS}; see docs/release-checklist.md)",
+)
 args = parser.parse_args()
+if args.expires_days <= 0:
+    raise ValueError("--expires-days must be positive")
 key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(os.environ["PM_UPDATE_PRIVATE_KEY_B64"], validate=True))
 configured_public = os.environ.get("PM_UPDATE_PUBLIC_KEY_B64", "")
 derived_public = base64.b64encode(key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)).decode("ascii")
 if configured_public != UPDATE_PUBLIC_KEY_B64 or derived_public != UPDATE_PUBLIC_KEY_B64:
     raise ValueError("Update signing secrets do not match the embedded public key")
 artifact = Path(args.artifact)
-payload = {"version": args.version, "artifact_url": args.artifact_url, "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(), "size": artifact.stat().st_size, "expires_at": (datetime.now(timezone.utc) + timedelta(days=365)).replace(microsecond=0).isoformat()}
+payload = {"version": args.version, "artifact_url": args.artifact_url, "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(), "size": artifact.stat().st_size, "expires_at": (datetime.now(timezone.utc) + timedelta(days=args.expires_days)).replace(microsecond=0).isoformat()}
 Path(args.output).write_text(json.dumps({"payload": payload, "signature": base64.b64encode(key.sign(canonical_manifest_payload(payload))).decode("ascii")}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+print(f"Manifest for v{args.version} valid for {args.expires_days} days (expires {payload['expires_at']})")

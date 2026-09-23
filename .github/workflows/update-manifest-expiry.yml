@@ -1,0 +1,25 @@
+name: Update manifest expiry watch
+
+# PROJECT_AUDIT.md Phase 1.3 — 365-day manifest expiry must not silently lapse.
+on:
+  schedule:
+    - cron: "23 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-expiry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check manifest expiry
+        run: python scripts/check_update_manifest_expiry.py --warn-days 30

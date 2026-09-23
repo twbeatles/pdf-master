@@ -1,4 +1,4 @@
-# GEMINI.md — PDF Master v4.5.7 개발 가이드
+# GEMINI.md — PDF Master v4.5.8 개발 가이드
 
 AI 어시스턴트(Gemini)가 PDF Master 코드베이스를 이해하고 개발을 지원하기 위한 레퍼런스 문서입니다.
 현재 동작 기준 메모 및 전체 구현 계약은 `CLAUDE.md`를 참조하세요.
@@ -11,7 +11,7 @@ AI 어시스턴트(Gemini)가 PDF Master 코드베이스를 이해하고 개발�
 
 | 항목 | 내용 |
 |------|------|
-| **버전** | v4.5.7 |
+| **버전** | v4.5.8 |
 | **언어** | Python 3.10+ |
 | **UI 프레임워크** | PyQt6 6.5+ |
 | **PDF 엔진** | PyMuPDF (fitz) |
@@ -460,7 +460,21 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 
 ---
 
-*이 문서는 PDF Master v4.5.7 기준으로 작성되었습니다. (2026-08-16)*
+*이 문서는 PDF Master v4.5.8 기준으로 작성되었습니다. (2026-09-23)*
+
+## 2026-09-23 PROJECT_AUDIT Follow-up Addendum
+
+- 기능 감사 SSOT `PROJECT_AUDIT.md`(2026-09-23)의 제안 전수 반영 (코드 수정).
+- ISSUE-001: `.github/workflows/release.yml` 매니페스트 게시 단계에 `pull --rebase + push` 최대 3회·지수 백오프(5s·10s) 재시도.
+- ISSUE-002: 조용한 자동 확인 실패를 상태바 1회성 힌트(`update_check_failed_hint`)로 표면화 + 마지막 실패 원인 저장(`_last_update_check_error`) — 수동 확인의 "최신 버전" 안내에 함께 표시; 조용한 실패 후 5분 뒤 1회 자동 재시도(`_schedule_silent_check_retry`).
+- ISSUE-003: `stage_update`에 일시 네트워크 오류 재시도 2–3회(기본 3회·지수 백오프) + 실패 정리 유지; 서명/HTTPS 정책 오류는 재시도 제외.
+- ISSUE-004: 실행 중 `run_worker` 요청의 모달 확인 제거 → FIFO 대기열 자동 추가 + 비모달 토스트/상태 표시(`msg_worker_queued_auto`).
+- Gap: 만료 정책 표면화 — `days_until_expiry`/`manifest_expiry_status`(30일 임박 기준) + 제안 대화상자 만료 경고(`update_expires_soon`) + `docs/release-checklist.md`(365일 재발행 절차) + README/README_EN 업데이트 절; `build_update_manifest.py --expires-days`(기본 365).
+- Gap: 업데이트 E2E — stage→교체→smoke→재기동/롤백 시뮬레이션 회귀 테스트 추가 (실제 EXE 없이 `apply_update` 경로 검증).
+- Phase 3: `src/core/update_service.py` thin service로 `UpdateMixin`에서 네트워크·설치 로직 분리; 비-Windows 수동 확인은 `update_not_supported` 안내.
+- 문서: `pdf_master.spec` 주석의 고정 버전(`v4.5.6`)을 `APP_VERSION` 단일 소스 기준으로 정정; CLAUDE/GEMINI Spec Kit 블록의 `.specify`·`specs/001-...` 포인터를 현재 트리(미초기화)에 맞게 정정.
+- 회귀: `tests/test_audit_2026_09_23_followup.py`.
+- 검증: `python -m pyright src/core src/ui` 0 errors; `python -m pytest -q` (opt-in Gemini smoke skip 가능).
 
 <!-- SPECKIT-AGENT-GUIDE:START -->
 
@@ -472,19 +486,19 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 ### 이 저장소 상태
 
 - **프로젝트**: `pdf-master`
-- **Spec Kit 초기화**: `.specify/ 있음`
+- **Spec Kit 초기화**: 미초기화 (현재 트리에 `.specify/`·`specs/` 디렉터리가 없음 — 아래 포인터는 템플릿 예시)
 - **에이전트 스킬**: Grok=True, Claude=True, Codex/Agy(.agents)=True
-- **활성 기능 디렉터리**: `specs/001-pdf-master-release-ux` (포인터: `.specify/feature.json`)
-- **기능 제목**: PDF 마스터 데스크톱 · 릴리스 품질 게이트
-- **산출물**: spec=`yes`, plan=`True`, research/data-model/quickstart=`True`, tasks=`False`, converge=`False`
+- **활성 기능 디렉터리**: 없음 (`specify init` 또는 `/speckit-specify` 실행 후 `.specify/feature.json` 포인터로 갱신)
+- **기능 제목**: (활성 기능 없음 — 새 작업 시 specify→plan→tasks 순으로 생성)
+- **산출물**: spec=`False`, plan=`False`, research/data-model/quickstart=`False`, tasks=`False`, converge=`False`
 
 ### 에이전트가 먼저 읽을 파일
 
-1. `specs/001-pdf-master-release-ux/spec.md` — 무엇을/왜 (사용자 스토리, FR, 성공 기준)
-2. `specs/001-pdf-master-release-ux/plan.md` — 기술 컨텍스트·구조 결정
-3. `specs/001-pdf-master-release-ux/tasks.md` — 실행 가능 작업 목록 (`[x]`=이미 있음, `[ ]`=잔여)
-4. `specs/001-pdf-master-release-ux/research.md`, `data-model.md`, `quickstart.md`, `contracts/` — 설계 보조
-5. `.specify/feature.json` — 현재 활성 feature path
+1. `specs/<id>/spec.md` — 무엇을/왜 (사용자 스토리, FR, 성공 기준; 활성 기능이 생기면 경로로 교체)
+2. `specs/<id>/plan.md` — 기술 컨텍스트·구조 결정
+3. `specs/<id>/tasks.md` — 실행 가능 작업 목록 (`[x]`=이미 있음, `[ ]`=잔여)
+4. `specs/<id>/research.md`, `data-model.md`, `quickstart.md`, `contracts/` — 설계 보조
+5. `.specify/feature.json` — 현재 활성 feature path (초기화 전에는 존재하지 않음)
 6. `.specify/memory/constitution.md` — 원칙(템플릿이면 advisory)
 
 ### 권장 워크플로 (스킬 / 슬래시 커맨드)

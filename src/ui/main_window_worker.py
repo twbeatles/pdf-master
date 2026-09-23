@@ -51,18 +51,14 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         """작업 스레드 실행 (안전한 동시 작업 처리)"""
         parent = cast(QWidget, self)
         if self.worker and self.worker.isRunning():
-            result = QMessageBox.question(
-                parent,
-                tm.get("task_in_progress"),
-                tm.get("task_wait_or_cancel"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            if result == QMessageBox.StandardButton.Yes:
-                if not self._enqueue_pending_worker(mode, output_path, kwargs):
-                    return
-                toast = ToastWidget(tm.get("msg_worker_queued"), toast_type="info", duration=2000)
-                toast.show_toast(self)
+            # ISSUE-004: 모달 확인 없이 FIFO 대기열에 자동 추가 (비모달 토스트 안내)
+            if not self._enqueue_pending_worker(mode, output_path, kwargs):
                 return
+            pending = len(getattr(self, "_pending_workers", []) or [])
+            toast = ToastWidget(tm.get("msg_worker_queued_auto", pending), toast_type="info", duration=2000)
+            toast.show_toast(self)
+            try: self.status_label.setText(tm.get("msg_worker_queued_auto", pending))
+            except (AttributeError, RuntimeError): pass
             return
 
         if self.worker:

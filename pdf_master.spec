@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PDF Master v4.5.6 - PyInstaller Spec File
+# PDF Master - PyInstaller Spec File (version: see APP_VERSION from values.py below)
 # One-file desktop build for the current split-package runtime layout.
 # Python 3.10+ compatible, with explicit optional dependency boundaries.
 #
@@ -479,5 +479,7 @@ exe = EXE(
 
 # =====================================================================
 # 빌드: python -m PyInstaller pdf_master.spec --clean
-# 예상 결과: dist/PDF_Master_v4.5.6.exe (~30-40MB)
+# 예상 결과: dist/PDF_Master_v<APP_VERSION>.exe (~30-40MB)
+#   - EXE 이름은 src/core/_constants_impl/values.py 의 VERSION 단일 소스에서
+#     동적 생성되므로 (위 APP_VERSION), 버전은 values.py 만 갱신한다.
 # =====================================================================

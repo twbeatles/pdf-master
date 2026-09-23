@@ -76,6 +76,34 @@ def verify_release_manifest(document: bytes | str | Mapping[str, Any], *, public
     return ReleaseManifest(version, url, sha256, size, expires_at)
 
 
+#: 매니페스트 만료 임박 경고 기준 (일). PROJECT_AUDIT.md §5 Confirmed Gap 대응.
+MANIFEST_EXPIRY_WARN_DAYS = 30
+
+#: 서명 매니페스트 기본 유효기간 (일). scripts/build_update_manifest.py 기본값과 일치.
+MANIFEST_DEFAULT_VALIDITY_DAYS = 365
+
+
+def days_until_expiry(expires_at: datetime) -> int:
+    """만료까지 남은 일수 (자정 기준 내림, 만료 시 0 이하)."""
+    moment = expires_at
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    delta = moment - datetime.now(timezone.utc)
+    return int(delta.total_seconds() // 86400)
+
+
+def manifest_expiry_status(expires_at: datetime, *, warn_days: int = MANIFEST_EXPIRY_WARN_DAYS) -> str:
+    """만료 상태 분류: "valid" | "expiring_soon" | "expired"."""
+    moment = expires_at
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    if moment <= datetime.now(timezone.utc):
+        return "expired"
+    if days_until_expiry(moment) <= warn_days:
+        return "expiring_soon"
+    return "valid"
+
+
 def download_release_manifest(url: str) -> bytes:
     if urlsplit(url).scheme.lower() != "https":
         raise ValueError("Update manifest URL must use HTTPS")

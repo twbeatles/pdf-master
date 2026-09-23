@@ -94,5 +94,18 @@ jobs:
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { exit 0 }
           git commit -m "chore: publish update manifest for v$version [skip ci]"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          # ISSUE-001: concurrent pushes can reject a single push; retry pull-rebase + push.
+          $published = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            git pull --rebase origin main
+            if ($LASTEXITCODE -ne 0) {
+              if ($attempt -eq 3) { throw "git pull --rebase failed after 3 attempts" }
+              Start-Sleep -Seconds (5 * $attempt)
+              continue
+            }
+            git push origin HEAD:main
+            if ($LASTEXITCODE -eq 0) { $published = $true; break }
+            if ($attempt -eq 3) { throw "git push failed after 3 attempts" }
+            Start-Sleep -Seconds (5 * $attempt)
+          }
+          if (-not $published) { throw "Update manifest was not published" }

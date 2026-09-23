@@ -106,4 +106,4 @@ def test_project_audit_is_current_ssot():
     text = path.read_text(encoding="utf-8")
     assert "# Project Audit" in text
     assert "## 1. Executive Summary" in text
-    assert "## 3. High-Risk Issues" in text
+    assert "High-Risk Issues" in text

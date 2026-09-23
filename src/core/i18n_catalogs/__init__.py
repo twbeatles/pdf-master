@@ -192,6 +192,11 @@ TRANSLATIONS["ko"].update(
         "update_staged": "무결성을 확인했습니다. 프로그램을 종료하고 업데이트를 적용합니다.",
         "update_downloading": "업데이트 다운로드 중",
         "update_recovered": "업데이트 적용에 실패해 이전 버전으로 복구했습니다.",
+        "update_check_failed_hint": "업데이트 확인 실패 — 네트워크를 확인한 뒤 도움말 → 업데이트 확인으로 다시 시도하세요.",
+        "update_last_error": "마지막 확인 실패: {}",
+        "update_expires_soon": "이 업데이트 매니페스트는 {}일 후 만료됩니다. 만료 전 새 릴리스를 게시하세요.",
+        "update_not_supported": "자동 업데이트는 Windows 빌드에서만 지원됩니다. 릴리스 페이지에서 직접 다운로드하세요.",
+        "msg_worker_queued_auto": "작업 실행 중 — 대기열에 추가했습니다 ({}건). 완료 후 자동 실행됩니다.",
     }
 )
 TRANSLATIONS["en"].update(
@@ -208,6 +213,11 @@ TRANSLATIONS["en"].update(
         "update_staged": "Integrity verification succeeded. The app will close to apply the update.",
         "update_downloading": "Downloading update",
         "update_recovered": "The update failed and the previous version was restored.",
+        "update_check_failed_hint": "Update check failed — check your network, then retry via Help → Check for Updates.",
+        "update_last_error": "Last check failure: {}",
+        "update_expires_soon": "This update manifest expires in {} days. Publish a new release before expiry.",
+        "update_not_supported": "Automatic updates are supported on Windows builds only. Download from the release page directly.",
+        "msg_worker_queued_auto": "A task is running — queued your request ({} pending). It will run automatically when done.",
     }
 )
 
