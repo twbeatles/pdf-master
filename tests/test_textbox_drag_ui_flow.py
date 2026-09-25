@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from src.ui.tabs_advanced import actions_markup as mod
 from src.ui.tabs_advanced.markup_actions import deps as _deps
 
@@ -31,7 +33,7 @@ def test_start_textbox_placement_requires_text(monkeypatch):
 
 
 def test_start_textbox_placement_enables_mode(monkeypatch):
-    calls = {"placement": None, "kwargs": None}
+    calls: dict[str, Any] = {"placement": None, "kwargs": None}
 
     class PathStub:
         def get_path(self):

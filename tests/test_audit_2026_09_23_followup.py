@@ -440,7 +440,8 @@ def test_apply_update_e2e_success_and_rollback(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(installer.subprocess, "Popen", lambda *a, **k: pops.append(a) or None)
     assert installer.apply_update(str(target), str(staged), 123456) == 0
     assert target.read_bytes() == b"new-exe"
-    assert installer.consume_update_result()["status"] == "applied"
+    _applied = installer.consume_update_result()
+    assert _applied is not None and _applied["status"] == "applied"
 
     # 실패 경로: smoke 실패 → 롤백
     target.write_bytes(b"old-exe")

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from src.ui.window_preview import focus as focus_mod
 
 
@@ -73,7 +75,7 @@ class _Host:
         self.btn_preview_focus = _StubBtn()
         self.preview_focus_bar = _StubBar()
         self.preview_panel = _StubPanel()
-        self.preview_image = None
+        self.preview_image: Any = None
         self._saves = 0
 
     def _schedule_settings_save(self):

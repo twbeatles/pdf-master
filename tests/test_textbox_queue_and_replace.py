@@ -102,6 +102,7 @@ def test_insert_textbox_same_path_skips_dialog(monkeypatch):
             self.chk_tb_same_path = type("K", (), {"isChecked": lambda self: True})()
             self.chk_tb_keep_placing = type("K", (), {"isChecked": lambda self: True})()
             self.preview_image = None
+            self._textbox_reopen_placement_after_success = False
 
         def _choose_save_file(self, *a, **k):
             raise AssertionError("save dialog must not open for same-path")
@@ -124,10 +125,10 @@ def test_insert_textbox_same_path_skips_dialog(monkeypatch):
 
 
 def test_insert_textboxes_worker(tmp_path):
-    from src.core.optional_deps import fitz
+    from src.core.optional_deps import FITZ_AVAILABLE, fitz
     from src.core.worker import WorkerThread
 
-    if fitz is None or not hasattr(fitz, "open") or type(fitz.open).__name__ == "_MissingDependencyCallable":
+    if not FITZ_AVAILABLE:
         import pytest
 
         pytest.skip("PyMuPDF not available")
@@ -188,10 +189,10 @@ def test_insert_textboxes_worker(tmp_path):
 
 
 def test_replace_text_in_rect_worker(tmp_path):
-    from src.core.optional_deps import fitz
+    from src.core.optional_deps import FITZ_AVAILABLE, fitz
     from src.core.worker import WorkerThread
 
-    if fitz is None or not hasattr(fitz, "open") or type(fitz.open).__name__ == "_MissingDependencyCallable":
+    if not FITZ_AVAILABLE:
         import pytest
 
         pytest.skip("PyMuPDF not available")

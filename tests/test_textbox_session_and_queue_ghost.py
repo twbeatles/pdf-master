@@ -40,10 +40,10 @@ def test_clear_post_flags_on_session():
 
 
 def test_extract_text_in_rect_worker(tmp_path):
-    from src.core.optional_deps import fitz
+    from src.core.optional_deps import FITZ_AVAILABLE, fitz
     from src.core.worker import WorkerThread
 
-    if fitz is None or type(fitz.open).__name__ == "_MissingDependencyCallable":
+    if not FITZ_AVAILABLE:
         import pytest
 
         pytest.skip("PyMuPDF not available")

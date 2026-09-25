@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from src.ui.tabs_advanced import actions_markup as mod
 from src.ui.tabs_advanced.markup_actions import deps as _deps
 
 
 def test_start_redact_region_select_enables_preview_mode(monkeypatch):
-    calls = {"mode": None, "preview_path": None}
+    calls: dict[str, Any] = {"mode": None, "preview_path": None}
 
     class PathStub:
         def get_path(self):
