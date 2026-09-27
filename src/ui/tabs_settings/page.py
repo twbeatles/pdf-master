@@ -38,7 +38,7 @@ def _combo_row(label_key: str, options, current: str, on_change) -> QHBoxLayout:
     row.addStretch()
     combo = ComboBox()
     for value in options:
-        combo.addItem(tm.get(_label_key_for(value)), value)
+        combo.addItem(tm.get(_label_key_for(value)), userData=value)
     index = combo.findData(current)
     combo.setCurrentIndex(max(index, 0))
     combo.currentIndexChanged.connect(lambda _i: on_change(combo.currentData()))

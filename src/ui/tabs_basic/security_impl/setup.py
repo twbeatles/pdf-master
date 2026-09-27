@@ -76,7 +76,7 @@ def setup_edit_sec_tab(self):
         (tm.get("color_blue"), (0, 0, 1)),
     ]
     for label, value in wm_colors:
-        self.cmb_wm_color.addItem(label, value)
+        self.cmb_wm_color.addItem(label, userData=value)
     h_w.addWidget(self.cmb_wm_color)
     l_w.addLayout(h_w)
     b_w = PushButton(tm.get("btn_apply_watermark"))
@@ -107,7 +107,7 @@ def setup_edit_sec_tab(self):
         (tm.get("pos_bottom_right"), "bottom-right"),
     ]
     for label, value in img_wm_positions:
-        self.cmb_img_wm_pos.addItem(label, value)
+        self.cmb_img_wm_pos.addItem(label, userData=value)
     wm_opts1.addWidget(self.cmb_img_wm_pos)
     wm_opts1.addStretch()
     l_img_wm.addLayout(wm_opts1)
@@ -145,7 +145,7 @@ def setup_edit_sec_tab(self):
     h_sec.addWidget(self.inp_pw)
     self.cmb_compress_profile = QComboBox()
     for profile_name in SAVE_PROFILE_CHOICES:
-        self.cmb_compress_profile.addItem(tm.get(f"save_profile_{profile_name}"), profile_name)
+        self.cmb_compress_profile.addItem(tm.get(f"save_profile_{profile_name}"), userData=profile_name)
     default_index = self.cmb_compress_profile.findData(DEFAULT_COMPRESSION_SAVE_PROFILE)
     if default_index >= 0:
         self.cmb_compress_profile.setCurrentIndex(default_index)

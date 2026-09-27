@@ -45,7 +45,7 @@ def build_stamp(self, layout) -> None:
         (tm.get("pos_bottom_left"), "bottom-left"),
     ]
     for label, value in stamp_positions:
-        self.cmb_stamp_pos.addItem(label, value)
+        self.cmb_stamp_pos.addItem(label, userData=value)
     opt_stamp.addWidget(self.cmb_stamp_pos)
     l_stamp.addLayout(opt_stamp)
     b_stamp = PushButton(tm.get("btn_add_stamp"))

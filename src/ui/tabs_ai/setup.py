@@ -111,7 +111,7 @@ def setup_ai_tab(self):
         (tm.get("style_bullet"), "bullet"),
     ]
     for label, value in summary_styles:
-        self.cmb_summary_style.addItem(label, value)
+        self.cmb_summary_style.addItem(label, userData=value)
     self.cmb_summary_style.setEnabled(AI_AVAILABLE)
     opt_layout.addWidget(self.cmb_summary_style)
 
@@ -122,7 +122,7 @@ def setup_ai_tab(self):
         (tm.get("lang_en"), "en"),
     ]
     for label, value in summary_langs:
-        self.cmb_summary_lang.addItem(label, value)
+        self.cmb_summary_lang.addItem(label, userData=value)
     self.cmb_summary_lang.setEnabled(AI_AVAILABLE)
     opt_layout.addWidget(self.cmb_summary_lang)
 

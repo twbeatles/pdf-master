@@ -132,6 +132,10 @@
   + `wrap_page()` HeaderCard. 환경설정 메뉴와 같은 settings 키를 공유하고 변경은
   기존 메뉴 핸들러(`_set_notify_mode/_toggle_*/_change_language`)에 위임하므로
   동작 계약 불변. 테마 변경은 `_apply_theme()` + 툴바 버튼 문구까지 갱신.
+- 콤보 userData 계약: Fluent `ComboBox.addItem(text, icon, userData)` — 위치 인자
+  2개 호출 36곳을 `userData=` 키워드로 전환. Qt에선 동작해도 Fluent에선 icon
+  슬롯에 꽂혀 `currentData()`가 전부 기본값으로 무너지던 실측 버그. 구조 회귀
+  테스트가 `cmb_*/combo.addItem` 위치 인자를 금지.
 - 알림 헬퍼: `notify(parent, kind, title, content)` — Fluent `InfoBar`,
   폴백 `QMessageBox`. i18n 키 13종 추가(ko/en).
 - 회귀: `tests/test_fluent_settings_tab.py` (별칭 베이스·`wrap_page`·

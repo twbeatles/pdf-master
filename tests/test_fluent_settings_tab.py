@@ -38,7 +38,13 @@ def test_wrap_page_and_connect_search():
     assert _qapp_holder is not None
     from PyQt6.QtWidgets import QLineEdit
 
+    from src.ui import fluent_widgets as fw
     from src.ui.fluent_widgets import SearchLineEdit, connect_search, wrap_page
+
+    if not fw.is_fluent_widgets_available():
+        import pytest
+
+        pytest.skip("fluent not available")
 
     card, layout = wrap_page("title", "subtitle")
     assert card is not None and layout is not None
@@ -68,6 +74,52 @@ def test_notify_does_not_raise():
             _qapp_holder.processEvents()
     finally:
         parent.deleteLater()
+
+
+def _split_top_level_args(argtext: str):
+    """콤마 기준 최상위 분리 (괄호 안 콤마 무시)."""
+    parts, depth, current = [], 0, []
+    for ch in argtext:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    parts.append("".join(current))
+    return parts
+
+
+def test_combobox_additem_uses_userdata_keyword():
+    """Fluent ComboBox.addItem(text, icon, userData) — 위치 인자 userData 금지.
+
+    Qt에선 동작해도 Fluent에선 icon 슬롯에 꽂혀 currentData()가 깨진다.
+    QListWidget/TabShell addItem은 다른 메서드라 제외.
+    """
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "src" / "ui"
+    bad = []
+    for path in sorted(root.rglob("*.py")):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except Exception:
+            continue
+        for lineno, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            match = re.search(r"(cmb_\w+|combo)\.addItem\((.*)\)\s*$", stripped)
+            if not match:
+                continue
+            args = _split_top_level_args(match.group(2))
+            if len(args) == 2 and "userData=" not in args[1] and "icon=" not in args[1]:
+                bad.append(f"{path.name}:{lineno}:{stripped[:80]}")
+    assert not bad, "positional ComboBox userData: " + "; ".join(bad)
 
 
 def test_settings_spec_and_handlers():

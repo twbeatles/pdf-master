@@ -74,7 +74,7 @@ def setup_page_tab(self):
         (tm.get("pos_top_right"), "top-right"),
     ]
     for label, value in pn_positions:
-        self.cmb_pn_pos.addItem(label, value)
+        self.cmb_pn_pos.addItem(label, userData=value)
     self.cmb_pn_pos.setToolTip(tm.get("tooltip_page_number_pos"))
     opt_pn.addWidget(self.cmb_pn_pos)
     opt_pn.addWidget(QLabel(tm.get("lbl_format")))
@@ -131,8 +131,8 @@ def setup_page_tab(self):
     h3 = QHBoxLayout()
     h3.addWidget(QLabel(tm.get("lbl_rotate_target")))
     self.cmb_rot_target = QComboBox()
-    self.cmb_rot_target.addItem(tm.get("rotate_target_all"), "all")
-    self.cmb_rot_target.addItem(tm.get("rotate_target_selected"), "selected")
+    self.cmb_rot_target.addItem(tm.get("rotate_target_all"), userData="all")
+    self.cmb_rot_target.addItem(tm.get("rotate_target_selected"), userData="selected")
     h3.addWidget(self.cmb_rot_target)
     h3.addWidget(QLabel(tm.get("lbl_rotate_angle")))
     self.cmb_rot = QComboBox()
@@ -142,7 +142,7 @@ def setup_page_tab(self):
         (tm.get("combo_rotate_270"), 270),
     ]
     for label, value in rotate_options:
-        self.cmb_rot.addItem(label, value)
+        self.cmb_rot.addItem(label, userData=value)
     h3.addWidget(self.cmb_rot)
     h3.addStretch()
     l_r.addLayout(h3)

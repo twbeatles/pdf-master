@@ -40,7 +40,7 @@ def build_background(self, layout) -> None:
         (tm.get("color_white"), [1, 1, 1]),
     ]
     for label, value in bg_colors:
-        self.cmb_bg_color.addItem(label, value)
+        self.cmb_bg_color.addItem(label, userData=value)
     bg_opts.addWidget(self.cmb_bg_color)
     bg_opts.addStretch()
     l_bg.addLayout(bg_opts)

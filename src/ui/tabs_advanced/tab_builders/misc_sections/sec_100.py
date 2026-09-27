@@ -47,7 +47,7 @@ def build_sec_100(self, layout) -> None:
         (tm.get("color_red"), (1, 0, 0)),
     ]
     for label, value in freehand_colors:
-        self.cmb_freehand_color.addItem(label, value)
+        self.cmb_freehand_color.addItem(label, userData=value)
     freehand_opts.addWidget(self.cmb_freehand_color)
     freehand_opts.addStretch()
     l_freehand.addLayout(freehand_opts)

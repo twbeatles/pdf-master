@@ -43,7 +43,7 @@ def build_sec_63(self, layout) -> None:
         (tm.get("pos_top_left"), "top_left"),
     ]
     for label, value in sig_positions:
-        self.cmb_sig_pos.addItem(label, value)
+        self.cmb_sig_pos.addItem(label, userData=value)
     sig_opts.addWidget(self.cmb_sig_pos)
     sig_opts.addWidget(QLabel(tm.get("tab_page") + ":"))
     self.spn_sig_page = QSpinBox()

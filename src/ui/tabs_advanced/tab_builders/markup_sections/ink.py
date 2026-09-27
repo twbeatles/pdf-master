@@ -47,7 +47,7 @@ def build_ink(self, layout) -> None:
         (tm.get("color_green_ink"), (0, 0.5, 0)),
     ]
     for label, value in ink_colors:
-        self.cmb_ink_color.addItem(label, value)
+        self.cmb_ink_color.addItem(label, userData=value)
     ink_opts1.addWidget(self.cmb_ink_color)
     ink_opts1.addStretch()
     l_ink.addLayout(ink_opts1)

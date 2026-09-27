@@ -44,7 +44,7 @@ def build_textbox(self, layout) -> None:
         (tm.get("pos_bottom_right"), "bottom-right"),
     ]
     for label, val in tb_presets:
-        self.cmb_tb_preset.addItem(label, val)
+        self.cmb_tb_preset.addItem(label, userData=val)
     self.cmb_tb_preset.setToolTip(tm.get("tooltip_textbox_preset"))
     self.cmb_tb_preset.currentIndexChanged.connect(self.action_apply_textbox_preset)
     tb_preset_layout.addWidget(self.cmb_tb_preset, 1)
@@ -115,7 +115,7 @@ def build_textbox(self, layout) -> None:
         (tm.get("font_times"), "tiro"),
     ]
     for label, val in tb_fonts:
-        self.cmb_tb_font.addItem(label, val)
+        self.cmb_tb_font.addItem(label, userData=val)
     tb_opts2.addWidget(self.cmb_tb_font)
 
     tb_opts2.addWidget(QLabel(tm.get("lbl_textbox_fontsize")))
@@ -135,7 +135,7 @@ def build_textbox(self, layout) -> None:
         (tm.get("color_gray"), (0.5, 0.5, 0.5)),
     ]
     for label, value in tb_colors:
-        self.cmb_tb_color.addItem(label, value)
+        self.cmb_tb_color.addItem(label, userData=value)
     tb_opts2.addWidget(self.cmb_tb_color)
     tb_opts2.addStretch()
     l_textbox.addLayout(tb_opts2)
@@ -159,15 +159,15 @@ def build_textbox(self, layout) -> None:
 
     tb_opts3.addWidget(QLabel(tm.get("lbl_textbox_align")))
     self.cmb_tb_align = QComboBox()
-    self.cmb_tb_align.addItem(tm.get("align_left"), 0)
-    self.cmb_tb_align.addItem(tm.get("align_center"), 1)
-    self.cmb_tb_align.addItem(tm.get("align_right"), 2)
+    self.cmb_tb_align.addItem(tm.get("align_left"), userData=0)
+    self.cmb_tb_align.addItem(tm.get("align_center"), userData=1)
+    self.cmb_tb_align.addItem(tm.get("align_right"), userData=2)
     tb_opts3.addWidget(self.cmb_tb_align)
 
     tb_opts3.addWidget(QLabel(tm.get("lbl_textbox_layer")))
     self.cmb_tb_layer = QComboBox()
-    self.cmb_tb_layer.addItem(tm.get("msg_layer_foreground"), "foreground")
-    self.cmb_tb_layer.addItem(tm.get("msg_layer_background"), "background")
+    self.cmb_tb_layer.addItem(tm.get("msg_layer_foreground"), userData="foreground")
+    self.cmb_tb_layer.addItem(tm.get("msg_layer_background"), userData="background")
     tb_opts3.addWidget(self.cmb_tb_layer)
     tb_opts3.addStretch()
     l_textbox.addLayout(tb_opts3)

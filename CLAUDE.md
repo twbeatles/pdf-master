@@ -1066,6 +1066,8 @@ read specs/001-pdf-master-release-ux/tasks.md
   (`wrap_page` 헬퍼)·`TitleLabel`/`BodyLabel` + `notify()`(InfoBar/QMessageBox 폴백) +
   `set_button_role()`. 폴백은 Qt 서브클래스로 동일 API.
 - 교체: 비밀번호 3곳·AI 질문·하이라이트 검색. 미리보기 검색은 커스텀 키 유지로 제외.
+  콤보 36곳 `userData=` 키워드 전환(Fluent icon 슬롯 오기입 실측 버그 수정).
+- CI 릴리즈 빌드에 `[fluent]` 포함 (`.[build,fluent]`) — EXE에 Fluent 동봉.
   NATIVE 시트 버튼 셀렉터는 ID 한정(베어 타입 0) — `actionBtn`은 폴백 전용 후크.
 - 설정 탭(9번째): Pivot 2섹션 + HeaderCard, 메뉴 핸들러 위임(계약 불변), i18n 13키.
 - 환경 주의: 시스템 파이썬을 srtgo 등과 공유하면 `PySide6-Fluent-Widgets`

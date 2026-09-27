@@ -39,7 +39,7 @@ def build_pdf(self, layout) -> None:
         (tm.get("compare_mode_visual"), "visual"),
         (tm.get("compare_mode_both"), "both"),
     ):
-        self.cmb_compare_mode.addItem(label, value)
+        self.cmb_compare_mode.addItem(label, userData=value)
     compare_mode_row.addWidget(self.cmb_compare_mode)
     compare_mode_row.addStretch()
     l_compare.addLayout(compare_mode_row)

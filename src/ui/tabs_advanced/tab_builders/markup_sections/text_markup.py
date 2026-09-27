@@ -41,7 +41,7 @@ def build_text_markup(self, layout) -> None:
         (tm.get("type_squiggly"), "squiggly"),
     ]
     for label, value in markup_types:
-        self.cmb_markup.addItem(label, value)
+        self.cmb_markup.addItem(label, userData=value)
     markup_opts.addWidget(self.cmb_markup)
     l_markup.addLayout(markup_opts)
     b_markup = PushButton(tm.get("btn_add_markup"))

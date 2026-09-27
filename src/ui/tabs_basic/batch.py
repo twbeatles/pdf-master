@@ -79,7 +79,7 @@ def setup_batch_tab(self):
         (tm.get("op_rotate"), "rotate"),
     ]
     for label, value in batch_ops:
-        self.cmb_batch_op.addItem(label, value)
+        self.cmb_batch_op.addItem(label, userData=value)
     opt_layout.addWidget(self.cmb_batch_op)
     opt_layout.addStretch()
     content_layout.addLayout(opt_layout)

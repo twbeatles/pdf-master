@@ -38,7 +38,7 @@ def build_split(self, layout) -> None:
         (tm.get("mode_split_bookmark"), "bookmarks"),
     ]
     for label, value in split_modes:
-        self.cmb_split_mode.addItem(label, value)
+        self.cmb_split_mode.addItem(label, userData=value)
     opt_split.addWidget(self.cmb_split_mode)
     self.inp_split_range = QLineEdit()
     self.inp_split_range.setPlaceholderText(tm.get("ph_split_range"))

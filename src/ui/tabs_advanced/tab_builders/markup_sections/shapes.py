@@ -37,7 +37,7 @@ def build_shapes(self, layout) -> None:
         (tm.get("shape_line"), "line"),
     ]
     for label, value in shape_types:
-        self.cmb_shape_type.addItem(label, value)
+        self.cmb_shape_type.addItem(label, userData=value)
     shape_opts1.addWidget(self.cmb_shape_type)
     shape_opts1.addWidget(QLabel(tm.get("tab_page") + ":"))
     self.spn_shape_page = QSpinBox()
@@ -78,7 +78,7 @@ def build_shapes(self, layout) -> None:
         (tm.get("color_black"), (0, 0, 0)),
     ]
     for label, value in shape_line_colors:
-        self.cmb_shape_line_color.addItem(label, value)
+        self.cmb_shape_line_color.addItem(label, userData=value)
     shape_opts3.addWidget(self.cmb_shape_line_color)
     shape_opts3.addWidget(QLabel(tm.get("lbl_fill_color")))
     self.cmb_shape_fill_color = QComboBox()
@@ -88,7 +88,7 @@ def build_shapes(self, layout) -> None:
         (tm.get("color_light_blue"), (0.9, 0.95, 1)),
     ]
     for label, value in shape_fill_colors:
-        self.cmb_shape_fill_color.addItem(label, value)
+        self.cmb_shape_fill_color.addItem(label, userData=value)
     shape_opts3.addWidget(self.cmb_shape_fill_color)
     shape_opts3.addStretch()
     l_shapes.addLayout(shape_opts3)

@@ -34,7 +34,7 @@ def build_resize(self, layout) -> None:
     resize_opts.addWidget(QLabel(tm.get("lbl_size")))
     self.cmb_resize = QComboBox()
     for size in ["A4", "A3", "Letter", "Legal"]:
-        self.cmb_resize.addItem(size, size)
+        self.cmb_resize.addItem(size, userData=size)
     resize_opts.addWidget(self.cmb_resize)
     resize_opts.addStretch()
     l_resize.addLayout(resize_opts)

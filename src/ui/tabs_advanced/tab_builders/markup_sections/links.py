@@ -35,7 +35,7 @@ def build_links(self, layout) -> None:
         (tm.get("link_page"), "page"),
     ]
     for label, value in link_types:
-        self.cmb_link_type.addItem(label, value)
+        self.cmb_link_type.addItem(label, userData=value)
     link_opts1.addWidget(self.cmb_link_type)
     link_opts1.addWidget(QLabel(tm.get("tab_page") + ":"))
     self.spn_link_page = QSpinBox()

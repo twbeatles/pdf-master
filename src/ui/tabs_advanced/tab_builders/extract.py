@@ -107,7 +107,7 @@ def _create_extract_subtab(self):
         (tm.get("markdown_mode_text"), "text"),
     ]
     for label, value in markdown_modes:
-        self.cmb_md_mode.addItem(label, value)
+        self.cmb_md_mode.addItem(label, userData=value)
     md_mode_row.addWidget(self.cmb_md_mode)
     md_mode_row.addStretch()
     l_md.addLayout(md_mode_row)
