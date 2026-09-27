@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QDoubleSpinBox,
     QGroupBox,
     QHBoxLayout,
@@ -17,6 +16,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import EditableComboBox, PushButton, QComboBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -32,7 +32,7 @@ def build_stamp(self, layout) -> None:
     l_stamp.addWidget(self.sel_stamp)
     opt_stamp = QHBoxLayout()
     opt_stamp.addWidget(QLabel(tm.get("lbl_stamp_text")))
-    self.cmb_stamp = QComboBox()
+    self.cmb_stamp = EditableComboBox()
     self.cmb_stamp.addItems([tm.get("stamp_confidential"), tm.get("stamp_approved"), tm.get("stamp_draft"), tm.get("stamp_final"), tm.get("stamp_no_copy")])
     self.cmb_stamp.setEditable(True)
     opt_stamp.addWidget(self.cmb_stamp)
@@ -48,7 +48,7 @@ def build_stamp(self, layout) -> None:
         self.cmb_stamp_pos.addItem(label, value)
     opt_stamp.addWidget(self.cmb_stamp_pos)
     l_stamp.addLayout(opt_stamp)
-    b_stamp = QPushButton(tm.get("btn_add_stamp"))
+    b_stamp = PushButton(tm.get("btn_add_stamp"))
     b_stamp.clicked.connect(self.action_stamp)
     l_stamp.addWidget(b_stamp)
     layout.addWidget(grp_stamp)

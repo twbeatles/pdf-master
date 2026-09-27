@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PyQt6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+# (this module uses no fluent-shadowed widgets)
 
 from .edit_sections.split import build_split
 from .edit_sections.stamp import build_stamp

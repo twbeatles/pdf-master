@@ -12,10 +12,10 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QTabWidget,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PrimaryButton, QTextEdit
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -34,7 +34,7 @@ def build_v4_5_3_f_07_ui_2(self, layout) -> None:
     self.txt_set_bookmarks.setPlaceholderText(tm.get("ph_set_bookmarks"))
     self.txt_set_bookmarks.setMinimumHeight(90)
     l_set_bookmarks.addWidget(self.txt_set_bookmarks)
-    b_set_bookmarks = QPushButton(tm.get("btn_set_bookmarks"))
+    b_set_bookmarks = PrimaryButton(tm.get("btn_set_bookmarks"))
     b_set_bookmarks.setObjectName("actionBtn")
     b_set_bookmarks.clicked.connect(self.action_set_bookmarks)
     l_set_bookmarks.addWidget(b_set_bookmarks)

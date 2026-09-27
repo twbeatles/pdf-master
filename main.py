@@ -110,6 +110,22 @@ def main() -> int:
             return 1
 
         app = QApplication(app_argv)
+        _hi_policy_applied = False
+        try:
+            from PyQt6.QtCore import Qt as _Qt
+
+            _policy = getattr(_Qt.HighDpiScaleFactorRoundingPolicy, "PassThrough", None)
+            if _policy is not None:
+                QGuiApplication.setHighDpiScaleFactorRoundingPolicy(_policy)
+                _hi_policy_applied = True
+        except Exception:
+            logger.debug("HiDPI rounding policy setup skipped", exc_info=True)
+        try:
+            from src.ui.fluent_theme import setup_app_theme
+
+            setup_app_theme(app)
+        except Exception:
+            logger.debug("Fluent theme setup skipped", exc_info=True)
         app.setFont(QFont("Segoe UI", 9))  # Windows 기본 폰트 크기 설정
         app_icon_path = resource_path("assets", "app_icon.png")
         if os.path.isfile(app_icon_path):

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -10,12 +9,12 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PrimaryButton, QComboBox, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -93,7 +92,7 @@ def build_shapes(self, layout) -> None:
     shape_opts3.addWidget(self.cmb_shape_fill_color)
     shape_opts3.addStretch()
     l_shapes.addLayout(shape_opts3)
-    b_shape = QPushButton(tm.get("btn_draw_shape"))
+    b_shape = PrimaryButton(tm.get("btn_draw_shape"))
     b_shape.setObjectName("actionBtn")
     b_shape.clicked.connect(self.action_draw_shape)
     l_shapes.addWidget(b_shape)

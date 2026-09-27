@@ -14,11 +14,12 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSpinBox,
 )
+from ..fluent_widgets import PushButton
 
 from ...core.i18n import tm
 from ...core.settings import save_settings
 from ..main_window_config import APP_NAME, VERSION
-from ..styles import DARK_STYLESHEET, LIGHT_STYLESHEET
+from ..styles import DARK_STYLESHEET, LIGHT_STYLESHEET, NATIVE_DARK_STYLESHEET, NATIVE_LIGHT_STYLESHEET
 from ..thumbnail_grid import ThumbnailGridWidget
 from ..widgets import DropZoneWidget, EmptyStateWidget, FileSelectorWidget
 from ..zoomable_preview import ZoomablePreviewWidget
@@ -48,14 +49,14 @@ def _create_header(self):
     # Usually a toggle button shows the current state or what will happen.
     # Original code: "DARK" if dark else "LIGHT". This suggests it shows the current state.
 
-    self.btn_theme = QPushButton(theme_text)
+    self.btn_theme = PushButton(theme_text)
     self.btn_theme.setObjectName("accentBtn")
     self.btn_theme.setMinimumSize(70, 32)
     self.btn_theme.clicked.connect(self._toggle_theme)
     header.addWidget(self.btn_theme)
 
     # Help button - objectName으로 스타일 적용
-    btn_help = QPushButton(tm.get("help")) # "도움말" or "Help"
+    btn_help = PushButton(tm.get("help")) # "도움말" or "Help"
     btn_help.setObjectName("accentBtn")
     btn_help.setMinimumSize(60, 32)
     btn_help.clicked.connect(self._show_help)
@@ -76,7 +77,18 @@ def _apply_theme(self):
     is_dark = theme == "dark"
     app = QApplication.instance()
     if isinstance(app, QApplication):
-        app.setStyleSheet(DARK_STYLESHEET if is_dark else LIGHT_STYLESHEET)
+        from ..fluent_widgets import is_fluent_widgets_available
+
+        if is_fluent_widgets_available():
+            app.setStyleSheet(NATIVE_DARK_STYLESHEET if is_dark else NATIVE_LIGHT_STYLESHEET)
+        else:
+            app.setStyleSheet(DARK_STYLESHEET if is_dark else LIGHT_STYLESHEET)
+    try:  # Fluent 브리지: settings 테마를 qfluentwidgets에 반영 (미설치면 no-op)
+        from ..fluent_theme import sync_fluent_theme
+
+        sync_fluent_theme("dark" if is_dark else "light")
+    except Exception:
+        logger.debug("Fluent sync skipped", exc_info=True)
 
     # 모든 DropZone 위젯 테마 동기화
     for widget in self.findChildren(DropZoneWidget):

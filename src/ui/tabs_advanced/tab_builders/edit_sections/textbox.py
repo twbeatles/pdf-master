@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 from PyQt6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QDoubleSpinBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -11,12 +8,11 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox, QDoubleSpinBox, QSpinBox, QTextEdit, WarningButton
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -55,7 +51,7 @@ def build_textbox(self, layout) -> None:
     l_textbox.addLayout(tb_preset_layout)
 
     tb_drag_layout = QHBoxLayout()
-    self.b_tb_drag = QPushButton(tm.get("btn_textbox_drag_select"))
+    self.b_tb_drag = PushButton(tm.get("btn_textbox_drag_select"))
     self.b_tb_drag.setObjectName("secondaryBtn")
     self.b_tb_drag.setToolTip(tm.get("tooltip_textbox_drag_select"))
     self.b_tb_drag.clicked.connect(self.action_start_textbox_region_select)
@@ -216,15 +212,15 @@ def build_textbox(self, layout) -> None:
     self.lst_tb_queue.setMaximumHeight(80)
     l_textbox.addWidget(self.lst_tb_queue)
     tb_queue_btns = QHBoxLayout()
-    b_q_add = QPushButton(tm.get("btn_textbox_queue_add"))
+    b_q_add = PushButton(tm.get("btn_textbox_queue_add"))
     b_q_add.setObjectName("secondaryBtn")
     b_q_add.clicked.connect(self.action_textbox_queue_add)
     tb_queue_btns.addWidget(b_q_add)
-    b_q_clear = QPushButton(tm.get("btn_textbox_queue_clear"))
+    b_q_clear = PushButton(tm.get("btn_textbox_queue_clear"))
     b_q_clear.setObjectName("secondaryBtn")
     b_q_clear.clicked.connect(self.action_textbox_queue_clear)
     tb_queue_btns.addWidget(b_q_clear)
-    b_q_commit = QPushButton(tm.get("btn_textbox_queue_commit"))
+    b_q_commit = PrimaryButton(tm.get("btn_textbox_queue_commit"))
     b_q_commit.setObjectName("actionBtn")
     b_q_commit.clicked.connect(self.action_textbox_queue_commit)
     tb_queue_btns.addWidget(b_q_commit)
@@ -233,12 +229,12 @@ def build_textbox(self, layout) -> None:
 
     # 실험: 영역 텍스트 교체
     tb_replace = QHBoxLayout()
-    b_rep_region = QPushButton(tm.get("btn_textbox_replace_region"))
+    b_rep_region = PushButton(tm.get("btn_textbox_replace_region"))
     b_rep_region.setObjectName("secondaryBtn")
     b_rep_region.setToolTip(tm.get("tooltip_textbox_replace_region"))
     b_rep_region.clicked.connect(self.action_start_textbox_replace_region)
     tb_replace.addWidget(b_rep_region)
-    b_rep_apply = QPushButton(tm.get("btn_textbox_replace_apply"))
+    b_rep_apply = WarningButton(tm.get("btn_textbox_replace_apply"))
     b_rep_apply.setObjectName("warningBtn")
     b_rep_apply.setToolTip(tm.get("tooltip_textbox_replace_apply"))
     b_rep_apply.clicked.connect(self.action_replace_text_in_rect)
@@ -247,11 +243,11 @@ def build_textbox(self, layout) -> None:
     l_textbox.addLayout(tb_replace)
 
     tb_actions = QHBoxLayout()
-    b_textbox = QPushButton(tm.get("btn_insert_textbox"))
+    b_textbox = PrimaryButton(tm.get("btn_insert_textbox"))
     b_textbox.setObjectName("actionBtn")
     b_textbox.clicked.connect(self.action_insert_textbox)
     tb_actions.addWidget(b_textbox)
-    b_tb_focus = QPushButton(tm.get("btn_preview_focus_enter"))
+    b_tb_focus = PushButton(tm.get("btn_preview_focus_enter"))
     b_tb_focus.setObjectName("secondaryBtn")
     b_tb_focus.setToolTip(tm.get("tooltip_preview_focus_enter"))
     b_tb_focus.clicked.connect(self._toggle_preview_focus_mode)

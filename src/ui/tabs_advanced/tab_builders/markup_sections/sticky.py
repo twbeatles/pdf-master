@@ -2,20 +2,18 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QComboBox, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -58,7 +56,7 @@ def build_sticky(self, layout) -> None:
     self.txt_sticky_content = QLineEdit()
     self.txt_sticky_content.setPlaceholderText(tm.get("ph_sticky"))
     l_sticky.addWidget(self.txt_sticky_content)
-    b_sticky = QPushButton(tm.get("btn_add_sticky"))
+    b_sticky = PushButton(tm.get("btn_add_sticky"))
     b_sticky.clicked.connect(self.action_add_sticky_note)
     l_sticky.addWidget(b_sticky)
     layout.addWidget(grp_sticky)

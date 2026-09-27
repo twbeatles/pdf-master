@@ -143,10 +143,29 @@ class PDFMasterApp(
         self._wheel_filter = WheelEventFilter(self)
 
         self.setWindowTitle(f"{APP_NAME} v{VERSION}")
-        self.resize(1200, 850)  # 더 큰 기본 크기
+        self.setObjectName("appWindow")
+        self.resize(1200, 850)  # design_tokens.preferred_window_size 폴백값
+        try:  # 작은 화면·고배율에서 가용 영역 클램프 (design_tokens §20)
+            from PyQt6.QtGui import QGuiApplication as _QGA
+
+            from .design_tokens import clamp_minimum_size as _clamp_min
+            from .design_tokens import preferred_window_size as _pref_size
+
+            _scr = _QGA.primaryScreen()
+            _av = _scr.availableGeometry() if _scr is not None else None
+            _w, _h = _pref_size(
+                _av.width() if _av is not None else None,
+                _av.height() if _av is not None else None,
+            )
+            self.resize(_w, _h)
+            _mw, _mh = _clamp_min(_w, _h)
+            self.setMinimumSize(_mw, _mh)
+        except Exception:
+            logger.debug("Window size clamp skipped, using defaults", exc_info=True)
         self.setMinimumSize(950, 700)
 
         central = QWidget()
+        central.setObjectName("appCentral")
         self.setCentralWidget(central)
         main_layout = QVBoxLayout(central)
         main_layout.setContentsMargins(15, 10, 15, 10)  # 더 컴팩트한 여백
@@ -168,6 +187,7 @@ class PDFMasterApp(
 
         # Tabs (left side)
         tabs_widget = QWidget()
+        tabs_widget.setObjectName("appSide")
         self._content_left_widget = tabs_widget
         self._preview_focus_mode = False
         self._splitter_sizes_before_focus = None
@@ -180,7 +200,9 @@ class PDFMasterApp(
         self._textbox_clear_queue_after_success = False
         tabs_layout = QVBoxLayout(tabs_widget)
         tabs_layout.setContentsMargins(0, 0, 0, 0)
-        self.tabs = QTabWidget()
+        from .tab_shell import TabShell
+
+        self.tabs = TabShell(mode="nav")
         tabs_layout.addWidget(self.tabs)
         self.content_splitter.addWidget(tabs_widget)
 
@@ -209,6 +231,7 @@ class PDFMasterApp(
 
         # 컴팩트한 상태 바
         status_frame = QFrame()
+        status_frame.setObjectName("statusFrame")
         status_frame.setMaximumHeight(36)  # 높이 제한
         status_layout = QHBoxLayout(status_frame)
         status_layout.setContentsMargins(8, 4, 8, 4)
@@ -240,6 +263,15 @@ class PDFMasterApp(
 
         # 모든 QSpinBox, QComboBox에 휠 필터 설치
         self._install_wheel_filters()
+        try:  # Fluent ComboBox는 QComboBox 서브클래스가 아니라 별도 설치
+            from .fluent_widgets import QComboBox as _FluentComboBox
+            from .fluent_widgets import is_fluent_widgets_available
+
+            if is_fluent_widgets_available():
+                for _w in self.findChildren(_FluentComboBox):
+                    _w.installEventFilter(self._wheel_filter)
+        except Exception:
+            logger.debug("Fluent wheel filter install skipped", exc_info=True)
 
         # v2.7: 윈도우 위치 복원
         self._restore_window_geometry()

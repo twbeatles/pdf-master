@@ -214,6 +214,23 @@ if _module_exists('keyring'):
 else:
     print("[INFO] keyring not installed - API key will be stored in file")
 
+# Fluent UI (선택 설치: pip install -e ".[fluent]"). 미설치면 브리지 no-op.
+if _module_exists('qfluentwidgets'):
+    try:
+        hiddenimports += collect_submodules('qfluentwidgets')
+    except Exception:
+        hiddenimports += ['qfluentwidgets']
+    if _module_exists('qframelesswindow'):
+        try:
+            hiddenimports += collect_submodules('qframelesswindow')
+        except Exception:
+            hiddenimports += ['qframelesswindow']
+    if _module_exists('darkdetect'):
+        hiddenimports += ['darkdetect']
+    print("[OK] qfluentwidgets detected")
+else:
+    print("[INFO] qfluentwidgets not installed - Fluent theme bridge disabled")
+
 # Runtime helper imported indirectly through worker runtime save paths.
 hiddenimports += ['src.core.worker_runtime.save_profiles']
 

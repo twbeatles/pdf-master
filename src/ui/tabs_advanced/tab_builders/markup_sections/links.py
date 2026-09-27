@@ -2,20 +2,18 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PrimaryButton, QComboBox, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -64,7 +62,7 @@ def build_links(self, layout) -> None:
     link_opts3.addWidget(self.txt_link_area)
     link_opts3.addStretch()
     l_link.addLayout(link_opts3)
-    b_link = QPushButton(tm.get("btn_add_link"))
+    b_link = PrimaryButton(tm.get("btn_add_link"))
     b_link.setObjectName("actionBtn")
     b_link.clicked.connect(self.action_add_hyperlink)
     l_link.addWidget(b_link)

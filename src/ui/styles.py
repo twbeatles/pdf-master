@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from .theme import DARK_STYLESHEET, LIGHT_STYLESHEET, ThemeColors
+from .theme import DARK_STYLESHEET, LIGHT_STYLESHEET, NATIVE_DARK_STYLESHEET, NATIVE_LIGHT_STYLESHEET, ThemeColors
 
-__all__ = ["ThemeColors", "DARK_STYLESHEET", "LIGHT_STYLESHEET"]
+__all__ = ["ThemeColors", "DARK_STYLESHEET", "LIGHT_STYLESHEET", "NATIVE_DARK_STYLESHEET", "NATIVE_LIGHT_STYLESHEET"]

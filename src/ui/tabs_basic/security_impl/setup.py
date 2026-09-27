@@ -3,24 +3,22 @@ import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
-    QCheckBox,
-    QComboBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
-    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
+from ...fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox, QLineEdit, QSpinBox
+from ...tab_shell import add_tab
 from ....core.optional_deps import fitz
 from ....core.constants import SUPPORTED_IMAGE_FORMATS
 from ....core.i18n import tm
@@ -53,7 +51,7 @@ def setup_edit_sec_tab(self):
     form.addRow(tm.get("lbl_author"), self.inp_author)
     form.addRow(tm.get("lbl_subject"), self.inp_subj)
     l_m.addLayout(form)
-    b_m = QPushButton(tm.get("btn_save_metadata"))
+    b_m = PushButton(tm.get("btn_save_metadata"))
     b_m.clicked.connect(self.action_metadata)
     l_m.addWidget(b_m)
     content_layout.addWidget(grp_meta)
@@ -79,7 +77,7 @@ def setup_edit_sec_tab(self):
         self.cmb_wm_color.addItem(label, value)
     h_w.addWidget(self.cmb_wm_color)
     l_w.addLayout(h_w)
-    b_w = QPushButton(tm.get("btn_apply_watermark"))
+    b_w = PushButton(tm.get("btn_apply_watermark"))
     b_w.clicked.connect(self.action_watermark)
     l_w.addWidget(b_w)
     content_layout.addWidget(grp_wm)
@@ -126,7 +124,7 @@ def setup_edit_sec_tab(self):
     wm_opts2.addWidget(self.spn_img_wm_opacity)
     wm_opts2.addStretch()
     l_img_wm.addLayout(wm_opts2)
-    b_img_wm = QPushButton(tm.get("btn_apply_img_watermark"))
+    b_img_wm = PrimaryButton(tm.get("btn_apply_img_watermark"))
     b_img_wm.setObjectName("actionBtn")
     b_img_wm.clicked.connect(self.action_image_watermark)
     l_img_wm.addWidget(b_img_wm)
@@ -151,14 +149,14 @@ def setup_edit_sec_tab(self):
         self.cmb_compress_profile.setCurrentIndex(default_index)
     self.cmb_compress_profile.setToolTip(tm.get("tooltip_compress_profile"))
     h_sec.addWidget(self.cmb_compress_profile)
-    b_enc = QPushButton(tm.get("btn_encrypt"))
+    b_enc = PushButton(tm.get("btn_encrypt"))
     b_enc.clicked.connect(self.action_protect)
     h_sec.addWidget(b_enc)
-    b_dec = QPushButton(tm.get("btn_decrypt"))
+    b_dec = PushButton(tm.get("btn_decrypt"))
     b_dec.setToolTip(tm.get("tooltip_decrypt"))
     b_dec.clicked.connect(self.action_unlock)
     h_sec.addWidget(b_dec)
-    b_comp = QPushButton(tm.get("btn_compress"))
+    b_comp = PushButton(tm.get("btn_compress"))
     b_comp.clicked.connect(self.action_compress)
     h_sec.addWidget(b_comp)
     l_sec.addLayout(h_sec)
@@ -190,5 +188,5 @@ def setup_edit_sec_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    self.tabs.addTab(tab, f"🔒 {tm.get('tab_edit')}")
+    add_tab(self.tabs, tab, tm.get('tab_edit'), icon="CERTIFICATE")
 

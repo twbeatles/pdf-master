@@ -4,7 +4,6 @@ import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
-    QComboBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -15,13 +14,12 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QMessageBox,
-    QCheckBox,
-    QPushButton,
     QScrollArea,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
+from ..fluent_widgets import DangerButton, PushButton, QCheckBox, QComboBox, QSpinBox
+from ..tab_shell import add_tab
 
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
@@ -52,10 +50,10 @@ def setup_convert_tab(self):
 
     # 버튼 레이아웃
     btn_layout_img = QHBoxLayout()
-    btn_add_pdf = QPushButton(tm.get("btn_add_pdf"))
+    btn_add_pdf = PushButton(tm.get("btn_add_pdf"))
     btn_add_pdf.clicked.connect(self._add_pdf_for_img)
 
-    btn_clear_img = QPushButton(tm.get("btn_clear_all"))
+    btn_clear_img = DangerButton(tm.get("btn_clear_all"))
     btn_clear_img.setToolTip(tm.get("tooltip_clear_list"))
     btn_clear_img.setStyleSheet("""
         QPushButton { background-color: #3e272b; color: #ff6b6b; border: 1px solid #5c3a3a; padding: 10px; }
@@ -82,13 +80,13 @@ def setup_convert_tab(self):
     opt.addWidget(self.spn_dpi)
 
     # 프리셋 버튼
-    btn_save_preset = QPushButton("💾")
+    btn_save_preset = PushButton("💾")
     btn_save_preset.setToolTip(tm.get("tooltip_save_preset"))
     btn_save_preset.setFixedWidth(36)
     btn_save_preset.clicked.connect(self._save_convert_preset)
     opt.addWidget(btn_save_preset)
 
-    btn_load_preset = QPushButton("📂")
+    btn_load_preset = PushButton("📂")
     btn_load_preset.setToolTip(tm.get("tooltip_load_preset"))
     btn_load_preset.setFixedWidth(36)
     btn_load_preset.clicked.connect(self._load_convert_preset)
@@ -97,7 +95,7 @@ def setup_convert_tab(self):
     opt.addStretch()
     l_img.addLayout(opt)
 
-    b_img = QPushButton(tm.get("btn_convert_to_img"))
+    b_img = PushButton(tm.get("btn_convert_to_img"))
     b_img.clicked.connect(self.action_img)
     l_img.addWidget(b_img)
     content_layout.addWidget(grp_img)
@@ -112,10 +110,10 @@ def setup_convert_tab(self):
     l_i2p.addWidget(self.img_list)
 
     btn_i2p = QHBoxLayout()
-    b_add_img = QPushButton(tm.get("btn_add_img"))
+    b_add_img = PushButton(tm.get("btn_add_img"))
     b_add_img.setObjectName("secondaryBtn")
     b_add_img.clicked.connect(self._add_images)
-    b_clr_img = QPushButton(tm.get("btn_clear_img"))
+    b_clr_img = PushButton(tm.get("btn_clear_img"))
     b_clr_img.setObjectName("secondaryBtn")
     b_clr_img.clicked.connect(self.img_list.clear)
     btn_i2p.addWidget(b_add_img)
@@ -123,7 +121,7 @@ def setup_convert_tab(self):
     btn_i2p.addStretch()
     l_i2p.addLayout(btn_i2p)
 
-    b_i2p = QPushButton(tm.get("btn_convert_to_pdf"))
+    b_i2p = PushButton(tm.get("btn_convert_to_pdf"))
     b_i2p.clicked.connect(self.action_img_to_pdf)
     l_i2p.addWidget(b_i2p)
     content_layout.addWidget(grp_img2pdf)
@@ -142,10 +140,10 @@ def setup_convert_tab(self):
 
     # 버튼 레이아웃
     btn_layout_txt = QHBoxLayout()
-    btn_add_txt = QPushButton(tm.get("btn_add_pdf"))
+    btn_add_txt = PushButton(tm.get("btn_add_pdf"))
     btn_add_txt.clicked.connect(self._add_pdf_for_txt)
 
-    btn_clear_txt = QPushButton(tm.get("btn_clear_all"))
+    btn_clear_txt = DangerButton(tm.get("btn_clear_all"))
     btn_clear_txt.setToolTip(tm.get("tooltip_clear_list"))
     btn_clear_txt.setStyleSheet("""
         QPushButton { background-color: #3e272b; color: #ff6b6b; border: 1px solid #5c3a3a; padding: 10px; }
@@ -160,7 +158,7 @@ def setup_convert_tab(self):
     self.chk_extract_ocr.setChecked(False)
     self.chk_extract_ocr.setToolTip(tm.get("tip_extract_ocr"))
     l_txt.addWidget(self.chk_extract_ocr)
-    b_txt = QPushButton(tm.get("btn_save_text"))
+    b_txt = PushButton(tm.get("btn_save_text"))
     b_txt.clicked.connect(self.action_txt)
     l_txt.addWidget(b_txt)
     content_layout.addWidget(grp_txt)
@@ -171,7 +169,7 @@ def setup_convert_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    self.tabs.addTab(tab, f"🔄 {tm.get('tab_convert')}")
+    add_tab(self.tabs, tab, tm.get('tab_convert'), icon="SYNC")
 
 def _add_images(self):
     files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_img"), "", tm.get("file_filter_images"))

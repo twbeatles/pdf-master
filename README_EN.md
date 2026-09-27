@@ -1,4 +1,4 @@
-# PDF Master v4.5.8
+# PDF Master v4.5.9
 
 📑 **All-in-One PDF Editor** — PyQt6 Desktop Application
 
@@ -130,7 +130,7 @@
 
 ### Use the Prebuilt Executable (Windows)
 
-Run `dist/PDF_Master_v4.5.8.exe` directly — no installation required.
+Run `dist/PDF_Master_v4.5.9.exe` directly — no installation required.
 
 ### Run from Source
 
@@ -143,6 +143,9 @@ pip install -e .[dev]
 
 # For AI features
 pip install -e .[ai]
+
+# Optional: Fluent design widgets (falls back to plain Qt widgets if missing)
+pip install -e .[fluent]
 
 # 2. Launch
 python main.py
@@ -283,7 +286,7 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-Output: `dist/PDF_Master_v4.5.8.exe` (~30–40 MB)
+Output: `dist/PDF_Master_v4.5.9.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
@@ -293,6 +296,9 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 
 ## 📝 Changelog
 
+### v4.5.9
+- **Fluent UI redesign (P2-P4)**: `TabShell` navigation (SegmentedWidget/Pivot + QStackedWidget, QTabWidget fallback), Fluent component aliases (Primary/Danger/Warning/Editable roles), scoped native theme when Fluent is active. Emoji tab labels replaced with `FluentIcon`; density/font/HiDPI tokens (`src/ui/design_tokens.py`). Worker modes/kwargs and public imports unchanged. Design: `docs/fluent-redesign-design.md`
+- Optional dependency `pyproject [fluent]` (`PyQt6-Fluent-Widgets>=1.6`, `darkdetect>=1.8`) + packaging collect guard
 ### v4.5.8
 - Update operations reliability: manifest publish `pull --rebase + push` retried up to 3 times, downloads retried up to 3 times on transient errors
 - Silent auto-check failures now show a status-bar hint plus the last failure cause, with one automatic retry after 5 minutes

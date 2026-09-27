@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ..fluent_widgets import DangerButton
 
 from ...core.optional_deps import FITZ_AVAILABLE, fitz
 from ...core.pdf_validation import validate_pdf_file
@@ -61,7 +62,7 @@ class FileSelectorWidget(QWidget):
         self.btn_recent.setMenu(self.recent_menu)
         self.recent_menu.aboutToShow.connect(self._update_recent_menu)
 
-        self.btn_clear = QPushButton(tm.get("btn_clear"))
+        self.btn_clear = DangerButton(tm.get("btn_clear"))
         self.btn_clear.setObjectName("secondaryBtn")
         self.btn_clear.setFixedWidth(100)  # 80 -> 100
         self.btn_clear.setToolTip(tm.get("tooltip_clear_file"))

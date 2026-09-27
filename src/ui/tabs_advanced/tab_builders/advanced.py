@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+# (this module uses TabShell only; no fluent-shadowed widgets)
 
 from ....core.i18n import tm
 from ...widgets import FileSelectorWidget
@@ -28,17 +29,19 @@ def setup_advanced_tab(self):
     layout.setContentsMargins(5, 5, 5, 5)
 
     # 서브 탭 위젯
-    sub_tabs = QTabWidget()
+    from ...tab_shell import TabShell, add_tab
+
+    sub_tabs = TabShell(mode="pivot")  # fluent Pivot, fallback QTabWidget
     sub_tabs.setDocumentMode(True)
 
     # 1. 편집 서브탭
-    sub_tabs.addTab(self._create_edit_subtab(), f"✏️ {tm.get('subtab_edit')}")
+    add_tab(sub_tabs, self._create_edit_subtab(), tm.get('subtab_edit'), icon="EDIT")
     # 2. 추출 서브탭
-    sub_tabs.addTab(self._create_extract_subtab(), f"📊 {tm.get('subtab_extract')}")
+    add_tab(sub_tabs, self._create_extract_subtab(), tm.get('subtab_extract'), icon="DOWNLOAD")
     # 3. 마크업 서브탭
-    sub_tabs.addTab(self._create_markup_subtab(), f"📝 {tm.get('subtab_markup')}")
+    add_tab(sub_tabs, self._create_markup_subtab(), tm.get('subtab_markup'), icon="BRUSH")
     # 4. 기타 서브탭
-    sub_tabs.addTab(self._create_misc_subtab(), f"📎 {tm.get('subtab_misc')}")
+    add_tab(sub_tabs, self._create_misc_subtab(), tm.get('subtab_misc'), icon="MENU")
 
     layout.addWidget(sub_tabs)
-    self.tabs.addTab(tab, f"🔧 {tm.get('tab_advanced')}")
+    add_tab(self.tabs, tab, tm.get('tab_advanced'), icon="SETTING")

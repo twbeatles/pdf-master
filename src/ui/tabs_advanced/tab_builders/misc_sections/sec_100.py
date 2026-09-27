@@ -2,20 +2,18 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PrimaryButton, QComboBox, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -57,7 +55,7 @@ def build_sec_100(self, layout) -> None:
     self.txt_freehand_strokes = QLineEdit()
     self.txt_freehand_strokes.setPlaceholderText(tm.get("ph_freehand_strokes"))
     l_freehand.addWidget(self.txt_freehand_strokes)
-    b_freehand = QPushButton(tm.get("btn_add_freehand_sig"))
+    b_freehand = PrimaryButton(tm.get("btn_add_freehand_sig"))
     b_freehand.setObjectName("actionBtn")
     b_freehand.clicked.connect(self.action_add_freehand_signature)
     l_freehand.addWidget(b_freehand)

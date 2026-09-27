@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PyQt6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+# (this module uses no fluent-shadowed widgets)
 
 from .markup_sections.search_highlight import build_search_highlight
 from .markup_sections.annotations import build_annotations

@@ -6,16 +6,15 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import DangerButton, PushButton, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -35,7 +34,7 @@ def build_redact(self, layout) -> None:
     self.inp_redact.setPlaceholderText(tm.get("ph_redact"))
     redact_opts.addWidget(self.inp_redact)
     l_redact.addLayout(redact_opts)
-    b_redact = QPushButton(tm.get("btn_redact"))
+    b_redact = DangerButton(tm.get("btn_redact"))
     b_redact.setObjectName("dangerBtn")
     b_redact.setToolTip(tm.get("tooltip_redact"))
     b_redact.clicked.connect(self.action_redact_text)
@@ -52,7 +51,7 @@ def build_redact(self, layout) -> None:
     area_row.addWidget(self.inp_redact_rect)
     l_redact.addLayout(area_row)
     drag_row = QHBoxLayout()
-    b_redact_drag = QPushButton(tm.get("btn_redact_drag_select"))
+    b_redact_drag = PushButton(tm.get("btn_redact_drag_select"))
     b_redact_drag.setObjectName("secondaryBtn")
     b_redact_drag.setToolTip(tm.get("tooltip_redact_drag_select"))
     b_redact_drag.clicked.connect(self.action_start_redact_region_select)
@@ -62,7 +61,7 @@ def build_redact(self, layout) -> None:
     self.lbl_redact_drag_hint.setWordWrap(True)
     drag_row.addWidget(self.lbl_redact_drag_hint, 1)
     l_redact.addLayout(drag_row)
-    b_redact_area = QPushButton(tm.get("btn_redact_area"))
+    b_redact_area = DangerButton(tm.get("btn_redact_area"))
     b_redact_area.setObjectName("dangerBtn")
     b_redact_area.clicked.connect(self.action_redact_area)
     l_redact.addWidget(b_redact_area)

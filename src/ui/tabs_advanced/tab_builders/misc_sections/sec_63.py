@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -10,12 +9,12 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QComboBox, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -55,7 +54,7 @@ def build_sec_63(self, layout) -> None:
     sig_opts.addWidget(self.spn_sig_page)
     sig_opts.addStretch()
     l_sig.addLayout(sig_opts)
-    b_sig = QPushButton(tm.get("btn_insert_sig"))
+    b_sig = PushButton(tm.get("btn_insert_sig"))
     b_sig.clicked.connect(self.action_insert_signature)
     l_sig.addWidget(b_sig)
     layout.addWidget(grp_sig)

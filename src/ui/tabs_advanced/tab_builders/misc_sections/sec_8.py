@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PrimaryButton, PushButton
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -35,14 +36,14 @@ def build_sec_8(self, layout) -> None:
     self.form_fields_list.itemDoubleClicked.connect(self._edit_form_field)
     l_form.addWidget(self.form_fields_list)
     btn_form_layout = QHBoxLayout()
-    b_detect = QPushButton(tm.get("btn_detect_fields"))
+    b_detect = PushButton(tm.get("btn_detect_fields"))
     b_detect.clicked.connect(self.action_detect_fields)
     btn_form_layout.addWidget(b_detect)
-    b_fill = QPushButton(tm.get("btn_save_form"))
+    b_fill = PrimaryButton(tm.get("btn_save_form"))
     b_fill.setObjectName("actionBtn")
     b_fill.clicked.connect(self.action_fill_form)
     btn_form_layout.addWidget(b_fill)
-    b_flatten = QPushButton(tm.get("btn_flatten_form"))
+    b_flatten = PushButton(tm.get("btn_flatten_form"))
     b_flatten.clicked.connect(self.action_flatten_form)
     btn_form_layout.addWidget(b_flatten)
     l_form.addLayout(btn_form_layout)

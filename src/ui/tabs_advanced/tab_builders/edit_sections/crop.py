@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QGroupBox,
@@ -11,12 +10,12 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QCheckBox, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -45,7 +44,7 @@ def build_crop(self, layout) -> None:
     self.chk_crop_content = QCheckBox(tm.get("chk_crop_content"))
     self.chk_crop_content.setChecked(False)
     l_crop.addWidget(self.chk_crop_content)
-    b_crop = QPushButton(tm.get("btn_crop"))
+    b_crop = PushButton(tm.get("btn_crop"))
     b_crop.clicked.connect(self.action_crop)
     l_crop.addWidget(b_crop)
     layout.addWidget(grp_crop)

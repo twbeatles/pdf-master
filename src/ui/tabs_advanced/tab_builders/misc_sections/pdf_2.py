@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
@@ -16,6 +15,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QLineEdit
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -36,7 +36,7 @@ def build_pdf_2(self, layout) -> None:
     self.inp_decrypt_pw.setPlaceholderText(tm.get("ph_decrypt_pw"))
     decrypt_opts.addWidget(self.inp_decrypt_pw)
     l_decrypt.addLayout(decrypt_opts)
-    b_decrypt = QPushButton(tm.get("btn_decrypt"))
+    b_decrypt = PushButton(tm.get("btn_decrypt"))
     b_decrypt.setToolTip(tm.get("tooltip_decrypt"))
     b_decrypt.clicked.connect(self.action_decrypt_pdf)
     l_decrypt.addWidget(b_decrypt)

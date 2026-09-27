@@ -4,14 +4,12 @@ import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
-    QComboBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
-    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
@@ -21,6 +19,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ..fluent_widgets import EditableComboBox, PushButton, QComboBox, QLineEdit
+from ..tab_shell import add_tab
 
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
@@ -78,12 +78,12 @@ def setup_page_tab(self):
     self.cmb_pn_pos.setToolTip(tm.get("tooltip_page_number_pos"))
     opt_pn.addWidget(self.cmb_pn_pos)
     opt_pn.addWidget(QLabel(tm.get("lbl_format")))
-    self.cmb_pn_format = QComboBox()
+    self.cmb_pn_format = EditableComboBox()
     self.cmb_pn_format.addItems(["{n} / {total}", "Page {n} of {total}", "- {n} -", "{n}", tm.get("format_page_local")])
     self.cmb_pn_format.setEditable(True)
     opt_pn.addWidget(self.cmb_pn_format)
     l_pn.addLayout(opt_pn)
-    b_pn = QPushButton(tm.get("btn_insert_page_number"))
+    b_pn = PushButton(tm.get("btn_insert_page_number"))
     b_pn.clicked.connect(self.action_page_numbers)
     l_pn.addWidget(b_pn)
     content_layout.addWidget(grp_pn)
@@ -100,7 +100,7 @@ def setup_page_tab(self):
     self.inp_range.setPlaceholderText("1, 3-5, 8")
     h.addWidget(self.inp_range)
     l_s.addLayout(h)
-    b_s = QPushButton(tm.get("btn_split_run"))
+    b_s = PushButton(tm.get("btn_split_run"))
     b_s.clicked.connect(self.action_split)
     l_s.addWidget(b_s)
     content_layout.addWidget(grp_split)
@@ -117,7 +117,7 @@ def setup_page_tab(self):
     self.inp_del_range.setPlaceholderText("2, 4-6")
     h2.addWidget(self.inp_del_range)
     l_d.addLayout(h2)
-    b_d = QPushButton(tm.get("btn_delete_run"))
+    b_d = PushButton(tm.get("btn_delete_run"))
     b_d.clicked.connect(self.action_delete_pages)
     l_d.addWidget(b_d)
     content_layout.addWidget(grp_del)
@@ -154,7 +154,7 @@ def setup_page_tab(self):
     self.rot_thumb_grid.setMinimumHeight(320)
     self.rot_thumb_grid.pageSelected.connect(self._on_rotate_thumbnail_page_selected)
     l_r.addWidget(self.rot_thumb_grid)
-    b_r = QPushButton(tm.get("btn_rotate_run"))
+    b_r = PushButton(tm.get("btn_rotate_run"))
     b_r.clicked.connect(self.action_rotate)
     l_r.addWidget(b_r)
     content_layout.addWidget(grp_rot)
@@ -162,7 +162,7 @@ def setup_page_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    self.tabs.addTab(tab, f"✂️ {tm.get('tab_page')}")
+    add_tab(self.tabs, tab, tm.get('tab_page'), icon="CUT")
 
 def action_split(self):
     path = self.sel_split.get_path()

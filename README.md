@@ -1,4 +1,4 @@
-# PDF Master v4.5.8
+# PDF Master v4.5.9
 
 📑 **올인원 PDF 편집 프로그램** — PyQt6 기반 데스크톱 앱
 
@@ -130,7 +130,7 @@
 
 ### 빌드된 실행 파일 사용 (Windows)
 
-`dist/PDF_Master_v4.5.8.exe` 파일을 바로 실행하면 됩니다. 별도 설치 불필요.
+`dist/PDF_Master_v4.5.9.exe` 파일을 바로 실행하면 됩니다. 별도 설치 불필요.
 
 ### 소스에서 직접 실행
 
@@ -143,6 +143,9 @@ pip install -e .[dev]
 
 # AI 기능 사용 시 추가 설치
 pip install -e .[ai]
+
+# Fluent 디자인 위젯 사용 시 추가 설치 (선택, 미설치면 기본 Qt 위젯으로 동작)
+pip install -e .[fluent]
 
 # 2. 실행
 python main.py
@@ -283,16 +286,19 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-빌드 결과: `dist/PDF_Master_v4.5.8.exe` (~30–40MB)
+빌드 결과: `dist/PDF_Master_v4.5.9.exe` (~30–40MB)
 
 타입 스텁은 `typings/` 디렉터리에 있으며 `pyrightconfig.json`에서 참조합니다.
 
-검증 기준선: `python -m pytest -q` (opt-in Gemini smoke 1건 skip 가능). 기능 감사 SSOT는 `PROJECT_AUDIT.md`, 품질·아키텍처 감사는 `PROJECT_AUDIT_QUALITY.md`를 참고하세요.
+검증 기준선: `python -m pytest -q` (opt-in Gemini smoke 1건 skip 가능). 기능 감사 SSOT는 `PROJECT_AUDIT.md`, 품질·아키텍처 감사는 `PROJECT_AUDIT_QUALITY.md`를 참고하세요. Fluent 설계는 `docs/fluent-redesign-design.md`를 참고하세요.
 
 ---
 
 ## 📝 변경 이력
 
+### v4.5.9
+- **Fluent 디자인 전면 개편(P2–P4)**: `TabShell` 내비게이션(SegmentedWidget/Pivot + QStackedWidget, 미설치 시 QTabWidget 폴백), Fluent 컴포넌트 별칭(Primary/Danger/Warning/Editable 역할 분리), Fluent 활성 시 스코프드 네이티브 테마. 탭 8종 이모지→`FluentIcon`, 밀집도·폰트·HiDPI 토큰(`src/ui/design_tokens.py`). Worker mode/kwargs·public import 불변. 설계: `docs/fluent-redesign-design.md`
+- 선택 의존성 `pyproject [fluent]` (`PyQt6-Fluent-Widgets>=1.6`, `darkdetect>=1.8`) + 패키징 collect 가드
 ### v4.5.8
 - 업데이트 운영 신뢰: 매니페스트 게시 `pull --rebase + push` 최대 3회 재시도, 다운로드 일시 오류 최대 3회 재시도
 - 조용한 자동 확인 실패의 상태바 힌트 + 마지막 실패 원인 표시 + 5분 뒤 1회 자동 재시도

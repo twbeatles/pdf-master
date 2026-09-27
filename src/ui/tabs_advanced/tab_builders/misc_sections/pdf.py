@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from PyQt6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -16,6 +14,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QCheckBox, QComboBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -47,7 +46,7 @@ def build_pdf(self, layout) -> None:
     self.chk_compare_visual = QCheckBox(tm.get("chk_compare_visual_diff"))
     self.chk_compare_visual.setChecked(False)
     l_compare.addWidget(self.chk_compare_visual)
-    b_compare = QPushButton(tm.get("btn_compare_pdf"))
+    b_compare = PushButton(tm.get("btn_compare_pdf"))
     b_compare.setToolTip(tm.get("tooltip_compare"))
     b_compare.clicked.connect(self.action_compare_pdfs)
     l_compare.addWidget(b_compare)

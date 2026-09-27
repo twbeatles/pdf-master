@@ -2,20 +2,18 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PrimaryButton, QComboBox, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -54,7 +52,7 @@ def build_v4_5_3_f_07_ui_3(self, layout) -> None:
     self.txt_add_annot_rect = QLineEdit()
     self.txt_add_annot_rect.setPlaceholderText(tm.get("ph_annotation_rect"))
     l_add_annotation.addWidget(self.txt_add_annot_rect)
-    b_add_annotation = QPushButton(tm.get("btn_add_annotation_basic"))
+    b_add_annotation = PrimaryButton(tm.get("btn_add_annotation_basic"))
     b_add_annotation.setObjectName("actionBtn")
     b_add_annotation.clicked.connect(self.action_add_annotation_basic)
     l_add_annotation.addWidget(b_add_annotation)

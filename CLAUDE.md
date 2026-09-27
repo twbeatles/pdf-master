@@ -1015,3 +1015,28 @@ read specs/001-pdf-master-release-ux/tasks.md
 - 로컬 CLI: `specify` (uv tool, 버전은 `specify version`)
 
 <!-- SPECKIT-AGENT-GUIDE:END -->
+
+## 2026-09-27 Fluent Redesign Addendum
+
+- SSOT `DESKTOP_UI_DESIGN_RULES.md` 준수, 설계안 `docs/fluent-redesign-design.md` (PyQt6 유지·기능 무손실).
+- 토대: `src/ui/design_tokens.py` (spacing/typography/semantic color/창 클램프) + `src/ui/fluent_theme.py`
+  (qfluentwidgets optional 브리지: Theme.AUTO·darkdetect·watcher·Mica off). 미설치면 no-op.
+- 선택 의존성 `pyproject [fluent]` (`PyQt6-Fluent-Widgets>=1.6`, `darkdetect>=1.8`) + `pdf_master.spec` 가드 collect.
+- 배선: `main.py` PassThrough rounding + Fluent setup, `main_window.py` availableGeometry 클램프,
+  `window_core/theme.py` settings→Fluent 동기화. 시각 변화 없음이 P1 정상.
+- 회귀: `tests/test_fluent_design_foundation.py`. 검증: `python -m pyright`, `python -m pytest -q`.
+
+## 2026-09-27 Fluent Redesign P2–P4 Addendum
+
+- 셸: `src/ui/tab_shell.py` `TabShell` (Fluent SegmentedWidget/Pivot + QStackedWidget,
+  미설치면 QTabWidget 폴백) + `add_tab()` 공용 헬퍼 (테스트 스텁의 순수 QTabWidget과 `icon=` 충돌 방지).
+  MSFluentWindow는 splitter/미리보기/포커스 구조와 충돌하므로 미사용 — 설계안 §2 참조.
+- 컴포넌트: `src/ui/fluent_widgets.py` 별칭 (Q-철자 섀도잉; Primary/Danger/Warning/EditableComboBox 역할 분리).
+  `typings/`의 `__getattr__` 전용 PyQt6 스텁은 별명(`as`) import를 해석하지 못하므로 동명 import + 대입 사용.
+- 테마 분리: Fluent 활성 시 레거시 전역 QSS 미적용 → `src/ui/theme/native.py` 스코프드 시트만 적용
+  (타입 셀렉터가 Fluent 서브클래스/내부 Qt 자식을 관통해 외관을 깨고 누적 시 크래시 유발).
+  DARK/LIGHT 문자열은 폴백·계약 테스트용으로 유지.
+- 경계: `FileSelectorWidget` 버튼은 Qt 유지 (Fluent 버튼 + deleteLater + 전역 재폴리시 누적 시
+  access violation 실측) — `tests/test_fluent_shell_boundary.py`가 클래스 계약으로 고정.
+- 회귀: `tests/test_fluent_shell_boundary.py` (TabShell 표면·폴백·라이프사이클).
+  검증: `python -m pyright src/core src/ui` 0 errors, `python -m pytest -q` exit 0.

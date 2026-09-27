@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ..fluent_widgets import PrimaryButton, PushButton
+from ..tab_shell import add_tab
 
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
@@ -61,15 +63,15 @@ def setup_merge_tab(self):
         model.rowsRemoved.connect(self._update_merge_count)
 
     btn_box = QHBoxLayout()
-    b_add = QPushButton(tm.get("btn_add_files_merge"))
+    b_add = PushButton(tm.get("btn_add_files_merge"))
     b_add.setObjectName("secondaryBtn")
     b_add.clicked.connect(self._merge_add_files)
 
-    b_del = QPushButton(tm.get("btn_remove_sel"))
+    b_del = PushButton(tm.get("btn_remove_sel"))
     b_del.setObjectName("secondaryBtn")
     b_del.clicked.connect(lambda: [self.merge_list.takeItem(self.merge_list.row(i)) for i in self.merge_list.selectedItems()])
 
-    b_clr = QPushButton(tm.get("btn_clear_merge"))
+    b_clr = PushButton(tm.get("btn_clear_merge"))
     b_clr.setObjectName("secondaryBtn")
     b_clr.clicked.connect(self._confirm_clear_merge)  # v2.7: 확인 다이얼로그
 
@@ -83,12 +85,12 @@ def setup_merge_tab(self):
     step2.setObjectName("stepLabel")
     layout.addWidget(step2)
 
-    b_run = QPushButton(tm.get("btn_run_merge"))
+    b_run = PrimaryButton(tm.get("btn_run_merge"))
     b_run.setObjectName("actionBtn")
     b_run.clicked.connect(self.action_merge)
     layout.addWidget(b_run)
 
-    self.tabs.addTab(tab, f"📎 {tm.get('tab_merge')}")
+    add_tab(self.tabs, tab, tm.get('tab_merge'), icon="PASTE")
 
 def _merge_add_files(self):
     files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")

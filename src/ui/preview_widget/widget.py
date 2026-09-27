@@ -153,6 +153,7 @@ class ZoomablePreviewWidget(PreviewDocumentApiMixin, PreviewNavigationMixin, Pre
         search_layout = QVBoxLayout(search_tab)
         search_bar = QHBoxLayout()
         self.search_input = PreviewSearchLineEdit()
+        self.search_input.setObjectName("previewSearchEdit")
         self.search_input.setPlaceholderText(tm.get("preview_search_placeholder"))
         self.search_input.submitRequested.connect(self._on_search_submit)
         self.search_input.previousRequested.connect(

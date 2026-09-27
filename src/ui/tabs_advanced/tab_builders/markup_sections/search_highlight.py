@@ -6,7 +6,6 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
@@ -16,6 +15,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QLineEdit
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -36,11 +36,11 @@ def build_search_highlight(self, layout) -> None:
     search_opts.addWidget(self.inp_search)
     l_search.addLayout(search_opts)
     search_btns = QHBoxLayout()
-    b_search = QPushButton(tm.get("btn_search_text"))
+    b_search = PushButton(tm.get("btn_search_text"))
     b_search.setToolTip(tm.get("tooltip_search_text"))
     b_search.clicked.connect(self.action_search_text)
     search_btns.addWidget(b_search)
-    b_highlight = QPushButton(tm.get("btn_highlight"))
+    b_highlight = PushButton(tm.get("btn_highlight"))
     b_highlight.setToolTip(tm.get("tooltip_highlight"))
     b_highlight.clicked.connect(self.action_highlight_text)
     search_btns.addWidget(b_highlight)

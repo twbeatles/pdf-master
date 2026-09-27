@@ -33,6 +33,11 @@ dev = [
 secure = [
   "keyring>=25.0.0",
 ]
+# Fluent UI (선택 설치: pip install -e ".[fluent]"). PyQt6 바인딩 유지.
+fluent = [
+  "PyQt6-Fluent-Widgets>=1.6",
+  "darkdetect>=1.8",
+]
 
 [tool.setuptools]
 include-package-data = true

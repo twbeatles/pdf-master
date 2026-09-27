@@ -11,12 +11,12 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -38,7 +38,7 @@ def build_blank(self, layout) -> None:
     opt_blank.addWidget(self.spn_blank_pos)
     opt_blank.addStretch()
     l_blank.addLayout(opt_blank)
-    b_blank = QPushButton(tm.get("btn_insert_blank"))
+    b_blank = PushButton(tm.get("btn_insert_blank"))
     b_blank.clicked.connect(self.action_blank_page)
     l_blank.addWidget(b_blank)
     layout.addWidget(grp_blank)

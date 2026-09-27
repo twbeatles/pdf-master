@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QDoubleSpinBox,
     QGroupBox,
     QHBoxLayout,
@@ -17,6 +16,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QComboBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -38,7 +38,7 @@ def build_resize(self, layout) -> None:
     resize_opts.addWidget(self.cmb_resize)
     resize_opts.addStretch()
     l_resize.addLayout(resize_opts)
-    b_resize = QPushButton(tm.get("btn_resize"))
+    b_resize = PushButton(tm.get("btn_resize"))
     b_resize.clicked.connect(self.action_resize_pages)
     l_resize.addWidget(b_resize)
     layout.addWidget(grp_resize)

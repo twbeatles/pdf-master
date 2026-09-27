@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
@@ -16,6 +14,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QComboBox, QLineEdit
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -45,7 +44,7 @@ def build_text_markup(self, layout) -> None:
         self.cmb_markup.addItem(label, value)
     markup_opts.addWidget(self.cmb_markup)
     l_markup.addLayout(markup_opts)
-    b_markup = QPushButton(tm.get("btn_add_markup"))
+    b_markup = PushButton(tm.get("btn_add_markup"))
     b_markup.clicked.connect(self.action_add_text_markup)
     l_markup.addWidget(b_markup)
     layout.addWidget(grp_markup)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from PyQt6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+# (this module uses no fluent-shadowed widgets)
 
 from .misc_sections.sec_8 import build_sec_8
 from .misc_sections.pdf import build_pdf

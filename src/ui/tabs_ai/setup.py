@@ -3,21 +3,19 @@ import os
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QComboBox,
     QDialog,
     QFileDialog,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSpinBox,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ..fluent_widgets import PrimaryButton, PushButton, QComboBox, QLineEdit, QSpinBox, QTextEdit
+from ..tab_shell import add_tab
 
 from ...core.i18n import tm
 from ...core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
@@ -69,7 +67,7 @@ def setup_ai_tab(self):
         self.txt_api_key.setText(saved_key)
     api_layout.addWidget(self.txt_api_key)
 
-    btn_save_key = QPushButton(tm.get("btn_save_key"))
+    btn_save_key = PushButton(tm.get("btn_save_key"))
     btn_save_key.setFixedWidth(70)
     btn_save_key.setEnabled(AI_AVAILABLE)
     btn_save_key.clicked.connect(self._save_api_key)
@@ -135,7 +133,7 @@ def setup_ai_tab(self):
     l_summary.addLayout(opt_layout)
 
     # 요약 실행 버튼
-    self.btn_ai_summarize = QPushButton(tm.get("btn_ai_run"))
+    self.btn_ai_summarize = PrimaryButton(tm.get("btn_ai_run"))
     self.btn_ai_summarize.setObjectName("actionBtn")
     self.btn_ai_summarize.setEnabled(AI_AVAILABLE)
     self.btn_ai_summarize.clicked.connect(self.action_ai_summarize)
@@ -160,7 +158,7 @@ def setup_ai_tab(self):
     l_summary.addWidget(self.lbl_summary_meta)
 
     # 저장 버튼
-    btn_save_summary = QPushButton(tm.get("btn_save_summary"))
+    btn_save_summary = PushButton(tm.get("btn_save_summary"))
     btn_save_summary.setObjectName("secondaryBtn")
     btn_save_summary.clicked.connect(self._save_summary_result)
     l_summary.addWidget(btn_save_summary)
@@ -179,7 +177,7 @@ def setup_ai_tab(self):
     self.sel_thumb_pdf.pathChanged.connect(self._update_preview)
     l_thumb.addWidget(self.sel_thumb_pdf)
 
-    btn_show_grid = QPushButton(tm.get("btn_show_grid"))
+    btn_show_grid = PrimaryButton(tm.get("btn_show_grid"))
     btn_show_grid.setObjectName("actionBtn")
     btn_show_grid.clicked.connect(self._show_thumbnail_grid)
     l_thumb.addWidget(btn_show_grid)
@@ -207,7 +205,7 @@ def setup_ai_tab(self):
     self.txt_ai_question.returnPressed.connect(self._ask_ai_question)
     q_layout.addWidget(self.txt_ai_question)
 
-    self.btn_ask_ai = QPushButton(tm.get("btn_ask_ai"))
+    self.btn_ask_ai = PrimaryButton(tm.get("btn_ask_ai"))
     self.btn_ask_ai.setObjectName("actionBtn")
     self.btn_ask_ai.setEnabled(AI_AVAILABLE)
     self.btn_ask_ai.setFixedWidth(100)
@@ -229,7 +227,7 @@ def setup_ai_tab(self):
     l_chat.addWidget(self.lbl_chat_meta)
 
     # 대화 삭제 버튼
-    btn_clear_chat = QPushButton(tm.get("btn_clear_chat"))
+    btn_clear_chat = PushButton(tm.get("btn_clear_chat"))
     btn_clear_chat.setObjectName("secondaryBtn")
     btn_clear_chat.clicked.connect(self._clear_chat_history)
     l_chat.addWidget(btn_clear_chat)
@@ -255,7 +253,7 @@ def setup_ai_tab(self):
     kw_opt_layout.addStretch()
     l_keywords.addLayout(kw_opt_layout)
 
-    self.btn_extract_keywords = QPushButton(tm.get("btn_extract_keywords"))
+    self.btn_extract_keywords = PrimaryButton(tm.get("btn_extract_keywords"))
     self.btn_extract_keywords.setObjectName("actionBtn")
     self.btn_extract_keywords.setEnabled(AI_AVAILABLE)
     self.btn_extract_keywords.clicked.connect(self._extract_keywords)
@@ -286,4 +284,4 @@ def setup_ai_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    self.tabs.addTab(tab, f"🤖 {tm.get('tab_ai')}")
+    add_tab(self.tabs, tab, tm.get('tab_ai'), icon="ROBOT")

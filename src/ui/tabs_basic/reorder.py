@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ..fluent_widgets import PrimaryButton, PushButton
+from ..tab_shell import add_tab
 
 from ...core.optional_deps import fitz
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
@@ -58,19 +60,19 @@ def setup_reorder_tab(self):
     layout.addWidget(self.reorder_list)
 
     btn_box = QHBoxLayout()
-    b_reverse = QPushButton(tm.get("btn_reverse_order"))
+    b_reverse = PushButton(tm.get("btn_reverse_order"))
     b_reverse.setObjectName("secondaryBtn")
     b_reverse.clicked.connect(self._reverse_pages)
     btn_box.addWidget(b_reverse)
     btn_box.addStretch()
     layout.addLayout(btn_box)
 
-    b_run = QPushButton(tm.get("btn_save_order"))
+    b_run = PrimaryButton(tm.get("btn_save_order"))
     b_run.setObjectName("actionBtn")
     b_run.clicked.connect(self.action_reorder)
     layout.addWidget(b_run)
 
-    self.tabs.addTab(tab, f"🔀 {tm.get('tab_reorder')}")
+    add_tab(self.tabs, tab, tm.get('tab_reorder'), icon="MOVE")
 
 def _load_pages_for_reorder(self, path):
     """페이지 목록 로드"""

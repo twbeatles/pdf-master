@@ -4,6 +4,7 @@ import logging
 import os
 
 from PyQt6.QtWidgets import QDialog, QMessageBox, QPushButton, QVBoxLayout
+from ..fluent_widgets import PushButton
 
 from ...core.i18n import tm
 from ...core.worker_runtime.io import atomic_text_write
@@ -279,7 +280,7 @@ def _show_thumbnail_grid(self):
     )
     layout.addWidget(thumbnail_grid)
 
-    btn_close = QPushButton(tm.get("close"))
+    btn_close = PushButton(tm.get("close"))
     btn_close.clicked.connect(dialog.accept)
     layout.addWidget(btn_close)
 

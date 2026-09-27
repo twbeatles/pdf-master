@@ -10,12 +10,12 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PrimaryButton, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -46,7 +46,7 @@ def build_v4_5_3_f_07_ui(self, layout) -> None:
     replace_opts.addWidget(self.spn_replace_source_page)
     replace_opts.addStretch()
     l_replace.addLayout(replace_opts)
-    b_replace = QPushButton(tm.get("btn_replace_page"))
+    b_replace = PrimaryButton(tm.get("btn_replace_page"))
     b_replace.setObjectName("actionBtn")
     b_replace.clicked.connect(self.action_replace_page)
     l_replace.addWidget(b_replace)

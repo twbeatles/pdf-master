@@ -11,12 +11,12 @@ from PyQt6.QtWidgets import (
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -42,7 +42,7 @@ def build_duplicate(self, layout) -> None:
     dup_opts.addWidget(self.spn_dup_count)
     dup_opts.addStretch()
     l_dup.addLayout(dup_opts)
-    b_dup = QPushButton(tm.get("btn_duplicate"))
+    b_dup = PushButton(tm.get("btn_duplicate"))
     b_dup.clicked.connect(self.action_duplicate_page)
     l_dup.addWidget(b_dup)
     layout.addWidget(grp_dup)

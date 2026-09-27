@@ -6,16 +6,15 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PrimaryButton, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -46,7 +45,7 @@ def build_v4_5_pdf(self, layout) -> None:
     copy_opts.addWidget(self.spn_copy_insert)
     copy_opts.addStretch()
     l_copy.addLayout(copy_opts)
-    b_copy_pages = QPushButton(tm.get("btn_copy_pages"))
+    b_copy_pages = PrimaryButton(tm.get("btn_copy_pages"))
     b_copy_pages.setObjectName("actionBtn")
     b_copy_pages.clicked.connect(self.action_copy_pages)
     l_copy.addWidget(b_copy_pages)

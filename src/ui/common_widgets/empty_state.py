@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from ..fluent_widgets import PrimaryButton
 
 from ...core.optional_deps import FITZ_AVAILABLE, fitz
 from ...core.pdf_validation import validate_pdf_file
@@ -75,7 +76,7 @@ class EmptyStateWidget(QFrame):
 
         # 액션 버튼 (선택적)
         if action_text:
-            self.action_btn = QPushButton(action_text)
+            self.action_btn = PrimaryButton(action_text)
             self.action_btn.setObjectName("secondaryBtn")
             self.action_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             self.action_btn.clicked.connect(self.actionClicked.emit)

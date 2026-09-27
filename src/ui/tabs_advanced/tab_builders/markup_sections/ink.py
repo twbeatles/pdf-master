@@ -2,20 +2,18 @@ from __future__ import annotations
 
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+from ....fluent_widgets import PushButton, QComboBox, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -59,7 +57,7 @@ def build_ink(self, layout) -> None:
     self.txt_ink_points = QLineEdit()
     self.txt_ink_points.setPlaceholderText(tm.get("ph_ink"))
     l_ink.addWidget(self.txt_ink_points)
-    b_ink = QPushButton(tm.get("btn_add_ink"))
+    b_ink = PushButton(tm.get("btn_add_ink"))
     b_ink.clicked.connect(self.action_add_ink_annotation)
     l_ink.addWidget(b_ink)
     layout.addWidget(grp_ink)

@@ -4,25 +4,22 @@ import os
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
-    QCheckBox,
-    QComboBox,
-    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
-    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
+from ..fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox, QDoubleSpinBox, QLineEdit, QSpinBox
+from ..tab_shell import add_tab
 
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
@@ -52,13 +49,13 @@ def setup_batch_tab(self):
     content_layout.addWidget(self.batch_list)
 
     btn_box = QHBoxLayout()
-    b_add = QPushButton(tm.get("btn_add_files"))
+    b_add = PushButton(tm.get("btn_add_files"))
     b_add.setObjectName("secondaryBtn")
     b_add.clicked.connect(self._batch_add_files)
-    b_folder = QPushButton(tm.get("btn_add_folder"))
+    b_folder = PushButton(tm.get("btn_add_folder"))
     b_folder.setObjectName("secondaryBtn")
     b_folder.clicked.connect(self._batch_add_folder)
-    b_clr = QPushButton(tm.get("btn_clear_list"))
+    b_clr = PushButton(tm.get("btn_clear_list"))
     b_clr.setObjectName("secondaryBtn")
     b_clr.clicked.connect(self.batch_list.clear)
     btn_box.addWidget(b_add)
@@ -147,7 +144,7 @@ def setup_batch_tab(self):
     step3.setObjectName("stepLabel")
     content_layout.addWidget(step3)
 
-    b_run = QPushButton(tm.get("btn_run_batch"))
+    b_run = PrimaryButton(tm.get("btn_run_batch"))
     b_run.setObjectName("actionBtn")
     b_run.clicked.connect(self.action_batch)
     content_layout.addWidget(b_run)
@@ -155,7 +152,7 @@ def setup_batch_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    self.tabs.addTab(tab, f"📦 {tm.get('tab_batch')}")
+    add_tab(self.tabs, tab, tm.get('tab_batch'), icon="LAYOUT")
 
 def _batch_add_files(self):
     files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")
