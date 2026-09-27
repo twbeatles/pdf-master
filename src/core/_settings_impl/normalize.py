@@ -77,7 +77,7 @@ def _normalize_splitter_sizes(value) -> list[int] | None:
     return normalized or None
 
 def _normalize_theme(value) -> str:
-    return value if value in {"dark", "light"} else "dark"
+    return value if value in {"dark", "light", "auto"} else "dark"
 
 def _normalize_language(value) -> str:
     return value if value in {"auto", "ko", "en"} else "auto"

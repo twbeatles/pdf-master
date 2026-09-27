@@ -56,6 +56,69 @@ def test_fluent_extra_and_packaging_declared():
     assert "Fluent theme bridge disabled" in spec
 
 
+def test_fluent_availability_rejects_pyside_variant():
+    """§1.1: PySide6-Fluent 혼합 설치에서는 available=False (안전 폴백)."""
+    from src.ui import fluent_theme as _ft
+
+    assert isinstance(_ft.is_fluent_available(), bool)
+    try:
+        from importlib import metadata as _md
+
+        dists = {str(d.metadata["Name"]) for d in _md.distributions()}
+    except Exception:
+        dists = set()
+    if "PySide6-Fluent-Widgets" in dists:
+        assert _ft.is_fluent_available() is False
+
+
+def test_fluent_widget_aliases_are_pyqt6_backed():
+    """활성 경로의 별칭은 전부 PyQt6 QWidget 서브클래스여야 한다."""
+    import pytest as _pytest
+
+    from src.ui import fluent_widgets as _fw
+
+    if not _fw.is_fluent_widgets_available():
+        _pytest.skip("fluent not available")
+    from PyQt6.QtWidgets import QWidget as _QWidget
+
+    for _name in (
+        "CaptionLabel",
+        "CheckBox",
+        "ComboBox",
+        "DoubleSpinBox",
+        "LineEdit",
+        "PrimaryButton",
+        "PushButton",
+        "SpinBox",
+        "TextEdit",
+    ):
+        _cls = getattr(_fw, _name)
+        assert isinstance(_cls, type) and issubclass(_cls, _QWidget), _name
+
+
+def test_tab_shell_constructs_without_parented_zombie():
+    """생성자 실패 시 부모 달린 C++ 좀비를 남기지 않는다 (panel-less resize 방지)."""
+    import pytest as _pytest
+
+    _pytest.importorskip("PyQt6.QtWidgets")
+    import os as _os
+
+    _os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PyQt6.QtWidgets import QApplication as _QA
+
+    _app = _QA.instance() or _QA([])
+
+    from src.ui.tab_shell import TabShell
+
+    for _mode in ("nav", "pivot"):
+        _shell = TabShell(mode=_mode)
+        _sel = _shell._selector
+        if _sel is not None:
+            assert hasattr(_sel, "panel") or _mode == "pivot"
+        _shell.deleteLater()
+    _app.processEvents()
+
+
 def test_design_doc_exists_and_references_rules():
     doc = (ROOT / "docs" / "fluent-redesign-design.md").read_text(encoding="utf-8")
     assert "DESKTOP_UI_DESIGN_RULES" in doc

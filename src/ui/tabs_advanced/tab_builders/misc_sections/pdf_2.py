@@ -1,23 +1,14 @@
 from __future__ import annotations
 
 from PyQt6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QPushButton,
-    QScrollArea,
-    QSpinBox,
-    QTabWidget,
-    QTextEdit,
     QVBoxLayout,
-    QWidget,
 )
-from ....fluent_widgets import PushButton, QLineEdit
 
 from .....core.i18n import tm
+from ....fluent_widgets import PasswordLineEdit, PushButton
 from ....widgets import FileSelectorWidget
 
 
@@ -31,8 +22,8 @@ def build_pdf_2(self, layout) -> None:
     l_decrypt.addWidget(self.sel_decrypt)
     decrypt_opts = QHBoxLayout()
     decrypt_opts.addWidget(QLabel(tm.get("lbl_pw")))
-    self.inp_decrypt_pw = QLineEdit()
-    self.inp_decrypt_pw.setEchoMode(QLineEdit.EchoMode.Password)
+    self.inp_decrypt_pw = PasswordLineEdit()
+    # (PasswordLineEdit presets Password echo + view button)
     self.inp_decrypt_pw.setPlaceholderText(tm.get("ph_decrypt_pw"))
     decrypt_opts.addWidget(self.inp_decrypt_pw)
     l_decrypt.addLayout(decrypt_opts)

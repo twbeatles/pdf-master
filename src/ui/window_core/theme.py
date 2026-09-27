@@ -31,7 +31,7 @@ def _create_header(self):
     header.setSpacing(15)
 
     # 컴팩트한 타이틀 - 테마 통일 (파란색)
-    title = QLabel(f"📑 {APP_NAME}")
+    title = QLabel(APP_NAME)
     title.setObjectName("header")
     header.addWidget(title)
 
@@ -43,21 +43,21 @@ def _create_header(self):
 
     # Theme toggle - objectName으로 스타일 적용
     current_theme = self.settings.get("theme")
-    theme_text = tm.get("theme_light") if current_theme == "light" else tm.get("theme_dark") # Default to DARK text if dark theme
+    theme_text = {"dark": tm.get("theme_dark"), "light": tm.get("theme_light")}.get(current_theme, tm.get("theme_auto"))
     # But wait, existing logic: theme_text = "DARK" if self.settings.get("theme") == "dark" else "LIGHT"
     # The button usually shows the CURRENT theme or the TARGET theme?
     # Usually a toggle button shows the current state or what will happen.
     # Original code: "DARK" if dark else "LIGHT". This suggests it shows the current state.
 
     self.btn_theme = PushButton(theme_text)
-    self.btn_theme.setObjectName("accentBtn")
+    # (Fluent button: legacy accent objectName removed)
     self.btn_theme.setMinimumSize(70, 32)
     self.btn_theme.clicked.connect(self._toggle_theme)
     header.addWidget(self.btn_theme)
 
     # Help button - objectName으로 스타일 적용
     btn_help = PushButton(tm.get("help")) # "도움말" or "Help"
-    btn_help.setObjectName("accentBtn")
+    # (Fluent button: legacy accent objectName removed)
     btn_help.setMinimumSize(60, 32)
     btn_help.clicked.connect(self._show_help)
     header.addWidget(btn_help)
@@ -66,15 +66,17 @@ def _create_header(self):
 
 def _toggle_theme(self):
     current = self.settings.get("theme", "dark")
-    new_theme = "light" if current == "dark" else "dark"
+    new_theme = {"dark": "light", "light": "auto"}.get(current, "dark")
     self.settings["theme"] = new_theme
     save_settings(self.settings)
     self._apply_theme()
-    self.btn_theme.setText("DARK" if new_theme == "dark" else "LIGHT")
+    self.btn_theme.setText({"dark": tm.get("theme_dark"), "light": tm.get("theme_light")}.get(new_theme, tm.get("theme_auto")))
 
 def _apply_theme(self):
     theme = self.settings.get("theme", "dark")
-    is_dark = theme == "dark"
+    from ..fluent_theme import resolve_is_dark
+
+    is_dark = resolve_is_dark(theme)
     app = QApplication.instance()
     if isinstance(app, QApplication):
         from ..fluent_widgets import is_fluent_widgets_available

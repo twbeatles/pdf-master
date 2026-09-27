@@ -1,23 +1,14 @@
 from __future__ import annotations
 
 from PyQt6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QPushButton,
-    QScrollArea,
-    QSpinBox,
-    QTabWidget,
-    QTextEdit,
     QVBoxLayout,
-    QWidget,
 )
-from ....fluent_widgets import PushButton, QLineEdit
 
 from .....core.i18n import tm
+from ....fluent_widgets import PushButton, SearchLineEdit, connect_search
 from ....widgets import FileSelectorWidget
 
 
@@ -31,8 +22,9 @@ def build_search_highlight(self, layout) -> None:
     l_search.addWidget(self.sel_search)
     search_opts = QHBoxLayout()
     search_opts.addWidget(QLabel(tm.get("lbl_keyword")))
-    self.inp_search = QLineEdit()
+    self.inp_search = SearchLineEdit()
     self.inp_search.setPlaceholderText(tm.get("ph_search"))
+    connect_search(self.inp_search, self.action_search_text)
     search_opts.addWidget(self.inp_search)
     l_search.addLayout(search_opts)
     search_btns = QHBoxLayout()

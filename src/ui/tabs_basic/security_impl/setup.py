@@ -1,30 +1,32 @@
 import logging
-import os
-from PyQt6.QtCore import Qt
+
 from PyQt6.QtWidgets import (
-    QAbstractItemView,
-    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
-    QInputDialog,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
-    QMessageBox,
-    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
-from ...fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox, QLineEdit, QSpinBox
-from ...tab_shell import add_tab
-from ....core.optional_deps import fitz
-from ....core.constants import SUPPORTED_IMAGE_FORMATS
+
 from ....core.i18n import tm
-from ....core.worker_runtime.save_profiles import DEFAULT_COMPRESSION_SAVE_PROFILE, SAVE_PROFILE_CHOICES
-from ....core.settings import save_settings
-from ...widgets import FileListWidget, FileSelectorWidget, ImageListWidget, ToastWidget
+from ....core.worker_runtime.save_profiles import (
+    DEFAULT_COMPRESSION_SAVE_PROFILE,
+    SAVE_PROFILE_CHOICES,
+)
+from ...fluent_widgets import (
+    PasswordLineEdit,
+    PrimaryButton,
+    PushButton,
+    QCheckBox,
+    QComboBox,
+    QLineEdit,
+    QSpinBox,
+)
+from ...tab_shell import add_tab
+from ...widgets import FileSelectorWidget
+
 logger = logging.getLogger(__name__)
 
 def setup_edit_sec_tab(self):
@@ -137,9 +139,9 @@ def setup_edit_sec_tab(self):
     l_sec.addWidget(self.sel_sec)
     self.sel_sec.pathChanged.connect(self._update_preview)
     h_sec = QHBoxLayout()
-    self.inp_pw = QLineEdit()
+    self.inp_pw = PasswordLineEdit()
     self.inp_pw.setPlaceholderText(tm.get("ph_password"))
-    self.inp_pw.setEchoMode(QLineEdit.EchoMode.Password)
+    # (PasswordLineEdit presets Password echo + view button)
     h_sec.addWidget(self.inp_pw)
     self.cmb_compress_profile = QComboBox()
     for profile_name in SAVE_PROFILE_CHOICES:

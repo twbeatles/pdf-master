@@ -28,6 +28,8 @@ build = [
 ]
 dev = [
   "pytest>=8.0.0",
+  "pytest-qt>=4.4",
+  "pytest-timeout>=2.3",
   "pyright>=1.1.0",
 ]
 secure = [
@@ -36,7 +38,7 @@ secure = [
 # Fluent UI (선택 설치: pip install -e ".[fluent]"). PyQt6 바인딩 유지.
 fluent = [
   "PyQt6-Fluent-Widgets>=1.6",
-  "darkdetect>=1.8",
+  "darkdetect>=0.7",
 ]
 
 [tool.setuptools]

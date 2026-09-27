@@ -11,6 +11,8 @@ import os
 
 from _deps import require_pyqt6
 
+_QAPP_HOLDER: list = []  # 세션 전역: Fluent 싱글톤이 이전 앱 종료로 삭제되는 것 방지
+
 
 def _qapp():
     """Shared QApplication. CALLERS MUST KEEP the returned reference alive
@@ -20,7 +22,13 @@ def _qapp():
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     from PyQt6.QtWidgets import QApplication
 
-    return QApplication.instance() or QApplication([])
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+        _QAPP_HOLDER.append(app)
+    elif not _QAPP_HOLDER:
+        _QAPP_HOLDER.append(app)
+    return app
 
 
 def test_file_selector_buttons_stay_qt():

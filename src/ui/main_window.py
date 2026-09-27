@@ -6,13 +6,11 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
-    QLabel,
     QMainWindow,
     QMessageBox,
     QProgressBar,
     QPushButton,
     QSplitter,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -21,6 +19,7 @@ from ..core.constants import UNDO_BACKUP_MAX_AGE_HOURS, UNDO_BACKUP_MAX_SIZE_MB
 from ..core.i18n import tm
 from ..core.settings import load_settings, save_settings
 from ..core.undo_manager import UndoManager
+from .fluent_widgets import CaptionLabel
 from .main_window_config import APP_NAME, VERSION
 from .main_window_core import MainWindowCoreMixin
 from .main_window_preview import MainWindowPreviewMixin
@@ -29,8 +28,9 @@ from .main_window_tabs_ai import MainWindowTabsAiMixin
 from .main_window_tabs_basic import MainWindowTabsBasicMixin
 from .main_window_undo import MainWindowUndoMixin
 from .main_window_worker import MainWindowWorkerMixin
-from .update_mixin import UpdateMixin
 from .progress_overlay import ProgressOverlayWidget
+from .tab_shell import add_action_item
+from .update_mixin import UpdateMixin
 from .widgets import WheelEventFilter
 
 logger = logging.getLogger(__name__)
@@ -228,6 +228,13 @@ class PDFMasterApp(
         self.setup_batch_tab()    # 일괄 처리
         self.setup_advanced_tab() # 고급 기능
         self.setup_ai_tab()       # v4.0: AI 요약
+        from .tabs_settings import setup_settings_tab
+
+        setup_settings_tab(self)  # 설정 (Pivot + HeaderCard)
+
+        # 레일 하단 액션 (도움말/정보) — 폴백 QTabWidget에서는 no-op
+        add_action_item(self.tabs, tm.get("help"), "HELP", self._show_help)
+        add_action_item(self.tabs, tm.get("about"), "INFO", self._show_about)
 
         # 컴팩트한 상태 바
         status_frame = QFrame()
@@ -237,8 +244,8 @@ class PDFMasterApp(
         status_layout.setContentsMargins(8, 4, 8, 4)
         status_layout.setSpacing(10)
 
-        self.status_label = QLabel(tm.get("ready"))
-        self.status_label.setStyleSheet("color: #888; font-size: 12px;")
+        self.status_label = CaptionLabel(tm.get("ready"))
+        # (CaptionLabel self-styles; removed inline gray override)
         status_layout.addWidget(self.status_label)
 
         status_layout.addStretch()
@@ -344,8 +351,7 @@ class PDFMasterApp(
 
     def _schedule_settings_save(self, delay_ms: int = 400):
         """Debounced settings save for high-frequency UI updates."""
-        if delay_ms < 0:
-            delay_ms = 0
+        delay_ms = max(delay_ms, 0)
         self._settings_save_timer.start(delay_ms)
 
     def _flush_settings_save(self):

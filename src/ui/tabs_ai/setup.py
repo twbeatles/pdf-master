@@ -1,26 +1,31 @@
 import logging
-import os
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QDialog,
-    QFileDialog,
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QMessageBox,
-    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
-from ..fluent_widgets import PrimaryButton, PushButton, QComboBox, QLineEdit, QSpinBox, QTextEdit
-from ..tab_shell import add_tab
 
 from ...core.i18n import tm
-from ...core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
-from ..main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
-from ..widgets import FileSelectorWidget, ToastWidget, is_pdf_encrypted
+from ..fluent_widgets import (
+    PasswordLineEdit,
+    PrimaryButton,
+    PushButton,
+    QComboBox,
+    QSpinBox,
+    QTextEdit,
+    SearchLineEdit,
+    connect_search,
+)
+from ..main_window_config import (
+    AI_AVAILABLE,
+)
+from ..tab_shell import add_tab
+from ..widgets import FileSelectorWidget
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +63,8 @@ def setup_ai_tab(self):
     # API 키 설정
     api_layout = QHBoxLayout()
     api_layout.addWidget(QLabel(tm.get("lbl_api_key")))
-    self.txt_api_key = QLineEdit()
-    self.txt_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+    self.txt_api_key = PasswordLineEdit()
+    # (PasswordLineEdit presets Password echo + view button)
     self.txt_api_key.setPlaceholderText(tm.get("ph_api_key"))
     self.txt_api_key.setEnabled(AI_AVAILABLE)
     saved_key = self._load_api_key_for_ui()
@@ -199,10 +204,11 @@ def setup_ai_tab(self):
 
     # 질문 입력
     q_layout = QHBoxLayout()
-    self.txt_ai_question = QLineEdit()
+    self.txt_ai_question = SearchLineEdit()
     self.txt_ai_question.setPlaceholderText(tm.get("ph_ai_question"))
     self.txt_ai_question.setEnabled(AI_AVAILABLE)
     self.txt_ai_question.returnPressed.connect(self._ask_ai_question)
+    connect_search(self.txt_ai_question, self._ask_ai_question)
     q_layout.addWidget(self.txt_ai_question)
 
     self.btn_ask_ai = PrimaryButton(tm.get("btn_ask_ai"))

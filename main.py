@@ -110,6 +110,8 @@ def main() -> int:
             return 1
 
         app = QApplication(app_argv)
+        app.setApplicationName("PDFMaster")
+        app.setOrganizationName("PDFMaster")
         _hi_policy_applied = False
         try:
             from PyQt6.QtCore import Qt as _Qt

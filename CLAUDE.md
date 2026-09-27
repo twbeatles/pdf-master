@@ -1028,7 +1028,7 @@ read specs/001-pdf-master-release-ux/tasks.md
 
 ## 2026-09-27 Fluent Redesign P2–P4 Addendum
 
-- 셸: `src/ui/tab_shell.py` `TabShell` (Fluent SegmentedWidget/Pivot + QStackedWidget,
+- 셸: `src/ui/tab_shell.py` `TabShell` (nav=NavigationInterface 레일/pivot=Pivot + QStackedWidget,
   미설치면 QTabWidget 폴백) + `add_tab()` 공용 헬퍼 (테스트 스텁의 순수 QTabWidget과 `icon=` 충돌 방지).
   MSFluentWindow는 splitter/미리보기/포커스 구조와 충돌하므로 미사용 — 설계안 §2 참조.
 - 컴포넌트: `src/ui/fluent_widgets.py` 별칭 (Q-철자 섀도잉; Primary/Danger/Warning/EditableComboBox 역할 분리).
@@ -1040,3 +1040,37 @@ read specs/001-pdf-master-release-ux/tasks.md
   access violation 실측) — `tests/test_fluent_shell_boundary.py`가 클래스 계약으로 고정.
 - 회귀: `tests/test_fluent_shell_boundary.py` (TabShell 표면·폴백·라이프사이클).
   검증: `python -m pyright src/core src/ui` 0 errors, `python -m pytest -q` exit 0.
+
+## 2026-09-27 Fluent 바인딩 가드·레일·스위트 안정화 Addendum
+
+- 셸이 레일로 변경: `TabShell(mode="nav")` = `NavigationInterface` + `QStackedWidget`
+  (좌측 레일, 하단 도움말/정보는 `add_action_item`), `mode="pivot"` = `Pivot` +
+  `QStackedWidget` (Advanced 서브탭). `NavigationItemPosition.BOTTOM` 하단 배치.
+- 바인딩 가드(§1.1 실행 강제): `is_fluent_available()`이 dist(PySide6 변형 부재·
+  PyQt6 변형 존재) + 위젯 베이스(PyQt6 `QWidget` 서브클래스)까지 확인. 불충족 시
+  전체 Qt 폴백. 두 Fluent 변형은 `qfluentwidgets/` 경로를 공유하므로 동시 설치·
+  편면 uninstall이 파일 삭제/고스트 dist를 남김 — 정화는 `--force-reinstall
+  --no-cache-dir`로 양쪽(Fluent + Frameless) 함께.
+- 좀비 방지: `NavigationInterface`를 부모 없이 생성 → `panel` 검증 → `setParent`
+  (생성자 중도 실패 시 부모 달린 C++ 좀비가 resize에서 panel-less AttributeError 유발).
+- 스위트: `tests/conftest.py` 세션 전역 `QApplication` 1개 + 테스트마다 전역
+  stylesheet 리셋 (재생성 시 Fluent C++ 싱글톤 Router 삭제 → 이후 생성 실패).
+- 회귀 3종 추가(`test_fluent_design_foundation.py`): pyside 변형 거부·별칭 PyQt6
+  베이스·좀비 없는 생성. `main_window.py` 레일 하단 액션 + 상태바 `CaptionLabel`.
+- 검증: `python -m pyright src/core src/ui` 0 errors, `python -m pytest -q` exit 0
+  (363 collected), `python main.py --smoke` OK. ruff 잔여 BLE001은 기존 관례와 동일.
+
+## 2026-09-27 Fluent Wave-2 Addendum (컴포넌트·설정탭)
+
+- 별칭: `PasswordLineEdit`·`SearchLineEdit`(`connect_search` 헬퍼)·`HeaderCardWidget`
+  (`wrap_page` 헬퍼)·`TitleLabel`/`BodyLabel` + `notify()`(InfoBar/QMessageBox 폴백) +
+  `set_button_role()`. 폴백은 Qt 서브클래스로 동일 API.
+- 교체: 비밀번호 3곳·AI 질문·하이라이트 검색. 미리보기 검색은 커스텀 키 유지로 제외.
+  NATIVE 시트 버튼 셀렉터는 ID 한정(베어 타입 0) — `actionBtn`은 폴백 전용 후크.
+- 설정 탭(9번째): Pivot 2섹션 + HeaderCard, 메뉴 핸들러 위임(계약 불변), i18n 13키.
+- 환경 주의: 시스템 파이썬을 srtgo 등과 공유하면 `PySide6-Fluent-Widgets`
+  고스트 dist가 재발생 → 가드가 Qt 폴백으로 전환(정상). 정화 절차는 설계안 §9.
+- `pyproject [fluent]`의 `darkdetect>=1.8`은 존재하지 않는 버전 → `>=0.7`로 정정.
+- 회귀: `tests/test_fluent_settings_tab.py`. 스크린샷: dark/light·125%/150% 무파손
+  (offscreen 무폰트 — 실폰트 육안 확인은 디스플레이 환경에서 필요).
+- 검증: pyright 0 errors, `pytest -q` exit 0, smoke OK.

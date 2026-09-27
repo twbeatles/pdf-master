@@ -88,6 +88,55 @@
 - 테스트에서 `_qapp()` 반환 참조를 버리면 QApplication이 즉시 수거되어 다음
   QWidget 생성에서 fatal. `app = _qapp()` 형태로 유지할 것.
 
+## 9. 바인딩 가드·좀비 방지·스위트 안정화 (2026-09-27, §1.1)
+
+- 환경 오염 실측: `PySide6-Fluent-Widgets`가 설치된 머신에서는 `qfluentwidgets`
+  import가 PySide6 바인딩으로 동작해 PyQt6 부모 전달 시 `ValueError`, 부모 없이
+  만들면 이종 바인딩 위젯이 된다. 같은 top-level 패키지를 공유하므로 두 변형
+  동시 설치·순차 uninstall은 공유 파일 삭제/고스트 dist를 남긴다. 정화 절차:
+  `pip install --force-reinstall --no-cache-dir PyQt6-Fluent-Widgets==<ver>
+  PyQt6-Frameless-Window==<ver>` 후 dist 목록에 PySide6 변형이 없는지 확인.
+  (한쪽만 uninstall하면 공유 `qfluentwidgets/`가 통째로 삭제되므로 금지.)
+- 코드 가드(§1.1 혼합 금지의 실행 강제): `fluent_theme.is_fluent_available()`은
+  spec 존재를 넘어 (1) `PySide6-Fluent-Widgets` dist 부재, (2)
+  `PyQt6-Fluent-Widgets` dist 존재, (3) `NavigationInterface`·`Pivot`·
+  `PushButton`이 `PyQt6.QtWidgets.QWidget` 서브클래스임을 확인한다. 불충족 시
+  전부 Qt 폴백(QTabWidget/순정 위젯)으로 동작하므로 segfault 대신 기능 유지.
+  `fluent_widgets`·`TabShell` 진입부가 같은 게이트를 공유한다. 회귀:
+  `test_fluent_availability_rejects_pyside_variant`,
+  `test_fluent_widget_aliases_are_pyqt6_backed`.
+- 좀비 방지: `NavigationInterface` 생성자가 `NavigationPanel` 단계에서 예외를
+  던지면 C++ 자식(부모 있음)이 살아남아 이후 resize에서 panel-less
+  `AttributeError`를 이벤트 루프로 터뜨린다. `TabShell`은 부모 없이 생성 →
+  `hasattr(panel)` 검증 → `setParent` 순서로 만든다. 회귀:
+  `test_tab_shell_constructs_without_parented_zombie`.
+- 스위트 규칙: 테스트별 `QApplication` 재생성은 Fluent C++ 싱글톤(Router 등)을
+  삭제해 이후 Fluent 위젯 생성을 깨뜨린다. `tests/conftest.py`가 세션 전역
+  QApplication 1개를 유지하고, autouse fixture가 테스트마다 전역 stylesheet을
+  리셋한다. 개별 파일의 `_qapp()`는 `instance()`를 재사용하므로 안전하다.
+
+## 10. Wave-2 컴포넌트·설정 탭 (2026-09-27)
+
+- 별칭 추가: `PasswordLineEdit`(보기 버튼)·`SearchLineEdit`(검색/지우기 버튼,
+  `searchSignal`/`clearSignal`)·`HeaderCardWidget`(`setTitle`+`viewLayout`)·
+  `TitleLabel`/`BodyLabel`. 폴백은 Qt 서브클래스(Password echo 고정/clear 버튼/
+  `QGroupBox+viewLayout`)로 동일 API 유지.
+- 교체: API 키·복호화·보안 비밀번호 3곳 → `PasswordLineEdit` (setEchoMode 중복 제거).
+  AI 질문·하이라이트 검색 → `SearchLineEdit` + `connect_search()` 헬퍼
+  (폴백은 False, `returnPressed` 기존 연결 유지 — Enter 중복 발사 없음 확인).
+  미리보기 검색(`PreviewSearchLineEdit`)은 Shift+Enter/Escape 커스텀 키 유지로 교체 제외.
+- 버튼 objectName 정리: NATIVE 시트는 `#dangerBtn/#warningBtn/#toolbar*` ID 한정
+  (베어 타입 셀렉터 0 — 주석 1건 제외). Fluent 버튼의 `actionBtn/secondaryBtn`은
+  폴백 레거시 시트 전용 후크. 역할→이름 매핑 헬퍼 `set_button_role()` 추가.
+- 설정 탭(9번째 메인탭, `SETTING`): `TabShell(mode="pivot")` 2섹션(외관/알림 및 기록)
+  + `wrap_page()` HeaderCard. 환경설정 메뉴와 같은 settings 키를 공유하고 변경은
+  기존 메뉴 핸들러(`_set_notify_mode/_toggle_*/_change_language`)에 위임하므로
+  동작 계약 불변. 테마 변경은 `_apply_theme()` + 툴바 버튼 문구까지 갱신.
+- 알림 헬퍼: `notify(parent, kind, title, content)` — Fluent `InfoBar`,
+  폴백 `QMessageBox`. i18n 키 13종 추가(ko/en).
+- 회귀: `tests/test_fluent_settings_tab.py` (별칭 베이스·`wrap_page`·
+  `connect_search`·`notify` 무예외·섹션 스펙·핸들러 무효값 폴백·카탈로그 키).
+
 ## 7. 완료 조건 (§29·§32·§33)
 
 - `python -m pyright` 0 errors, `python -m pytest -q` (Fluent 유무 양쪽).

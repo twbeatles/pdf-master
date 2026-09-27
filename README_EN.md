@@ -146,6 +146,8 @@ pip install -e .[ai]
 
 # Optional: Fluent design widgets (falls back to plain Qt widgets if missing)
 pip install -e .[fluent]
+# NOTE: never co-install PySide6-Fluent-Widgets (shared qfluentwidgets path).
+# Decontaminate: pip install --force-reinstall --no-cache-dir "PyQt6-Fluent-Widgets==1.11.3" "PyQt6-Frameless-Window==0.8.2"
 
 # 2. Launch
 python main.py
@@ -296,9 +298,12 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 
 ## 📝 Changelog
 
+### v4.5.10
+- **Fluent Wave-2**: left `NavigationInterface` rail + bottom help/about, 9th Settings tab (Pivot sections + `HeaderCard`), `PasswordLineEdit`·`SearchLineEdit`·`TitleLabel`/`BodyLabel`·`InfoBar` helper, button objectName rules + `set_button_role()`. `[fluent]` darkdetect pin fixed (`>=0.7`)
+- **Binding guard**: safe Qt fallback on `PySide6-Fluent-Widgets` co-install + zombie-proof construction + session-global `QApplication` test rule. Design: `docs/fluent-redesign-design.md` §9–§10
 ### v4.5.9
-- **Fluent UI redesign (P2-P4)**: `TabShell` navigation (SegmentedWidget/Pivot + QStackedWidget, QTabWidget fallback), Fluent component aliases (Primary/Danger/Warning/Editable roles), scoped native theme when Fluent is active. Emoji tab labels replaced with `FluentIcon`; density/font/HiDPI tokens (`src/ui/design_tokens.py`). Worker modes/kwargs and public imports unchanged. Design: `docs/fluent-redesign-design.md`
-- Optional dependency `pyproject [fluent]` (`PyQt6-Fluent-Widgets>=1.6`, `darkdetect>=1.8`) + packaging collect guard
+- **Fluent UI redesign (P2-P4)**: `TabShell` navigation (rail `NavigationInterface`/sub `Pivot` + QStackedWidget, QTabWidget fallback), Fluent component aliases (Primary/Danger/Warning/Editable roles), scoped native theme when Fluent is active. Emoji tab labels replaced with `FluentIcon`; density/font/HiDPI tokens (`src/ui/design_tokens.py`). Worker modes/kwargs and public imports unchanged. Design: `docs/fluent-redesign-design.md`
+- Optional dependency `pyproject [fluent]` (`PyQt6-Fluent-Widgets>=1.6`, `darkdetect>=0.7`) + packaging collect guard
 ### v4.5.8
 - Update operations reliability: manifest publish `pull --rebase + push` retried up to 3 times, downloads retried up to 3 times on transient errors
 - Silent auto-check failures now show a status-bar hint plus the last failure cause, with one automatic retry after 5 minutes

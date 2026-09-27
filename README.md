@@ -146,6 +146,8 @@ pip install -e .[ai]
 
 # Fluent 디자인 위젯 사용 시 추가 설치 (선택, 미설치면 기본 Qt 위젯으로 동작)
 pip install -e .[fluent]
+# 주의: PySide6-Fluent-Widgets와 동시 설치 금지(같은 qfluentwidgets 경로 공유).
+# 오염 시: pip install --force-reinstall --no-cache-dir "PyQt6-Fluent-Widgets==1.11.3" "PyQt6-Frameless-Window==0.8.2"
 
 # 2. 실행
 python main.py
@@ -296,9 +298,12 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 ## 📝 변경 이력
 
+### v4.5.10
+- **Fluent Wave-2**: 좌측 `NavigationInterface` 레일 + 하단 도움말/정보, 9번째 설정 탭(Pivot 섹션 + `HeaderCard`), `PasswordLineEdit`·`SearchLineEdit`·`TitleLabel`/`BodyLabel`·`InfoBar` 헬퍼, 버튼 objectName 규칙 정리 + `set_button_role()`. `[fluent]`의 `darkdetect` 핀 정정(`>=0.7`)
+- **바인딩 가드**: `PySide6-Fluent-Widgets` 혼합 설치 시 Qt 폴백으로 안전 동작 + 좀비 생성 방지 + 세션 전역 `QApplication` 테스트 규칙. 설계: `docs/fluent-redesign-design.md` §9–§10
 ### v4.5.9
-- **Fluent 디자인 전면 개편(P2–P4)**: `TabShell` 내비게이션(SegmentedWidget/Pivot + QStackedWidget, 미설치 시 QTabWidget 폴백), Fluent 컴포넌트 별칭(Primary/Danger/Warning/Editable 역할 분리), Fluent 활성 시 스코프드 네이티브 테마. 탭 8종 이모지→`FluentIcon`, 밀집도·폰트·HiDPI 토큰(`src/ui/design_tokens.py`). Worker mode/kwargs·public import 불변. 설계: `docs/fluent-redesign-design.md`
-- 선택 의존성 `pyproject [fluent]` (`PyQt6-Fluent-Widgets>=1.6`, `darkdetect>=1.8`) + 패키징 collect 가드
+- **Fluent 디자인 전면 개편(P2–P4)**: `TabShell` 내비게이션(레일 `NavigationInterface`/서브 `Pivot` + QStackedWidget, 미설치 시 QTabWidget 폴백), Fluent 컴포넌트 별칭(Primary/Danger/Warning/Editable 역할 분리), Fluent 활성 시 스코프드 네이티브 테마. 탭 8종 이모지→`FluentIcon`, 밀집도·폰트·HiDPI 토큰(`src/ui/design_tokens.py`). Worker mode/kwargs·public import 불변. 설계: `docs/fluent-redesign-design.md`
+- 선택 의존성 `pyproject [fluent]` (`PyQt6-Fluent-Widgets>=1.6`, `darkdetect>=0.7`) + 패키징 collect 가드
 ### v4.5.8
 - 업데이트 운영 신뢰: 매니페스트 게시 `pull --rebase + push` 최대 3회 재시도, 다운로드 일시 오류 최대 3회 재시도
 - 조용한 자동 확인 실패의 상태바 힌트 + 마지막 실패 원인 표시 + 5분 뒤 1회 자동 재시도
