@@ -60,7 +60,7 @@ def global_exception_handler(exc_type, exc_value, exc_tb):
 
     # 사용자에게 오류 알림 (QApplication이 존재하는 경우)
     app = QApplication.instance()
-    if app:
+    if app and "--smoke" not in sys.argv:
         QMessageBox.critical(
             None,
             tm.get("err_uncaught_exception_title"),
@@ -122,18 +122,23 @@ def main() -> int:
                 _hi_policy_applied = True
         except Exception:
             logger.debug("HiDPI rounding policy setup skipped", exc_info=True)
-        try:
-            from src.ui.fluent_theme import setup_app_theme
+        from src.ui.fluent_theme import setup_app_theme
 
-            setup_app_theme(app)
-        except Exception:
-            logger.debug("Fluent theme setup skipped", exc_info=True)
+        if not setup_app_theme(app):
+            raise RuntimeError(
+                "PyQt6 Fluent UI is unavailable. Install the default project dependencies "
+                "in a clean environment without PySide6-Fluent-Widgets."
+            )
         app.setFont(QFont("Segoe UI", 9))  # Windows 기본 폰트 크기 설정
         app_icon_path = resource_path("assets", "app_icon.png")
         if os.path.isfile(app_icon_path):
             app.setWindowIcon(QIcon(app_icon_path))
         window = PDFMasterApp()
         if smoke_mode:
+            from src.ui.fluent_widgets import is_fluent_widgets_available
+
+            if not is_fluent_widgets_available() or not window.tabs._use_fluent:
+                raise RuntimeError("Fluent widgets or navigation failed to initialize")
             app.processEvents()
             window.close()
             logger.info("PDF Master smoke initialization succeeded")

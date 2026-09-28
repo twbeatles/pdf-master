@@ -44,16 +44,18 @@ def test_fluent_bridge_is_noop_without_dependency():
     fluent_theme.apply_native_widget_style(object())
 
 
-def test_fluent_extra_and_packaging_declared():
+def test_fluent_required_and_packaging_declared():
     data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    fluent = data["project"]["optional-dependencies"].get("fluent", [])
+    fluent = data["project"]["dependencies"]
     assert any("PyQt6-Fluent-Widgets" in d for d in fluent)
     assert any("darkdetect" in d for d in fluent)
     # PySide6 변형 혼합 금지
     assert not any("PySide6-Fluent" in d for d in fluent)
     spec = (ROOT / "pdf_master.spec").read_text(encoding="utf-8")
     assert "qfluentwidgets" in spec
-    assert "Fluent theme bridge disabled" in spec
+    assert "PyQt6-Fluent-Widgets is required" in spec
+    assert "copy_metadata('PyQt6-Fluent-Widgets')" in spec
+    assert "'PyQt6.QtSvg',  # QFluentWidgets" in spec
 
 
 def test_fluent_availability_rejects_pyside_variant():

@@ -30,7 +30,7 @@ import sys
 import os
 import importlib.util
 import re
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files, copy_metadata
 
 block_cipher = None
 IS_WINDOWS = (os.name == "nt") or sys.platform.startswith("win")
@@ -110,6 +110,8 @@ hiddenimports += [
     'PyQt6.QtPrintSupport',  # v4.5: 인쇄 기능
     'PyQt6.QtPdf',
     'PyQt6.QtPdfWidgets',
+    'PyQt6.QtSvg',  # QFluentWidgets icons and frameless title bar
+    'PyQt6.QtSvgWidgets',
 ]
 
 # v4.5: Python 표준 라이브러리 (명시적 추가)
@@ -214,22 +216,17 @@ if _module_exists('keyring'):
 else:
     print("[INFO] keyring not installed - API key will be stored in file")
 
-# Fluent UI (선택 설치: pip install -e ".[fluent]"). 미설치면 브리지 no-op.
-if _module_exists('qfluentwidgets'):
-    try:
-        hiddenimports += collect_submodules('qfluentwidgets')
-    except Exception:
-        hiddenimports += ['qfluentwidgets']
-    if _module_exists('qframelesswindow'):
-        try:
-            hiddenimports += collect_submodules('qframelesswindow')
-        except Exception:
-            hiddenimports += ['qframelesswindow']
-    if _module_exists('darkdetect'):
-        hiddenimports += ['darkdetect']
-    print("[OK] qfluentwidgets detected")
-else:
-    print("[INFO] qfluentwidgets not installed - Fluent theme bridge disabled")
+# Fluent is a required desktop dependency. A build with the wrong Qt binding
+# would silently ship the legacy tab UI, so reject it before collecting modules.
+from src.ui.fluent_theme import is_fluent_available
+
+if not is_fluent_available():
+    raise RuntimeError("PyQt6-Fluent-Widgets is required and must use the PyQt6 binding")
+hiddenimports += collect_submodules('qfluentwidgets')
+hiddenimports += collect_submodules('qframelesswindow')
+hiddenimports += ['darkdetect']
+fluent_metadata = copy_metadata('PyQt6-Fluent-Widgets')
+print("[OK] PyQt6 Fluent UI verified and included")
 
 # Runtime helper imported indirectly through worker runtime save paths.
 hiddenimports += ['src.core.worker_runtime.save_profiles']
@@ -240,6 +237,7 @@ APP_ICON_ICO = os.path.join(SPEC_DIR, "assets", "app_icon.ico")
 APP_ICON_PNG = os.path.join(SPEC_DIR, "assets", "app_icon.png")
 
 datas = []
+datas += fluent_metadata
 if os.path.isfile(APP_ICON_PNG):
     datas.append((APP_ICON_PNG, "assets"))
     print(f"[OK] App icon PNG bundled: {APP_ICON_PNG}")
@@ -348,7 +346,6 @@ excludes = [
     'PyQt6.QtSensors', 'PyQt6.QtSerialPort', 'PyQt6.QtSerialBus',
     'PyQt6.QtTest', 'PyQt6.QtSql', 'PyQt6.QtDBus',
     'PyQt6.QtNetworkAuth',
-    'PyQt6.QtSvg', 'PyQt6.QtSvgWidgets',
     'PyQt6.QtDesigner', 'PyQt6.QtHelp', 'PyQt6.QtUiTools',
     'PyQt6.QtOpenGL', 'PyQt6.QtOpenGLWidgets',
     'PyQt6.QtCharts', 'PyQt6.QtDataVisualization',

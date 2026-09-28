@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +27,15 @@ def _installed_dist_names() -> set:
 def is_fluent_available() -> bool:
     """qfluentwidgets import 가능 + PyQt6 백엔드 확인 (§1.1 혼합 금지)."""
     try:
-        import importlib.util as _ilu
-
-        if _ilu.find_spec("qfluentwidgets") is None:
-            return False
-        dists = _installed_dist_names()
-        if "PySide6-Fluent-Widgets" in dists:
-            return False  # PySide6 변형과 혼합 금지
-        if "PyQt6-Fluent-Widgets" not in dists:
-            return False
+        # PyInstaller onefile does not expose all distribution metadata to
+        # importlib.metadata. The build spec validates the installed variant;
+        # at runtime the actual QWidget binding is the decisive check.
+        if not getattr(sys, "frozen", False):
+            dists = _installed_dist_names()
+            if "PySide6-Fluent-Widgets" in dists:
+                return False  # PySide6 변형과 혼합 금지
+            if "PyQt6-Fluent-Widgets" not in dists:
+                return False
         # 혼합 설치 잔재 방어: 실제 위젯 베이스가 PyQt6인지 확인
         from PyQt6.QtWidgets import QWidget as _QtWidget
         from qfluentwidgets import NavigationInterface as _Nav
@@ -43,6 +44,7 @@ def is_fluent_available() -> bool:
 
         return all(issubclass(c, _QtWidget) for c in (_Nav, _Pivot, _Btn))
     except Exception:
+        logger.warning("Fluent binding validation failed", exc_info=True)
         return False
 
 

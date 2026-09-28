@@ -6,8 +6,8 @@
 ## 0. 전제
 
 - Qt 바인딩은 **PyQt6 유지** (§1.1). `PySide6-Fluent-Widgets` 혼합 금지.
-- Fluent는 선택 extra: `pip install -e ".[fluent]"` (`PyQt6-Fluent-Widgets>=1.6`, `darkdetect>=1.8`).
-  미설치면 `src/ui/fluent_theme.py` 브리지가 no-op — 기존 QSS/동작 그대로.
+- Fluent는 기본 의존성: `pip install -e .` (`PyQt6-Fluent-Widgets>=1.6`, `darkdetect>=0.7`).
+  누락되거나 PySide6 바인딩이 섞이면 시작과 빌드가 실패하여 누락된 디자인을 배포하지 않는다.
 - 우선순위: 기능 무손실 > 규칙 통일 > 장식 (§0). Worker mode/kwargs·public import 불변.
 
 ## 1. 현행 구조
@@ -65,7 +65,7 @@
 
 ## 6. 마이그레이션 단계 (P0–P4 완료)
 
-- P0 결정: extra 설치·동작 확인 (`.[fluent]` 설치 환경에서 `--smoke`).
+- P0 결정: 기본 설치·동작 확인 (`--smoke`).
 - P1 토대: 토큰·브리지·HiDPI·창 클램프·spec·문서·회귀 테스트.
 - P2 셸 교체: `TabShell` 도입, `setup_*` content 그대로 페이지 이식 (import·mode/kwargs 불변).
 - P3 컴포넌트 치환: `fluent_widgets` 별칭으로 import 한 줄 교체 + 역할별

@@ -12,6 +12,8 @@ license = "MIT"
 authors = [{ name = "PDF Master" }]
 dependencies = [
   "PyQt6>=6.5",
+  "PyQt6-Fluent-Widgets>=1.6,<2",
+  "darkdetect>=0.7,<1",
   "PyMuPDF>=1.24",
   "cryptography>=42.0",
 ]
@@ -34,11 +36,6 @@ dev = [
 ]
 secure = [
   "keyring>=25.0.0",
-]
-# Fluent UI (선택 설치: pip install -e ".[fluent]"). PyQt6 바인딩 유지.
-fluent = [
-  "PyQt6-Fluent-Widgets>=1.6",
-  "darkdetect>=0.7",
 ]
 
 [tool.setuptools]

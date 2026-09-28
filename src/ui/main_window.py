@@ -162,8 +162,6 @@ class PDFMasterApp(
             self.setMinimumSize(_mw, _mh)
         except Exception:
             logger.debug("Window size clamp skipped, using defaults", exc_info=True)
-        self.setMinimumSize(950, 700)
-
         central = QWidget()
         central.setObjectName("appCentral")
         self.setCentralWidget(central)
