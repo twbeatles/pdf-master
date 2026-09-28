@@ -21,5 +21,8 @@ jobs:
         with:
           python-version: "3.12"
 
+      # NOTE: check_update_manifest_expiry.py is stdlib-only by design —
+      # do not add a pip-install step here. A third-party import fails the
+      # scheduled run (see 2026-09-28 cryptography ModuleNotFoundError).
       - name: Check manifest expiry
         run: python scripts/check_update_manifest_expiry.py --warn-days 30

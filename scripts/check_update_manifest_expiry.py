@@ -8,15 +8,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-from src.core.update_manifest import MANIFEST_EXPIRY_WARN_DAYS  # noqa: E402
+# NOTE: CI dependency-free intentionally — this script must run on a bare
+# setup-python runner with stdlib only. Do NOT import src.core.update_manifest
+# (it pulls in `cryptography`); keep the default in sync with
+# MANIFEST_EXPIRY_WARN_DAYS there.
+DEFAULT_WARN_DAYS = 30
 
 
 def check_manifest(manifest_path: Path, warn_days: int) -> tuple[int, str]:
@@ -45,7 +44,7 @@ def check_manifest(manifest_path: Path, warn_days: int) -> tuple[int, str]:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Warn before the update manifest expires")
     parser.add_argument("--manifest", default="updates/latest.json")
-    parser.add_argument("--warn-days", type=int, default=MANIFEST_EXPIRY_WARN_DAYS)
+    parser.add_argument("--warn-days", type=int, default=DEFAULT_WARN_DAYS)
     args = parser.parse_args()
     code, message = check_manifest(Path(args.manifest), args.warn_days)
     print(message)

@@ -35,21 +35,26 @@ jobs:
       - name: Install build dependencies
         run: pip install -e .[build]
 
-      - name: Verify Fluent binding
-        run: python -c "from src.ui.fluent_theme import is_fluent_available; assert is_fluent_available(), 'PyQt6 Fluent UI is unavailable or bound to PySide6'"
+      - name: Preflight checks
+        run: |
+          python -c "from src.ui.fluent_theme import is_fluent_available; assert is_fluent_available(), 'PyQt6 Fluent UI is unavailable or bound to PySide6'"
+          python -c "from pathlib import Path; png=Path('assets/app_icon.png'); ico=Path('assets/app_icon.ico'); assert png.is_file() and ico.is_file(), 'Missing app icon assets'; assert png.stat().st_size < 512*1024, 'PNG icon too large'; assert ico.stat().st_size < 512*1024, 'ICO icon too large'"
 
-      - name: Verify app icon assets
-        run: python -c "from pathlib import Path; png=Path('assets/app_icon.png'); ico=Path('assets/app_icon.ico'); assert png.is_file() and ico.is_file(), 'Missing app icon assets'; assert png.stat().st_size < 512*1024, 'PNG icon too large'; assert ico.stat().st_size < 512*1024, 'ICO icon too large'"
+      - name: Resolve release version
+        shell: pwsh
+        run: |
+          $version = '${{ inputs.version || github.ref_name }}'.TrimStart('v')
+          if ($version -notmatch '^\d+(\.\d+)*$') { throw "Tag must use vX.Y.Z" }
+          $configured = (python -c "from src.core.constants import VERSION; print(VERSION)").Trim()
+          if ($configured -ne $version) { throw "Tag $version does not match VERSION $configured" }
+          "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+          Write-Host "Release version: $version"
 
       - name: Build executable
         shell: pwsh
         run: |
           if (-not $env:PM_UPDATE_PRIVATE_KEY_B64) { throw "PM_UPDATE_PRIVATE_KEY_B64 is required" }
           if (-not $env:PM_UPDATE_PUBLIC_KEY_B64) { throw "PM_UPDATE_PUBLIC_KEY_B64 is required" }
-          $version = '${{ inputs.version || github.ref_name }}'.TrimStart('v')
-          if ($version -notmatch '^\d+(\.\d+)*$') { throw "Tag must use vX.Y.Z" }
-          $configured = (python -c "from src.core.constants import VERSION; print(VERSION)").Trim()
-          if ($configured -ne $version) { throw "Tag $version does not match VERSION $configured" }
           python -m PyInstaller pdf_master.spec --clean --noconfirm
 
       - name: Run packaged smoke
@@ -63,11 +68,10 @@ jobs:
       - name: Build signed update manifest
         shell: pwsh
         run: |
-          $version = '${{ inputs.version || github.ref_name }}'.TrimStart('v')
-          $artifact = Get-ChildItem "dist/PDF_Master_v$version.exe" | Select-Object -First 1
+          $artifact = Get-ChildItem "dist/PDF_Master_v$env:RELEASE_VERSION.exe" | Select-Object -First 1
           if (-not $artifact) { throw "Release executable not found" }
-          $url = "https://github.com/twbeatles/pdf-master/releases/download/v$version/PDF_Master_v$version.exe"
-          python scripts/build_update_manifest.py --version $version --artifact $artifact.FullName --artifact-url $url --output "$env:RUNNER_TEMP/latest.json"
+          $url = "https://github.com/twbeatles/pdf-master/releases/download/v$env:RELEASE_VERSION/PDF_Master_v$env:RELEASE_VERSION.exe"
+          python scripts/build_update_manifest.py --version $env:RELEASE_VERSION --artifact $artifact.FullName --artifact-url $url --output "$env:RUNNER_TEMP/latest.json"
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
@@ -82,7 +86,6 @@ jobs:
       - name: Publish update manifest
         shell: pwsh
         run: |
-          $version = '${{ inputs.version || github.ref_name }}'.TrimStart('v')
           git fetch origin main
           if ('${{ github.event_name }}' -eq 'push') {
             git merge-base --is-ancestor $env:GITHUB_SHA origin/main
@@ -96,7 +99,7 @@ jobs:
           git add -f updates/latest.json
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { exit 0 }
-          git commit -m "chore: publish update manifest for v$version [skip ci]"
+          git commit -m "chore: publish update manifest for v$env:RELEASE_VERSION [skip ci]"
           # ISSUE-001: concurrent pushes can reject a single push; retry pull-rebase + push.
           $published = $false
           for ($attempt = 1; $attempt -le 3; $attempt++) {
