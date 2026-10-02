@@ -19,4 +19,15 @@
 - Menu contrast gate: all four stylesheets passed.
 - Dependency-free expiry gate: passed with site-packages disabled.
 - `main.py --smoke`: passed with the existing local startup changes present.
-- Existing `main.py` and `tests/test_startup_single_instance.py` changes were not modified by this follow-up. Local validation does not establish that the new workflow has run on GitHub.
+- Initial theme-only commit: `8fd30a0`; GitHub Checks run `36981247149` passed.
+
+## Reviewed remaining startup changes
+
+At the user's request, the remaining `main.py` and startup tests are included in a subsequent commit after review:
+
+- Keep the early splash and delayed heavy imports; place imports inside the splash cleanup block, and retain the missing-PyMuPDF preflight before main-window import.
+- Use `setStaleLockTime(0)` for a process-lifetime lock and let `tryLock` recover dead-process locks. Do not forcibly delete another instance's lock. This follows the [Qt QLockFile long-lived lock contract](https://doc.qt.io/qt-6/qlockfile.html).
+- Distinguish lock contention from permission/storage errors, preserving the intended unguarded startup fallback for unavailable lock storage.
+- Declare Win32 function argument/result types explicitly so HWND values remain pointer-sized on 64-bit Windows; report the actual foreground request result.
+- Keep the session QApplication alive in tests. Cover aged live locks, crash recovery, storage failure, real splash display, missing assets, and splash cleanup after an import failure.
+- Include startup regressions in the twice-run CI sequence. Combined local startup/theme/advanced tests: 35 passed; source smoke passed.

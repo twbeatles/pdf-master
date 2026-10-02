@@ -36,7 +36,7 @@ jobs:
         run: |
           # Repeat the original mixed-widget sequence to catch lifecycle crashes.
           foreach ($attempt in 1..2) {
-            python -m pytest tests/test_fluent_shell_boundary.py tests/test_theme_auto_follow.py tests/test_fluent_design_foundation.py tests/test_advanced_theme_background.py -q
+            python -m pytest tests/test_fluent_shell_boundary.py tests/test_theme_auto_follow.py tests/test_fluent_design_foundation.py tests/test_advanced_theme_background.py tests/test_startup_single_instance.py -q
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
