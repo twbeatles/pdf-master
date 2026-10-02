@@ -8,6 +8,7 @@
 
 - [ ] `src/core/_constants_impl/values.py`의 `VERSION`을 새 버전으로 갱신
       (EXE명·패키지 메타데이터·매니페스트 URL은 이 단일 소스를 추종).
+- [ ] 테마 명암비 게이트 통과 (`python scripts/check_theme_contrast.py` — CI `Checks`·Release preflight 자동 실행).
 - [ ] `vX.Y.Z` 태그로 푸시하거나 Release workflow의 `version` 입력 사용.
 - [ ] GitHub Actions secrets 확인: `PM_UPDATE_PRIVATE_KEY_B64`,
       `PM_UPDATE_PUBLIC_KEY_B64` (개인키는 절대 커밋 금지).

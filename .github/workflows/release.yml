@@ -40,6 +40,9 @@ jobs:
           python -c "from src.ui.fluent_theme import is_fluent_available; assert is_fluent_available(), 'PyQt6 Fluent UI is unavailable or bound to PySide6'"
           python -c "from pathlib import Path; png=Path('assets/app_icon.png'); ico=Path('assets/app_icon.ico'); assert png.is_file() and ico.is_file(), 'Missing app icon assets'; assert png.stat().st_size < 512*1024, 'PNG icon too large'; assert ico.stat().st_size < 512*1024, 'ICO icon too large'"
 
+      - name: Theme contrast gate
+        run: python scripts/check_theme_contrast.py
+
       - name: Resolve release version
         shell: pwsh
         run: |

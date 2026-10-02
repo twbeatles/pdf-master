@@ -55,8 +55,34 @@ def _notify_system_theme_changed() -> None:
             logger.debug("System theme callback failed", exc_info=True)
 
 
+_SETTINGS_THEME_PROVIDER = None
+
+
+def set_settings_theme_provider(provider) -> None:
+    """Provide the user's theme choice ("dark"/"light"/"auto") to the watcher.
+
+    Lets the OS watcher enforce an explicit choice at the Fluent layer
+    instead of blindly following the OS. The provider runs on the app thread;
+    keep it cheap — failures fall back to "auto".
+    """
+    global _SETTINGS_THEME_PROVIDER
+    _SETTINGS_THEME_PROVIDER = provider
+
+
+def _resolve_settings_mode() -> str:
+    provider = _SETTINGS_THEME_PROVIDER
+    if provider is None:
+        return "auto"
+    try:
+        mode = provider()
+    except Exception:
+        return "auto"
+    return mode if mode in ("dark", "light", "auto") else "auto"
+
+
 def _poll_system_theme() -> None:
-    """Watcher entry: sync Fluent and notify callbacks on OS theme flips."""
+    """Watcher entry: track the OS theme; auto mode follows it, while an
+    explicit user choice is re-enforced at the Fluent layer instead."""
     global _LAST_SYSTEM_THEME
     try:
         import darkdetect
@@ -67,8 +93,12 @@ def _poll_system_theme() -> None:
     if current == _LAST_SYSTEM_THEME:
         return
     _LAST_SYSTEM_THEME = current
-    sync_system_theme()
-    _notify_system_theme_changed()
+    mode = _resolve_settings_mode()
+    if mode == "auto":
+        sync_system_theme()
+        _notify_system_theme_changed()
+    else:
+        sync_fluent_theme(mode)
 
 
 def _installed_dist_names() -> set:

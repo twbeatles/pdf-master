@@ -51,6 +51,12 @@
 - `setTheme(Theme.AUTO)` + `darkdetect` + `colorSchemeChanged` 즉시반영 + 3초 폴링 (§8, `ktrain/gui/theme.py` 계승).
   폴링은 OS 변경 시에만 동작하고(`_LAST_SYSTEM_THEME`), 콜백(`register_system_theme_callback`)으로
   메인윈도우 `_apply_theme()`을 재실행하므로 `auto` 모드에서 앱 QSS·위젯 테마까지 실시간 추적한다.
+  명시적 dark/light 선택 시에는 OS를 추종하지 않고 `sync_fluent_theme(선택값)`으로 Fluent층을
+  고정한다(설정값 제공자 `set_settings_theme_provider`, weakref 기반 — Fluent 팝업이 엉뚱한 모드로
+  렌더링되는 것을 방지).
+- 메뉴 규칙(QMenu*/QMenuBar*)은 4개 시트 모두에 `color` 명시 필수: 팔레트 상속에
+  의존하면 다크(검정에 검정)·라이트(비활성 회색) 모두에서 불가시 사례 발생.
+  `scripts/check_theme_contrast.py` 게이트 + CI `Checks`가 명암비까지 검증.
 - `settings` 수동 전환은 `sync_fluent_theme()`로 브리지 — 기존 QSS 적용 뒤에 호출, 충돌 없이 병행.
   설정 탭 콤보는 페이지를 거쳐 호스트 윈도우의 `_apply_theme()`을 호출하므로 즉시 반영된다.
 - Mica는 `setMicaEffectEnabled(False)` 강제. 라이트는 플랫폼 기본, 다크만 최소 보정 (§9, 신규 QSS 파일 신설 금지).

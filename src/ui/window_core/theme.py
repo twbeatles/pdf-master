@@ -132,13 +132,31 @@ def _register_system_theme_follow(self):
     if getattr(self, "_system_theme_follow_registered", False):
         return
     try:
-        from ..fluent_theme import _install_theme_watcher, register_system_theme_callback
+        import weakref
+
+        from ..fluent_theme import (
+            _install_theme_watcher,
+            register_system_theme_callback,
+            set_settings_theme_provider,
+        )
 
         app = QApplication.instance()
         if app is not None:
             _install_theme_watcher(app)
+        self_ref = weakref.ref(self)
+
+        def _settings_mode():
+            inst = self_ref()
+            if inst is None:
+                return "auto"
+            try:
+                return inst.settings.get("theme", "dark")
+            except Exception:
+                return "auto"
+
+        set_settings_theme_provider(_settings_mode)
         register_system_theme_callback(self._on_system_theme_changed)
-        self._system_theme_follow_registered = True
+        setattr(self, "_system_theme_follow_registered", True)
     except Exception:
         logger.debug("System theme follow install failed", exc_info=True)
 

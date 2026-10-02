@@ -235,19 +235,23 @@ QSplitter::handle:hover {
 
 QMenuBar {
     background-color: #ffffff;
+    color: #1e293b;
     border-bottom: 1px solid #e2e8f0;
     padding: 4px;
 }
 QMenuBar::item {
     padding: 10px 16px;
+    color: #1e293b;
     border-radius: 6px;
     margin: 2px;
 }
 QMenuBar::item:selected {
     background: rgba(79, 140, 255, 0.1);
+    color: #1e293b;
 }
 QMenu {
     background-color: #ffffff;
+    color: #1e293b;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 8px;
@@ -261,6 +265,10 @@ QMenu::item {
 QMenu::item:selected {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #4f8cff, stop:1 #7fb3ff);
     color: white;
+}
+QMenu::item:disabled {
+    background: transparent;
+    color: #64748b;
 }
 QMenu::separator {
     height: 1px;

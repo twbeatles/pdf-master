@@ -90,20 +90,26 @@ def test_dark_menu_rules_declare_text_color():
     """Menu regression: dark sheets must set explicit QMenu*/QMenuBar* text
     colors. QMenu inherits the (light) app palette, so a dark menu background
     without `color` renders black-on-black (invisible) on dark OS themes."""
-    import re
+    from scripts.check_theme_contrast import check_sheet
 
     from src.ui.theme import DARK_STYLESHEET, NATIVE_DARK_STYLESHEET
 
-    for sheet in (NATIVE_DARK_STYLESHEET, DARK_STYLESHEET):
-        blocks = re.findall(r"(QMenuBar[^{]*|QMenu[^{]*)\{([^}]*)\}", sheet)
-        assert blocks, "expected QMenu rules in dark stylesheet"
-        missing = [
-            sel.strip()
-            for sel, body in blocks
-            if sel.strip() != "QMenu::separator"
-            and re.search(r"(?<![\w-])color\s*:", body) is None
-        ]
-        assert not missing, f"menu selectors without text color: {missing}"
+    issues = check_sheet("NATIVE_DARK", NATIVE_DARK_STYLESHEET, "#141922")
+    issues += check_sheet("DARK", DARK_STYLESHEET, "#141922")
+    assert not issues, f"menu contrast violations: {issues}"
+
+
+def test_light_menu_rules_declare_text_color():
+    """Mirror of the dark-menu regression: light sheets must also set
+    explicit QMenu*/QMenuBar* text colors. Otherwise items inherit the
+    palette (e.g. disabled entries render #BEBEBE on white, ~1.8:1)."""
+    from scripts.check_theme_contrast import check_sheet
+
+    from src.ui.theme import LIGHT_STYLESHEET, NATIVE_LIGHT_STYLESHEET
+
+    issues = check_sheet("NATIVE_LIGHT", NATIVE_LIGHT_STYLESHEET, "#ffffff")
+    issues += check_sheet("LIGHT", LIGHT_STYLESHEET, "#ffffff")
+    assert not issues, f"menu contrast violations: {issues}"
 
 
 def test_widget_lifecycle_then_global_stylesheet():
