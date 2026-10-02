@@ -45,10 +45,10 @@ def test_system_theme_callback_invoked_and_pruned():
 
         host = _Host()
         assert fluent_theme.register_system_theme_callback(host.on_theme) is True
+        # NOTE: no gc.collect() here — CPython frees `host` on `del`, while a
+        # forced collection can tear down Qt/qfluentwidgets garbage from
+        # earlier suite tests mid-run (fatal access violation on CI).
         del host
-        import gc
-
-        gc.collect()
         # Dead bound method must be pruned without breaking live callbacks.
         fluent_theme._notify_system_theme_changed()
         assert calls == [1, 1]
