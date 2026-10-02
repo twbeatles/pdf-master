@@ -13,6 +13,62 @@ import sys
 logger = logging.getLogger(__name__)
 
 _THEME_WATCHER_STARTED = False
+_LAST_SYSTEM_THEME: str | None = None
+_SYSTEM_THEME_CALLBACKS: list = []
+
+
+def register_system_theme_callback(callback) -> bool:
+    """Register a no-arg callable run when the OS theme changes (auto follow).
+
+    Bound methods are held weakly so closed windows never block collection.
+    Returns True when the callback was accepted.
+    """
+    try:
+        import weakref
+
+        if getattr(callback, "__self__", None) is not None:
+            ref = weakref.WeakMethod(callback)
+        else:
+            ref = weakref.ref(callback)
+    except TypeError:
+        _SYSTEM_THEME_CALLBACKS.append(lambda: callback())
+        return True
+    _SYSTEM_THEME_CALLBACKS.append(ref)
+    return True
+
+
+def _notify_system_theme_changed() -> None:
+    for ref in list(_SYSTEM_THEME_CALLBACKS):
+        try:
+            callback = ref()
+        except Exception:
+            callback = None
+        if callback is None:
+            try:
+                _SYSTEM_THEME_CALLBACKS.remove(ref)
+            except ValueError:
+                pass
+            continue
+        try:
+            callback()
+        except Exception:
+            logger.debug("System theme callback failed", exc_info=True)
+
+
+def _poll_system_theme() -> None:
+    """Watcher entry: sync Fluent and notify callbacks on OS theme flips."""
+    global _LAST_SYSTEM_THEME
+    try:
+        import darkdetect
+
+        current = darkdetect.theme()
+    except Exception:
+        return
+    if current == _LAST_SYSTEM_THEME:
+        return
+    _LAST_SYSTEM_THEME = current
+    sync_system_theme()
+    _notify_system_theme_changed()
 
 
 def _installed_dist_names() -> set:
@@ -149,18 +205,24 @@ def apply_native_widget_style(root: object) -> None:
 
 
 def _install_theme_watcher(app: object) -> None:
-    global _THEME_WATCHER_STARTED
+    global _THEME_WATCHER_STARTED, _LAST_SYSTEM_THEME
     if _THEME_WATCHER_STARTED:
         return
     try:
         from PyQt6.QtCore import QTimer
         from PyQt6.QtGui import QGuiApplication
 
+        try:
+            import darkdetect
+
+            _LAST_SYSTEM_THEME = darkdetect.theme()
+        except Exception:
+            _LAST_SYSTEM_THEME = None
         hints = QGuiApplication.styleHints()
         if hasattr(hints, "colorSchemeChanged"):
-            hints.colorSchemeChanged.connect(lambda _s: QTimer.singleShot(0, sync_system_theme))
+            hints.colorSchemeChanged.connect(lambda _s: QTimer.singleShot(0, _poll_system_theme))
         timer = QTimer(app)  # type: ignore[arg-type]
-        timer.timeout.connect(sync_system_theme)
+        timer.timeout.connect(_poll_system_theme)
         timer.start(3000)
         _THEME_WATCHER_STARTED = True
     except Exception:

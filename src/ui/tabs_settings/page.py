@@ -112,11 +112,30 @@ def _on_settings_theme(self, value: str) -> None:
     value = value if value in THEME_OPTIONS else "dark"
     self.settings["theme"] = value
     save_settings(self.settings)
+    # NOTE: self is the settings page, which owns no _apply_theme.
+    # Resolve the main window (or any top-level host exposing it).
+    host = self.window() if hasattr(self, "window") else None
+    apply = getattr(host, "_apply_theme", None)
+    if not callable(apply):
+        try:
+            from PyQt6.QtWidgets import QApplication
+
+            app = QApplication.instance()
+            for top in list(app.topLevelWidgets()) if app is not None else []:
+                candidate = getattr(top, "_apply_theme", None)
+                if callable(candidate):
+                    host, apply = top, candidate
+                    break
+        except Exception:
+            logger.debug("settings theme host lookup failed", exc_info=True)
     try:
-        self._apply_theme()
+        if callable(apply):
+            apply()
     except Exception:
         logger.debug("settings theme apply failed", exc_info=True)
-    btn = getattr(self, "btn_theme", None)
+    btn = getattr(host, "btn_theme", None)
+    if btn is None:
+        btn = getattr(self, "btn_theme", None)
     if btn is not None:
         try:
             btn.setText(

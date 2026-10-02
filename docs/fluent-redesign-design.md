@@ -49,7 +49,10 @@
 ## 4. srtgo 이식점 (`src/ui/fluent_theme.py`, `main.py`)
 
 - `setTheme(Theme.AUTO)` + `darkdetect` + `colorSchemeChanged` 즉시반영 + 3초 폴링 (§8, `ktrain/gui/theme.py` 계승).
+  폴링은 OS 변경 시에만 동작하고(`_LAST_SYSTEM_THEME`), 콜백(`register_system_theme_callback`)으로
+  메인윈도우 `_apply_theme()`을 재실행하므로 `auto` 모드에서 앱 QSS·위젯 테마까지 실시간 추적한다.
 - `settings` 수동 전환은 `sync_fluent_theme()`로 브리지 — 기존 QSS 적용 뒤에 호출, 충돌 없이 병행.
+  설정 탭 콤보는 페이지를 거쳐 호스트 윈도우의 `_apply_theme()`을 호출하므로 즉시 반영된다.
 - Mica는 `setMicaEffectEnabled(False)` 강제. 라이트는 플랫폼 기본, 다크만 최소 보정 (§9, 신규 QSS 파일 신설 금지).
 - HiDPI: `QT_ENABLE_HIGHDPI_SCALING/AUTO_SCALE=1` 유지 + `PassThrough` rounding (§20).
 - 피드백: 비차단은 `InfoBar`, 차단은 `MessageBox` (§15). 로딩은 기존 overlay + 영역잠금 + 취소 유지 (§16).

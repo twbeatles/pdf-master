@@ -86,6 +86,26 @@ def test_add_tab_falls_back_to_plain_qtabwidget():
     assert tabs.widget(0) is page
 
 
+def test_dark_menu_rules_declare_text_color():
+    """Menu regression: dark sheets must set explicit QMenu*/QMenuBar* text
+    colors. QMenu inherits the (light) app palette, so a dark menu background
+    without `color` renders black-on-black (invisible) on dark OS themes."""
+    import re
+
+    from src.ui.theme import DARK_STYLESHEET, NATIVE_DARK_STYLESHEET
+
+    for sheet in (NATIVE_DARK_STYLESHEET, DARK_STYLESHEET):
+        blocks = re.findall(r"(QMenuBar[^{]*|QMenu[^{]*)\{([^}]*)\}", sheet)
+        assert blocks, "expected QMenu rules in dark stylesheet"
+        missing = [
+            sel.strip()
+            for sel, body in blocks
+            if sel.strip() != "QMenu::separator"
+            and re.search(r"(?<![\w-])color\s*:", body) is None
+        ]
+        assert not missing, f"menu selectors without text color: {missing}"
+
+
 def test_widget_lifecycle_then_global_stylesheet():
     """Crash-sequence regression: file widgets -> sheets -> tab shell window."""
     app = _qapp()

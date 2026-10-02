@@ -20,7 +20,7 @@ from .state import (
     _save_settings_on_exit,
     _save_splitter_state,
 )
-from .theme import _apply_theme, _create_header, _toggle_theme
+from .theme import _apply_theme, _create_header, _on_system_theme_changed, _toggle_theme
 from .._typing import MainWindowHost
 
 
@@ -46,5 +46,6 @@ class MainWindowCoreMixin(MainWindowHost):
     _create_header = _create_header
     _toggle_theme = _toggle_theme
     _apply_theme = _apply_theme
+    _on_system_theme_changed = _on_system_theme_changed
     _show_help = _show_help
     _save_settings_on_exit = _save_settings_on_exit

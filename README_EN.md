@@ -109,7 +109,7 @@
 > AI features require a **Gemini API key** from [Google AI Studio](https://aistudio.google.com/) and the `google-genai` package. The AI service implementation lives under `src/core/ai/`.
 
 ### 🎨 UI/UX
-- **Dark / Light Theme** — Glassmorphism design
+- **Dark / Light / Auto Theme** — Glassmorphism design, Auto follows the OS setting live
 - **Zoom / Pan Preview** — Mouse wheel zoom, drag move, print
 - **Preview drag redaction** — In Advanced tab area redact, drag a rectangle on the preview to fill coordinates
 - **Preview drag text insert** — In Edit tab textbox, drag to set position/size and apply font/opacity options

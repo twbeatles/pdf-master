@@ -123,3 +123,36 @@ def _apply_theme(self):
             self.preview_label.setStyleSheet("color: #94a3b8; padding: 12px; font-size: 13px; background: transparent;")
         else:
             self.preview_label.setStyleSheet("color: #64748b; padding: 12px; font-size: 13px; background: transparent;")
+
+    _register_system_theme_follow(self)
+
+
+def _register_system_theme_follow(self):
+    """Install the OS-theme watcher once so 'auto' mode follows live changes."""
+    if getattr(self, "_system_theme_follow_registered", False):
+        return
+    try:
+        from ..fluent_theme import _install_theme_watcher, register_system_theme_callback
+
+        app = QApplication.instance()
+        if app is not None:
+            _install_theme_watcher(app)
+        register_system_theme_callback(self._on_system_theme_changed)
+        self._system_theme_follow_registered = True
+    except Exception:
+        logger.debug("System theme follow install failed", exc_info=True)
+
+
+def _on_system_theme_changed(self):
+    """Watcher callback: re-apply only when the user selected 'auto'."""
+    try:
+        if self.settings.get("theme", "dark") != "auto":
+            return
+    except Exception:
+        return
+    try:
+        self._apply_theme()
+    except RuntimeError:
+        logger.debug("System theme apply skipped (window gone)", exc_info=True)
+    except Exception:
+        logger.debug("System theme apply failed", exc_info=True)
