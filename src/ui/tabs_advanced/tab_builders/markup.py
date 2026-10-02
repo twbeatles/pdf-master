@@ -17,9 +17,11 @@ from .markup_sections.links import build_links
 def _create_markup_subtab(self):
     """마크업 서브탭: 검색, 하이라이트, 주석, 텍스트 마크업, 배경색, 교정"""
     widget = QWidget()
+    widget.setObjectName("advancedPage")
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
     content = QWidget()
+    content.setObjectName("advancedContent")
     layout = QVBoxLayout(content)
     layout.setSpacing(12)
 

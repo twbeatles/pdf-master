@@ -18,9 +18,11 @@ from .misc_sections.v4_5_3_f_07_ui_3 import build_v4_5_3_f_07_ui_3
 def _create_misc_subtab(self):
     """기타 서브탭: 양식, 비교, 서명, 복호화, 첨부파일"""
     widget = QWidget()
+    widget.setObjectName("advancedPage")
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
     content = QWidget()
+    content.setObjectName("advancedContent")
     layout = QVBoxLayout(content)
     layout.setSpacing(12)
 

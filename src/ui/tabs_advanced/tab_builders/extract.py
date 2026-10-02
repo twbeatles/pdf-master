@@ -23,9 +23,11 @@ from ...widgets import FileSelectorWidget
 def _create_extract_subtab(self):
     """추출 서브탭: 링크, 이미지, 테이블, 북마크, 정보, Markdown"""
     widget = QWidget()
+    widget.setObjectName("advancedPage")
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
     content = QWidget()
+    content.setObjectName("advancedContent")
     layout = QVBoxLayout(content)
     layout.setSpacing(12)
 

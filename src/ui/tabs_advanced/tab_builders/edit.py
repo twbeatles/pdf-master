@@ -17,9 +17,11 @@ from .edit_sections.textbox import build_textbox
 def _create_edit_subtab(self):
     """편집 서브탭: 분할, 페이지 번호, 스탬프, 크롭, 빈 페이지, 크기 변경, 복제, 역순"""
     widget = QWidget()
+    widget.setObjectName("advancedPage")
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
     content = QWidget()
+    content.setObjectName("advancedContent")
     layout = QVBoxLayout(content)
     layout.setSpacing(12)
 

@@ -6,6 +6,7 @@
 """
 
 import pytest
+import weakref
 
 darkdetect = pytest.importorskip("darkdetect")
 
@@ -44,14 +45,18 @@ def test_system_theme_callback_invoked_and_pruned():
                 self.calls += 1
 
         host = _Host()
+        host_ref = weakref.ref(host)
         assert fluent_theme.register_system_theme_callback(host.on_theme) is True
+        registered_ref = fluent_theme._SYSTEM_THEME_CALLBACKS[-1]
         # NOTE: no gc.collect() here — CPython frees `host` on `del`, while a
         # forced collection can tear down Qt/qfluentwidgets garbage from
         # earlier suite tests mid-run (fatal access violation on CI).
         del host
+        assert host_ref() is None
         # Dead bound method must be pruned without breaking live callbacks.
         fluent_theme._notify_system_theme_changed()
         assert calls == [1, 1]
+        assert registered_ref not in fluent_theme._SYSTEM_THEME_CALLBACKS
     finally:
         _restore_registry(snapshot)
 

@@ -18,6 +18,10 @@ DARK/LIGHT_STYLESHEET 문자열은 폴백 경로·계약 테스트용으로 유�
 from __future__ import annotations
 
 NATIVE_DARK_STYLESHEET = """
+QWidget#advancedPage, QWidget#advancedContent {
+    background-color: #141922;
+    color: #f0f4f8;
+}
 QDialog {
     background-color: #141922;
     color: #f0f4f8;
@@ -349,6 +353,12 @@ QLabel#stepLabel {
 """
 
 NATIVE_LIGHT_STYLESHEET = """
+/* Scroll contents auto-fill from the OS palette unless explicitly scoped.
+   Keep explicit light mode white even when Windows uses a dark palette. */
+QWidget#advancedPage, QWidget#advancedContent {
+    background-color: #ffffff;
+    color: #1e293b;
+}
 QDialog {
     background-color: #ffffff;
     color: #1e293b;

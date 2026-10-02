@@ -8,6 +8,9 @@ on:
 jobs:
   theme-contracts:
     runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONFAULTHANDLER: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,11 +24,21 @@ jobs:
       - name: Install dependencies
         run: pip install -e .[build,dev,secure]
 
+      - name: Dependency-free manifest expiry gate
+        # Match the scheduled bare-Python runner; -S hides site-packages.
+        run: python -S scripts/check_update_manifest_expiry.py --warn-days 30
+
       - name: Theme contrast gate
         run: python scripts/check_theme_contrast.py
 
       - name: Theme regression tests
-        run: python -m pytest tests/test_fluent_shell_boundary.py tests/test_theme_auto_follow.py tests/test_fluent_design_foundation.py -q
+        shell: pwsh
+        run: |
+          # Repeat the original mixed-widget sequence to catch lifecycle crashes.
+          foreach ($attempt in 1..2) {
+            python -m pytest tests/test_fluent_shell_boundary.py tests/test_theme_auto_follow.py tests/test_fluent_design_foundation.py tests/test_advanced_theme_background.py -q
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: App smoke
         shell: pwsh
