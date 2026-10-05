@@ -116,6 +116,8 @@ hiddenimports += [
 
 # v4.5: Python 표준 라이브러리 (명시적 추가)
 hiddenimports += [
+    # platform 모듈의 Windows 버전 조회용. 빠지면 `cmd /c ver` 폴백이 돌아 콘솔 창이 번쩍인다.
+    '_wmi',
     'threading',    # AI 싱글톤 스레드 안전성
     'tempfile',     # Undo 백업 디렉토리
     'shutil',       # 파일 복사/설정 백업

@@ -19,7 +19,6 @@ def _create_preview_panel(self):
     header = QHBoxLayout()
     self.preview_label = QLabel(tm.get("preview_default"))
     self.preview_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-    self.preview_label.setStyleSheet("color: #666; padding: 4px; font-size: 12px;")
     self.preview_label.setWordWrap(True)
     self.preview_label.setMaximumHeight(120)
     header.addWidget(self.preview_label, 1)

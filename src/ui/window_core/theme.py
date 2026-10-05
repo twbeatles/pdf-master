@@ -3,7 +3,7 @@ import os
 import subprocess
 
 from PyQt6.QtCore import QByteArray, QUrl
-from PyQt6.QtGui import QAction, QDesktopServices, QKeySequence, QShortcut
+from PyQt6.QtGui import QAction, QColor, QDesktopServices, QKeySequence, QPalette, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -26,6 +26,50 @@ from ..zoomable_preview import ZoomablePreviewWidget
 
 logger = logging.getLogger(__name__)
 
+# 스타일시트가 닿지 않는 기본 Qt 위젯(스크롤 영역·라벨·체크박스 등)이 OS 색 구성 대신
+# 앱 테마를 따르도록 하는 팔레트 값. theme/native.py 의 앱 셸 색과 맞춘다.
+_THEME_PALETTES = {
+    True: {
+        "window": "#0a0e14", "base": "#141922", "alt_base": "#1c2432", "text": "#f0f4f8",
+        "button": "#1c2432", "placeholder": "#6b7280", "disabled": "#6b7280",
+        "tooltip": "#1c2432", "tooltip_text": "#f0f4f8",
+    },
+    False: {
+        "window": "#f8fafc", "base": "#ffffff", "alt_base": "#f1f5f9", "text": "#1e293b",
+        "button": "#ffffff", "placeholder": "#94a3b8", "disabled": "#94a3b8",
+        "tooltip": "#ffffff", "tooltip_text": "#1e293b",
+    },
+}
+
+
+def build_theme_palette(is_dark: bool) -> QPalette:
+    colors = _THEME_PALETTES[bool(is_dark)]
+    palette = QPalette()
+    role = QPalette.ColorRole
+    for color_role, key in (
+        (role.Window, "window"),
+        (role.Base, "base"),
+        (role.AlternateBase, "alt_base"),
+        (role.WindowText, "text"),
+        (role.Text, "text"),
+        (role.Button, "button"),
+        (role.ButtonText, "text"),
+        (role.PlaceholderText, "placeholder"),
+        (role.ToolTipBase, "tooltip"),
+        (role.ToolTipText, "tooltip_text"),
+        # QPdfView 등 기본 위젯이 빈 영역을 칠할 때 쓰는 음영 계열
+        (role.Dark, "alt_base"),
+        (role.Mid, "alt_base"),
+    ):
+        palette.setColor(color_role, QColor(colors[key]))
+    palette.setColor(role.Highlight, QColor("#4f8cff"))
+    palette.setColor(role.HighlightedText, QColor("#ffffff"))
+    palette.setColor(role.Link, QColor("#4f8cff"))
+    for color_role in (role.WindowText, role.Text, role.ButtonText):
+        palette.setColor(QPalette.ColorGroup.Disabled, color_role, QColor(colors["disabled"]))
+    return palette
+
+
 def _create_header(self):
     header = QHBoxLayout()
     header.setSpacing(15)
@@ -36,33 +80,24 @@ def _create_header(self):
     header.addWidget(title)
 
     ver_label = QLabel(f"v{VERSION}")
-    ver_label.setStyleSheet("color: #666; font-size: 11px;")
+    ver_label.setObjectName("desc")
     header.addWidget(ver_label)
 
     header.addStretch()
 
     # Theme toggle - objectName으로 스타일 적용
-    current_theme = self.settings.get("theme")
-    theme_text = {"dark": tm.get("theme_dark"), "light": tm.get("theme_light")}.get(current_theme, tm.get("theme_auto"))
-    # But wait, existing logic: theme_text = "DARK" if self.settings.get("theme") == "dark" else "LIGHT"
-    # The button usually shows the CURRENT theme or the TARGET theme?
-    # Usually a toggle button shows the current state or what will happen.
-    # Original code: "DARK" if dark else "LIGHT". This suggests it shows the current state.
-
-    self.btn_theme = PushButton(theme_text)
-    # (Fluent button: legacy accent objectName removed)
+    # 버튼은 현재 적용 중인 테마를 보여 주고, 누르면 다음 테마로 넘어간다.
+    self.btn_theme = PushButton(_theme_button_text(self.settings.get("theme")))
     self.btn_theme.setMinimumSize(70, 32)
+    self.btn_theme.setToolTip(tm.get("tooltip_theme_toggle"))
     self.btn_theme.clicked.connect(self._toggle_theme)
     header.addWidget(self.btn_theme)
 
-    # Help button - objectName으로 스타일 적용
-    btn_help = PushButton(tm.get("help")) # "도움말" or "Help"
-    # (Fluent button: legacy accent objectName removed)
-    btn_help.setMinimumSize(60, 32)
-    btn_help.clicked.connect(self._show_help)
-    header.addWidget(btn_help)
-
     return header
+
+
+def _theme_button_text(theme) -> str:
+    return {"dark": tm.get("theme_dark"), "light": tm.get("theme_light")}.get(theme, tm.get("theme_auto"))
 
 def _toggle_theme(self):
     current = self.settings.get("theme", "dark")
@@ -70,7 +105,10 @@ def _toggle_theme(self):
     self.settings["theme"] = new_theme
     save_settings(self.settings)
     self._apply_theme()
-    self.btn_theme.setText({"dark": tm.get("theme_dark"), "light": tm.get("theme_light")}.get(new_theme, tm.get("theme_auto")))
+    self.btn_theme.setText(_theme_button_text(new_theme))
+    from ..tabs_settings.page import sync_settings_combo
+
+    sync_settings_combo(self, "_settings_theme_combo", new_theme)
 
 def _apply_theme(self):
     theme = self.settings.get("theme", "dark")
@@ -81,6 +119,7 @@ def _apply_theme(self):
     if isinstance(app, QApplication):
         from ..fluent_widgets import is_fluent_widgets_available
 
+        app.setPalette(build_theme_palette(is_dark))
         if is_fluent_widgets_available():
             app.setStyleSheet(NATIVE_DARK_STYLESHEET if is_dark else NATIVE_LIGHT_STYLESHEET)
         else:

@@ -119,6 +119,7 @@ class PDFMasterApp(
         self._same_path_preview_restore = None
         self._chat_histories = self._load_chat_histories()
         self._chat_pending_path = None
+        self._carrying_active_pdf = False
 
         # v4.0: Undo/Redo 매니저
         self.undo_manager = UndoManager(max_history=50)
@@ -201,13 +202,14 @@ class PDFMasterApp(
         from .tab_shell import TabShell
 
         self.tabs = TabShell(mode="nav")
+        self.tabs.configure_rail()
         tabs_layout.addWidget(self.tabs)
         self.content_splitter.addWidget(tabs_widget)
 
         # Preview panel (right side)
         preview_widget = self._create_preview_panel()
         self.content_splitter.addWidget(preview_widget)
-        self.content_splitter.setSizes([650, 450])  # 미리보기 패널 더 크게
+        self.content_splitter.setSizes([700, 500])
 
         # 사용자 설정 복원
         saved_sizes = self.settings.get("splitter_sizes")
@@ -229,6 +231,11 @@ class PDFMasterApp(
         from .tabs_settings import setup_settings_tab
 
         setup_settings_tab(self)  # 설정 (Pivot + HeaderCard)
+
+        # 탭을 옮기면 보고 있던 PDF를 새 화면의 빈 파일 선택칸에 이어 준다.
+        self.tabs.currentChanged.connect(
+            lambda _index: QTimer.singleShot(0, self._carry_active_pdf_to_visible_tools)
+        )
 
         # 레일 하단 액션 (도움말/정보) — 폴백 QTabWidget에서는 no-op
         add_action_item(self.tabs, tm.get("help"), "HELP", self._show_help)
@@ -268,6 +275,7 @@ class PDFMasterApp(
 
         # 모든 QSpinBox, QComboBox에 휠 필터 설치
         self._install_wheel_filters()
+        self._relax_spinbox_min_widths()
         try:  # Fluent ComboBox는 QComboBox 서브클래스가 아니라 별도 설치
             from .fluent_widgets import QComboBox as _FluentComboBox
             from .fluent_widgets import is_fluent_widgets_available
@@ -285,6 +293,9 @@ class PDFMasterApp(
         self.progress_overlay = ProgressOverlayWidget(central)
         self.progress_overlay.cancelled.connect(self._on_worker_cancelled)
         self.progress_overlay.hide()
+
+        # 메뉴 이름이 보이도록 레일을 펼친다 (창 크기 확정 후)
+        QTimer.singleShot(0, self.tabs.expand_rail)
 
         # 포커스 모드 설정 복원 (레이아웃 확정 후)
         QTimer.singleShot(0, self._restore_preview_focus_on_startup)

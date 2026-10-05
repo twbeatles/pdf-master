@@ -13,10 +13,11 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ....fluent_widgets import PushButton, QComboBox, QLineEdit, QSpinBox
+from ....fluent_widgets import PrimaryButton, PushButton, QComboBox, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
+from ....form_rows import pair_grid
 
 
 def build_ink(self, layout) -> None:
@@ -27,18 +28,12 @@ def build_ink(self, layout) -> None:
     self.sel_ink = FileSelectorWidget()
     self.sel_ink.pathChanged.connect(self._update_preview)
     l_ink.addWidget(self.sel_ink)
-    ink_opts1 = QHBoxLayout()
-    ink_opts1.addWidget(QLabel(tm.get("tab_page") + ":"))
     self.spn_ink_page = QSpinBox()
     self.spn_ink_page.setRange(1, 9999)
     self.spn_ink_page.setValue(1)
-    ink_opts1.addWidget(self.spn_ink_page)
-    ink_opts1.addWidget(QLabel(tm.get("lbl_line_width")))
     self.spn_ink_width = QSpinBox()
     self.spn_ink_width.setRange(1, 10)
     self.spn_ink_width.setValue(2)
-    ink_opts1.addWidget(self.spn_ink_width)
-    ink_opts1.addWidget(QLabel(tm.get("lbl_color")))
     self.cmb_ink_color = QComboBox()
     ink_colors = [
         (tm.get("color_blue_ink"), (0, 0, 1)),
@@ -48,16 +43,24 @@ def build_ink(self, layout) -> None:
     ]
     for label, value in ink_colors:
         self.cmb_ink_color.addItem(label, userData=value)
-    ink_opts1.addWidget(self.cmb_ink_color)
-    ink_opts1.addStretch()
-    l_ink.addLayout(ink_opts1)
+    l_ink.addLayout(
+        pair_grid(
+            [
+                (tm.get("lbl_page"), self.spn_ink_page),
+                (tm.get("lbl_line_width"), self.spn_ink_width),
+                (tm.get("lbl_color"), self.cmb_ink_color),
+            ]
+        )
+    )
     ink_guide = QLabel(tm.get("lbl_ink_guide"))
     ink_guide.setObjectName("desc")
+    ink_guide.setWordWrap(True)
     l_ink.addWidget(ink_guide)
     self.txt_ink_points = QLineEdit()
     self.txt_ink_points.setPlaceholderText(tm.get("ph_ink"))
     l_ink.addWidget(self.txt_ink_points)
-    b_ink = PushButton(tm.get("btn_add_ink"))
+    b_ink = PrimaryButton(tm.get("btn_add_ink"))
+    b_ink.setObjectName("actionBtn")
     b_ink.clicked.connect(self.action_add_ink_annotation)
     l_ink.addWidget(b_ink)
     layout.addWidget(grp_ink)

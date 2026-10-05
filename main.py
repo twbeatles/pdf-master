@@ -39,6 +39,12 @@ else:
 
 sys.path.insert(0, base_path)
 
+# 창 없는 EXE에서 자식 콘솔 프로그램(표준 라이브러리의 `cmd /c ver` 등)이 터미널 창을
+# 띄우지 않게 한다. 다른 모듈이 프로세스를 만들기 전에, 가장 먼저 적용해야 한다.
+from src.core.win_console import suppress_child_console_windows
+
+suppress_child_console_windows()
+
 # NOTE: 이 지점에서는 stdlib + PyQt6 + path_utils(stdlib only)까지만 import 한다.
 # qfluentwidgets / google-genai / main_window 등 무거운 모듈은 스플래시 표시 이후
 # main() 내부에서 지연 import하여 cold-start blank 기간을 최소화한다.

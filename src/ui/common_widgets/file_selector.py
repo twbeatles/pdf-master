@@ -43,6 +43,7 @@ class FileSelectorWidget(QWidget):
 
         self.drop_zone = DropZoneWidget(extensions, self)
         self.drop_zone.fileDropped.connect(self._on_file_dropped)
+        self.drop_zone.clicked.connect(self.browse_file)
         layout.addWidget(self.drop_zone)
 
         btn_layout = QHBoxLayout()
@@ -53,34 +54,24 @@ class FileSelectorWidget(QWidget):
         self.btn_browse.clicked.connect(self.browse_file)
 
         # 최근 파일 버튼
-        self.btn_recent = QToolButton()
-        self.btn_recent.setText("📋")
+        self.btn_recent = QPushButton(tm.get("btn_recent_short"))
+        self.btn_recent.setObjectName("secondaryBtn")
         self.btn_recent.setToolTip(tm.get("recent_files"))
-        self.btn_recent.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self.btn_recent.setFixedWidth(35)
         self.recent_menu = QMenu(self)
         self.btn_recent.setMenu(self.recent_menu)
         self.recent_menu.aboutToShow.connect(self._update_recent_menu)
+        # 최근 파일 목록은 PDF만 담으므로 이미지 등 다른 형식 선택칸에서는 숨긴다.
+        self.btn_recent.setVisible(".pdf" in self.extensions)
 
         self.btn_clear = DangerButton(tm.get("btn_clear"))
         self.btn_clear.setObjectName("secondaryBtn")
-        self.btn_clear.setFixedWidth(100)  # 80 -> 100
+        self.btn_clear.setMinimumWidth(100)
         self.btn_clear.setToolTip(tm.get("tooltip_clear_file"))
-        self.btn_clear.setStyleSheet("""
-            QPushButton {
-                background-color: #3e272b;
-                color: #ff6b6b;
-                border: 1px solid #5c3a3a;
-                padding: 10px;
-            }
-            QPushButton:hover {
-                background-color: #5c3a3a;
-                color: #ff8787;
-            }
-        """)
+        self._apply_clear_style(True)
+        self.btn_clear.setEnabled(False)
         self.btn_clear.clicked.connect(self.clear_path)
 
-        btn_layout.addWidget(self.btn_browse)
+        btn_layout.addWidget(self.btn_browse, 1)
         btn_layout.addWidget(self.btn_recent)
         btn_layout.addWidget(self.btn_clear)
         layout.addLayout(btn_layout)
@@ -116,7 +107,7 @@ class FileSelectorWidget(QWidget):
 
     def _load_recent(self, path: str):
         """최근 파일 로드"""
-        self.drop_zone.set_path(path)
+        self.set_path(path)
         self.pathChanged.emit(path)
 
     def browse_file(self):
@@ -124,10 +115,11 @@ class FileSelectorWidget(QWidget):
         from ...core.i18n import tm
         f, _ = QFileDialog.getOpenFileName(self, tm.get("file"), "", f"{tm.get('file')} ({ext_filter})")
         if f:
-            self.drop_zone.set_path(f)
+            self.set_path(f)
             self.pathChanged.emit(f)
 
     def _on_file_dropped(self, path: str):
+        self.btn_clear.setEnabled(bool(path))
         self.pathChanged.emit(path)
 
     def get_path(self) -> str:
@@ -135,38 +127,39 @@ class FileSelectorWidget(QWidget):
 
     def set_path(self, path: str):
         self.drop_zone.set_path(path)
+        self.btn_clear.setEnabled(bool(path))
 
     def clear_path(self):
-        self.drop_zone.set_path("")
+        self.set_path("")
         self.pathChanged.emit("")
 
     def set_theme(self, is_dark: bool):
         """테마 변경 시 위젯 스타일 동기화"""
         self.drop_zone.set_theme(is_dark)
-        if is_dark:
-            self.btn_clear.setStyleSheet("""
-                QPushButton {
-                    background-color: #3e272b;
-                    color: #ff6b6b;
-                    border: 1px solid #5c3a3a;
-                    padding: 10px;
-                }
-                QPushButton:hover {
-                    background-color: #5c3a3a;
-                    color: #ff8787;
-                }
-            """)
-        else:
-            self.btn_clear.setStyleSheet("""
-                QPushButton {
-                    background-color: #ffe0e0;
-                    color: #d32f2f;
-                    border: 1px solid #ffcdd2;
-                    padding: 10px;
-                }
-                QPushButton:hover {
-                    background-color: #ffcdd2;
-                    color: #c62828;
-                }
-            """)
+        self._apply_clear_style(is_dark)
 
+    def _apply_clear_style(self, is_dark: bool):
+        if is_dark:
+            colors = ("#3e272b", "#ff6b6b", "#5c3a3a", "#5c3a3a", "#ff8787", "#6b7280", "#2d3748")
+        else:
+            colors = ("#ffe0e0", "#d32f2f", "#ffcdd2", "#ffcdd2", "#c62828", "#94a3b8", "#e2e8f0")
+        self.btn_clear.setStyleSheet(
+            """
+            QPushButton {
+                background-color: %s;
+                color: %s;
+                border: 1px solid %s;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: %s;
+                color: %s;
+            }
+            QPushButton:disabled {
+                background-color: transparent;
+                color: %s;
+                border: 1px solid %s;
+            }
+            """
+            % colors
+        )

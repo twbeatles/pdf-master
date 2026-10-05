@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ...fluent_widgets import PushButton, QCheckBox, QComboBox
+from ...fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox
 
 from ....core.i18n import tm
 from ...widgets import FileSelectorWidget
@@ -37,7 +37,8 @@ def _create_extract_subtab(self):
     self.sel_links = FileSelectorWidget()
     self.sel_links.pathChanged.connect(self._update_preview)
     l_links.addWidget(self.sel_links)
-    b_links = PushButton(tm.get("btn_extract_link"))
+    b_links = PrimaryButton(tm.get("btn_extract_link"))
+    b_links.setObjectName("actionBtn")
     b_links.setToolTip(tm.get("tooltip_extract_links"))
     b_links.clicked.connect(self.action_extract_links)
     l_links.addWidget(b_links)
@@ -49,7 +50,8 @@ def _create_extract_subtab(self):
     self.sel_extract = FileSelectorWidget()
     self.sel_extract.pathChanged.connect(self._update_preview)
     l_extract.addWidget(self.sel_extract)
-    b_extract = PushButton(tm.get("btn_extract_img_adv"))
+    b_extract = PrimaryButton(tm.get("btn_extract_img_adv"))
+    b_extract.setObjectName("actionBtn")
     b_extract.setToolTip(tm.get("tooltip_extract_images"))
     b_extract.clicked.connect(self.action_extract_images)
     l_extract.addWidget(b_extract)
@@ -64,7 +66,8 @@ def _create_extract_subtab(self):
     self.sel_table = FileSelectorWidget()
     self.sel_table.pathChanged.connect(self._update_preview)
     l_table.addWidget(self.sel_table)
-    b_table = PushButton(tm.get("btn_extract_table"))
+    b_table = PrimaryButton(tm.get("btn_extract_table"))
+    b_table.setObjectName("actionBtn")
     b_table.setToolTip(tm.get("tooltip_extract_tables"))
     b_table.clicked.connect(self.action_extract_tables)
     l_table.addWidget(b_table)
@@ -76,7 +79,8 @@ def _create_extract_subtab(self):
     self.sel_bm = FileSelectorWidget()
     self.sel_bm.pathChanged.connect(self._update_preview)
     l_bm.addWidget(self.sel_bm)
-    b_bm = PushButton(tm.get("btn_extract_bookmark"))
+    b_bm = PrimaryButton(tm.get("btn_extract_bookmark"))
+    b_bm.setObjectName("actionBtn")
     b_bm.setToolTip(tm.get("tooltip_extract_bookmarks"))
     b_bm.clicked.connect(self.action_get_bookmarks)
     l_bm.addWidget(b_bm)
@@ -88,7 +92,8 @@ def _create_extract_subtab(self):
     self.sel_info = FileSelectorWidget()
     self.sel_info.pathChanged.connect(self._update_preview)
     l_info.addWidget(self.sel_info)
-    b_info = PushButton(tm.get("btn_extract_info"))
+    b_info = PrimaryButton(tm.get("btn_extract_info"))
+    b_info.setObjectName("actionBtn")
     b_info.setToolTip(tm.get("tooltip_pdf_info"))
     b_info.clicked.connect(self.action_pdf_info)
     l_info.addWidget(b_info)
@@ -122,7 +127,8 @@ def _create_extract_subtab(self):
     self.chk_md_asset_placeholders = QCheckBox(tm.get("chk_markdown_asset_placeholders"))
     self.chk_md_asset_placeholders.setChecked(False)
     l_md.addWidget(self.chk_md_asset_placeholders)
-    b_md = PushButton(tm.get("btn_extract_md"))
+    b_md = PrimaryButton(tm.get("btn_extract_md"))
+    b_md.setObjectName("actionBtn")
     b_md.setToolTip(tm.get("tooltip_extract_markdown"))
     b_md.clicked.connect(self.action_extract_markdown)
     l_md.addWidget(b_md)

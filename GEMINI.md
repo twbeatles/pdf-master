@@ -542,3 +542,30 @@ read specs/001-pdf-master-release-ux/tasks.md
 - 로컬 CLI: `specify` (uv tool, 버전은 `specify version`)
 
 <!-- SPECKIT-AGENT-GUIDE:END -->
+
+## 2026-10-05 UI/UX 다듬기 Addendum (쉬운 말·흐름 정리)
+
+- 문구: KO/EN 카탈로그의 전문용어를 쉬운 말로 교체 (복호화→암호 풀기, 교정→완전히 지우기, 큐→목록, N-up→여러 쪽 모아 찍기,
+  메타데이터→문서 정보, fallback/File API/평문 등). 키·자리표시자 개수는 불변. 탭 이름: PDF 합치기 / 변환 / 페이지 편집 /
+  순서 바꾸기 / 워터마크·보안 / 일괄 처리 / 도구 모음 / AI 도우미 / 설정.
+- "페이지:" 입력 라벨은 `lbl_page` 전용 키 사용 (`tab_page` 재사용 금지 — 탭 이름 변경 시 라벨이 깨짐).
+- 테마: `window_core/theme.py::build_theme_palette` — `_apply_theme`이 QApplication 팔레트를 앱 테마에 맞춘다.
+  OS가 다크·앱이 라이트일 때 스크롤 영역이 검게 나오고 라벨이 사라지던 문제의 근본 수정.
+- 열린 PDF 이어 주기: `window_core/active_file.py::_carry_active_pdf_to_visible_tools` — 미리보기 중인 PDF를
+  지금 보이는 화면의 빈 "그룹별 첫 PDF 선택칸"에 채운다 (탭 전환·미리보기 갱신 시). 이미 채워진 칸·두 번째 칸
+  (비교 대상/가져올 PDF)·이미지 선택칸·숨은 화면은 제외. 채우는 동안 `_update_preview`는 같은 파일이면 보던 쪽을 유지.
+- 레일: `TabShell.configure_rail()/expand_rail()` — 창 너비 1000px 이상이면 메뉴 이름을 펼쳐 보여 준다. 탭 아이콘 중복 제거.
+- 파일 선택칸: 드롭존 클릭=파일 선택, 선택 후 파일 이름만 표시, 「선택 해제」는 파일이 있을 때만 활성,
+  「최근」은 PDF 선택칸에만 표시.
+- 일괄 처리: 선택한 작업의 옵션만 표시 (`_sync_batch_option_rows`), 비밀번호는 가려서 입력, 작업 전환 시 입력란 비움.
+- 워터마크·보안: 암호 걸기·풀기 / 용량 줄이기를 두 구역으로 분리. 설정 탭: 한 화면 2카드, 헤더 버튼·메뉴와 값 동기화
+  (`sync_settings_combo`), `_on_settings_theme`이 호스트의 `_apply_theme`을 직접 호출.
+- 폭: `src/ui/form_rows.py::pair_grid`로 라벨+입력 묶음을 2열 격자 배치, `_relax_spinbox_min_widths` — 도구 모음 가로 스크롤 제거.
+- 각 도구의 주 실행 버튼은 `PrimaryButton`(+`actionBtn`), 목록 비우기는 보조 버튼. 단축키 Ctrl+1~9.
+- 회귀: `tests/test_ui_ux_refactor.py`. 검증: pyright `src/core src/ui` 0 errors, `python -m pytest -q` exit 0, `main.py --smoke` OK.
+- 변환 탭: `FileListWidget`(최소 높이 140)에 `setMaximumHeight(100)`을 걸어 목록이 아래 버튼을 14px 덮던 문제 →
+  `setFixedHeight(140)`. 목록에 최소 높이보다 작은 최대 높이를 주지 말 것.
+- 기동 시 터미널 창: 패키징 EXE에서 `platform` 모듈이 `_wmi` 부재로 `cmd /c ver` 폴백을 실행해 콘솔 창이 번쩍였다.
+  `pdf_master.spec` hiddenimports에 `_wmi` 추가 + `src/core/win_console.py::suppress_child_console_windows`
+  (`main.py`에서 PyQt import 전에 호출, Popen 기본 creationflags에 CREATE_NO_WINDOW). 새 `subprocess` 호출도 자동 적용된다.
+  회귀: `tests/test_win_console.py`. 릴리스 v4.5.15.

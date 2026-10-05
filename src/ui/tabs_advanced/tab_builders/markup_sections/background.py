@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ....fluent_widgets import PushButton, QComboBox
+from ....fluent_widgets import PrimaryButton, PushButton, QComboBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -44,7 +44,8 @@ def build_background(self, layout) -> None:
     bg_opts.addWidget(self.cmb_bg_color)
     bg_opts.addStretch()
     l_bg.addLayout(bg_opts)
-    b_bg = PushButton(tm.get("btn_add_bg"))
+    b_bg = PrimaryButton(tm.get("btn_add_bg"))
+    b_bg.setObjectName("actionBtn")
     b_bg.clicked.connect(self.action_add_background)
     l_bg.addWidget(b_bg)
     layout.addWidget(grp_bg)

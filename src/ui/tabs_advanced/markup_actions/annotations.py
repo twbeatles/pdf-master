@@ -81,7 +81,7 @@ def action_add_sticky_note(self):
     x = self.spn_sticky_x.value()
     y = self.spn_sticky_y.value()
     page_num = self.spn_sticky_page.value() - 1
-    icon = self.cmb_sticky_icon.currentText()
+    icon = self.cmb_sticky_icon.currentData() or self.cmb_sticky_icon.currentText()
 
     s, _ = self._choose_save_file(deps.tm.get("save"), "with_note.pdf", "PDF (*.pdf)")
     if s:

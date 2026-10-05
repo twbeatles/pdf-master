@@ -84,16 +84,26 @@ def setup_batch_tab(self):
     opt_layout.addStretch()
     content_layout.addLayout(opt_layout)
 
-    # 워터마크/암호 옵션
-    opt_layout2 = QHBoxLayout()
-    opt_layout2.addWidget(QLabel(tm.get("lbl_batch_option")))
-    self.inp_batch_opt = QLineEdit()
-    self.inp_batch_opt.setPlaceholderText(tm.get("ph_batch_option"))
-    self.inp_batch_opt.setToolTip(tm.get("tip_batch_encrypt_permissions"))
-    opt_layout2.addWidget(self.inp_batch_opt)
+    # 선택한 작업에 필요한 옵션만 보여 준다 (_sync_batch_option_rows).
+    self._batch_hint = QLabel("")
+    self._batch_hint.setObjectName("desc")
+    self._batch_hint.setWordWrap(True)
+    content_layout.addWidget(self._batch_hint)
 
-    # 배치 워터마크 옵션 (단일 워터마크와 일부 패리티)
-    wm_row = QHBoxLayout()
+    # 워터마크 문구 / 비밀번호 (작업에 따라 라벨·입력 방식이 바뀜)
+    self._batch_text_row = QWidget()
+    opt_layout2 = QHBoxLayout(self._batch_text_row)
+    opt_layout2.setContentsMargins(0, 0, 0, 0)
+    self._lbl_batch_opt = QLabel(tm.get("lbl_batch_watermark_text"))
+    opt_layout2.addWidget(self._lbl_batch_opt)
+    self.inp_batch_opt = QLineEdit()
+    opt_layout2.addWidget(self.inp_batch_opt)
+    content_layout.addWidget(self._batch_text_row)
+
+    # 워터마크 글자 크기·투명도
+    self._batch_wm_row = QWidget()
+    wm_row = QHBoxLayout(self._batch_wm_row)
+    wm_row.setContentsMargins(0, 0, 0, 0)
     wm_row.addWidget(QLabel(tm.get("lbl_batch_wm_fontsize")))
     self.spn_batch_wm_fontsize = QSpinBox()
     self.spn_batch_wm_fontsize.setRange(8, 120)
@@ -106,11 +116,14 @@ def setup_batch_tab(self):
     self.spn_batch_wm_opacity.setValue(0.3)
     wm_row.addWidget(self.spn_batch_wm_opacity)
     wm_row.addStretch()
-    content_layout.addLayout(wm_row)
-    content_layout.addLayout(opt_layout2)
+    content_layout.addWidget(self._batch_wm_row)
 
-    # 배치 암호화 권한 (단일 Security 탭과 정렬)
+    # 암호 설정 시 허용할 동작 (보안 탭의 단일 암호 설정과 같은 항목)
+    self._batch_perm_box = QWidget()
+    perm_layout = QVBoxLayout(self._batch_perm_box)
+    perm_layout.setContentsMargins(0, 0, 0, 0)
     perm_row = QHBoxLayout()
+    perm_row2 = QHBoxLayout()
     self.chk_batch_perm_print = QCheckBox(tm.get("chk_perm_print"))
     self.chk_batch_perm_print.setChecked(True)
     self.chk_batch_perm_copy = QCheckBox(tm.get("chk_perm_copy"))
@@ -123,22 +136,25 @@ def setup_batch_tab(self):
     self.chk_batch_perm_form.setChecked(False)
     self.chk_batch_perm_assemble = QCheckBox(tm.get("chk_perm_assemble"))
     self.chk_batch_perm_assemble.setChecked(False)
-    for chk in (
-        self.chk_batch_perm_print,
-        self.chk_batch_perm_copy,
-        self.chk_batch_perm_modify,
-        self.chk_batch_perm_annotate,
-        self.chk_batch_perm_form,
-        self.chk_batch_perm_assemble,
+    for index, chk in enumerate(
+        (
+            self.chk_batch_perm_print,
+            self.chk_batch_perm_copy,
+            self.chk_batch_perm_modify,
+            self.chk_batch_perm_annotate,
+            self.chk_batch_perm_form,
+            self.chk_batch_perm_assemble,
+        )
     ):
-        perm_row.addWidget(chk)
+        (perm_row if index < 3 else perm_row2).addWidget(chk)
     perm_row.addStretch()
-    content_layout.addLayout(perm_row)
+    perm_row2.addStretch()
+    perm_layout.addLayout(perm_row)
+    perm_layout.addLayout(perm_row2)
+    content_layout.addWidget(self._batch_perm_box)
 
-    batch_encrypt_note = QLabel(tm.get("tip_batch_encrypt_permissions"))
-    batch_encrypt_note.setObjectName("desc")
-    batch_encrypt_note.setWordWrap(True)
-    content_layout.addWidget(batch_encrypt_note)
+    self.cmb_batch_op.currentIndexChanged.connect(lambda _i: _sync_batch_option_rows(self))
+    _sync_batch_option_rows(self)
 
     step3 = QLabel(tm.get("step_batch_3"))
     step3.setObjectName("stepLabel")
@@ -152,7 +168,30 @@ def setup_batch_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    add_tab(self.tabs, tab, tm.get('tab_batch'), icon="LAYOUT")
+    add_tab(self.tabs, tab, tm.get('tab_batch'), icon="LIBRARY")
+
+def _sync_batch_option_rows(self):
+    """선택한 일괄 작업에 맞는 옵션만 보이게 하고, 비밀번호는 가려서 입력받는다."""
+    op = self.cmb_batch_op.currentData() or "compress"
+    is_watermark = op == "watermark"
+    is_encrypt = op == "encrypt"
+    self._batch_text_row.setVisible(is_watermark or is_encrypt)
+    self._batch_wm_row.setVisible(is_watermark)
+    self._batch_perm_box.setVisible(is_encrypt)
+    self._batch_hint.setText(tm.get(f"hint_batch_{op}"))
+    # 워터마크 문구와 비밀번호가 같은 입력란을 쓰므로 작업을 바꾸면 비운다.
+    if getattr(self, "_batch_opt_for", op) != op:
+        self.inp_batch_opt.clear()
+    self._batch_opt_for = op
+    if is_encrypt:
+        self._lbl_batch_opt.setText(tm.get("lbl_batch_password"))
+        self.inp_batch_opt.setPlaceholderText(tm.get("ph_password"))
+        self.inp_batch_opt.setEchoMode(QLineEdit.EchoMode.Password)
+    else:
+        self._lbl_batch_opt.setText(tm.get("lbl_batch_watermark_text"))
+        self.inp_batch_opt.setPlaceholderText(tm.get("ph_watermark_text"))
+        self.inp_batch_opt.setEchoMode(QLineEdit.EchoMode.Normal)
+
 
 def _batch_add_files(self):
     files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")
@@ -182,8 +221,10 @@ def action_batch(self):
         return
     op = self.cmb_batch_op.currentData() or self.cmb_batch_op.currentText()
     opt = self.inp_batch_opt.text()
-    if op in ("watermark", "encrypt") and not opt:
-        return QMessageBox.warning(self, tm.get("info"), tm.get("ph_batch_option"))
+    if op in ("watermark", "encrypt") and not opt.strip():
+        message_key = "msg_enter_password" if op == "encrypt" else "msg_enter_text"
+        self.inp_batch_opt.setFocus()
+        return QMessageBox.warning(self, tm.get("info"), tm.get(message_key))
     kwargs = {
         "files": files,
         "output_dir": out_dir,

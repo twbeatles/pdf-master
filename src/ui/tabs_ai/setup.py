@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ...core.i18n import tm
+from ..form_rows import pair_grid
 from ..fluent_widgets import (
     PasswordLineEdit,
     PrimaryButton,
@@ -45,16 +46,7 @@ def setup_ai_tab(self):
     # ⚠️ AI 패키지 미설치 경고 배너
     if not AI_AVAILABLE:
         ai_warning = QLabel(tm.get("msg_ai_unavailable"))
-        ai_warning.setStyleSheet("""
-            QLabel {
-                background-color: #3a1a1a;
-                color: #ff6b6b;
-                padding: 15px;
-                border: 2px solid #ff6b6b;
-                border-radius: 8px;
-                font-size: 12px;
-            }
-        """)
+        ai_warning.setObjectName("warningBanner")
         ai_warning.setWordWrap(True)
         ai_warning.setAlignment(Qt.AlignmentFlag.AlignCenter)
         l_summary.addWidget(ai_warning)
@@ -83,7 +75,8 @@ def setup_ai_tab(self):
     # API 키 안내
     api_hint = QLabel(tm.get("msg_api_hint"))
     api_hint.setOpenExternalLinks(True)
-    api_hint.setStyleSheet("color: #888; font-size: 11px;")
+    api_hint.setObjectName("desc")
+    api_hint.setWordWrap(True)
     l_summary.addWidget(api_hint)
 
     l_summary.addWidget(QLabel(""))  # 간격
@@ -102,8 +95,6 @@ def setup_ai_tab(self):
     step2.setObjectName("stepLabel")
     l_summary.addWidget(step2)
 
-    opt_layout = QHBoxLayout()
-    opt_layout.addWidget(QLabel(tm.get("lbl_ai_style")))
     self.cmb_summary_style = QComboBox()
     summary_styles = [
         (tm.get("style_concise"), "concise"),
@@ -113,9 +104,7 @@ def setup_ai_tab(self):
     for label, value in summary_styles:
         self.cmb_summary_style.addItem(label, userData=value)
     self.cmb_summary_style.setEnabled(AI_AVAILABLE)
-    opt_layout.addWidget(self.cmb_summary_style)
 
-    opt_layout.addWidget(QLabel(tm.get("lbl_ai_lang")))
     self.cmb_summary_lang = QComboBox()
     summary_langs = [
         (tm.get("lang_ko"), "ko"),
@@ -124,18 +113,22 @@ def setup_ai_tab(self):
     for label, value in summary_langs:
         self.cmb_summary_lang.addItem(label, userData=value)
     self.cmb_summary_lang.setEnabled(AI_AVAILABLE)
-    opt_layout.addWidget(self.cmb_summary_lang)
 
-    opt_layout.addWidget(QLabel(tm.get("lbl_max_pages")))
     self.spn_max_pages = QSpinBox()
     self.spn_max_pages.setRange(0, 100)
     self.spn_max_pages.setValue(0)
     self.spn_max_pages.setToolTip(tm.get("tooltip_max_pages"))
     self.spn_max_pages.setEnabled(AI_AVAILABLE)
-    opt_layout.addWidget(self.spn_max_pages)
 
-    opt_layout.addStretch()
-    l_summary.addLayout(opt_layout)
+    l_summary.addLayout(
+        pair_grid(
+            [
+                (tm.get("lbl_ai_style"), self.cmb_summary_style),
+                (tm.get("lbl_ai_lang"), self.cmb_summary_lang),
+                (tm.get("lbl_max_pages"), self.spn_max_pages),
+            ]
+        )
+    )
 
     # 요약 실행 버튼
     self.btn_ai_summarize = PrimaryButton(tm.get("btn_ai_run"))

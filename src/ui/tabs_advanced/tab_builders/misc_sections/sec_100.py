@@ -17,6 +17,7 @@ from ....fluent_widgets import PrimaryButton, QComboBox, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
+from ....form_rows import pair_grid
 
 
 def build_sec_100(self, layout) -> None:
@@ -27,19 +28,13 @@ def build_sec_100(self, layout) -> None:
     self.sel_freehand_pdf = FileSelectorWidget()
     self.sel_freehand_pdf.pathChanged.connect(self._update_preview)
     l_freehand.addWidget(self.sel_freehand_pdf)
-    freehand_opts = QHBoxLayout()
-    freehand_opts.addWidget(QLabel(tm.get("tab_page") + ":"))
     self.spn_freehand_page = QSpinBox()
     self.spn_freehand_page.setRange(0, 9999)
     self.spn_freehand_page.setValue(0)
     self.spn_freehand_page.setSpecialValueText(tm.get("label_last_page"))
-    freehand_opts.addWidget(self.spn_freehand_page)
-    freehand_opts.addWidget(QLabel(tm.get("lbl_line_width")))
     self.spn_freehand_width = QSpinBox()
     self.spn_freehand_width.setRange(1, 20)
     self.spn_freehand_width.setValue(2)
-    freehand_opts.addWidget(self.spn_freehand_width)
-    freehand_opts.addWidget(QLabel(tm.get("lbl_color")))
     self.cmb_freehand_color = QComboBox()
     freehand_colors = [
         (tm.get("color_black"), (0, 0, 0)),
@@ -48,10 +43,19 @@ def build_sec_100(self, layout) -> None:
     ]
     for label, value in freehand_colors:
         self.cmb_freehand_color.addItem(label, userData=value)
-    freehand_opts.addWidget(self.cmb_freehand_color)
-    freehand_opts.addStretch()
-    l_freehand.addLayout(freehand_opts)
-    l_freehand.addWidget(QLabel(tm.get("lbl_freehand_guide")))
+    l_freehand.addLayout(
+        pair_grid(
+            [
+                (tm.get("lbl_page"), self.spn_freehand_page),
+                (tm.get("lbl_line_width"), self.spn_freehand_width),
+                (tm.get("lbl_color"), self.cmb_freehand_color),
+            ]
+        )
+    )
+    freehand_guide = QLabel(tm.get("lbl_freehand_guide"))
+    freehand_guide.setObjectName("desc")
+    freehand_guide.setWordWrap(True)
+    l_freehand.addWidget(freehand_guide)
     self.txt_freehand_strokes = QLineEdit()
     self.txt_freehand_strokes.setPlaceholderText(tm.get("ph_freehand_strokes"))
     l_freehand.addWidget(self.txt_freehand_strokes)

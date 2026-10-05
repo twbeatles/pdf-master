@@ -1,3 +1,4 @@
+from .active_file import _carry_active_pdf_to_visible_tools
 from .menu import (
     _change_language,
     _create_menu_bar,
@@ -9,7 +10,7 @@ from .menu import (
     _toggle_save_chat_histories,
     _update_recent_menu_bar,
 )
-from .shortcuts import _install_wheel_filters, _setup_shortcuts, _shortcut_open_file
+from .shortcuts import _install_wheel_filters, _relax_spinbox_min_widths, _setup_shortcuts, _shortcut_open_file
 from .state import (
     _choose_output_directory,
     _choose_save_file,
@@ -25,7 +26,9 @@ from .._typing import MainWindowHost
 
 
 class MainWindowCoreMixin(MainWindowHost):
+    _carry_active_pdf_to_visible_tools = _carry_active_pdf_to_visible_tools
     _install_wheel_filters = _install_wheel_filters
+    _relax_spinbox_min_widths = _relax_spinbox_min_widths
     _setup_shortcuts = _setup_shortcuts
     _shortcut_open_file = _shortcut_open_file
     _get_output_dialog_dir = _get_output_dialog_dir

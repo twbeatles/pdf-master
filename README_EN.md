@@ -130,7 +130,7 @@
 
 ### Use the Prebuilt Executable (Windows)
 
-Run `dist/PDF_Master_v4.5.9.exe` directly — no installation required.
+Run `dist/PDF_Master_v4.5.15.exe` directly — no installation required.
 
 ### Run from Source
 
@@ -231,14 +231,15 @@ Menu bar → **Language** (🌐) → **Korean** or **English** → restart the a
 | `Esc` | Cancel text placement / region select, then step out of fullscreen and focus |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Y` | Redo |
-| `Ctrl+1` | Merge tab |
-| `Ctrl+2` | Convert tab |
-| `Ctrl+3` | Page tab |
-| `Ctrl+4` | Security tab |
-| `Ctrl+5` | Reorder tab |
-| `Ctrl+6` | Batch tab |
-| `Ctrl+7` | Advanced tab |
-| `Ctrl+8` | AI tab |
+| `Ctrl+1` | Merge PDFs |
+| `Ctrl+2` | Convert |
+| `Ctrl+3` | Edit Pages |
+| `Ctrl+4` | Reorder |
+| `Ctrl+5` | Watermark & Security |
+| `Ctrl+6` | Batch |
+| `Ctrl+7` | More Tools |
+| `Ctrl+8` | AI Assistant |
+| `Ctrl+9` | Settings |
 
 ---
 
@@ -286,7 +287,7 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-Output: `dist/PDF_Master_v4.5.9.exe` (~30–40 MB)
+Output: `dist/PDF_Master_v4.5.15.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
@@ -296,6 +297,12 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 
 ## 📝 Changelog
 
+### v4.5.15
+- **Plain wording**: jargon removed across the UI (e.g. Decrypt → Remove Password, N-up → Multiple Pages per Sheet, Sanitize → Remove Hidden Info). Menus: Merge PDFs / Convert / Edit Pages / Reorder / Watermark & Security / Batch / More Tools / AI Assistant / Settings
+- **Opened PDF carries over**: a PDF you open once is filled into the empty file pickers of the screen you are on (pickers you already set and "second file" pickers are left alone; the page you were viewing is kept)
+- **Polish**: menu names shown on the left rail, a highlighted action button per tool, simpler file picker (click to choose, deselect), Batch shows only the options of the chosen task (password masked), Watermark & Security split into password / file-size areas, single-page Settings, `Ctrl+9`
+- **Fixes**: black backgrounds and vanishing labels when using the light theme on a dark-mode Windows, theme not applying from the Settings tab, horizontal overflow in More Tools, the PDF list overlapping the buttons below it in Convert
+- **No console window at startup**: the executable no longer flashes a `cmd` window while starting (`_wmi` bundled + child-process console suppression in `src/core/win_console.py`)
 ### v4.5.10
 - **Fluent Wave-2**: left `NavigationInterface` rail + bottom help/about, 9th Settings tab (Pivot sections + `HeaderCard`), `PasswordLineEdit`·`SearchLineEdit`·`TitleLabel`/`BodyLabel`·`InfoBar` helper, button objectName rules + `set_button_role()`. `[fluent]` darkdetect pin fixed (`>=0.7`)
 - **Binding guard**: safe Qt fallback on `PySide6-Fluent-Widgets` co-install + zombie-proof construction + session-global `QApplication` test rule. Design: `docs/fluent-redesign-design.md` §9–§10

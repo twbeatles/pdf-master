@@ -55,7 +55,7 @@ def test_file_widgets_use_english_tooltips():
         image_list = ImageListWidget()
 
         assert selector.btn_browse.toolTip() == "Click to select a file"
-        assert selector.btn_clear.toolTip() == "Clear the selected file"
+        assert selector.btn_clear.toolTip() == "Deselect the file (the file itself is not deleted)"
         assert pdf_list.toolTip() == "Drag PDF files here. You can also reorder them."
         assert image_list.toolTip() == "Drag image files here (PNG, JPG, etc.)"
     finally:

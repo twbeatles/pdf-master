@@ -180,7 +180,11 @@ def test_on_success_updates_summary_result(monkeypatch):
     assert "summary" in dummy.txt_summary_result.value
     assert "alpha" in dummy.txt_summary_result.value
     assert dummy.lbl_summary_meta.visible is True
-    assert "fallback" in dummy.lbl_summary_meta.text.lower()
+    from src.core.i18n import tm
+
+    # 문구는 쉬운 말로 바뀔 수 있으므로 카탈로그 키와 쪽수(2 / 5)로 검증한다.
+    assert dummy.lbl_summary_meta.text.startswith(tm.get("ai_meta_text_fallback_truncated").split("{")[0])
+    assert "2 / 5" in dummy.lbl_summary_meta.text
     assert dummy.status_label.text
 
 

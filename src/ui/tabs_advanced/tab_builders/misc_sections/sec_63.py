@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ....fluent_widgets import PushButton, QComboBox, QSpinBox
+from ....fluent_widgets import PrimaryButton, PushButton, QComboBox, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -45,7 +45,7 @@ def build_sec_63(self, layout) -> None:
     for label, value in sig_positions:
         self.cmb_sig_pos.addItem(label, userData=value)
     sig_opts.addWidget(self.cmb_sig_pos)
-    sig_opts.addWidget(QLabel(tm.get("tab_page") + ":"))
+    sig_opts.addWidget(QLabel(tm.get("lbl_page")))
     self.spn_sig_page = QSpinBox()
     self.spn_sig_page.setRange(0, 9999)
     self.spn_sig_page.setValue(0)
@@ -54,7 +54,8 @@ def build_sec_63(self, layout) -> None:
     sig_opts.addWidget(self.spn_sig_page)
     sig_opts.addStretch()
     l_sig.addLayout(sig_opts)
-    b_sig = PushButton(tm.get("btn_insert_sig"))
+    b_sig = PrimaryButton(tm.get("btn_insert_sig"))
+    b_sig.setObjectName("actionBtn")
     b_sig.clicked.connect(self.action_insert_signature)
     l_sig.addWidget(b_sig)
     layout.addWidget(grp_sig)

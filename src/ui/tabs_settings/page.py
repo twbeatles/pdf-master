@@ -1,7 +1,6 @@
-"""설정 탭: Pivot 섹션 + HeaderCard 행.
+"""설정 탭: 한 화면에 HeaderCard 두 장(화면 / 알림 및 기록).
 
-일반(외관) / 알림 및 기록 두 Pivot 섹션으로 settings 키를 노출한다.
-환경설정 메뉴와 같은 키를 공유하므로 동작 계약은 그대로 유지된다.
+환경설정 메뉴와 같은 settings 키를 공유하므로 동작 계약은 그대로 유지된다.
 """
 
 from __future__ import annotations
@@ -13,7 +12,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from ...core.i18n import tm
 from ...core.settings import save_settings
 from ..fluent_widgets import CheckBox, ComboBox, wrap_page
-from ..tab_shell import TabShell, add_tab
+from ..tab_shell import add_tab
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,7 @@ SETTINGS_SECTIONS = (
 )
 
 
-def _combo_row(label_key: str, options, current: str, on_change) -> QHBoxLayout:
+def _combo_row(label_key: str, options, current: str, on_change, host=None, attr: str = "") -> QHBoxLayout:
     from PyQt6.QtWidgets import QLabel
 
     row = QHBoxLayout()
@@ -43,7 +42,24 @@ def _combo_row(label_key: str, options, current: str, on_change) -> QHBoxLayout:
     combo.setCurrentIndex(max(index, 0))
     combo.currentIndexChanged.connect(lambda _i: on_change(combo.currentData()))
     row.addWidget(combo)
+    if host is not None and attr:
+        setattr(host, attr, combo)  # 헤더 버튼·메뉴에서 바꾼 값을 되비추기 위한 참조
     return row
+
+
+def sync_settings_combo(host, attr: str, value: str) -> None:
+    """설정 탭 밖(헤더 버튼·메뉴)에서 바뀐 값을 설정 탭 콤보에 반영한다."""
+    combo = getattr(host, attr, None)
+    if combo is None:
+        return
+    try:
+        index = combo.findData(value)
+        if index >= 0 and combo.currentIndex() != index:
+            combo.blockSignals(True)
+            combo.setCurrentIndex(index)
+            combo.blockSignals(False)
+    except Exception:
+        logger.debug("settings combo sync failed", exc_info=True)
 
 
 def _label_key_for(value: str) -> str:
@@ -59,52 +75,42 @@ def setup_settings_tab(self) -> None:
     tab = QWidget()
     layout = QVBoxLayout(tab)
     layout.setContentsMargins(8, 8, 8, 8)
-    layout.setSpacing(8)
+    layout.setSpacing(12)
 
-    sub = TabShell(mode="pivot")
-    sub.setDocumentMode(True)
-
-    appearance = QWidget()
-    appearance_layout = QVBoxLayout(appearance)
-    appearance_layout.setContentsMargins(4, 4, 4, 4)
-    card, card_layout = wrap_page(tm.get("settings_appearance"), tm.get("settings_subtitle"))
+    card, card_layout = wrap_page(tm.get("settings_appearance"), tm.get("settings_appearance_desc"))
     card_layout.addLayout(
-        _combo_row("settings_theme", THEME_OPTIONS, self.settings.get("theme", "dark"), lambda v: _on_settings_theme(self, v))
+        _combo_row("settings_theme", THEME_OPTIONS, self.settings.get("theme", "dark"), lambda v: _on_settings_theme(self, v),
+                   host=self, attr="_settings_theme_combo")
     )
     card_layout.addLayout(
-        _combo_row("settings_language", LANGUAGE_OPTIONS, self.settings.get("language", "auto"), lambda v: _on_settings_language(self, v))
+        _combo_row("settings_language", LANGUAGE_OPTIONS, self.settings.get("language", "auto"), lambda v: _on_settings_language(self, v),
+                   host=self, attr="_settings_language_combo")
     )
-    appearance_layout.addWidget(card)
-    appearance_layout.addStretch()
-    add_tab(sub, appearance, tm.get("settings_general"), icon="SETTING")
+    layout.addWidget(card)
 
-    history = QWidget()
-    history_layout = QVBoxLayout(history)
-    history_layout.setContentsMargins(4, 4, 4, 4)
-    card_h, card_h_layout = wrap_page(tm.get("settings_history"), tm.get("settings_subtitle"))
+    card_h, card_h_layout = wrap_page(tm.get("settings_history"), tm.get("settings_history_desc"))
     card_h_layout.addLayout(
         _combo_row(
             "settings_notify_mode",
             NOTIFY_OPTIONS,
             self.settings.get("notify_mode", "dialog"),
             lambda v: _on_settings_notify_mode(self, v),
+            host=self,
+            attr="_settings_notify_combo",
         )
     )
     chk_pending = CheckBox(tm.get("settings_clear_pending"))
     chk_pending.setChecked(bool(self.settings.get("clear_pending_on_cancel", True)))
-    chk_pending.setToolTip(tm.get("pref_clear_pending_on_cancel"))
     chk_pending.stateChanged.connect(lambda _s: _on_settings_clear_pending(self, chk_pending.isChecked()))
     card_h_layout.addWidget(chk_pending)
     chk_save_chat = CheckBox(tm.get("settings_save_chat"))
     chk_save_chat.setChecked(bool(self.settings.get("save_chat_histories", True)))
-    chk_save_chat.setToolTip(tm.get("chk_save_chat_histories"))
+    chk_save_chat.setToolTip(tm.get("tip_save_chat_histories"))
     chk_save_chat.stateChanged.connect(lambda _s: _on_settings_save_chat(self, chk_save_chat.isChecked()))
     card_h_layout.addWidget(chk_save_chat)
-    history_layout.addWidget(card_h)
-    history_layout.addStretch()
-    add_tab(sub, history, tm.get("settings_history"), icon="SETTING")
+    layout.addWidget(card_h)
 
-    layout.addWidget(sub)
+    layout.addStretch()
     add_tab(self.tabs, tab, tm.get("tab_settings"), icon="SETTING")
 
 
@@ -112,10 +118,13 @@ def _on_settings_theme(self, value: str) -> None:
     value = value if value in THEME_OPTIONS else "dark"
     self.settings["theme"] = value
     save_settings(self.settings)
-    # NOTE: self is the settings page, which owns no _apply_theme.
-    # Resolve the main window (or any top-level host exposing it).
-    host = self.window() if hasattr(self, "window") else None
+    # self는 보통 메인 윈도우 호스트다. 호스트가 직접 _apply_theme을 갖고 있으면 그것을 쓰고,
+    # 없을 때만 최상위 창에서 찾는다.
+    host = self
     apply = getattr(host, "_apply_theme", None)
+    if not callable(apply) and hasattr(self, "window"):
+        host = self.window()
+        apply = getattr(host, "_apply_theme", None)
     if not callable(apply):
         try:
             from PyQt6.QtWidgets import QApplication
@@ -138,9 +147,7 @@ def _on_settings_theme(self, value: str) -> None:
         btn = getattr(self, "btn_theme", None)
     if btn is not None:
         try:
-            btn.setText(
-                {"dark": tm.get("theme_dark"), "light": tm.get("theme_light")}.get(value, tm.get("theme_auto"))
-            )
+            btn.setText(tm.get(THEME_LABEL_KEYS[value]))
         except Exception:
             logger.debug("settings theme button refresh failed", exc_info=True)
 

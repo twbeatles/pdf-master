@@ -45,7 +45,7 @@ def build_sec_8(self, layout) -> None:
     btn_form_layout.addWidget(b_fill)
     b_flatten = PushButton(tm.get("btn_flatten_form"))
     b_flatten.clicked.connect(self.action_flatten_form)
-    btn_form_layout.addWidget(b_flatten)
     l_form.addLayout(btn_form_layout)
+    l_form.addWidget(b_flatten)
     layout.addWidget(grp_form)
 

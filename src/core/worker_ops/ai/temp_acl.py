@@ -36,6 +36,7 @@ def _restrict_temp_file_permissions(path: str) -> bool:
             check=False,
             capture_output=True,
             timeout=8,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         if result.returncode != 0:
             logger.warning(

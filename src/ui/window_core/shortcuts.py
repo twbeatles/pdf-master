@@ -7,6 +7,7 @@ from PyQt6.QtGui import QAction, QDesktopServices, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
+    QDoubleSpinBox,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -44,19 +45,24 @@ def _setup_shortcuts(self):
         QShortcut(QKeySequence("F11"), self, self._toggle_preview_focus_mode),
         QShortcut(QKeySequence("Ctrl+F11"), self, self._enter_preview_fullscreen),
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._on_preview_focus_escape),
-        QShortcut(QKeySequence("Ctrl+1"), self, lambda: self.tabs.setCurrentIndex(0)),
-        QShortcut(QKeySequence("Ctrl+2"), self, lambda: self.tabs.setCurrentIndex(1)),
-        QShortcut(QKeySequence("Ctrl+3"), self, lambda: self.tabs.setCurrentIndex(2)),
-        QShortcut(QKeySequence("Ctrl+4"), self, lambda: self.tabs.setCurrentIndex(3)),
-        QShortcut(QKeySequence("Ctrl+5"), self, lambda: self.tabs.setCurrentIndex(4)),
-        QShortcut(QKeySequence("Ctrl+6"), self, lambda: self.tabs.setCurrentIndex(5)),
-        QShortcut(QKeySequence("Ctrl+7"), self, lambda: self.tabs.setCurrentIndex(6)),
-        QShortcut(QKeySequence("Ctrl+8"), self, lambda: self.tabs.setCurrentIndex(7)),
+        # Ctrl+1~9: 탭 순서대로 이동
+        *(
+            QShortcut(QKeySequence(f"Ctrl+{number}"), self, lambda index=number - 1: self.tabs.setCurrentIndex(index))
+            for number in range(1, 10)
+        ),
     ]
+
+def _relax_spinbox_min_widths(self):
+    """Fluent 숫자 입력칸의 기본 최소 폭이 넓어 한 줄 배치가 패널을 넘친다. 줄어들 수 있게 한다."""
+    for widget in self.findChildren(QDoubleSpinBox):
+        widget.setMinimumWidth(124)
+    for widget in self.findChildren(QSpinBox):
+        widget.setMinimumWidth(110)
+
 
 def _shortcut_open_file(self):
     """Open file via shortcut"""
     f, _ = QFileDialog.getOpenFileName(self, tm.get("open"), "", "PDF (*.pdf)")
     if f:
         self._update_preview(f)
-        self.status_label.setText(f"📄 {os.path.basename(f)} loaded")
+        self.status_label.setText(tm.get("status_file_opened", os.path.basename(f)))

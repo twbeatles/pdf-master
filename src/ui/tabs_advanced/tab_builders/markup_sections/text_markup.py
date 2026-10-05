@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ....fluent_widgets import PushButton, QComboBox, QLineEdit
+from ....fluent_widgets import PrimaryButton, PushButton, QComboBox, QLineEdit
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -44,7 +44,8 @@ def build_text_markup(self, layout) -> None:
         self.cmb_markup.addItem(label, userData=value)
     markup_opts.addWidget(self.cmb_markup)
     l_markup.addLayout(markup_opts)
-    b_markup = PushButton(tm.get("btn_add_markup"))
+    b_markup = PrimaryButton(tm.get("btn_add_markup"))
+    b_markup.setObjectName("actionBtn")
     b_markup.clicked.connect(self.action_add_text_markup)
     l_markup.addWidget(b_markup)
     layout.addWidget(grp_markup)

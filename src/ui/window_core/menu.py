@@ -140,6 +140,9 @@ def _set_notify_mode(self, mode: str):
         self._act_notify_dialog.setChecked(mode != "toast")
     if getattr(self, "_act_notify_toast", None) is not None:
         self._act_notify_toast.setChecked(mode == "toast")
+    from ..tabs_settings.page import sync_settings_combo
+
+    sync_settings_combo(self, "_settings_notify_combo", mode)
 
 
 def _toggle_clear_pending_on_cancel(self, checked: bool = False):
@@ -181,6 +184,9 @@ def _change_language(self, lang_code):
     for action in self.lang_menu.actions():
         if action.isSeparator(): continue
         action.setChecked(action.data() == lang_code)
+    from ..tabs_settings.page import sync_settings_combo
+
+    sync_settings_combo(self, "_settings_language_combo", lang_code)
 
     # 재시작 안내
     QMessageBox.information(
@@ -220,12 +226,6 @@ def _show_about(self):
 
 {tm.get('about_desc')}
 
-{tm.get('tech_stack')}
-  • Python 3.9+
-  • PyQt6 (UI Framework)
-  • PyMuPDF (PDF Processing)
-
-📧 Made with ❤️
 © 2025-2026"""
     QMessageBox.about(self, f"{APP_NAME} {tm.get('about')}", about_text)
 

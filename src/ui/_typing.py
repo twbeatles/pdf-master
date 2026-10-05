@@ -94,6 +94,7 @@ class MainWindowHost:
     _keywords_result_meta: dict[str, Any]
     _pending_workers: list[dict[str, Any]]
     _app_shortcuts: list[Any]
+    _carrying_active_pdf: bool
     _menu_open_action: Any
     _pending_undo: dict[str, Any] | None
     _cancel_pending: bool
@@ -159,6 +160,9 @@ class MainWindowHost:
         ...
 
     def _close_preview_document(self) -> None:
+        ...
+
+    def _carry_active_pdf_to_visible_tools(self) -> int:
         ...
 
     def _update_preview(self, path: str, restore_state: dict[str, object] | None = None) -> None:

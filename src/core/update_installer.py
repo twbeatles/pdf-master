@@ -255,7 +255,7 @@ def apply_update(target: str, staged: str, parent_pid: int) -> int:
     backup = target_path.with_suffix(target_path.suffix + ".bak")
     try:
         backup.unlink(missing_ok=True); shutil.copy2(target_path, backup); _replace_with_retry(staged_path, target_path)
-        if subprocess.run([str(target_path), "--smoke"], timeout=60, check=False).returncode != 0: raise RuntimeError("Updated executable smoke check failed")
+        if subprocess.run([str(target_path), "--smoke"], timeout=60, check=False, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode != 0: raise RuntimeError("Updated executable smoke check failed")
         backup.unlink(missing_ok=True); _write_result("applied"); _relaunch(target_path); return 0
     except PermissionError as exc:
         rolled_back = False

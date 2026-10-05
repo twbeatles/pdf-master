@@ -25,6 +25,11 @@ def _update_preview(self, path, restore_state=None):
         self.preview_label.setText(tm.get("preview_default"))
         self._reset_preview_state()
         return
+    # 이미 보고 있는 파일을 도구 선택칸에 채우는 중이면 보던 쪽·확대 상태를 그대로 둔다.
+    if getattr(self, "_carrying_active_pdf", False) and path_key == normalize_path_key(
+        getattr(self, "_current_preview_path", "") or ""
+    ):
+        return
 
     try:
         doc, locked_state = self._ensure_preview_document(path_key)
@@ -67,6 +72,9 @@ def _update_preview(self, path, restore_state=None):
         if hasattr(self, "_sync_rotate_thumbnail_with_preview"):
             self._sync_rotate_thumbnail_with_preview()
         self._add_to_recent_files(path_key)
+        carry = getattr(self, "_carry_active_pdf_to_visible_tools", None)
+        if callable(carry):
+            carry()
     except Exception as exc:
         self.preview_label.setText(tm.get("preview_error", str(exc)))
         self._reset_preview_state()

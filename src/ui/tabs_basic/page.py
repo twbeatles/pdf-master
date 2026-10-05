@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ..fluent_widgets import EditableComboBox, PushButton, QComboBox, QLineEdit
+from ..fluent_widgets import PrimaryButton, EditableComboBox, PushButton, QComboBox, QLineEdit
 from ..tab_shell import add_tab
 
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
@@ -61,6 +61,7 @@ def setup_page_tab(self):
     l_pn.addWidget(self.sel_pn)
     guide_pn = QLabel(tm.get("guide_page_format"))
     guide_pn.setObjectName("desc")
+    guide_pn.setWordWrap(True)
     l_pn.addWidget(guide_pn)
     opt_pn = QHBoxLayout()
     opt_pn.addWidget(QLabel(tm.get("lbl_position")))
@@ -83,7 +84,8 @@ def setup_page_tab(self):
     self.cmb_pn_format.setEditable(True)
     opt_pn.addWidget(self.cmb_pn_format)
     l_pn.addLayout(opt_pn)
-    b_pn = PushButton(tm.get("btn_insert_page_number"))
+    b_pn = PrimaryButton(tm.get("btn_insert_page_number"))
+    b_pn.setObjectName("actionBtn")
     b_pn.clicked.connect(self.action_page_numbers)
     l_pn.addWidget(b_pn)
     content_layout.addWidget(grp_pn)
@@ -100,7 +102,8 @@ def setup_page_tab(self):
     self.inp_range.setPlaceholderText("1, 3-5, 8")
     h.addWidget(self.inp_range)
     l_s.addLayout(h)
-    b_s = PushButton(tm.get("btn_split_run"))
+    b_s = PrimaryButton(tm.get("btn_split_run"))
+    b_s.setObjectName("actionBtn")
     b_s.clicked.connect(self.action_split)
     l_s.addWidget(b_s)
     content_layout.addWidget(grp_split)
@@ -117,7 +120,8 @@ def setup_page_tab(self):
     self.inp_del_range.setPlaceholderText("2, 4-6")
     h2.addWidget(self.inp_del_range)
     l_d.addLayout(h2)
-    b_d = PushButton(tm.get("btn_delete_run"))
+    b_d = PrimaryButton(tm.get("btn_delete_run"))
+    b_d.setObjectName("actionBtn")
     b_d.clicked.connect(self.action_delete_pages)
     l_d.addWidget(b_d)
     content_layout.addWidget(grp_del)
@@ -154,7 +158,8 @@ def setup_page_tab(self):
     self.rot_thumb_grid.setMinimumHeight(320)
     self.rot_thumb_grid.pageSelected.connect(self._on_rotate_thumbnail_page_selected)
     l_r.addWidget(self.rot_thumb_grid)
-    b_r = PushButton(tm.get("btn_rotate_run"))
+    b_r = PrimaryButton(tm.get("btn_rotate_run"))
+    b_r.setObjectName("actionBtn")
     b_r.clicked.connect(self.action_rotate)
     l_r.addWidget(b_r)
     content_layout.addWidget(grp_rot)

@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ....fluent_widgets import PushButton, QComboBox, QLineEdit
+from ....fluent_widgets import PrimaryButton, PushButton, QComboBox, QLineEdit
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -44,7 +44,8 @@ def build_split(self, layout) -> None:
     self.inp_split_range.setPlaceholderText(tm.get("ph_split_range"))
     opt_split.addWidget(self.inp_split_range)
     l_split.addLayout(opt_split)
-    b_split = PushButton(tm.get("btn_split_pdf"))
+    b_split = PrimaryButton(tm.get("btn_split_pdf"))
+    b_split.setObjectName("actionBtn")
     b_split.setToolTip(tm.get("tooltip_split_pdf"))
     b_split.clicked.connect(self.action_split_adv)
     l_split.addWidget(b_split)

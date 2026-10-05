@@ -53,7 +53,8 @@ def setup_edit_sec_tab(self):
     form.addRow(tm.get("lbl_author"), self.inp_author)
     form.addRow(tm.get("lbl_subject"), self.inp_subj)
     l_m.addLayout(form)
-    b_m = PushButton(tm.get("btn_save_metadata"))
+    b_m = PrimaryButton(tm.get("btn_save_metadata"))
+    b_m.setObjectName("actionBtn")
     b_m.clicked.connect(self.action_metadata)
     l_m.addWidget(b_m)
     content_layout.addWidget(grp_meta)
@@ -79,7 +80,8 @@ def setup_edit_sec_tab(self):
         self.cmb_wm_color.addItem(label, userData=value)
     h_w.addWidget(self.cmb_wm_color)
     l_w.addLayout(h_w)
-    b_w = PushButton(tm.get("btn_apply_watermark"))
+    b_w = PrimaryButton(tm.get("btn_apply_watermark"))
+    b_w.setObjectName("actionBtn")
     b_w.clicked.connect(self.action_watermark)
     l_w.addWidget(b_w)
     content_layout.addWidget(grp_wm)
@@ -138,31 +140,21 @@ def setup_edit_sec_tab(self):
     self.sel_sec = FileSelectorWidget()
     l_sec.addWidget(self.sel_sec)
     self.sel_sec.pathChanged.connect(self._update_preview)
-    h_sec = QHBoxLayout()
+
+    # 암호 걸기 / 풀기
+    step_pw = QLabel(tm.get("lbl_sec_password_section"))
+    step_pw.setObjectName("stepLabel")
+    l_sec.addWidget(step_pw)
     self.inp_pw = PasswordLineEdit()
     self.inp_pw.setPlaceholderText(tm.get("ph_password"))
     # (PasswordLineEdit presets Password echo + view button)
-    h_sec.addWidget(self.inp_pw)
-    self.cmb_compress_profile = QComboBox()
-    for profile_name in SAVE_PROFILE_CHOICES:
-        self.cmb_compress_profile.addItem(tm.get(f"save_profile_{profile_name}"), userData=profile_name)
-    default_index = self.cmb_compress_profile.findData(DEFAULT_COMPRESSION_SAVE_PROFILE)
-    if default_index >= 0:
-        self.cmb_compress_profile.setCurrentIndex(default_index)
-    self.cmb_compress_profile.setToolTip(tm.get("tooltip_compress_profile"))
-    h_sec.addWidget(self.cmb_compress_profile)
-    b_enc = PushButton(tm.get("btn_encrypt"))
-    b_enc.clicked.connect(self.action_protect)
-    h_sec.addWidget(b_enc)
-    b_dec = PushButton(tm.get("btn_decrypt"))
-    b_dec.setToolTip(tm.get("tooltip_decrypt"))
-    b_dec.clicked.connect(self.action_unlock)
-    h_sec.addWidget(b_dec)
-    b_comp = PushButton(tm.get("btn_compress"))
-    b_comp.clicked.connect(self.action_compress)
-    h_sec.addWidget(b_comp)
-    l_sec.addLayout(h_sec)
+    l_sec.addWidget(self.inp_pw)
+
+    perm_label = QLabel(tm.get("lbl_perm_allowed"))
+    perm_label.setObjectName("desc")
+    l_sec.addWidget(perm_label)
     perm_row = QHBoxLayout()
+    perm_row2 = QHBoxLayout()
     self.chk_perm_print = QCheckBox(tm.get("chk_perm_print"))
     self.chk_perm_print.setChecked(True)
     self.chk_perm_copy = QCheckBox(tm.get("chk_perm_copy"))
@@ -175,20 +167,57 @@ def setup_edit_sec_tab(self):
     self.chk_perm_form.setChecked(False)
     self.chk_perm_assemble = QCheckBox(tm.get("chk_perm_assemble"))
     self.chk_perm_assemble.setChecked(False)
-    for chk in (
-        self.chk_perm_print,
-        self.chk_perm_copy,
-        self.chk_perm_modify,
-        self.chk_perm_annotate,
-        self.chk_perm_form,
-        self.chk_perm_assemble,
+    for index, chk in enumerate(
+        (
+            self.chk_perm_print,
+            self.chk_perm_copy,
+            self.chk_perm_modify,
+            self.chk_perm_annotate,
+            self.chk_perm_form,
+            self.chk_perm_assemble,
+        )
     ):
-        perm_row.addWidget(chk)
+        (perm_row if index < 3 else perm_row2).addWidget(chk)
+    perm_row.addStretch()
+    perm_row2.addStretch()
     l_sec.addLayout(perm_row)
+    l_sec.addLayout(perm_row2)
+
+    h_sec = QHBoxLayout()
+    b_enc = PrimaryButton(tm.get("btn_encrypt"))
+    b_enc.setObjectName("actionBtn")
+    b_enc.clicked.connect(self.action_protect)
+    h_sec.addWidget(b_enc, 1)
+    b_dec = PushButton(tm.get("btn_decrypt"))
+    b_dec.setObjectName("secondaryBtn")
+    b_dec.setToolTip(tm.get("tooltip_decrypt"))
+    b_dec.clicked.connect(self.action_unlock)
+    h_sec.addWidget(b_dec, 1)
+    l_sec.addLayout(h_sec)
+
+    # 용량 줄이기
+    step_comp = QLabel(tm.get("lbl_sec_compress_section"))
+    step_comp.setObjectName("stepLabel")
+    l_sec.addWidget(step_comp)
+    h_comp = QHBoxLayout()
+    h_comp.addWidget(QLabel(tm.get("lbl_compress_profile")))
+    self.cmb_compress_profile = QComboBox()
+    for profile_name in SAVE_PROFILE_CHOICES:
+        self.cmb_compress_profile.addItem(tm.get(f"save_profile_{profile_name}"), userData=profile_name)
+    default_index = self.cmb_compress_profile.findData(DEFAULT_COMPRESSION_SAVE_PROFILE)
+    if default_index >= 0:
+        self.cmb_compress_profile.setCurrentIndex(default_index)
+    self.cmb_compress_profile.setToolTip(tm.get("tooltip_compress_profile"))
+    h_comp.addWidget(self.cmb_compress_profile, 1)
+    l_sec.addLayout(h_comp)
+    b_comp = PrimaryButton(tm.get("btn_compress"))
+    b_comp.setObjectName("actionBtn")
+    b_comp.clicked.connect(self.action_compress)
+    l_sec.addWidget(b_comp)
     content_layout.addWidget(grp_sec)
 
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    add_tab(self.tabs, tab, tm.get('tab_edit'), icon="CERTIFICATE")
+    add_tab(self.tabs, tab, tm.get('tab_edit'), icon="VPN")
 

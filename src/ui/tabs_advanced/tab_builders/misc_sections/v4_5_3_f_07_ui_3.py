@@ -28,7 +28,7 @@ def build_v4_5_3_f_07_ui_3(self, layout) -> None:
     self.sel_add_annot.pathChanged.connect(self._update_preview)
     l_add_annotation.addWidget(self.sel_add_annot)
     annot_opts = QHBoxLayout()
-    annot_opts.addWidget(QLabel(tm.get("tab_page") + ":"))
+    annot_opts.addWidget(QLabel(tm.get("lbl_page")))
     self.spn_add_annot_page = QSpinBox()
     self.spn_add_annot_page.setRange(1, 9999)
     self.spn_add_annot_page.setValue(1)

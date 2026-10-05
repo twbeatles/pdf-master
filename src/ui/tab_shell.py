@@ -240,6 +240,28 @@ class TabShell(QWidget):
         assert self._tabs is not None
         return self._tabs.indexOf(widget)
 
+    def configure_rail(self, expand_width: int = 152, minimum_window_width: int = 1000) -> None:
+        """레일을 펼쳤을 때의 폭과, 자동으로 접히는 창 너비 기준을 정한다."""
+        if not self.uses_rail:
+            return
+        try:
+            self._selector.setExpandWidth(expand_width)
+            self._selector.setMinimumExpandWidth(minimum_window_width)
+        except Exception:
+            logger.debug("TabShell rail configure failed", exc_info=True)
+
+    def expand_rail(self) -> None:
+        """레일을 펼쳐 아이콘 옆에 메뉴 이름을 보여 준다 (창이 좁으면 접힌 채로 둔다)."""
+        if not self.uses_rail:
+            return
+        try:
+            window = self.window()
+            if window is not None and window.width() < self._selector.panel.minimumExpandWidth:
+                return
+            self._selector.expand(useAni=False)
+        except Exception:
+            logger.debug("TabShell rail expand failed", exc_info=True)
+
     @property
     def uses_fluent(self) -> bool:
         return self._use_fluent

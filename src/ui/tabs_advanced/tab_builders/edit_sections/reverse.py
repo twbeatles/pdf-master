@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ....fluent_widgets import PushButton
+from ....fluent_widgets import PrimaryButton, PushButton
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -31,7 +31,8 @@ def build_reverse(self, layout) -> None:
     self.sel_rev = FileSelectorWidget()
     self.sel_rev.pathChanged.connect(self._update_preview)
     l_rev.addWidget(self.sel_rev)
-    b_rev = PushButton(tm.get("btn_reverse_page"))
+    b_rev = PrimaryButton(tm.get("btn_reverse_page"))
+    b_rev.setObjectName("actionBtn")
     b_rev.setToolTip(tm.get("tooltip_reverse_pages"))
     b_rev.clicked.connect(self.action_reverse_pages)
     l_rev.addWidget(b_rev)

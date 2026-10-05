@@ -19,6 +19,7 @@ from ....fluent_widgets import PrimaryButton, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
+from ....form_rows import pair_grid
 
 
 def build_v4_5_3_f_07_ui(self, layout) -> None:
@@ -33,19 +34,21 @@ def build_v4_5_3_f_07_ui(self, layout) -> None:
     l_replace.addWidget(QLabel(tm.get("lbl_source_pdf")))
     self.sel_replace_source = FileSelectorWidget()
     l_replace.addWidget(self.sel_replace_source)
-    replace_opts = QHBoxLayout()
-    replace_opts.addWidget(QLabel(tm.get("lbl_replace_target_page")))
     self.spn_replace_target_page = QSpinBox()
     self.spn_replace_target_page.setRange(1, 9999)
     self.spn_replace_target_page.setValue(1)
-    replace_opts.addWidget(self.spn_replace_target_page)
-    replace_opts.addWidget(QLabel(tm.get("lbl_replace_source_page")))
     self.spn_replace_source_page = QSpinBox()
     self.spn_replace_source_page.setRange(1, 9999)
     self.spn_replace_source_page.setValue(1)
-    replace_opts.addWidget(self.spn_replace_source_page)
-    replace_opts.addStretch()
-    l_replace.addLayout(replace_opts)
+    l_replace.addLayout(
+        pair_grid(
+            [
+                (tm.get("lbl_replace_target_page"), self.spn_replace_target_page),
+                (tm.get("lbl_replace_source_page"), self.spn_replace_source_page),
+            ],
+            columns=1,
+        )
+    )
     b_replace = PrimaryButton(tm.get("btn_replace_page"))
     b_replace.setObjectName("actionBtn")
     b_replace.clicked.connect(self.action_replace_page)

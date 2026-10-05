@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ....fluent_widgets import EditableComboBox, PushButton, QComboBox
+from ....fluent_widgets import PrimaryButton, EditableComboBox, PushButton, QComboBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
@@ -48,7 +48,8 @@ def build_stamp(self, layout) -> None:
         self.cmb_stamp_pos.addItem(label, userData=value)
     opt_stamp.addWidget(self.cmb_stamp_pos)
     l_stamp.addLayout(opt_stamp)
-    b_stamp = PushButton(tm.get("btn_add_stamp"))
+    b_stamp = PrimaryButton(tm.get("btn_add_stamp"))
+    b_stamp.setObjectName("actionBtn")
     b_stamp.clicked.connect(self.action_stamp)
     l_stamp.addWidget(b_stamp)
     layout.addWidget(grp_stamp)

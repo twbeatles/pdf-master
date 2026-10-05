@@ -51,7 +51,7 @@ def setup_merge_tab(self):
     # v2.7: 파일 개수 표시
     merge_info_layout = QHBoxLayout()
     self.merge_count_label = QLabel(tm.get("lbl_merge_count").format(0))
-    self.merge_count_label.setStyleSheet("color: #888; font-size: 12px;")
+    self.merge_count_label.setObjectName("desc")
     merge_info_layout.addWidget(self.merge_count_label)
     merge_info_layout.addStretch()
     layout.addLayout(merge_info_layout)
@@ -90,7 +90,7 @@ def setup_merge_tab(self):
     b_run.clicked.connect(self.action_merge)
     layout.addWidget(b_run)
 
-    add_tab(self.tabs, tab, tm.get('tab_merge'), icon="PASTE")
+    add_tab(self.tabs, tab, tm.get('tab_merge'), icon="DOCUMENT")
 
 def _merge_add_files(self):
     files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")

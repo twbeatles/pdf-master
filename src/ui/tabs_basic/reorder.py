@@ -72,7 +72,7 @@ def setup_reorder_tab(self):
     b_run.clicked.connect(self.action_reorder)
     layout.addWidget(b_run)
 
-    add_tab(self.tabs, tab, tm.get('tab_reorder'), icon="MOVE")
+    add_tab(self.tabs, tab, tm.get('tab_reorder'), icon="SCROLL")
 
 def _load_pages_for_reorder(self, path):
     """페이지 목록 로드"""

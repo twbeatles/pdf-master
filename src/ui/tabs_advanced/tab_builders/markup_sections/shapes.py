@@ -18,6 +18,7 @@ from ....fluent_widgets import PrimaryButton, QComboBox, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
+from ....form_rows import pair_grid
 
 
 def build_shapes(self, layout) -> None:
@@ -39,36 +40,35 @@ def build_shapes(self, layout) -> None:
     for label, value in shape_types:
         self.cmb_shape_type.addItem(label, userData=value)
     shape_opts1.addWidget(self.cmb_shape_type)
-    shape_opts1.addWidget(QLabel(tm.get("tab_page") + ":"))
+    shape_opts1.addWidget(QLabel(tm.get("lbl_page")))
     self.spn_shape_page = QSpinBox()
     self.spn_shape_page.setRange(1, 9999)
     self.spn_shape_page.setValue(1)
     shape_opts1.addWidget(self.spn_shape_page)
     shape_opts1.addStretch()
     l_shapes.addLayout(shape_opts1)
-    shape_opts2 = QHBoxLayout()
-    shape_opts2.addWidget(QLabel(tm.get("lbl_shape_x")))
     self.spn_shape_x = QSpinBox()
     self.spn_shape_x.setRange(0, 9999)
     self.spn_shape_x.setValue(100)
-    shape_opts2.addWidget(self.spn_shape_x)
-    shape_opts2.addWidget(QLabel(tm.get("lbl_shape_y")))
     self.spn_shape_y = QSpinBox()
     self.spn_shape_y.setRange(0, 9999)
     self.spn_shape_y.setValue(700)
-    shape_opts2.addWidget(self.spn_shape_y)
-    shape_opts2.addWidget(QLabel(tm.get("lbl_shape_width")))
     self.spn_shape_w = QSpinBox()
     self.spn_shape_w.setRange(10, 999)
     self.spn_shape_w.setValue(100)
-    shape_opts2.addWidget(self.spn_shape_w)
-    shape_opts2.addWidget(QLabel(tm.get("lbl_shape_height")))
     self.spn_shape_h = QSpinBox()
     self.spn_shape_h.setRange(10, 999)
     self.spn_shape_h.setValue(50)
-    shape_opts2.addWidget(self.spn_shape_h)
-    shape_opts2.addStretch()
-    l_shapes.addLayout(shape_opts2)
+    l_shapes.addLayout(
+        pair_grid(
+            [
+                (tm.get("lbl_shape_x"), self.spn_shape_x),
+                (tm.get("lbl_shape_y"), self.spn_shape_y),
+                (tm.get("lbl_shape_width"), self.spn_shape_w),
+                (tm.get("lbl_shape_height"), self.spn_shape_h),
+            ]
+        )
+    )
     shape_opts3 = QHBoxLayout()
     shape_opts3.addWidget(QLabel(tm.get("lbl_line_color")))
     self.cmb_shape_line_color = QComboBox()
@@ -83,7 +83,7 @@ def build_shapes(self, layout) -> None:
     shape_opts3.addWidget(QLabel(tm.get("lbl_fill_color")))
     self.cmb_shape_fill_color = QComboBox()
     shape_fill_colors = [
-        ("None", None),
+        (tm.get("fill_none"), None),
         (tm.get("color_light_yellow"), (1, 1, 0.8)),
         (tm.get("color_light_blue"), (0.9, 0.95, 1)),
     ]

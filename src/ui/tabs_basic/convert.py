@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ..fluent_widgets import DangerButton, PushButton, QCheckBox, QComboBox, QSpinBox
+from ..fluent_widgets import PrimaryButton, DangerButton, PushButton, QCheckBox, QComboBox, QSpinBox
 from ..tab_shell import add_tab
 
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
@@ -43,7 +43,8 @@ def setup_convert_tab(self):
     step.setObjectName("stepLabel")
     l_img.addWidget(step)
     self.img_conv_list = FileListWidget()
-    self.img_conv_list.setMaximumHeight(100)
+    # FileListWidget의 최소 높이(140)보다 작은 최대 높이를 주면 목록이 아래 버튼을 덮는다.
+    self.img_conv_list.setFixedHeight(140)
     l_img.addWidget(self.img_conv_list)
     self.img_conv_list.itemClicked.connect(self._on_list_item_clicked)
     self.img_conv_list.fileAdded.connect(self._update_preview)
@@ -51,18 +52,17 @@ def setup_convert_tab(self):
     # 버튼 레이아웃
     btn_layout_img = QHBoxLayout()
     btn_add_pdf = PushButton(tm.get("btn_add_pdf"))
+    btn_add_pdf.setObjectName("secondaryBtn")
     btn_add_pdf.clicked.connect(self._add_pdf_for_img)
 
-    btn_clear_img = DangerButton(tm.get("btn_clear_all"))
+    btn_clear_img = PushButton(tm.get("btn_clear_all"))
+    btn_clear_img.setObjectName("secondaryBtn")
     btn_clear_img.setToolTip(tm.get("tooltip_clear_list"))
-    btn_clear_img.setStyleSheet("""
-        QPushButton { background-color: #3e272b; color: #ff6b6b; border: 1px solid #5c3a3a; padding: 10px; }
-        QPushButton:hover { background-color: #5c3a3a; color: #ff8787; }
-    """)
     btn_clear_img.clicked.connect(self.img_conv_list.clear)
 
     btn_layout_img.addWidget(btn_add_pdf)
     btn_layout_img.addWidget(btn_clear_img)
+    btn_layout_img.addStretch()
     l_img.addLayout(btn_layout_img)
 
     opt = QHBoxLayout()
@@ -77,6 +77,7 @@ def setup_convert_tab(self):
     self.spn_dpi = QSpinBox()
     self.spn_dpi.setRange(72, 600)
     self.spn_dpi.setValue(150)
+    self.spn_dpi.setToolTip(tm.get("tooltip_dpi"))
     opt.addWidget(self.spn_dpi)
 
     # 프리셋 버튼
@@ -95,7 +96,8 @@ def setup_convert_tab(self):
     opt.addStretch()
     l_img.addLayout(opt)
 
-    b_img = PushButton(tm.get("btn_convert_to_img"))
+    b_img = PrimaryButton(tm.get("btn_convert_to_img"))
+    b_img.setObjectName("actionBtn")
     b_img.clicked.connect(self.action_img)
     l_img.addWidget(b_img)
     content_layout.addWidget(grp_img)
@@ -121,7 +123,8 @@ def setup_convert_tab(self):
     btn_i2p.addStretch()
     l_i2p.addLayout(btn_i2p)
 
-    b_i2p = PushButton(tm.get("btn_convert_to_pdf"))
+    b_i2p = PrimaryButton(tm.get("btn_convert_to_pdf"))
+    b_i2p.setObjectName("actionBtn")
     b_i2p.clicked.connect(self.action_img_to_pdf)
     l_i2p.addWidget(b_i2p)
     content_layout.addWidget(grp_img2pdf)
@@ -133,7 +136,8 @@ def setup_convert_tab(self):
     step_txt.setObjectName("stepLabel")
     l_txt.addWidget(step_txt)
     self.txt_conv_list = FileListWidget()
-    self.txt_conv_list.setMaximumHeight(100)
+    # FileListWidget의 최소 높이(140)보다 작은 최대 높이를 주면 목록이 아래 버튼을 덮는다.
+    self.txt_conv_list.setFixedHeight(140)
     l_txt.addWidget(self.txt_conv_list)
     self.txt_conv_list.itemClicked.connect(self._on_list_item_clicked)
     self.txt_conv_list.fileAdded.connect(self._update_preview)
@@ -141,24 +145,24 @@ def setup_convert_tab(self):
     # 버튼 레이아웃
     btn_layout_txt = QHBoxLayout()
     btn_add_txt = PushButton(tm.get("btn_add_pdf"))
+    btn_add_txt.setObjectName("secondaryBtn")
     btn_add_txt.clicked.connect(self._add_pdf_for_txt)
 
-    btn_clear_txt = DangerButton(tm.get("btn_clear_all"))
+    btn_clear_txt = PushButton(tm.get("btn_clear_all"))
+    btn_clear_txt.setObjectName("secondaryBtn")
     btn_clear_txt.setToolTip(tm.get("tooltip_clear_list"))
-    btn_clear_txt.setStyleSheet("""
-        QPushButton { background-color: #3e272b; color: #ff6b6b; border: 1px solid #5c3a3a; padding: 10px; }
-        QPushButton:hover { background-color: #5c3a3a; color: #ff8787; }
-    """)
     btn_clear_txt.clicked.connect(self.txt_conv_list.clear)
 
     btn_layout_txt.addWidget(btn_add_txt)
     btn_layout_txt.addWidget(btn_clear_txt)
+    btn_layout_txt.addStretch()
     l_txt.addLayout(btn_layout_txt)
     self.chk_extract_ocr = QCheckBox(tm.get("chk_extract_ocr"))
     self.chk_extract_ocr.setChecked(False)
     self.chk_extract_ocr.setToolTip(tm.get("tip_extract_ocr"))
     l_txt.addWidget(self.chk_extract_ocr)
-    b_txt = PushButton(tm.get("btn_save_text"))
+    b_txt = PrimaryButton(tm.get("btn_save_text"))
+    b_txt.setObjectName("actionBtn")
     b_txt.clicked.connect(self.action_txt)
     l_txt.addWidget(b_txt)
     content_layout.addWidget(grp_txt)
@@ -169,7 +173,7 @@ def setup_convert_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    add_tab(self.tabs, tab, tm.get('tab_convert'), icon="SYNC")
+    add_tab(self.tabs, tab, tm.get('tab_convert'), icon="PHOTO")
 
 def _add_images(self):
     files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_img"), "", tm.get("file_filter_images"))

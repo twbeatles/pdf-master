@@ -31,22 +31,25 @@ logger = logging.getLogger(__name__)
 class DropZoneWidget(QFrame):
     """시각적 드래그 앤 드롭 영역 (테마 대응)"""
     fileDropped = pyqtSignal(str)
+    clicked = pyqtSignal()
 
     def __init__(self, accept_extensions: list[str] | tuple[str, ...] | None = None, parent=None):
         super().__init__(parent)
         self.accept_extensions = list(accept_extensions or ['.pdf'])
         self.setAcceptDrops(True)
-        self.setMinimumHeight(100)
+        self.setMinimumHeight(76)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._current_path = ""
         self._is_dragging = False
         self._is_dark_theme = True
 
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setSpacing(4)
+        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setSpacing(2)
 
         self.icon_label = QLabel("📄")
-        self.icon_label.setStyleSheet("font-size: 32px; background: transparent; border: none;")
+        self.icon_label.setStyleSheet("font-size: 20px; background: transparent; border: none;")
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         from ...core.i18n import tm
@@ -66,6 +69,20 @@ class DropZoneWidget(QFrame):
         layout.addWidget(self.path_label)
 
         self._apply_theme_style()
+        self._sync_selection_state()
+
+    def mouseReleaseEvent(self, a0):
+        if a0 is not None and a0.button() == Qt.MouseButton.LeftButton and self.rect().contains(a0.pos()):
+            self.clicked.emit()
+        super().mouseReleaseEvent(a0)
+
+    def _sync_selection_state(self):
+        """파일이 선택되면 안내 문구 대신 파일 이름만 보여 준다."""
+        has_path = bool(self._current_path)
+        self.text_label.setVisible(not has_path)
+        self.hint_label.setVisible(not has_path)
+        self.path_label.setVisible(has_path)
+        self.setToolTip(self._current_path if has_path else "")
 
     def set_theme(self, is_dark: bool):
         self._is_dark_theme = is_dark
@@ -86,7 +103,7 @@ class DropZoneWidget(QFrame):
             """)
             self.text_label.setStyleSheet("color: #8b949e; font-size: 13px; background: transparent; border: none;")
             self.hint_label.setStyleSheet("color: #6e7681; font-size: 11px; background: transparent; border: none;")
-            self.path_label.setStyleSheet("color: #00d9a0; font-size: 12px; font-weight: bold; background: transparent; border: none;")
+            self.path_label.setStyleSheet("color: #00d9a0; font-size: 13px; font-weight: bold; background: transparent; border: none;")
         else:
             self.setStyleSheet("""
                 DropZoneWidget {
@@ -101,7 +118,7 @@ class DropZoneWidget(QFrame):
             """)
             self.text_label.setStyleSheet("color: #656d76; font-size: 13px; background: transparent; border: none;")
             self.hint_label.setStyleSheet("color: #8c959f; font-size: 11px; background: transparent; border: none;")
-            self.path_label.setStyleSheet("color: #00a080; font-size: 12px; font-weight: bold; background: transparent; border: none;")
+            self.path_label.setStyleSheet("color: #00806a; font-size: 13px; font-weight: bold; background: transparent; border: none;")
 
     def dragEnterEvent(self, a0: QDragEnterEvent | None):
         from ...core.i18n import tm
@@ -147,6 +164,7 @@ class DropZoneWidget(QFrame):
                     self.text_label.setText(tm.get("drop_title"))
                     self.path_label.setText(f"✓ {os.path.basename(path)}")
                     self.icon_label.setText("✅")
+                    self._sync_selection_state()
                     self.fileDropped.emit(path)
                     if a0 is not None:
                         a0.acceptProposedAction()
@@ -166,4 +184,5 @@ class DropZoneWidget(QFrame):
         else:
             self.path_label.setText("")
             self.icon_label.setText("📄")
+        self._sync_selection_state()
 

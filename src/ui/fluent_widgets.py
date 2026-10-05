@@ -244,14 +244,22 @@ def wrap_page(title: str, subtitle: str = "", parent=None):
         card.setTitle(title)
     except Exception:
         logger.debug("card setTitle failed", exc_info=True)
-    layout = getattr(card, "viewLayout", None)
-    if layout is None:
-        from PyQt6.QtWidgets import QVBoxLayout
+    from PyQt6.QtWidgets import QVBoxLayout
 
+    view_layout = getattr(card, "viewLayout", None)
+    if view_layout is None:
         layout = QVBoxLayout(card)
+    else:
+        # HeaderCard의 viewLayout은 가로 배치라 행을 그대로 쌓으면 한 줄에 뭉친다.
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(12)
+        view_layout.addLayout(layout)
     if subtitle:
         try:
-            layout.addWidget(CaptionLabel(subtitle))
+            caption = CaptionLabel(subtitle)
+            caption.setWordWrap(True)
+            layout.addWidget(caption)
         except Exception:
             logger.debug("card subtitle failed", exc_info=True)
     return card, layout
