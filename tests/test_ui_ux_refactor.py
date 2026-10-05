@@ -76,7 +76,7 @@ def test_drop_zone_click_opens_file_picker():
         zone.resize(300, 80)
         clicks = []
         zone.clicked.connect(lambda: clicks.append(1))
-        QTest.mouseClick(zone, Qt.MouseButton.LeftButton, pos=QPoint(20, 20))
+        QTest.mouseClick(zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(20, 20))
         assert clicks == [1]
     finally:
         zone.deleteLater()
