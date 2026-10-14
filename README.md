@@ -2,7 +2,7 @@
 
 📑 **올인원 PDF 편집 프로그램** — PyQt6 기반 데스크톱 앱
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![Python](https://img.shields.io/badge/Python-3.15+-blue)
 ![PyQt6](https://img.shields.io/badge/PyQt6-6.5+-green)
 ![PyMuPDF](https://img.shields.io/badge/PyMuPDF-fitz-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
@@ -134,7 +134,7 @@
 
 ### 소스에서 직접 실행
 
-**요구 사항:** Python 3.10 이상
+**요구 사항:** Python 3.15 이상
 
 ```bash
 # 1. 의존성 설치 (pyproject.toml 기준)

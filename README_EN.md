@@ -2,7 +2,7 @@
 
 📑 **All-in-One PDF Editor** — PyQt6 Desktop Application
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![Python](https://img.shields.io/badge/Python-3.15+-blue)
 ![PyQt6](https://img.shields.io/badge/PyQt6-6.5+-green)
 ![PyMuPDF](https://img.shields.io/badge/PyMuPDF-fitz-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
@@ -134,7 +134,7 @@ Run `dist/PDF_Master_v4.5.15.exe` directly — no installation required.
 
 ### Run from Source
 
-**Requires:** Python 3.10 or higher
+**Requires:** Python 3.15 or higher
 
 ```bash
 # 1. Install dependencies (pyproject.toml)

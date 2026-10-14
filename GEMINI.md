@@ -12,8 +12,8 @@ AI 어시스턴트(Gemini)가 PDF Master 코드베이스를 이해하고 개발�
 | 항목 | 내용 |
 |------|------|
 | **버전** | v4.5.8 |
-| **언어** | Python 3.10+ |
-| **UI 프레임워크** | PyQt6 6.5+ |
+| **언어** | Python 3.15+ |
+| **UI 프레임워크** | PyQt6 6.11+ |
 | **PDF 엔진** | PyMuPDF (fitz) |
 | **AI 기능** | Google Gemini API (google-genai SDK) |
 | **빌드 도구** | PyInstaller |

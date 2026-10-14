@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PDF Master - PyInstaller Spec File (version: see APP_VERSION from values.py below)
 # One-file desktop build for the current split-package runtime layout.
-# Python 3.10+ compatible, with explicit optional dependency boundaries.
+# Python 3.15+ compatible, with explicit optional dependency boundaries.
 #
 # Verification baseline (docs/tests contract):
 # - 2026-05-22: Worker/AI/UI split-package, preflight, cancel coverage, fake Gemini tests

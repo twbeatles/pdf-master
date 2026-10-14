@@ -57,7 +57,7 @@
 
 | 항목 | 내용 |
 |------|------|
-| **언어** | Python 3.10+ |
+| **언어** | Python 3.15+ |
 | **UI 프레임워크** | PyQt6 |
 | **PDF 처리** | PyMuPDF (fitz) |
 | **AI 기능** | Google Gemini API (google-genai) |
