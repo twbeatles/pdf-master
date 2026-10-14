@@ -306,6 +306,20 @@ else:
 hiddenimports = _prune_hiddenimports(hiddenimports)
 
 # =====================================================================
+# Native DLLs (런타임 필수)
+# =====================================================================
+# Python 3.15 free-threaded: abi3t stable ABI로 빌드된 확장(cryptography _rust.pyd)은
+# python3t.dll(abi3t-compat/)에 링크된다. 통상 인터프리터는 시작 시 이 경로를 등록하지만
+# onefile 번들에는 포함되지 않아 DLL load 실패가 난다. 명시적으로 포함한다.
+spec_binaries = []
+_ABI3T_DLL = os.path.join(sys.base_prefix, "abi3t-compat", "python3t.dll")
+if os.path.isfile(_ABI3T_DLL):
+    spec_binaries.append((_ABI3T_DLL, "."))
+    print(f"[OK] python3t.dll bundled: {_ABI3T_DLL}")
+else:
+    print("[WARN] python3t.dll not found - abi3t extensions may fail to load")
+
+# =====================================================================
 # PDF to Word 기능 제거 (v4.2) - pdf2docx 의존성 삭제
 # =====================================================================
 
@@ -372,7 +386,7 @@ excludes = [
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
+    binaries=spec_binaries,
     datas=datas,
     # Reproducible builds: deterministic ordering
     hiddenimports=sorted(set(hiddenimports)),
