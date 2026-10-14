@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import os
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 def _make_app():
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     return QApplication.instance() or QApplication([])
 
@@ -25,7 +25,7 @@ def _apply_theme(app):
 
 def _assert_button_fits_text(btn, *, min_pad_x: int = 8, min_pad_y: int = 4) -> None:
     """sizeHint / 실제 크기가 라벨 텍스트를 담을 만큼 넓은지 확인."""
-    from PyQt6.QtWidgets import QSizePolicy
+    from PySide6.QtWidgets import QSizePolicy
 
     text = (btn.text() or "").strip()
     if not text:
@@ -67,7 +67,7 @@ def _assert_button_fits_text(btn, *, min_pad_x: int = 8, min_pad_y: int = 4) -> 
 
 
 def test_preview_toolbar_buttons_size_hint_fits_labels():
-    require_pyqt6()
+    require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     from src.core.i18n import tm

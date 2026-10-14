@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 from src.core.path_utils import normalize_path_key
 from src.core.worker import WorkerThread
@@ -36,7 +36,7 @@ def _make_encrypted_pdf(path: Path, password: str = "secret") -> None:
 
 
 def test_merge_all_encrypted_without_password_emits_error(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     a = tmp_path / "a.pdf"
     b = tmp_path / "b.pdf"
     out = tmp_path / "merged.pdf"
@@ -61,7 +61,7 @@ def test_merge_all_encrypted_without_password_emits_error(tmp_path):
 
 
 def test_merge_encrypted_with_password_succeeds(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     a = tmp_path / "a.pdf"
     b = tmp_path / "b.pdf"
     out = tmp_path / "merged.pdf"

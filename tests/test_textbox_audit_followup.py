@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 from src.ui.tabs_advanced import actions_markup as mod
 from src.ui.tabs_advanced.markup_actions import deps as _deps

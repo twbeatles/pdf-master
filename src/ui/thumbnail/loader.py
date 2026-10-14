@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Iterable
 
-from PyQt6.QtCore import QThread, Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QThread, Qt, Signal, Slot
+from PySide6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
+from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -28,9 +28,9 @@ from .document import _open_thumbnail_document
 class ThumbnailLoaderThread(QThread):
     """Background thumbnail loader for selected page indices."""
 
-    thumbnail_ready = pyqtSignal(int, QPixmap)
-    loading_complete = pyqtSignal()
-    progress = pyqtSignal(int)
+    thumbnail_ready = Signal(int, QPixmap)
+    loading_complete = Signal()
+    progress = Signal(int)
 
     def __init__(
         self,

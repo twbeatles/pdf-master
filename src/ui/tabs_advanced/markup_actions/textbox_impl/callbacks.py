@@ -27,7 +27,7 @@ def _on_textbox_worker_success(self) -> None:
         self._textbox_queue = sess.queue
         _textbox_queue_refresh_list(self)
     if reopen and _textbox_should_keep_placing(self):
-        from PyQt6.QtCore import QTimer
+        from PySide6.QtCore import QTimer
 
         QTimer.singleShot(150, lambda: action_start_textbox_region_select(self))
 

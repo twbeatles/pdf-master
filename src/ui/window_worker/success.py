@@ -125,8 +125,8 @@ def handle_mode_success_dialogs(
         fields = payload.get("fields", []) or []
         host.form_fields_list.clear()
         host._form_field_data = {}
-        from PyQt6.QtCore import Qt
-        from PyQt6.QtWidgets import QListWidgetItem
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QListWidgetItem
 
         for field in fields:
             name = field.get("name", f"field_{host.form_fields_list.count()}")

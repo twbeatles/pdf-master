@@ -4,8 +4,8 @@ import logging
 import os
 from typing import cast
 
-from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QMessageBox, QWidget
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QMessageBox, QWidget
 
 from ..core.i18n import tm
 from ..core.worker import WorkerThread

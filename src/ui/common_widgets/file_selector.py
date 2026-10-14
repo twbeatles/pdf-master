@@ -4,9 +4,9 @@ import logging
 import os
 from typing import Any
 
-from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QEvent, QObject, Qt, Signal
+from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
+from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
     QFrame,
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class FileSelectorWidget(QWidget):
     """파일 선택 위젯 (드롭존 + 버튼)"""
-    pathChanged = pyqtSignal(str)
+    pathChanged = Signal(str)
 
     def __init__(self, placeholder: str | None = None, extensions: list[str] | tuple[str, ...] | None = None, parent=None):
         super().__init__(parent)

@@ -1,4 +1,4 @@
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -14,7 +14,7 @@ def _make_text_pdf(path, lines):
 
 
 def test_compare_pdfs_detects_line_order_changes(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     first = tmp_path / "first.pdf"
@@ -46,7 +46,7 @@ def test_compare_pdfs_detects_line_order_changes(tmp_path):
 
 
 def test_compare_pdfs_optional_visual_diff_and_duplicate_detection(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     first = tmp_path / "first_dup.pdf"
@@ -90,7 +90,7 @@ def test_compare_pdfs_optional_visual_diff_and_duplicate_detection(tmp_path):
 
 
 def test_compare_pdfs_reuses_password_mapping_for_encrypted_inputs(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.path_utils import normalize_path_key
     from src.core.worker import WorkerThread
 

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6.QtCore import QModelIndex, QPointF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QCloseEvent
-from PyQt6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
-from PyQt6.QtPdfWidgets import QPdfView
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QModelIndex, QPointF, Qt, QTimer, Signal
+from PySide6.QtGui import QCloseEvent
+from PySide6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
+from PySide6.QtPdfWidgets import QPdfView
+from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 
 class PreviewSearchLineEdit(QLineEdit):
-    submitRequested = pyqtSignal()
-    previousRequested = pyqtSignal()
-    escapePressed = pyqtSignal()
+    submitRequested = Signal()
+    previousRequested = Signal()
+    escapePressed = Signal()
 
     def keyPressEvent(self, event):
         if event is None:

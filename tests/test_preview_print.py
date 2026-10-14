@@ -1,6 +1,6 @@
 import os
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -37,7 +37,7 @@ class _RangeStub:
 
 
 def test_collect_print_page_indices_respects_page_ranges():
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     import src.ui.window_preview.navigation as navigation
 
     class _PrinterStub:
@@ -57,7 +57,7 @@ def test_collect_print_page_indices_respects_page_ranges():
 
 
 def test_collect_print_page_indices_respects_current_page():
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     import src.ui.window_preview.navigation as navigation
 
     class _PrinterStub:
@@ -68,7 +68,7 @@ def test_collect_print_page_indices_respects_current_page():
 
 
 def test_print_pdf_uses_qt_preview_pipeline(monkeypatch, tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     from src.ui.window_preview import navigation
@@ -161,7 +161,7 @@ def test_print_pdf_uses_qt_preview_pipeline(monkeypatch, tmp_path):
 
 
 def test_open_page_setup_uses_dialog(monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     import src.ui.window_preview.navigation as navigation
 
     real_qprinter = navigation.QPrinter
@@ -201,7 +201,7 @@ def test_open_page_setup_uses_dialog(monkeypatch):
 
 
 def test_create_preview_printer_uses_fresh_instance_and_copies_setup(monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     import src.ui.window_preview.navigation as navigation
 
     real_qprinter = navigation.QPrinter

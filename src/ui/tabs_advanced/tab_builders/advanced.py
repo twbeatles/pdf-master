@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QGroupBox,
@@ -45,7 +45,7 @@ def setup_advanced_tab(self):
 
     carry = getattr(self, "_carry_active_pdf_to_visible_tools", None)
     if callable(carry):
-        from PyQt6.QtCore import QTimer
+        from PySide6.QtCore import QTimer
 
         sub_tabs.currentChanged.connect(lambda _index: QTimer.singleShot(0, carry))
 

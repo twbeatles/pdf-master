@@ -3,9 +3,9 @@ from __future__ import annotations
 from .._typing import ThumbnailGridHost
 import logging
 from typing import Iterable
-from PyQt6.QtCore import QThread, Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QThread, Qt, Signal, Slot
+from PySide6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
+from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -176,7 +176,7 @@ class ThumbnailGridLoadingMixin(ThumbnailGridHost):
             return False
         return True
 
-    @pyqtSlot(int, QPixmap)
+    @Slot(int, QPixmap)
     def _on_thumbnail_ready(self, index: int, pixmap: QPixmap):
         if not self._is_active_loader_sender():
             return
@@ -189,13 +189,13 @@ class ThumbnailGridLoadingMixin(ThumbnailGridHost):
                 lru.put(self._thumbnail_cache_key(index), pixmap)
         self.loadingProgress.emit(int((len(self._loaded_indices) / max(1, self._total_pages)) * 100))
 
-    @pyqtSlot(int)
+    @Slot(int)
     def _on_loader_progress(self, _value: int):
         if not self._is_active_loader_sender():
             return
         self.loadingProgress.emit(int((len(self._loaded_indices) / max(1, self._total_pages)) * 100))
 
-    @pyqtSlot()
+    @Slot()
     def _on_loading_complete(self):
         if not self._is_active_loader_sender():
             return

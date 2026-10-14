@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _SignalStub:
@@ -28,7 +28,7 @@ class _RunningWorkerStub:
 
 
 def test_run_worker_queues_multiple_pending_requests(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
 
     class _ToastStub:
@@ -98,7 +98,7 @@ def test_run_worker_queues_multiple_pending_requests(monkeypatch):
 
 
 def test_run_pending_worker_pops_fifo_order(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     from src.ui.window_worker import lifecycle as lifecycle_module
 
     calls = []

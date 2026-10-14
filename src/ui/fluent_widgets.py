@@ -12,14 +12,14 @@ Fluent 미설치 환경에서는 별칭이 곧 Qt 클래스이므로 동작이 �
 - 그 외 QLineEdit/QComboBox/QSpinBox/QDoubleSpinBox/QCheckBox/QTextEdit:
   Fluent (Qt 서브클래스라 투명).
 
-PyQt6 바인딩 유지 — PySide6-Fluent-Widgets와 혼합 금지 (§1.1).
+PySide6 바인딩 유지 — PySide6-Fluent-Widgets와 혼합 금지 (§1.1).
 """
 
 from __future__ import annotations
 
 import logging
 
-from PyQt6.QtWidgets import QComboBox, QPushButton
+from PySide6.QtWidgets import QComboBox, QPushButton
 
 DangerButton = QPushButton
 WarningButton = QPushButton
@@ -31,7 +31,7 @@ try:
     from .fluent_theme import is_fluent_available
 
     if not is_fluent_available():
-        raise ImportError("qfluentwidgets not PyQt6-backed; using Qt widgets")
+        raise ImportError("qfluentwidgets not PySide6-backed; using Qt widgets")
     from qfluentwidgets import BodyLabel as QBodyLabel
     from qfluentwidgets import CaptionLabel as QCaptionLabel
     from qfluentwidgets import CheckBox as QCheckBox
@@ -51,7 +51,7 @@ try:
     _FLUENT_WIDGETS = True
 except ImportError:
     logger.debug("qfluentwidgets not available; using Qt widgets")
-    from PyQt6.QtWidgets import (
+    from PySide6.QtWidgets import (
         QCheckBox,
         QComboBox,
         QDoubleSpinBox,
@@ -217,7 +217,7 @@ def notify(parent, kind: str, title: str, content: str, duration_ms: int = 3000)
         except Exception:
             logger.debug("InfoBar notify failed; using fallback", exc_info=True)
     try:
-        from PyQt6.QtWidgets import QMessageBox
+        from PySide6.QtWidgets import QMessageBox
 
         show = {
             "success": QMessageBox.information,
@@ -244,7 +244,7 @@ def wrap_page(title: str, subtitle: str = "", parent=None):
         card.setTitle(title)
     except Exception:
         logger.debug("card setTitle failed", exc_info=True)
-    from PyQt6.QtWidgets import QVBoxLayout
+    from PySide6.QtWidgets import QVBoxLayout
 
     view_layout = getattr(card, "viewLayout", None)
     if view_layout is None:

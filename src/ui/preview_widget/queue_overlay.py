@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QRect, QRectF, Qt
-from PyQt6.QtGui import QColor, QFont, QPainter, QPaintEvent, QPen, QResizeEvent
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtCore import QRect, QRectF, Qt
+from PySide6.QtGui import QColor, QFont, QPainter, QPaintEvent, QPen, QResizeEvent
+from PySide6.QtWidgets import QWidget
 
 
 class QueueGhostOverlay(QWidget):

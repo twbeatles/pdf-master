@@ -1,12 +1,12 @@
 import os
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 def _qapp():
-    require_pyqt6()
+    require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     return QApplication.instance() or QApplication([])
 

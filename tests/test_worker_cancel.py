@@ -1,10 +1,10 @@
 import pytest
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 def test_cancel_sets_cancelled_error():
-    require_pyqt6()
+    require_pyside6()
     from src.core.worker import WorkerThread, CancelledError
 
     w = WorkerThread("merge")

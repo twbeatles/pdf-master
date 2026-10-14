@@ -1,4 +1,4 @@
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _ToggleStub:
@@ -32,7 +32,7 @@ class _ActionStub:
 
 
 def test_set_ui_busy_disables_shortcuts_and_open_menu_action():
-    require_pyqt6()
+    require_pyside6()
     from src.ui.window_worker.lifecycle import set_ui_busy
 
     class Dummy:

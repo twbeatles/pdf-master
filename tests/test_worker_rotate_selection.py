@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -22,7 +22,7 @@ def _page_rotations(path):
 
 
 def test_rotate_only_selected_pages(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -43,7 +43,7 @@ def test_rotate_only_selected_pages(tmp_path):
 
 
 def test_rotate_all_pages_when_page_indices_missing(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

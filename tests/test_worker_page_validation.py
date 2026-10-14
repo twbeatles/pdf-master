@@ -1,4 +1,4 @@
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.i18n import tm
 from src.core.optional_deps import fitz
 
@@ -13,7 +13,7 @@ def _make_pdf(path, page_count=1):
 
 
 def test_add_sticky_note_rejects_negative_page_index(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -37,7 +37,7 @@ def test_add_sticky_note_rejects_negative_page_index(tmp_path):
 
 
 def test_add_sticky_note_rejects_overflow_page_index(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -61,7 +61,7 @@ def test_add_sticky_note_rejects_overflow_page_index(tmp_path):
 
 
 def test_insert_blank_page_rejects_invalid_position(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -84,7 +84,7 @@ def test_insert_blank_page_rejects_invalid_position(tmp_path):
 
 
 def test_duplicate_page_rejects_invalid_page_number(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

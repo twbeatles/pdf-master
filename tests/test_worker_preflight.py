@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -21,7 +21,7 @@ def _make_png(path):
 
 
 def test_preflight_rejects_missing_pdf_before_run(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     out = tmp_path / "out.pdf"
@@ -42,7 +42,7 @@ def test_preflight_rejects_missing_pdf_before_run(tmp_path):
 
 
 def test_preflight_rejects_oversized_non_pdf_input(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.constants import MAX_FILE_SIZE
     from src.core.worker import WorkerThread
 
@@ -78,7 +78,7 @@ def test_preflight_rejects_oversized_non_pdf_input(tmp_path, monkeypatch):
 
 
 def test_preflight_emits_error_for_inaccessible_pdf(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -111,7 +111,7 @@ def test_preflight_emits_error_for_inaccessible_pdf(tmp_path, monkeypatch):
 
 
 def test_preflight_emits_error_for_inaccessible_non_pdf_input(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     pdf = tmp_path / "src.pdf"
@@ -146,7 +146,7 @@ def test_preflight_emits_error_for_inaccessible_non_pdf_input(tmp_path, monkeypa
 
 
 def test_preflight_rejects_too_small_pdf(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     tiny_pdf = tmp_path / "tiny.pdf"
@@ -170,7 +170,7 @@ def test_preflight_rejects_too_small_pdf(tmp_path):
 
 
 def test_preflight_rejects_non_pdf_header_before_run(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     fake_pdf = tmp_path / "fake.pdf"
@@ -194,7 +194,7 @@ def test_preflight_rejects_non_pdf_header_before_run(tmp_path):
 
 
 def test_preflight_rejects_missing_output_path_before_handler(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -215,7 +215,7 @@ def test_preflight_rejects_missing_output_path_before_handler(tmp_path):
 
 
 def test_preflight_accepts_extract_text_output_dir_contract(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -241,7 +241,7 @@ def test_preflight_accepts_extract_text_output_dir_contract(tmp_path):
 
 
 def test_preflight_rejects_missing_required_kwargs(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -18,7 +18,7 @@ def _make_pdf_with_attachments(path):
 
 
 def test_extract_attachments_sanitizes_name_and_stays_in_output_dir(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "with_attach.pdf"

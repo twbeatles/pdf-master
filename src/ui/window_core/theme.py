@@ -2,9 +2,9 @@ import logging
 import os
 import subprocess
 
-from PyQt6.QtCore import QByteArray, QUrl
-from PyQt6.QtGui import QAction, QColor, QDesktopServices, QKeySequence, QPalette, QShortcut
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QByteArray, QUrl
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QKeySequence, QPalette, QShortcut
+from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QFileDialog,

@@ -1,4 +1,4 @@
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.i18n import tm
 from src.core.optional_deps import fitz
 
@@ -21,7 +21,7 @@ def _make_png(path):
 
 
 def test_add_ink_annotation_saves_annotation(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -49,7 +49,7 @@ def test_add_ink_annotation_saves_annotation(tmp_path):
 
 
 def test_add_freehand_signature_saves_annotation_on_last_page_sentinel(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -78,7 +78,7 @@ def test_add_freehand_signature_saves_annotation_on_last_page_sentinel(tmp_path)
 
 
 def test_add_ink_annotation_invalid_points_emit_friendly_error(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -102,7 +102,7 @@ def test_add_ink_annotation_invalid_points_emit_friendly_error(tmp_path):
 
 
 def test_insert_signature_last_page_sentinel_targets_last_page(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

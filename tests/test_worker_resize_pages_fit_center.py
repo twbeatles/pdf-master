@@ -1,4 +1,4 @@
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.constants import PAGE_SIZES
 from src.core.optional_deps import fitz
 
@@ -28,7 +28,7 @@ def _count_dark_pixels_in_strip(pix, x_start, x_end):
 
 
 def test_resize_pages_fit_center_preserves_full_page_content(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "landscape.pdf"

@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _PathStub:
@@ -50,7 +50,7 @@ def _dummy_adv(pdf_path, sig_path, page_value):
 
 
 def test_normalize_page_input_helper():
-    require_pyqt6()
+    require_pyside6()
     dummy = _dummy_adv("a.pdf", "b.png", 1)
 
     assert dummy._normalize_page_input(0, last_page_value=0) == -1
@@ -59,7 +59,7 @@ def test_normalize_page_input_helper():
 
 
 def test_insert_signature_action_uses_1_based_ui_and_0_based_worker(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_tabs_advanced as adv_module
 
     pdf = tmp_path / "a.pdf"

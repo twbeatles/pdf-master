@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from _deps import require_pyqt6, require_pyqt6_and_pymupdf
+from _deps import require_pyside6, require_pyside6_and_pymupdf
 
 
 def test_shutdown_executor_clears_text_cache():
@@ -47,7 +47,7 @@ def test_scrub_sensitive_worker_kwargs():
 
 
 def test_finalize_worker_scrubs_secrets():
-    require_pyqt6()
+    require_pyside6()
     from src.ui.window_worker.lifecycle import _finalize_worker
 
     class FakeWorker:
@@ -73,7 +73,7 @@ def test_finalize_worker_scrubs_secrets():
 
 
 def test_enqueue_pending_strips_api_key():
-    require_pyqt6()
+    require_pyside6()
     from src.ui.window_worker.lifecycle import _enqueue_pending_worker
 
     class Host:
@@ -98,7 +98,7 @@ def test_enqueue_pending_strips_api_key():
 
 
 def test_get_pdf_info_uses_i18n_keys(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.optional_deps import fitz
     from src.core.worker import WorkerThread
 
@@ -125,7 +125,7 @@ def test_get_pdf_info_uses_i18n_keys(tmp_path):
 
 
 def test_undo_backup_skips_large_source(tmp_path, monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     from src.core.constants import UNDO_BACKUP_MAX_SOURCE_BYTES
     from src.ui.window_undo.backup import _create_backup_for_undo
 

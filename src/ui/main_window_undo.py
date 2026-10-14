@@ -9,7 +9,7 @@ import os
 import shutil
 import time
 
-from PyQt6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 from ..core.i18n import tm
 from .window_undo import MainWindowUndoMixin

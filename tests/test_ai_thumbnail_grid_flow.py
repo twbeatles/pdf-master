@@ -1,6 +1,6 @@
 import os
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _PathStub:
@@ -31,10 +31,10 @@ class _StatusStub:
 
 
 def test_show_thumbnail_grid_uses_preview_password_and_active_page(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtWidgets import QApplication, QWidget
+    from PySide6.QtWidgets import QApplication, QWidget
 
     from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
     import src.ui.thumbnail_grid as thumbnail_grid_module
@@ -91,10 +91,10 @@ def test_show_thumbnail_grid_uses_preview_password_and_active_page(monkeypatch, 
 
 
 def test_show_thumbnail_grid_uses_preview_message_when_access_fails(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtWidgets import QApplication, QWidget
+    from PySide6.QtWidgets import QApplication, QWidget
 
     from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
     import src.ui.thumbnail_grid as thumbnail_grid_module
@@ -146,7 +146,7 @@ def test_show_thumbnail_grid_uses_preview_message_when_access_fails(monkeypatch,
 
 
 def test_grid_page_selected_updates_preview_path_before_render(tmp_path):
-    require_pyqt6()
+    require_pyside6()
     from src.core.i18n import tm
     from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
 

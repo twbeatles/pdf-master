@@ -101,17 +101,16 @@ try:
 except Exception:
     hiddenimports += ['fitz']
 
-# PyQt6 필수
+# PySide6 필수
 hiddenimports += [
-    'PyQt6.sip',
-    'PyQt6.QtCore',
-    'PyQt6.QtGui',
-    'PyQt6.QtWidgets',
-    'PyQt6.QtPrintSupport',  # v4.5: 인쇄 기능
-    'PyQt6.QtPdf',
-    'PyQt6.QtPdfWidgets',
-    'PyQt6.QtSvg',  # QFluentWidgets icons and frameless title bar
-    'PyQt6.QtSvgWidgets',
+    'PySide6.QtCore',
+    'PySide6.QtGui',
+    'PySide6.QtWidgets',
+    'PySide6.QtPrintSupport',  # v4.5: 인쇄 기능
+    'PySide6.QtPdf',
+    'PySide6.QtPdfWidgets',
+    'PySide6.QtSvg',  # QFluentWidgets icons and frameless title bar
+    'PySide6.QtSvgWidgets',
 ]
 
 # v4.5: Python 표준 라이브러리 (명시적 추가)
@@ -223,12 +222,12 @@ else:
 from src.ui.fluent_theme import is_fluent_available
 
 if not is_fluent_available():
-    raise RuntimeError("PyQt6-Fluent-Widgets is required and must use the PyQt6 binding")
+    raise RuntimeError("PySide6-Fluent-Widgets is required and must use the PySide6 binding")
 hiddenimports += collect_submodules('qfluentwidgets')
 hiddenimports += collect_submodules('qframelesswindow')
 hiddenimports += ['darkdetect']
-fluent_metadata = copy_metadata('PyQt6-Fluent-Widgets')
-print("[OK] PyQt6 Fluent UI verified and included")
+fluent_metadata = copy_metadata('PySide6-Fluent-Widgets')
+print("[OK] PySide6 Fluent UI verified and included")
 
 # Runtime helper imported indirectly through worker runtime save paths.
 hiddenimports += ['src.core.worker_runtime.save_profiles']
@@ -351,26 +350,26 @@ excludes = [
     'pdf2docx', 'docx', 'pdfplumber', 'pdfminer',
 
     # GUI 프레임워크
-    'tkinter', 'tk', 'wx', 'kivy', 'PySide6',
+    'tkinter', 'tk', 'wx', 'kivy', 'PyQt6', 'PyQt5', 'PySide2',
 
-    # PyQt6 불필요 모듈
-    'PyQt6.QtWebEngine', 'PyQt6.QtWebEngineCore', 'PyQt6.QtWebEngineWidgets',
-    'PyQt6.QtWebChannel', 'PyQt6.QtWebSockets',
-    'PyQt6.QtMultimedia', 'PyQt6.QtMultimediaWidgets',
-    'PyQt6.QtBluetooth', 'PyQt6.QtNfc',
-    'PyQt6.QtPositioning', 'PyQt6.QtLocation',
-    'PyQt6.QtSensors', 'PyQt6.QtSerialPort', 'PyQt6.QtSerialBus',
-    'PyQt6.QtTest', 'PyQt6.QtSql', 'PyQt6.QtDBus',
-    'PyQt6.QtNetworkAuth',
-    'PyQt6.QtDesigner', 'PyQt6.QtHelp', 'PyQt6.QtUiTools',
-    'PyQt6.QtOpenGL', 'PyQt6.QtOpenGLWidgets',
-    'PyQt6.QtCharts', 'PyQt6.QtDataVisualization',
-    'PyQt6.Qt3DCore', 'PyQt6.Qt3DRender', 'PyQt6.Qt3DInput',
-    'PyQt6.Qt3DLogic', 'PyQt6.Qt3DAnimation', 'PyQt6.Qt3DExtras',
-    'PyQt6.QtQuick', 'PyQt6.QtQuick3D', 'PyQt6.QtQuickWidgets',
-    'PyQt6.QtQml', 'PyQt6.QtQmlCore', 'PyQt6.QtQmlModels',
-    'PyQt6.QtRemoteObjects', 'PyQt6.QtTextToSpeech',
-    'PyQt6.QtVirtualKeyboard',
+    # PySide6 불필요 모듈
+    'PySide6.QtWebEngine', 'PySide6.QtWebEngineCore', 'PySide6.QtWebEngineWidgets',
+    'PySide6.QtWebChannel', 'PySide6.QtWebSockets',
+    'PySide6.QtMultimedia', 'PySide6.QtMultimediaWidgets',
+    'PySide6.QtBluetooth', 'PySide6.QtNfc',
+    'PySide6.QtPositioning', 'PySide6.QtLocation',
+    'PySide6.QtSensors', 'PySide6.QtSerialPort', 'PySide6.QtSerialBus',
+    'PySide6.QtTest', 'PySide6.QtSql', 'PySide6.QtDBus',
+    'PySide6.QtNetworkAuth',
+    'PySide6.QtDesigner', 'PySide6.QtHelp', 'PySide6.QtUiTools',
+    'PySide6.QtOpenGL', 'PySide6.QtOpenGLWidgets',
+    'PySide6.QtCharts', 'PySide6.QtDataVisualization',
+    'PySide6.Qt3DCore', 'PySide6.Qt3DRender', 'PySide6.Qt3DInput',
+    'PySide6.Qt3DLogic', 'PySide6.Qt3DAnimation', 'PySide6.Qt3DExtras',
+    'PySide6.QtQuick', 'PySide6.QtQuick3D', 'PySide6.QtQuickWidgets',
+    'PySide6.QtQml', 'PySide6.QtQmlCore', 'PySide6.QtQmlModels',
+    'PySide6.QtRemoteObjects', 'PySide6.QtTextToSpeech',
+    'PySide6.QtVirtualKeyboard',
 
     # 표준 라이브러리 / 개발용
     'unittest', 'test', 'tests', 'pytest', '_pytest', 'pluggy', 'iniconfig',

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 from src.core.worker_runtime.dispatch import get_operation_spec
 
@@ -47,7 +47,7 @@ def test_new_operation_specs_registered():
 
 
 def test_remove_blank_pages(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -69,7 +69,7 @@ def test_remove_blank_pages(tmp_path):
 
 
 def test_dedupe_pages(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -88,7 +88,7 @@ def test_dedupe_pages(tmp_path):
 
 
 def test_split_by_bookmarks(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -118,7 +118,7 @@ def test_split_by_bookmarks(tmp_path):
 
 
 def test_auto_bookmarks(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -146,7 +146,7 @@ def test_auto_bookmarks(tmp_path):
 
 
 def test_sanitize_clears_metadata(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -171,7 +171,7 @@ def test_sanitize_clears_metadata(tmp_path):
 
 
 def test_impose_nup_2(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -189,7 +189,7 @@ def test_impose_nup_2(tmp_path):
 
 
 def test_crop_content_mode(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -219,7 +219,7 @@ def test_crop_content_mode(tmp_path):
 
 
 def test_redact_area(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -240,7 +240,7 @@ def test_redact_area(tmp_path):
 
 
 def test_protect_permissions_kwargs(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -260,7 +260,7 @@ def test_protect_permissions_kwargs(tmp_path):
 
 
 def test_flatten_form(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -291,7 +291,7 @@ def test_flatten_form(tmp_path):
 
 
 def test_convert_to_svg(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -307,7 +307,7 @@ def test_convert_to_svg(tmp_path):
 
 
 def test_visual_compare_detects_image_only_diff(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     left = tmp_path / "left.pdf"

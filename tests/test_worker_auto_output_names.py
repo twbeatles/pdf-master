@@ -1,6 +1,6 @@
 import os
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -13,7 +13,7 @@ def _make_pdf(path, text):
 
 
 def test_convert_to_img_avoids_same_basename_collisions(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     first_dir = tmp_path / "a"
@@ -48,7 +48,7 @@ def test_convert_to_img_avoids_same_basename_collisions(tmp_path):
 
 
 def test_convert_to_img_routes_through_atomic_pixmap_save(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -80,7 +80,7 @@ def test_convert_to_img_routes_through_atomic_pixmap_save(tmp_path, monkeypatch)
 
 
 def test_extract_text_avoids_existing_and_same_run_collisions(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     first_dir = tmp_path / "a"
@@ -114,7 +114,7 @@ def test_extract_text_avoids_existing_and_same_run_collisions(tmp_path):
 
 
 def test_extract_text_routes_through_atomic_text_save(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

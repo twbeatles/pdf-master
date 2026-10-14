@@ -45,12 +45,12 @@ from src.core.win_console import suppress_child_console_windows
 
 suppress_child_console_windows()
 
-# NOTE: 이 지점에서는 stdlib + PyQt6 + path_utils(stdlib only)까지만 import 한다.
+# NOTE: 이 지점에서는 stdlib + PySide6 + path_utils(stdlib only)까지만 import 한다.
 # qfluentwidgets / google-genai / main_window 등 무거운 모듈은 스플래시 표시 이후
 # main() 내부에서 지연 import하여 cold-start blank 기간을 최소화한다.
-from PyQt6.QtCore import QLockFile
-from PyQt6.QtWidgets import QApplication, QMessageBox, QSplashScreen
-from PyQt6.QtGui import QGuiApplication, QFont, QIcon, QPixmap
+from PySide6.QtCore import QLockFile
+from PySide6.QtWidgets import QApplication, QMessageBox, QSplashScreen
+from PySide6.QtGui import QGuiApplication, QFont, QIcon, QPixmap
 
 from src.core.path_utils import resource_path
 
@@ -115,7 +115,7 @@ def try_acquire_single_instance(lock_path: str | None = None) -> tuple[bool, QLo
         lock = QLockFile(path)
         # A running app holds this for hours; only PID liveness marks it stale.
         lock.setStaleLockTime(0)
-        if lock.tryLock():
+        if lock.tryLock(0):
             return True, lock
         # tryLock automatically reclaims locks left by dead processes.
         # Never forcibly remove a lock belonging to a live instance.
@@ -230,7 +230,7 @@ def main() -> int:
     try:
         _hi_policy_applied = False
         try:
-            from PyQt6.QtCore import Qt as _Qt
+            from PySide6.QtCore import Qt as _Qt
 
             _policy = getattr(_Qt.HighDpiScaleFactorRoundingPolicy, "PassThrough", None)
             if _policy is not None:
@@ -283,8 +283,8 @@ def main() -> int:
 
             if not setup_app_theme(app):
                 raise RuntimeError(
-                    "PyQt6 Fluent UI is unavailable. Install the default project dependencies "
-                    "in a clean environment without PySide6-Fluent-Widgets."
+                    "PySide6 Fluent UI is unavailable. Install the default project dependencies "
+                    "in a clean environment with matching Qt bindings."
                 )
             app.setFont(QFont("Segoe UI", 9))  # Windows 기본 폰트 크기 설정
             app_icon_path = resource_path("assets", "app_icon.png")

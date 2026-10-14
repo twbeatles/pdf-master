@@ -1,7 +1,7 @@
 import logging
 import os
 
-from PyQt6.QtPdf import QPdfDocument
+from PySide6.QtPdf import QPdfDocument
 
 from ...core.constants import RECENT_FILES_MAX
 from ...core.i18n import tm

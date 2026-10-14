@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 from .worker_ops import WorkerAiOpsMixin, WorkerPdfOpsMixin
 from .worker_runtime import WorkerRuntimeMixin
@@ -14,11 +14,11 @@ class CancelledError(Exception):
 
 
 class WorkerThread(QThread, WorkerRuntimeMixin, WorkerPdfOpsMixin, WorkerAiOpsMixin):
-    progress_signal = pyqtSignal(int)
-    partial_result_signal = pyqtSignal(dict)
-    finished_signal = pyqtSignal(str)
-    error_signal = pyqtSignal(str)
-    cancelled_signal = pyqtSignal(str)
+    progress_signal = Signal(int)
+    partial_result_signal = Signal(dict)
+    finished_signal = Signal(str)
+    error_signal = Signal(str)
+    cancelled_signal = Signal(str)
 
     def __init__(self, mode: str, **kwargs: Any):
         super().__init__()

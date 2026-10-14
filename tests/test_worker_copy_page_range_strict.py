@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -14,7 +14,7 @@ def _make_pdf(path, texts):
 
 
 def test_copy_page_invalid_range_hard_fails_and_no_output(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     target = tmp_path / "target.pdf"
@@ -42,7 +42,7 @@ def test_copy_page_invalid_range_hard_fails_and_no_output(tmp_path):
 
 
 def test_copy_page_valid_range_still_succeeds(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     target = tmp_path / "target.pdf"

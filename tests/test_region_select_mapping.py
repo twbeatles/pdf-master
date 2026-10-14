@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QRectF
+from PySide6.QtCore import QRectF
 
 from src.ui.preview_widget.region_select import (
     compute_page_display_rect,

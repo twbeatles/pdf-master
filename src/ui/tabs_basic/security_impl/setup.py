@@ -1,6 +1,6 @@
 import logging
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,

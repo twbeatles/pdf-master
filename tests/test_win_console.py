@@ -67,4 +67,4 @@ def test_main_applies_guard_before_qt_imports():
     from pathlib import Path
 
     source = (Path(__file__).resolve().parents[1] / "main.py").read_text(encoding="utf-8")
-    assert source.index("suppress_child_console_windows()") < source.index("from PyQt6.QtCore import")
+    assert source.index("suppress_child_console_windows()") < source.index("from PySide6.QtCore import")

@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 EDIT_IMPORTS = '''from __future__ import annotations
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
@@ -34,7 +34,7 @@ from ....widgets import FileSelectorWidget
 
 MARKUP_IMPORTS = '''from __future__ import annotations
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QGroupBox,
@@ -229,12 +229,12 @@ def _write_package(
 def main() -> None:
     edit_orch = """from __future__ import annotations
 
-from PyQt6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
 """
     markup_orch = """from __future__ import annotations
 
-from PyQt6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
 """
     _write_package(

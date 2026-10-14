@@ -1,8 +1,8 @@
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 def test_shutdown_worker_for_close_waits_without_force_when_worker_stops():
-    require_pyqt6()
+    require_pyside6()
     from src.ui.main_window import _shutdown_worker_for_close
 
     class Worker:
@@ -33,7 +33,7 @@ def test_shutdown_worker_for_close_waits_without_force_when_worker_stops():
 
 
 def test_shutdown_worker_for_close_requires_user_confirmation_before_terminate(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window as main_window_module
 
     class Worker:

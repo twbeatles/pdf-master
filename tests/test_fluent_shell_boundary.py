@@ -9,7 +9,7 @@
 
 import os
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 _QAPP_HOLDER: list = []  # 세션 전역: Fluent 싱글톤이 이전 앱 종료로 삭제되는 것 방지
 
@@ -18,9 +18,9 @@ def _qapp():
     """Shared QApplication. CALLERS MUST KEEP the returned reference alive
     for the whole test, otherwise the app is garbage-collected and the next
     QWidget construction hits a fatal "Must construct a QApplication"."""
-    require_pyqt6()
+    require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance()
     if app is None:
@@ -33,7 +33,7 @@ def _qapp():
 
 def test_file_selector_buttons_stay_qt():
     _qapp_holder = _qapp()
-    from PyQt6.QtWidgets import QPushButton
+    from PySide6.QtWidgets import QPushButton
 
     from src.ui.common_widgets.file_selector import FileSelectorWidget
 
@@ -49,7 +49,7 @@ def test_file_selector_buttons_stay_qt():
 def test_tab_shell_surface_contract():
     _qapp_holder = _qapp()
     assert _qapp_holder is not None
-    from PyQt6.QtWidgets import QWidget
+    from PySide6.QtWidgets import QWidget
 
     from src.ui.tab_shell import TabShell, add_tab
 
@@ -75,7 +75,7 @@ def test_tab_shell_surface_contract():
 def test_add_tab_falls_back_to_plain_qtabwidget():
     _qapp_holder = _qapp()
     assert _qapp_holder is not None
-    from PyQt6.QtWidgets import QTabWidget, QWidget
+    from PySide6.QtWidgets import QTabWidget, QWidget
 
     from src.ui.tab_shell import add_tab
 
@@ -115,7 +115,7 @@ def test_light_menu_rules_declare_text_color():
 def test_widget_lifecycle_then_global_stylesheet():
     """Crash-sequence regression: file widgets -> sheets -> tab shell window."""
     app = _qapp()
-    from PyQt6.QtWidgets import QWidget
+    from PySide6.QtWidgets import QWidget
 
     from src.ui.common_widgets.file_selector import FileSelectorWidget
     from src.ui.tab_shell import TabShell

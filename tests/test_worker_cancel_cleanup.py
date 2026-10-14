@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -89,7 +89,7 @@ class _CleanupHost:
 
 
 def test_cancel_cleanup_removes_only_created_convert_outputs(monkeypatch, tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
     import src.ui.window_worker.lifecycle as lifecycle
 
@@ -133,7 +133,7 @@ def test_cancel_cleanup_removes_only_created_convert_outputs(monkeypatch, tmp_pa
 
 
 def test_cancel_cleanup_removes_binary_output_after_post_write_cancel(monkeypatch, tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
     import src.ui.window_worker.lifecycle as lifecycle
 
@@ -169,7 +169,7 @@ def test_cancel_cleanup_removes_binary_output_after_post_write_cancel(monkeypatc
 
 
 def test_cancel_cleanup_keeps_preexisting_batch_outputs(monkeypatch, tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
     import src.ui.window_worker.lifecycle as lifecycle
 
@@ -226,7 +226,7 @@ def test_cancel_cleanup_keeps_preexisting_batch_outputs(monkeypatch, tmp_path):
 
 
 def test_cancel_cleanup_keeps_same_path_input_file(monkeypatch, tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     import src.ui.window_worker.lifecycle as lifecycle
 
     src = tmp_path / "same.pdf"

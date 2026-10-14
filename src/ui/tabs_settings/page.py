@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from ...core.i18n import tm
 from ...core.settings import save_settings
@@ -30,7 +30,7 @@ SETTINGS_SECTIONS = (
 
 
 def _combo_row(label_key: str, options, current: str, on_change, host=None, attr: str = "") -> QHBoxLayout:
-    from PyQt6.QtWidgets import QLabel
+    from PySide6.QtWidgets import QLabel
 
     row = QHBoxLayout()
     row.addWidget(QLabel(tm.get(label_key)))
@@ -127,7 +127,7 @@ def _on_settings_theme(self, value: str) -> None:
         apply = getattr(host, "_apply_theme", None)
     if not callable(apply):
         try:
-            from PyQt6.QtWidgets import QApplication
+            from PySide6.QtWidgets import QApplication
 
             app = QApplication.instance()
             for top in list(app.topLevelWidgets()) if app is not None else []:

@@ -20,7 +20,7 @@ def _script_tree() -> ast.Module:
 
 
 def test_check_script_has_no_third_party_imports() -> None:
-    banned = {"cryptography", "src", "fitz", "PyQt6", "google", "keyring"}
+    banned = {"cryptography", "src", "fitz", "PySide6", "google", "keyring"}
     for node in ast.walk(_script_tree()):
         if isinstance(node, ast.Import):
             for alias in node.names:

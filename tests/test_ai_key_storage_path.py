@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _TextStub:
@@ -23,7 +23,7 @@ def _dummy_ai():
 
 
 def test_ai_mixin_binds_consolidated_actions_and_api_key_override():
-    require_pyqt6()
+    require_pyside6()
     import inspect
 
     from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
@@ -35,7 +35,7 @@ def test_ai_mixin_binds_consolidated_actions_and_api_key_override():
 
 
 def test_load_api_key_no_keyring_keeps_legacy_key(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_tabs_ai as ai_module
 
     dummy = _dummy_ai()
@@ -55,7 +55,7 @@ def test_load_api_key_no_keyring_keeps_legacy_key(monkeypatch):
 
 
 def test_load_api_key_keyring_mode_migrates_and_cleans_legacy(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_tabs_ai as ai_module
 
     dummy = _dummy_ai()
@@ -75,7 +75,7 @@ def test_load_api_key_keyring_mode_migrates_and_cleans_legacy(monkeypatch):
 
 
 def test_save_api_key_uses_settings_api(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_tabs_ai as ai_module
 
     dummy = _dummy_ai()
@@ -107,7 +107,7 @@ def test_save_api_key_uses_settings_api(monkeypatch):
 
 
 def test_save_api_key_prompts_before_plaintext_fallback(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_tabs_ai as ai_module
 
     dummy = _dummy_ai()
@@ -145,7 +145,7 @@ def test_save_api_key_prompts_before_plaintext_fallback(monkeypatch):
 
 
 def test_save_api_key_decline_plaintext_fallback(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_tabs_ai as ai_module
 
     dummy = _dummy_ai()

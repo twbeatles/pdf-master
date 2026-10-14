@@ -4,9 +4,9 @@ import logging
 import os
 from typing import Any
 
-from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QEvent, QObject, Qt, Signal
+from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
+from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
     QFrame,
@@ -35,7 +35,7 @@ class EmptyStateWidget(QFrame):
 
     파일이 없거나 시작 상태일 때 표시되는 친근한 안내 UI
     """
-    actionClicked = pyqtSignal()
+    actionClicked = Signal()
 
     def __init__(self, icon: str = "📄", title: str | None = None,
                  description: str | None = None,

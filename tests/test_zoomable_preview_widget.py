@@ -1,20 +1,20 @@
 import os
 import time
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
 def _make_app():
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     return QApplication.instance() or QApplication([])
 
 
 def _send_key(widget, key, modifiers=None):
-    from PyQt6.QtCore import QEvent, Qt
-    from PyQt6.QtGui import QKeyEvent
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+    from PySide6.QtWidgets import QApplication
 
     if modifiers is None:
         modifiers = Qt.KeyboardModifier.NoModifier
@@ -32,10 +32,10 @@ def _make_pdf(path):
 
 
 def test_qpdf_preview_widget_updates_page_state_and_zoom(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtPdf import QPdfDocument
+    from PySide6.QtPdf import QPdfDocument
 
     from src.ui.zoomable_preview import ZoomablePreviewWidget
 
@@ -65,11 +65,11 @@ def test_qpdf_preview_widget_updates_page_state_and_zoom(tmp_path):
 
 
 def test_qpdf_preview_widget_populates_search_and_bookmarks(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtCore import QModelIndex
-    from PyQt6.QtPdf import QPdfDocument
+    from PySide6.QtCore import QModelIndex
+    from PySide6.QtPdf import QPdfDocument
 
     from src.ui.zoomable_preview import ZoomablePreviewWidget
 
@@ -97,10 +97,10 @@ def test_qpdf_preview_widget_populates_search_and_bookmarks(tmp_path):
 
 
 def test_qpdf_preview_widget_toggle_search_panel_and_restore_state(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtPdf import QPdfDocument
+    from PySide6.QtPdf import QPdfDocument
 
     from src.ui.zoomable_preview import ZoomablePreviewWidget
 
@@ -148,11 +148,11 @@ def test_qpdf_preview_widget_toggle_search_panel_and_restore_state(tmp_path):
 
 
 def test_qpdf_preview_widget_enter_shift_enter_and_escape(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtCore import Qt
-    from PyQt6.QtPdf import QPdfDocument
+    from PySide6.QtCore import Qt
+    from PySide6.QtPdf import QPdfDocument
 
     from src.ui.zoomable_preview import ZoomablePreviewWidget
 
@@ -205,10 +205,10 @@ def test_qpdf_preview_widget_enter_shift_enter_and_escape(tmp_path):
 
 
 def test_main_window_ctrl_f_opens_preview_search_and_focuses_input(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtCore import Qt
+    from PySide6.QtCore import Qt
 
     from src.ui.main_window import PDFMasterApp
 

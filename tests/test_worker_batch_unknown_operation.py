@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.i18n import tm
 from src.core.optional_deps import fitz
 
@@ -14,7 +14,7 @@ def _make_pdf(path, text="BASE"):
 
 
 def test_batch_rejects_unknown_operation(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -42,7 +42,7 @@ def test_batch_rejects_unknown_operation(tmp_path):
 
 
 def test_preflight_rejects_unknown_batch_operation(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

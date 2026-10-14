@@ -69,7 +69,7 @@ def test_queue_add_and_clear():
 
 
 def test_insert_textbox_same_path_skips_dialog(monkeypatch):
-    from PyQt6.QtWidgets import QMessageBox
+    from PySide6.QtWidgets import QMessageBox
 
     runs = {}
 

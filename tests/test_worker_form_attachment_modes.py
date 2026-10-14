@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -20,7 +20,7 @@ def _make_pdf_with_attachment(path):
 
 
 def test_get_form_fields_sets_result_payload(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "plain.pdf"
@@ -35,7 +35,7 @@ def test_get_form_fields_sets_result_payload(tmp_path):
 
 
 def test_list_attachments_sets_result_payload(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "with_attach.pdf"
@@ -52,7 +52,7 @@ def test_list_attachments_sets_result_payload(tmp_path):
 
 
 def test_worker_on_success_consumes_form_fields_payload(monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.ui.main_window_worker import MainWindowWorkerMixin
     import src.ui.main_window_worker as worker_ui_module
 

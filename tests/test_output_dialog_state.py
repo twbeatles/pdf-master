@@ -1,4 +1,4 @@
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _DummyHost:
@@ -21,7 +21,7 @@ class _DummyHost:
 
 
 def test_choose_save_file_uses_last_output_dir_and_updates_setting(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.window_core.state as state
 
     start_dir = tmp_path / "exports"
@@ -48,7 +48,7 @@ def test_choose_save_file_uses_last_output_dir_and_updates_setting(monkeypatch, 
 
 
 def test_choose_output_directory_uses_last_output_dir_and_updates_setting(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.window_core.state as state
 
     start_dir = tmp_path / "exports"

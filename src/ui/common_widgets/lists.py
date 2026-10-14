@@ -4,9 +4,9 @@ import logging
 import os
 from typing import Any
 
-from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QEvent, QObject, Qt, Signal
+from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
+from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
     QFrame,
@@ -32,7 +32,7 @@ from .validators import _item_user_data, _item_user_path, is_valid_pdf
 
 class FileListWidget(QListWidget):
     """다중 파일 드래그 앤 드롭 리스트 (PDF)"""
-    fileAdded = pyqtSignal(str)  # 파일 추가 시그널
+    fileAdded = Signal(str)  # 파일 추가 시그널
 
     def __init__(self):
         super().__init__()
@@ -183,7 +183,7 @@ class DraggableListWidget(QListWidget):
 
     CLAUDE.md에 문서화된 대로 itemsReordered 시그널 지원
     """
-    itemsReordered = pyqtSignal(list)  # 재정렬된 항목 리스트
+    itemsReordered = Signal(list)  # 재정렬된 항목 리스트
 
     def __init__(self, parent=None):
         super().__init__(parent)

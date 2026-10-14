@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 from src.core.path_utils import normalize_path_key
 from src.core.worker import CancelledError, WorkerThread
@@ -70,7 +70,7 @@ class _FakeAIService:
 
 
 def test_ai_summarize_cancel_before_finish_raises(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     pdf = tmp_path / "a.pdf"
     _make_plain_pdf(pdf)
 
@@ -98,7 +98,7 @@ def test_ai_summarize_cancel_before_finish_raises(tmp_path, monkeypatch):
 
 
 def test_ai_summarize_encrypted_with_password_unlocks(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     pdf = tmp_path / "enc.pdf"
     _make_encrypted_pdf(pdf, password="pw123")
 
@@ -130,7 +130,7 @@ def test_ai_summarize_encrypted_with_password_unlocks(tmp_path, monkeypatch):
 
 
 def test_ai_summarize_encrypted_without_password_fails(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     pdf = tmp_path / "enc.pdf"
     _make_encrypted_pdf(pdf)
 

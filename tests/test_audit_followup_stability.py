@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from _deps import require_pyqt6, require_pyqt6_and_pymupdf
+from _deps import require_pyside6, require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
 def test_is_blank_page_keeps_page_on_render_failure():
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker_ops import cleanup_ops
 
     page = MagicMock()
@@ -23,7 +23,7 @@ def test_is_blank_page_keeps_page_on_render_failure():
 
 
 def test_compare_visual_error_not_silent(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     left = tmp_path / "l.pdf"
@@ -61,7 +61,7 @@ def test_compare_visual_error_not_silent(tmp_path, monkeypatch):
 
 
 def test_set_bookmarks_rejects_invalid_structure(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -85,7 +85,7 @@ def test_set_bookmarks_rejects_invalid_structure(tmp_path):
 
 
 def test_pending_worker_queue_cap(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.window_worker.lifecycle as life
 
     class Host:

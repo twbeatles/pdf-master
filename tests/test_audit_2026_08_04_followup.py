@@ -6,7 +6,7 @@ import html
 
 import pytest
 
-from _deps import require_pyqt6, require_pyqt6_and_pymupdf
+from _deps import require_pyside6, require_pyside6_and_pymupdf
 
 
 def test_theme_qss_has_no_hangul_string_constants():
@@ -25,7 +25,7 @@ def test_theme_qss_has_no_hangul_string_constants():
 
 
 def test_batch_watermark_cjk(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.optional_deps import fitz
     from src.core.worker import WorkerThread
 
@@ -61,7 +61,7 @@ def test_batch_watermark_cjk(tmp_path):
 
 
 def test_insert_textbox_outside_page_fails(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.optional_deps import fitz
     from src.core.worker import WorkerThread
 
@@ -88,7 +88,7 @@ def test_insert_textbox_outside_page_fails(tmp_path):
 
 
 def test_parse_page_range_invalid_token_hard_fails():
-    require_pyqt6()
+    require_pyside6()
     from src.core.worker import WorkerThread
 
     w = WorkerThread("merge")
@@ -101,7 +101,7 @@ def test_parse_page_range_invalid_token_hard_fails():
 
 
 def test_parse_page_range_out_of_range_token_hard_fails():
-    require_pyqt6()
+    require_pyside6()
     from src.core.worker import WorkerThread
 
     w = WorkerThread("merge")
@@ -113,7 +113,7 @@ def test_parse_page_range_out_of_range_token_hard_fails():
 
 
 def test_is_pdf_encrypted_unknown_returns_none(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker_runtime.preflight import is_pdf_encrypted
 
     missing = tmp_path / "nope.pdf"

@@ -1,7 +1,7 @@
-"""PyQt6-Fluent-Widgets optional bridge (srtgo ktrain/gui/theme.py 계승).
+"""PySide6-Fluent-Widgets optional bridge (srtgo ktrain/gui/theme.py 계승).
 
 - 하드 의존성 없음: qfluentwidgets/darkdetect 미설치면 전 함수 no-op.
-- PyQt6 바인딩 유지(§1.1). PySide6 변형과 혼합 금지 — import명은 qfluentwidgets.
+- PySide6 바인딩 유지(§1.1). PySide6 변형과 혼합 금지 — import명은 qfluentwidgets.
 - Mica 강제 off, 라이트는 플랫폼 기본, 다크만 최소 보정.
 """
 
@@ -111,19 +111,17 @@ def _installed_dist_names() -> set:
 
 
 def is_fluent_available() -> bool:
-    """qfluentwidgets import 가능 + PyQt6 백엔드 확인 (§1.1 혼합 금지)."""
+    """qfluentwidgets import 가능 + PySide6 백엔드 확인 (§1.1 혼합 금지)."""
     try:
         # PyInstaller onefile does not expose all distribution metadata to
         # importlib.metadata. The build spec validates the installed variant;
         # at runtime the actual QWidget binding is the decisive check.
         if not getattr(sys, "frozen", False):
             dists = _installed_dist_names()
-            if "PySide6-Fluent-Widgets" in dists:
-                return False  # PySide6 변형과 혼합 금지
-            if "PyQt6-Fluent-Widgets" not in dists:
+            if "PySide6-Fluent-Widgets" not in dists:
                 return False
-        # 혼합 설치 잔재 방어: 실제 위젯 베이스가 PyQt6인지 확인
-        from PyQt6.QtWidgets import QWidget as _QtWidget
+        # 혼합 설치 잔재 방어: 실제 위젯 베이스가 PySide6인지 확인
+        from PySide6.QtWidgets import QWidget as _QtWidget
         from qfluentwidgets import NavigationInterface as _Nav
         from qfluentwidgets import Pivot as _Pivot
         from qfluentwidgets import PushButton as _Btn
@@ -239,8 +237,8 @@ def _install_theme_watcher(app: object) -> None:
     if _THEME_WATCHER_STARTED:
         return
     try:
-        from PyQt6.QtCore import QTimer
-        from PyQt6.QtGui import QGuiApplication
+        from PySide6.QtCore import QTimer
+        from PySide6.QtGui import QGuiApplication
 
         try:
             import darkdetect

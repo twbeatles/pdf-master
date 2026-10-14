@@ -2,8 +2,8 @@ import logging
 import os
 import tempfile
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QMainWindow,
@@ -147,7 +147,7 @@ class PDFMasterApp(
         self.setObjectName("appWindow")
         self.resize(1200, 850)  # design_tokens.preferred_window_size 폴백값
         try:  # 작은 화면·고배율에서 가용 영역 클램프 (design_tokens §20)
-            from PyQt6.QtGui import QGuiApplication as _QGA
+            from PySide6.QtGui import QGuiApplication as _QGA
 
             from .design_tokens import clamp_minimum_size as _clamp_min
             from .design_tokens import preferred_window_size as _pref_size

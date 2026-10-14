@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from _deps import require_pyqt6, require_pyqt6_and_pymupdf
+from _deps import require_pyside6, require_pyside6_and_pymupdf
 
 
 def test_escape_chat_html_and_format_helpers():
@@ -26,7 +26,7 @@ def test_escape_chat_html_and_format_helpers():
 
 
 def test_partial_result_escapes_chat_html():
-    require_pyqt6()
+    require_pyside6()
     from src.ui.main_window_worker import MainWindowWorkerMixin
     from src.ui.window_worker.results import _replace_last_chat_block
 
@@ -60,7 +60,7 @@ def test_partial_result_escapes_chat_html():
 
 
 def test_partial_result_blocked_when_cancel_pending():
-    require_pyqt6()
+    require_pyside6()
     from src.ui.main_window_worker import MainWindowWorkerMixin
 
     class Host(MainWindowWorkerMixin):
@@ -83,7 +83,7 @@ def test_partial_result_blocked_when_cancel_pending():
 
 
 def test_worker_is_pdf_encrypted_propagates_none(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     missing = tmp_path / "nope.pdf"
@@ -92,7 +92,7 @@ def test_worker_is_pdf_encrypted_propagates_none(tmp_path):
 
 
 def test_prepare_ai_pdf_path_probe_failure_emits_corrupted(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     missing = tmp_path / "missing.pdf"
@@ -122,7 +122,7 @@ def test_prepare_ai_pdf_path_probe_failure_emits_corrupted(tmp_path):
 
 
 def test_extract_text_ocr_unavailable_hard_fail(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.optional_deps import fitz
     from src.core.worker import WorkerThread
 
@@ -193,7 +193,7 @@ def test_extract_text_ocr_unavailable_hard_fail(tmp_path, monkeypatch):
 
 def test_extract_text_ocr_real_hard_fail_when_ocr_raises(tmp_path):
     """실제 extract_text 경로: get_textpage_ocr 가 예외를 내면 0성공 hard-fail."""
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.optional_deps import fitz
     from src.core.worker import WorkerThread
 
@@ -302,7 +302,7 @@ def test_consume_stream_chunks_cancel_check_closes():
 
 
 def test_attachment_too_large_preflight(tmp_path):
-    require_pyqt6()
+    require_pyside6()
     from src.core.constants import MAX_ATTACHMENT_SIZE
     from src.core.worker import WorkerThread
 

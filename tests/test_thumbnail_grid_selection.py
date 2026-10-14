@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -16,11 +16,11 @@ def _make_pdf(path, page_count: int):
 
 
 def test_thumbnail_grid_extended_selection_separates_active_and_selected(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtCore import Qt
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
 
     from src.ui.thumbnail_grid import ThumbnailGridWidget
 
@@ -48,11 +48,11 @@ def test_thumbnail_grid_extended_selection_separates_active_and_selected(tmp_pat
 
 
 def test_thumbnail_grid_single_mode_keeps_single_selection_for_existing_flows(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtCore import Qt
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
 
     from src.ui.thumbnail_grid import ThumbnailGridWidget
 
@@ -77,11 +77,11 @@ def test_thumbnail_grid_single_mode_keeps_single_selection_for_existing_flows(tm
 
 
 def test_preview_sync_keeps_rotate_selection_intact(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtCore import Qt
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QApplication
 
     from src.ui.tabs_basic.page import _sync_rotate_thumbnail_with_preview
     from src.ui.thumbnail_grid import ThumbnailGridWidget

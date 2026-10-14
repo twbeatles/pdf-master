@@ -73,8 +73,8 @@ def test_extract_text_in_rect_worker(tmp_path):
 
 
 def test_queue_ghost_overlay_set_items():
-    from PyQt6.QtCore import QRect
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtCore import QRect
+    from PySide6.QtWidgets import QApplication
     import sys
 
     app = QApplication.instance() or QApplication(sys.argv)

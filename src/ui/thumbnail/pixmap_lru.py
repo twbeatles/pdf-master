@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Hashable
 
-from PyQt6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap
 
 
 class ThumbnailPixmapLru:

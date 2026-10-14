@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import (
+from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, Signal
+from PySide6.QtGui import (
     QColor,
     QFont,
     QKeyEvent,
@@ -13,7 +13,7 @@ from PyQt6.QtGui import (
     QPen,
     QResizeEvent,
 )
-from PyQt6.QtWidgets import QTextEdit, QWidget
+from PySide6.QtWidgets import QTextEdit, QWidget
 
 from .text_placement_geometry import (
     _HANDLE_CURSORS,
@@ -41,9 +41,9 @@ class TextPlacementOverlay(QWidget):
     좌표는 오버레이 로컬(QPdfView 기준)이며, 상위 위젯이 PDF 포인트로 변환한다.
     """
 
-    boxMoved = pyqtSignal(QRect)  # 이동/리사이즈 종료 시 현재 박스
-    placementCancelled = pyqtSignal()
-    textEdited = pyqtSignal(str)  # 인라인 편집 완료 텍스트
+    boxMoved = Signal(QRect)  # 이동/리사이즈 종료 시 현재 박스
+    placementCancelled = Signal()
+    textEdited = Signal(str)  # 인라인 편집 완료 텍스트
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)

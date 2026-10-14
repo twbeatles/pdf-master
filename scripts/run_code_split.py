@@ -662,7 +662,7 @@ class {class_name}({init_bases_extra}, {", ".join(parts)}):
     (package_dir / "composed.py").write_text(
         f'''from __future__ import annotations
 
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget
 
 {import_lines}
 

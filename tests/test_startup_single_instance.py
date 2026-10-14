@@ -8,13 +8,13 @@ import subprocess
 import sys
 import time
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _import_main():
-    require_pyqt6()
+    require_pyside6()
     if REPO_ROOT not in sys.path:
         sys.path.insert(0, REPO_ROOT)
     import main
@@ -97,7 +97,7 @@ def test_focus_existing_instance_without_window_returns_false():
 
 def test_startup_splash_missing_asset_returns_none():
     main = _import_main()
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance() or QApplication([])
     assert main.show_startup_splash(app, "/nonexistent/splash.png") is None
@@ -112,7 +112,7 @@ def test_lock_storage_failure_continues_without_guard(tmp_path):
 
 def test_startup_splash_bundled_asset_can_be_shown():
     main = _import_main()
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     app = QApplication.instance() or QApplication([])
     splash = main.show_startup_splash(app)

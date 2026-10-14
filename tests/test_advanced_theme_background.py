@@ -9,14 +9,14 @@ from pathlib import Path
 import subprocess
 import sys
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 def test_advanced_pages_follow_explicit_theme_with_dark_os_palette():
-    require_pyqt6()
+    require_pyside6()
     script = r'''
-from PyQt6.QtGui import QColor, QPalette
-from PyQt6.QtWidgets import QApplication, QWidget
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QApplication, QWidget
 from src.ui.fluent_theme import setup_app_theme
 from src.ui.main_window import PDFMasterApp
 from src.ui import main_window as window_module

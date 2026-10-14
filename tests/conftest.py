@@ -31,7 +31,7 @@ def _ensure_session_qapp():
     global _SESSION_QAPP
     if _SESSION_QAPP is None:
         try:
-            from PyQt6.QtWidgets import QApplication
+            from PySide6.QtWidgets import QApplication
 
             _SESSION_QAPP = QApplication.instance() or QApplication([])
         except Exception:

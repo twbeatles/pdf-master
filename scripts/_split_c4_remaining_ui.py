@@ -232,7 +232,7 @@ def split_misc_builder() -> None:
     # imports for sections — deepen one level
     imports = '''from __future__ import annotations
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QGroupBox,
@@ -289,7 +289,7 @@ from ....widgets import FileSelectorWidget
 
     orch = """from __future__ import annotations
 
-from PyQt6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
 
 """
     for slug, _t, _ in unique:

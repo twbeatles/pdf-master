@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -29,7 +29,7 @@ def _cancel_after(call_limit):
 
 
 def test_remove_annotations_checks_cancellation_inside_page_loop(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"

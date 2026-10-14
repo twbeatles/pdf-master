@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QProgressBar, QGraphicsDropShadowEffect, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QColor, QResizeEvent
+from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QColor, QResizeEvent
 from ...core.i18n import tm
 
 
@@ -21,7 +21,7 @@ class LoadingSpinner(QLabel):
         self._frames = ["⏳", "⌛"]
         self._current_frame = 0
 
-        from PyQt6.QtCore import QTimer
+        from PySide6.QtCore import QTimer
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._animate)
 

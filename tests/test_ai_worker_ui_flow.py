@@ -1,4 +1,4 @@
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _LabelStub:
@@ -149,7 +149,7 @@ def _build_dummy(worker):
 
 
 def test_on_success_updates_summary_result(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
 
     monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
@@ -189,7 +189,7 @@ def test_on_success_updates_summary_result(monkeypatch):
 
 
 def test_on_success_updates_keyword_result(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
 
     monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
@@ -211,7 +211,7 @@ def test_on_success_updates_keyword_result(monkeypatch):
 
 
 def test_on_success_appends_chat_answer(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
     from src.core.i18n import tm
 
@@ -238,7 +238,7 @@ def test_on_success_appends_chat_answer(monkeypatch):
 
 
 def test_on_fail_cleans_pending_chat_history_and_appends_error(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
 
     monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
@@ -266,7 +266,7 @@ class _ToastStub:
 
 
 def test_on_partial_result_streams_summary_and_chat(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
 
     monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
@@ -290,7 +290,7 @@ def test_on_partial_result_streams_summary_and_chat(monkeypatch):
 
 
 def test_on_success_shows_compare_summary_dialog(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
 
     dialogs = []

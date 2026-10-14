@@ -13,7 +13,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 from src.core.update_manifest import (
     NoUpdateAvailableError,
@@ -217,7 +217,7 @@ class _UpdateSignalsStub:
 
 
 def _update_dummy():
-    require_pyqt6()
+    require_pyside6()
     import src.ui.update_mixin as mixin_module
 
     class Dummy(mixin_module.UpdateMixin):
@@ -287,7 +287,7 @@ def test_offer_update_includes_expiry_warning(monkeypatch) -> None:
 
 
 def test_run_worker_queues_without_modal(monkeypatch) -> None:
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
 
     class _SignalStub:
@@ -371,7 +371,7 @@ def test_run_worker_queues_without_modal(monkeypatch) -> None:
 
 
 def test_pending_queue_cap_still_enforced(monkeypatch) -> None:
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
 
     class _SignalStub:

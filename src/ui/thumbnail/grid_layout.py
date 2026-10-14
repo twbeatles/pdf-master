@@ -3,9 +3,9 @@ from __future__ import annotations
 from .._typing import ThumbnailGridHost
 import logging
 from typing import Iterable
-from PyQt6.QtCore import QThread, Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QThread, Qt, Signal, Slot
+from PySide6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
+from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,

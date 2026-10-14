@@ -1,9 +1,9 @@
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QProgressBar, QGraphicsDropShadowEffect, QFrame
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QColor, QResizeEvent
+from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QColor, QResizeEvent
 from ...core.i18n import tm
 
 from .spinner import LoadingSpinner
@@ -19,7 +19,7 @@ class ProgressOverlayWidget(QFrame):
         - 진행바 + 취소 버튼
         - 작업 설명 표시
     """
-    cancelled = pyqtSignal()
+    cancelled = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)

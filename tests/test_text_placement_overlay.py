@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QPoint, QRect
+from PySide6.QtCore import QPoint, QRect
 
 from src.ui.preview_widget.text_placement import apply_resize, hit_test_handle
 

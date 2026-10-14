@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -14,7 +14,7 @@ def _make_pdf(path, page_texts):
 
 
 def test_metadata_update_writes_updated_title(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -37,7 +37,7 @@ def test_metadata_update_writes_updated_title(tmp_path):
 
 
 def test_compress_writes_output_pdf(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -61,7 +61,7 @@ def test_compress_writes_output_pdf(tmp_path):
 
 
 def test_crop_pdf_updates_cropbox(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -92,7 +92,7 @@ def test_crop_pdf_updates_cropbox(tmp_path):
 
 
 def test_protect_and_decrypt_roundtrip(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -131,7 +131,7 @@ def test_protect_and_decrypt_roundtrip(tmp_path):
 
 
 def test_worker_uses_password_mapping_for_encrypted_input(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.path_utils import normalize_path_key
     from src.core.worker import WorkerThread
 
@@ -164,7 +164,7 @@ def test_worker_uses_password_mapping_for_encrypted_input(tmp_path):
 
 
 def test_reorder_rewrites_page_order(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -187,7 +187,7 @@ def test_reorder_rewrites_page_order(tmp_path):
 
 
 def test_split_by_pages_writes_individual_outputs(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -208,7 +208,7 @@ def test_split_by_pages_writes_individual_outputs(tmp_path):
 
 
 def test_split_by_pages_worker_run_uses_current_ui_contract(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -236,7 +236,7 @@ def test_split_by_pages_worker_run_uses_current_ui_contract(tmp_path):
 
 
 def test_extract_markdown_writes_page_markers(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -259,7 +259,7 @@ def test_extract_markdown_writes_page_markers(tmp_path):
 
 
 def test_extract_markdown_honors_front_matter_and_marker_options(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -284,7 +284,7 @@ def test_extract_markdown_honors_front_matter_and_marker_options(tmp_path):
 
 
 def test_batch_compress_uses_default_save_profile(tmp_path, monkeypatch):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
     from src.core.worker_runtime.save_profiles import DEFAULT_COMPRESSION_SAVE_PROFILE
 

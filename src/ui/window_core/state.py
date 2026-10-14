@@ -2,9 +2,9 @@ import logging
 import os
 import subprocess
 
-from PyQt6.QtCore import QByteArray, QUrl
-from PyQt6.QtGui import QAction, QDesktopServices, QKeySequence, QShortcut
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QByteArray, QUrl
+from PySide6.QtGui import QAction, QDesktopServices, QKeySequence, QShortcut
+from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QFileDialog,
@@ -117,7 +117,7 @@ def _save_settings_on_exit(self):
     """종료 시 설정 저장"""
     try:
         # 창 위치/크기 저장
-        self.settings['window_geometry'] = self.saveGeometry().data().hex()
+        self.settings['window_geometry'] = bytes(self.saveGeometry().data()).hex()
 
         # 현재 테마 저장
         # (이미 settings에 저장되어 있음)

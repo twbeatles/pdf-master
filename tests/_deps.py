@@ -3,11 +3,11 @@ import pytest
 from src.core.optional_deps import FITZ_AVAILABLE
 
 
-def require_pyqt6() -> None:
+def require_pyside6() -> None:
     try:
-        import PyQt6  # noqa: F401
+        import PySide6  # noqa: F401
     except Exception:
-        pytest.skip("PyQt6 not available")
+        pytest.skip("PySide6 not available")
 
 
 def require_pymupdf() -> None:
@@ -15,6 +15,6 @@ def require_pymupdf() -> None:
         pytest.skip("PyMuPDF not available")
 
 
-def require_pyqt6_and_pymupdf() -> None:
-    require_pyqt6()
+def require_pyside6_and_pymupdf() -> None:
+    require_pyside6()
     require_pymupdf()

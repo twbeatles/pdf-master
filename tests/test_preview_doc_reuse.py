@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _DummyDoc:
@@ -8,7 +8,7 @@ class _DummyDoc:
         self.closed = False
 
     def status(self):
-        from PyQt6.QtPdf import QPdfDocument
+        from PySide6.QtPdf import QPdfDocument
 
         return QPdfDocument.Status.Ready
 
@@ -35,7 +35,7 @@ class _PreviewWidgetStub:
 
 
 def test_preview_doc_reuse_same_path():
-    require_pyqt6()
+    require_pyside6()
     from src.ui.main_window_preview import MainWindowPreviewMixin
 
     class Dummy(MainWindowPreviewMixin):
@@ -64,7 +64,7 @@ def test_preview_doc_reuse_same_path():
 
 
 def test_preview_doc_reopen_on_path_change():
-    require_pyqt6()
+    require_pyside6()
     from src.ui.main_window_preview import MainWindowPreviewMixin
 
     class Dummy(MainWindowPreviewMixin):

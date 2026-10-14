@@ -1,10 +1,10 @@
 import pytest
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 def test_parse_page_range_forward_and_reverse():
-    require_pyqt6()
+    require_pyside6()
     from src.core.worker import WorkerThread
 
     w = WorkerThread("merge")
@@ -14,7 +14,7 @@ def test_parse_page_range_forward_and_reverse():
 
 
 def test_parse_page_range_dedup_and_limit():
-    require_pyqt6()
+    require_pyside6()
     from src.core.worker import WorkerThread
 
     w = WorkerThread("merge")

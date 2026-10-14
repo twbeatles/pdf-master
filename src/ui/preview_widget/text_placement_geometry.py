@@ -1,7 +1,7 @@
 """텍스트 배치 오버레이 기하 헬퍼."""
 from __future__ import annotations
 
-from PyQt6.QtCore import QPoint, QRect, Qt
+from PySide6.QtCore import QPoint, QRect, Qt
 
 _HANDLE_NONE = ""
 _HANDLE_N = "n"

@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.i18n import tm
 from src.core.optional_deps import fitz
 
@@ -15,7 +15,7 @@ def _make_pdf(path, text="BASE"):
 
 @pytest.mark.parametrize("operation", ["watermark", "encrypt"])
 def test_batch_rejects_missing_option(tmp_path, operation):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -44,7 +44,7 @@ def test_batch_rejects_missing_option(tmp_path, operation):
 
 @pytest.mark.parametrize("operation", ["watermark", "encrypt"])
 def test_preflight_rejects_missing_batch_option(tmp_path, operation):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

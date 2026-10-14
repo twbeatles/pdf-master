@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
-from PyQt6.QtCore import QObject, QTimer, pyqtSignal
-from PyQt6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 from ..core.constants import UPDATE_MANIFEST_URL, UPDATE_PUBLIC_KEY_B64, UPDATE_RELEASES_URL, VERSION
 from ..core.i18n import tm
@@ -30,8 +30,8 @@ SILENT_CHECK_RETRY_DELAY_MS = 5 * 60 * 1000
 
 
 class _UpdateSignals(QObject):
-    ready = pyqtSignal(object); current = pyqtSignal(); failed = pyqtSignal(str); staged = pyqtSignal(object); progress = pyqtSignal(int)
-    notice = pyqtSignal(str)
+    ready = Signal(object); current = Signal(); failed = Signal(str); staged = Signal(object); progress = Signal(int)
+    notice = Signal(str)
 
 
 class UpdateMixin:

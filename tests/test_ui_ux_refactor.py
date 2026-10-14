@@ -2,19 +2,19 @@
 
 import string
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 def _qapp():
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     return QApplication.instance() or QApplication([])
 
 
 def test_theme_palette_follows_app_theme_not_os():
-    require_pyqt6()
+    require_pyside6()
     _qapp()
-    from PyQt6.QtGui import QPalette
+    from PySide6.QtGui import QPalette
 
     from src.ui.window_core.theme import build_theme_palette
 
@@ -31,7 +31,7 @@ def test_theme_palette_follows_app_theme_not_os():
 
 
 def test_file_selector_reflects_selection_state(tmp_path):
-    require_pyqt6()
+    require_pyside6()
     _qapp()
     from src.ui.widgets import FileSelectorWidget
 
@@ -64,10 +64,10 @@ def test_file_selector_reflects_selection_state(tmp_path):
 
 
 def test_drop_zone_click_opens_file_picker():
-    require_pyqt6()
+    require_pyside6()
     _qapp()
-    from PyQt6.QtCore import QPoint, Qt
-    from PyQt6.QtTest import QTest
+    from PySide6.QtCore import QPoint, Qt
+    from PySide6.QtTest import QTest
 
     from src.ui.widgets import DropZoneWidget
 
@@ -83,10 +83,10 @@ def test_drop_zone_click_opens_file_picker():
 
 
 def test_active_pdf_is_carried_to_empty_primary_selectors(tmp_path):
-    require_pyqt6()
+    require_pyside6()
     _qapp()
-    from PyQt6.QtCore import Qt
-    from PyQt6.QtWidgets import QGroupBox, QVBoxLayout, QWidget
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QGroupBox, QVBoxLayout, QWidget
 
     from src.ui.widgets import FileSelectorWidget
     from src.ui.window_core.active_file import _carry_active_pdf_to_visible_tools
@@ -158,9 +158,9 @@ def test_update_preview_keeps_view_while_carrying_same_file(tmp_path):
 
 
 def test_batch_tab_shows_only_options_for_selected_operation():
-    require_pyqt6()
+    require_pyside6()
     _qapp()
-    from PyQt6.QtWidgets import QLineEdit, QTabWidget, QWidget
+    from PySide6.QtWidgets import QLineEdit, QTabWidget, QWidget
 
     from src.core.i18n import tm
     from src.ui.tabs_basic import batch
@@ -205,7 +205,7 @@ def test_batch_tab_shows_only_options_for_selected_operation():
 
 
 def test_tab_shell_rail_helpers_are_safe_without_rail():
-    require_pyqt6()
+    require_pyside6()
     _qapp()
     from src.ui.tab_shell import TabShell
 

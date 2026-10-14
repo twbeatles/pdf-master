@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _PathStub:
@@ -74,10 +74,10 @@ class _LabelStub:
 
 
 def test_action_ai_summarize_encrypted_with_preview_access_runs_worker(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtWidgets import QApplication, QWidget
+    from PySide6.QtWidgets import QApplication, QWidget
 
     from src.ui import main_window_config
     from src.ui.tabs_ai import actions as ai_actions
@@ -126,10 +126,10 @@ def test_action_ai_summarize_encrypted_with_preview_access_runs_worker(monkeypat
 
 
 def test_action_ai_summarize_encrypted_without_preview_access_blocks(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtWidgets import QApplication, QWidget, QMessageBox
+    from PySide6.QtWidgets import QApplication, QWidget, QMessageBox
 
     from src.ui import main_window_config
     from src.ui.tabs_ai import actions as ai_actions

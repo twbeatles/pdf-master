@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 from src.core.worker_runtime.save_profiles import (
     resolve_image_optimize_options,
@@ -59,7 +59,7 @@ def test_resolve_image_optimize_options_kwargs_override():
 
 
 def test_compress_fast_profile_skips_image_rewrite(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -83,7 +83,7 @@ def test_compress_fast_profile_skips_image_rewrite(tmp_path):
 
 
 def test_compress_web_profile_rewrites_embedded_images(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -123,7 +123,7 @@ def test_compress_web_profile_rewrites_embedded_images(tmp_path):
 
 
 def test_compress_optimize_images_force_on_fast(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -149,7 +149,7 @@ def test_compress_optimize_images_force_on_fast(tmp_path):
 
 
 def test_batch_compress_applies_image_optimize(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

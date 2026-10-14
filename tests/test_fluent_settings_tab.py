@@ -6,15 +6,15 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
 def _qapp():
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
 
     return QApplication.instance() or QApplication([])
 
 
-def test_new_aliases_are_pyqt6_backed():
+def test_new_aliases_are_pyside6_backed():
     _qapp_holder = _qapp()
     assert _qapp_holder is not None
-    from PyQt6.QtWidgets import QWidget
+    from PySide6.QtWidgets import QWidget
 
     from src.ui import fluent_widgets as fw
 
@@ -36,7 +36,7 @@ def test_new_aliases_are_pyqt6_backed():
 def test_wrap_page_and_connect_search():
     _qapp_holder = _qapp()
     assert _qapp_holder is not None
-    from PyQt6.QtWidgets import QLineEdit
+    from PySide6.QtWidgets import QLineEdit
 
     from src.ui import fluent_widgets as fw
     from src.ui.fluent_widgets import SearchLineEdit, connect_search, wrap_page
@@ -59,7 +59,7 @@ def test_wrap_page_and_connect_search():
 def test_notify_does_not_raise():
     _qapp_holder = _qapp()
     assert _qapp_holder is not None
-    from PyQt6.QtWidgets import QWidget
+    from PySide6.QtWidgets import QWidget
 
     from src.ui import fluent_widgets as fw
 

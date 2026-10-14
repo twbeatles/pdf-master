@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -70,7 +70,7 @@ def _build_dummy_for_page_link(pdf_path):
 
 
 def test_action_add_hyperlink_normalizes_ui_target_to_zero_based(monkeypatch, tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     import src.ui.main_window_tabs_advanced as adv_module
 
     src = tmp_path / "src.pdf"
@@ -101,7 +101,7 @@ def test_action_add_hyperlink_normalizes_ui_target_to_zero_based(monkeypatch, tm
 
 
 def test_worker_add_link_rejects_out_of_range_target_under_zero_based_policy(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

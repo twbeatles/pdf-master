@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -22,7 +22,7 @@ def _make_png(path):
 
 
 def test_draw_shapes_accepts_ui_style_params(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -50,7 +50,7 @@ def test_draw_shapes_accepts_ui_style_params(tmp_path):
 
 
 def test_add_link_accepts_page_alias_and_zero_based_target(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -78,7 +78,7 @@ def test_add_link_accepts_page_alias_and_zero_based_target(tmp_path):
 
 
 def test_insert_textbox_uses_xy_when_rect_missing(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -118,7 +118,7 @@ def test_insert_textbox_uses_xy_when_rect_missing(tmp_path):
 
 def test_insert_textbox_rect_font_aliases_and_options(tmp_path):
     """rect + 폰트 별칭 + opacity/align/layer/rotate 옵션 회귀."""
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -151,7 +151,7 @@ def test_insert_textbox_rect_font_aliases_and_options(tmp_path):
 
 def test_insert_textbox_cjk_font_embeds_korean(tmp_path):
     """fontname=cjk 는 insert_font 임베드 후 한글 삽입."""
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -183,7 +183,7 @@ def test_insert_textbox_cjk_font_embeds_korean(tmp_path):
 
 def test_insert_textbox_expands_too_small_rect(tmp_path):
     """높이가 폰트보다 작아도 텍스트가 기록되어야 한다 (기존 조용한 실패 방지)."""
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -207,7 +207,7 @@ def test_insert_textbox_expands_too_small_rect(tmp_path):
 
 
 def test_insert_textbox_times_alias(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -233,7 +233,7 @@ def test_insert_textbox_times_alias(tmp_path):
 
 
 def test_copy_page_between_docs_accepts_file_path_and_page_range(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     target = tmp_path / "target.pdf"
@@ -266,7 +266,7 @@ def test_copy_page_between_docs_accepts_file_path_and_page_range(tmp_path):
 
 
 def test_image_watermark_accepts_scale_and_top_center_alias(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"

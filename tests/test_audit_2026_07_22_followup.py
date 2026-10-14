@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from _deps import require_pyqt6, require_pyqt6_and_pymupdf
+from _deps import require_pyside6, require_pyside6_and_pymupdf
 
 
 def test_cleanup_pdf_master_temp_files_removes_old_ai_temp(tmp_path):
@@ -107,7 +107,7 @@ def test_list_annotations_spec_is_text_output():
 
 def test_cancel_cleanup_does_not_delete_by_mtime_alone(monkeypatch, tmp_path):
     """created_output_paths 미기록 + 최근 mtime 만으로는 삭제하지 않는다."""
-    require_pyqt6()
+    require_pyside6()
     import src.ui.window_worker.lifecycle as lifecycle
 
     out = tmp_path / "maybe_delete.pdf"
@@ -151,11 +151,11 @@ def test_cancel_cleanup_does_not_delete_by_mtime_alone(monkeypatch, tmp_path):
 
 
 def test_thumbnail_ready_ignores_stale_loader_sender(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtGui import QPixmap
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtGui import QPixmap
+    from PySide6.QtWidgets import QApplication
     from src.ui.thumbnail_grid import ThumbnailGridWidget
 
     app = QApplication.instance() or QApplication([])

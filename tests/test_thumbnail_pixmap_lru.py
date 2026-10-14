@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 def test_thumbnail_pixmap_lru_evicts_oldest():
-    require_pyqt6()
+    require_pyside6()
     import sys
 
-    from PyQt6.QtGui import QImage, QPixmap
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtGui import QImage, QPixmap
+    from PySide6.QtWidgets import QApplication
 
     # QPixmap 은 QGuiApplication 필요 — 없으면 네이티브 크래시 가능
     app = QApplication.instance() or QApplication(sys.argv[:1])

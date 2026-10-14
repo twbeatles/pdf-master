@@ -1,6 +1,6 @@
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -15,7 +15,7 @@ def _make_image_only_pdf(path):
 
 
 def test_compare_reports_identical_for_image_only_pdfs_with_different_pixels(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import WorkerThread
 
     left = tmp_path / "left.pdf"

@@ -13,8 +13,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import (
     QHBoxLayout,
     QStackedWidget,
     QTabWidget,
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class TabShell(QWidget):
     """QTabWidget 표면 호환 탭 셸. addTab(widget, label, icon, position) 확장."""
 
-    currentChanged = pyqtSignal(int)
+    currentChanged = Signal(int)
 
     _selector: Any
 

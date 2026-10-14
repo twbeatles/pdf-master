@@ -2,7 +2,7 @@ import logging
 import os
 import shutil
 
-from PyQt6.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 from ...core.i18n import tm
 from ..widgets import ToastWidget

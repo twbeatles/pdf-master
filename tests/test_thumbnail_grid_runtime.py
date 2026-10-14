@@ -1,7 +1,7 @@
 import os
 from typing import Any, cast
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -29,10 +29,10 @@ def _make_encrypted_pdf(path, password="secret", page_count=1):
 
 
 def test_thumbnail_grid_load_pdf_shows_encrypted_message_without_password(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
     from src.core.i18n import tm
     from src.ui.thumbnail_grid import ThumbnailGridWidget
 
@@ -52,10 +52,10 @@ def test_thumbnail_grid_load_pdf_shows_encrypted_message_without_password(tmp_pa
 
 
 def test_thumbnail_loader_emits_loading_complete_once_without_password(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
     from src.ui.thumbnail_grid import ThumbnailLoaderThread
 
     app = QApplication.instance() or QApplication([])
@@ -75,10 +75,10 @@ def test_thumbnail_loader_emits_loading_complete_once_without_password(tmp_path)
 
 
 def test_thumbnail_loader_emits_loading_complete_once_with_password(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
     from src.ui.thumbnail_grid import ThumbnailLoaderThread
 
     app = QApplication.instance() or QApplication([])
@@ -99,10 +99,10 @@ def test_thumbnail_loader_emits_loading_complete_once_with_password(tmp_path):
 
 
 def test_cleanup_loader_thread_does_not_force_terminate(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PyQt6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication
     from src.ui.thumbnail_grid import ThumbnailGridWidget
 
     app = QApplication.instance() or QApplication([])

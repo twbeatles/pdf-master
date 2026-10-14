@@ -1,6 +1,6 @@
 import os
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -14,7 +14,7 @@ def _make_pdf(path, page_count=2):
 
 
 def test_same_path_output_closes_and_restores_preview(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     from src.core.worker import WorkerThread
@@ -84,7 +84,7 @@ def test_same_path_output_closes_and_restores_preview(tmp_path):
 
 
 def test_same_path_output_restores_preview_view_state(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     from src.ui.main_window_worker import MainWindowWorkerMixin

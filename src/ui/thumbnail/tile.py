@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 from typing import Iterable
 
-from PyQt6.QtCore import QThread, Qt, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QThread, Qt, Signal, Slot
+from PySide6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
+from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -26,8 +26,8 @@ logger = logging.getLogger(__name__)
 class ThumbnailLabel(QFrame):
     """Clickable thumbnail item."""
 
-    clicked = pyqtSignal(int)
-    clickedWithModifiers = pyqtSignal(int, object)
+    clicked = Signal(int)
+    clickedWithModifiers = Signal(int, object)
 
     def __init__(self, page_index: int, parent=None):
         super().__init__(parent)

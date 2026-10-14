@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QCloseEvent, QKeySequence, QShortcut
-from PyQt6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QMainWindow, QPushButton, QVBoxLayout, QWidget
 
 from ...core.i18n import tm
 
@@ -16,10 +16,10 @@ logger = logging.getLogger(__name__)
 class PreviewFullscreenHost(QMainWindow):
     """미리보기 위젯을 담아 OS 전체화면으로 표시하는 호스트 창."""
 
-    hostClosing = pyqtSignal()  # reparent 전에 호출 — 본창이 위젯을 회수 (포커스 유지)
-    layoutCycleExitRequested = pyqtSignal()  # F11: 전체화면+포커스 모두 해제 (메인 순환과 동일)
-    placeTextboxRequested = pyqtSignal()
-    insertTextboxRequested = pyqtSignal()
+    hostClosing = Signal()  # reparent 전에 호출 — 본창이 위젯을 회수 (포커스 유지)
+    layoutCycleExitRequested = Signal()  # F11: 전체화면+포커스 모두 해제 (메인 순환과 동일)
+    placeTextboxRequested = Signal()
+    insertTextboxRequested = Signal()
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)

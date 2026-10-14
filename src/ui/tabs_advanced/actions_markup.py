@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from PyQt6.QtWidgets import QFileDialog, QMessageBox
+from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from .markup_actions.deps import ToastWidget, tm
 from .markup_actions.annotations import (

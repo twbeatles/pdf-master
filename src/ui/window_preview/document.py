@@ -1,9 +1,9 @@
 import logging
 import os
 
-from PyQt6.QtCore import QFileSystemWatcher, QObject, QTimer
-from PyQt6.QtPdf import QPdfDocument
-from PyQt6.QtWidgets import QInputDialog, QLineEdit, QMessageBox
+from PySide6.QtCore import QFileSystemWatcher, QObject, QTimer
+from PySide6.QtPdf import QPdfDocument
+from PySide6.QtWidgets import QInputDialog, QLineEdit, QMessageBox
 
 from ...core.i18n import tm
 from ...core.path_utils import normalize_path_key

@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _PathStub:
@@ -89,7 +89,7 @@ def _build_preview_dummy(path, preview_path=""):
 
 
 def test_action_rotate_selected_pages_passes_page_indices(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.tabs_basic.page as page_module
 
     src_pdf = tmp_path / "src.pdf"
@@ -118,7 +118,7 @@ def test_action_rotate_selected_pages_passes_page_indices(monkeypatch, tmp_path)
 
 
 def test_action_rotate_selected_pages_requires_selection(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.tabs_basic.page as page_module
     from src.core.i18n import tm
 
@@ -145,7 +145,7 @@ def test_action_rotate_selected_pages_requires_selection(monkeypatch, tmp_path):
 
 
 def test_rotate_thumbnail_click_updates_preview_and_status(tmp_path):
-    require_pyqt6()
+    require_pyside6()
     from src.core.i18n import tm
 
     src_pdf = tmp_path / "src.pdf"
@@ -161,7 +161,7 @@ def test_rotate_thumbnail_click_updates_preview_and_status(tmp_path):
 
 
 def test_sync_rotate_thumbnail_with_preview_updates_only_active_page(tmp_path):
-    require_pyqt6()
+    require_pyside6()
 
     src_pdf = tmp_path / "src.pdf"
     src_pdf.write_bytes(b"%PDF-1.7\n")

@@ -4,8 +4,8 @@ This module keeps the original import path stable while delegating
 implementation to the folder-based tabs_advanced package.
 """
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QGroupBox,

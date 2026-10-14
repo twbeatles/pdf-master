@@ -1,10 +1,10 @@
 from __future__ import annotations
 import logging
-from PyQt6.QtCore import QEvent, QModelIndex, QPointF, QRect, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QCloseEvent, QColor
-from PyQt6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
-from PyQt6.QtPdfWidgets import QPdfView
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QEvent, QModelIndex, QPointF, QRect, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QCloseEvent, QColor
+from PySide6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
+from PySide6.QtPdfWidgets import QPdfView
+from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -38,18 +38,18 @@ from .interaction_overlays import PreviewInteractionMixin
 
 
 class ZoomablePreviewWidget(PreviewDocumentApiMixin, PreviewNavigationMixin, PreviewZoomMixin, PreviewSearchPanelMixin, PreviewThemeMixin, PreviewInteractionMixin, QWidget):
-    zoomChanged = pyqtSignal(float)
-    pageChanged = pyqtSignal(int)
-    printRequested = pyqtSignal()
-    pageSetupRequested = pyqtSignal()
-    searchVisibilityChanged = pyqtSignal(bool)
+    zoomChanged = Signal(float)
+    pageChanged = Signal(int)
+    printRequested = Signal()
+    pageSetupRequested = Signal()
+    searchVisibilityChanged = Signal(bool)
     # 1-based page, x0,y0,x1,y1 in PDF points
-    regionSelected = pyqtSignal(int, float, float, float, float)
-    regionSelectModeChanged = pyqtSignal(bool)
+    regionSelected = Signal(int, float, float, float, float)
+    regionSelectModeChanged = Signal(bool)
     # 이동 가능한 텍스트 배치 박스 (1-based page + PDF points)
-    textPlacementMoved = pyqtSignal(int, float, float, float, float)
-    textPlacementModeChanged = pyqtSignal(bool)
-    textPlacementTextEdited = pyqtSignal(str)
+    textPlacementMoved = Signal(int, float, float, float, float)
+    textPlacementModeChanged = Signal(bool)
+    textPlacementTextEdited = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

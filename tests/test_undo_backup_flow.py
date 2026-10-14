@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _ToastStub:
@@ -24,7 +24,7 @@ class _UndoHost:
 
 
 def test_undo_redo_restores_before_and_after_snapshots(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.window_undo.backup as backup_module
     from src.core.undo_manager import UndoManager
     from src.ui.main_window_undo import MainWindowUndoMixin
@@ -65,7 +65,7 @@ def test_undo_redo_restores_before_and_after_snapshots(monkeypatch, tmp_path):
 
 
 def test_cleanup_unused_undo_backups_keeps_active_snapshots(monkeypatch, tmp_path):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.window_undo.backup as backup_module
     from src.core.undo_manager import UndoManager
     from src.ui.main_window_undo import MainWindowUndoMixin

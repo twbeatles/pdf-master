@@ -4,9 +4,9 @@ import logging
 import os
 from typing import Any
 
-from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QEvent, QObject, Qt, Signal
+from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
+from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
     QFrame,
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class ToastWidget(QFrame):
     """비차단형 토스트 알림 위젯 (페이드 애니메이션 + 스택)"""
-    closed = pyqtSignal()
+    closed = Signal()
     _active_toasts = []  # 활성 토스트 스택 관리
 
     def __init__(self, message, toast_type='info', duration=3000, parent=None):
@@ -104,8 +104,8 @@ class ToastWidget(QFrame):
         self.adjustSize()
 
         # Import here to avoid circular import
-        from PyQt6.QtCore import QTimer, QPropertyAnimation, QEasingCurve
-        from PyQt6.QtWidgets import QGraphicsOpacityEffect
+        from PySide6.QtCore import QTimer, QPropertyAnimation, QEasingCurve
+        from PySide6.QtWidgets import QGraphicsOpacityEffect
 
         # Opacity effect for fade animation
         self.opacity_effect = QGraphicsOpacityEffect(self)

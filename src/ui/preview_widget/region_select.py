@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QMouseEvent, QPainter, QPaintEvent, QPen, QResizeEvent
-from PyQt6.QtWidgets import QWidget
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt, Signal
+from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPaintEvent, QPen, QResizeEvent
+from PySide6.QtWidgets import QWidget
 
 
 def compute_page_display_rect(
@@ -111,8 +111,8 @@ def format_rect_coords(coords: tuple[float, float, float, float], *, decimals: i
 class RegionSelectOverlay(QWidget):
     """QPdfView 위에 올려 드래그 고무줄 선택을 받는 투명 오버레이."""
 
-    selectionFinished = pyqtSignal(QRect)  # 오버레이(로컬) 좌표
-    selectionCancelled = pyqtSignal()
+    selectionFinished = Signal(QRect)  # 오버레이(로컬) 좌표
+    selectionCancelled = Signal()
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)

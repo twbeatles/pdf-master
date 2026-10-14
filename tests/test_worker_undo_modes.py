@@ -1,4 +1,4 @@
-from _deps import require_pyqt6
+from _deps import require_pyside6
 
 
 class _LabelStub:
@@ -25,7 +25,7 @@ class _OverlayStub:
 
 
 def test_is_undo_eligible_mode_matches_single_output_mutations():
-    require_pyqt6()
+    require_pyside6()
     from src.ui.main_window_worker import _is_undo_eligible_mode
 
     assert _is_undo_eligible_mode("protect", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
@@ -44,7 +44,7 @@ def test_is_undo_eligible_mode_matches_single_output_mutations():
 
 
 def test_run_worker_registers_pending_undo_for_newly_supported_mode(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
     from src.ui.main_window_worker import MainWindowWorkerMixin
 
@@ -106,7 +106,7 @@ def test_run_worker_registers_pending_undo_for_newly_supported_mode(monkeypatch)
 
 
 def test_run_worker_skips_pending_undo_for_non_mutating_mode(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
     from src.ui.main_window_worker import MainWindowWorkerMixin
 
@@ -165,7 +165,7 @@ def test_run_worker_skips_pending_undo_for_non_mutating_mode(monkeypatch):
 
 
 def test_worker_password_mapping_is_augmented_from_authenticated_preview(tmp_path):
-    require_pyqt6()
+    require_pyside6()
     from src.core.path_utils import normalize_path_key
     from src.ui.main_window_worker import MainWindowWorkerMixin
 
@@ -201,7 +201,7 @@ class _SignalStub:
 
 
 def test_run_worker_warns_when_undo_snapshot_unavailable(monkeypatch):
-    require_pyqt6()
+    require_pyside6()
     import src.ui.main_window_worker as worker_module
     from src.ui.main_window_worker import MainWindowWorkerMixin
     from src.core.i18n import tm

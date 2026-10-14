@@ -47,19 +47,19 @@ def test_fluent_bridge_is_noop_without_dependency():
 def test_fluent_required_and_packaging_declared():
     data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     fluent = data["project"]["dependencies"]
-    assert any("PyQt6-Fluent-Widgets" in d for d in fluent)
+    assert any("PySide6-Fluent-Widgets" in d for d in fluent)
     assert any("darkdetect" in d for d in fluent)
-    # PySide6 변형 혼합 금지
-    assert not any("PySide6-Fluent" in d for d in fluent)
+    # 단일 바인딩: Fluent-Widgets 변형은 정확히 하나만 선언 (혼합 금지)
+    assert sum("Fluent-Widgets" in d for d in fluent) == 1
     spec = (ROOT / "pdf_master.spec").read_text(encoding="utf-8")
     assert "qfluentwidgets" in spec
-    assert "PyQt6-Fluent-Widgets is required" in spec
-    assert "copy_metadata('PyQt6-Fluent-Widgets')" in spec
-    assert "'PyQt6.QtSvg',  # QFluentWidgets" in spec
+    assert "PySide6-Fluent-Widgets is required" in spec
+    assert "copy_metadata('PySide6-Fluent-Widgets')" in spec
+    assert "'PySide6.QtSvg',  # QFluentWidgets" in spec
 
 
-def test_fluent_availability_rejects_pyside_variant():
-    """§1.1: PySide6-Fluent 혼합 설치에서는 available=False (안전 폴백)."""
+def test_fluent_availability_matches_pyside_binding():
+    """§1.1: available 여부는 설치된 qfluentwidgets의 실제 바인딩과 일치해야 한다."""
     from src.ui import fluent_theme as _ft
 
     assert isinstance(_ft.is_fluent_available(), bool)
@@ -69,19 +69,27 @@ def test_fluent_availability_rejects_pyside_variant():
         dists = {str(d.metadata["Name"]) for d in _md.distributions()}
     except Exception:
         dists = set()
-    if "PySide6-Fluent-Widgets" in dists:
+    if "PySide6-Fluent-Widgets" not in dists:
+        assert _ft.is_fluent_available() is False
+        return
+    try:
+        from PySide6.QtWidgets import QWidget as _QWidget
+        from qfluentwidgets import PushButton as _Btn
+
+        assert _ft.is_fluent_available() is issubclass(_Btn, _QWidget)
+    except Exception:
         assert _ft.is_fluent_available() is False
 
 
-def test_fluent_widget_aliases_are_pyqt6_backed():
-    """활성 경로의 별칭은 전부 PyQt6 QWidget 서브클래스여야 한다."""
+def test_fluent_widget_aliases_are_pyside6_backed():
+    """활성 경로의 별칭은 전부 PySide6 QWidget 서브클래스여야 한다."""
     import pytest as _pytest
 
     from src.ui import fluent_widgets as _fw
 
     if not _fw.is_fluent_widgets_available():
         _pytest.skip("fluent not available")
-    from PyQt6.QtWidgets import QWidget as _QWidget
+    from PySide6.QtWidgets import QWidget as _QWidget
 
     for _name in (
         "CaptionLabel",
@@ -102,11 +110,11 @@ def test_tab_shell_constructs_without_parented_zombie():
     """생성자 실패 시 부모 달린 C++ 좀비를 남기지 않는다 (panel-less resize 방지)."""
     import pytest as _pytest
 
-    _pytest.importorskip("PyQt6.QtWidgets")
+    _pytest.importorskip("PySide6.QtWidgets")
     import os as _os
 
     _os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PyQt6.QtWidgets import QApplication as _QA
+    from PySide6.QtWidgets import QApplication as _QA
 
     _app = _QA.instance() or _QA([])
 

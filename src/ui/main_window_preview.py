@@ -7,10 +7,10 @@ to the folder-based window_preview package.
 import logging
 import os
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QPixmap
-from PyQt6.QtPrintSupport import QPrintDialog, QPrinter
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction, QPixmap
+from PySide6.QtPrintSupport import QPrintDialog, QPrinter
+from PySide6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect,
     QHBoxLayout,

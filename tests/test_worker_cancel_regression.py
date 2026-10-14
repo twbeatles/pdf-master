@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 
 
@@ -29,7 +29,7 @@ def _cancel_after(call_limit):
 
 
 def test_split_checks_cancellation_inside_page_loop(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -47,7 +47,7 @@ def test_split_checks_cancellation_inside_page_loop(tmp_path):
 
 
 def test_get_form_fields_checks_cancellation_inside_page_loop(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -61,7 +61,7 @@ def test_get_form_fields_checks_cancellation_inside_page_loop(tmp_path):
 
 
 def test_fill_form_checks_cancellation_inside_page_loop(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -83,7 +83,7 @@ def test_fill_form_checks_cancellation_inside_page_loop(tmp_path):
 
 
 def test_add_freehand_signature_checks_cancellation_before_save(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -109,7 +109,7 @@ def test_add_freehand_signature_checks_cancellation_before_save(tmp_path):
 
 
 def test_get_pdf_info_checks_cancellation_inside_page_loop(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -126,7 +126,7 @@ def test_get_pdf_info_checks_cancellation_inside_page_loop(tmp_path):
 
 
 def test_search_text_checks_cancellation_inside_page_loop(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -143,7 +143,7 @@ def test_search_text_checks_cancellation_inside_page_loop(tmp_path):
 
 
 def test_extract_tables_checks_cancellation_inside_page_loop(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -160,7 +160,7 @@ def test_extract_tables_checks_cancellation_inside_page_loop(tmp_path):
 
 
 def test_list_annotations_checks_cancellation_inside_page_loop(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"

@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import os
 
-from PyQt6.QtWidgets import QGroupBox
+from PySide6.QtWidgets import QGroupBox
 
 from ...core.path_utils import normalize_path_key
 from ..widgets import FileSelectorWidget

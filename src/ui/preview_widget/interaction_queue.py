@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from .._typing import PreviewWidgetHost
 import logging
-from PyQt6.QtCore import QEvent, QModelIndex, QPointF, QRect, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QCloseEvent, QColor
-from PyQt6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
-from PyQt6.QtPdfWidgets import QPdfView
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QEvent, QModelIndex, QPointF, QRect, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QCloseEvent, QColor
+from PySide6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
+from PySide6.QtPdfWidgets import QPdfView
+from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,

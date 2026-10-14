@@ -4,9 +4,9 @@ import logging
 import os
 from typing import Any
 
-from PyQt6.QtCore import QEvent, QObject, Qt, pyqtSignal
-from PyQt6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QEvent, QObject, Qt, Signal
+from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
+from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
     QFrame,
@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 
 class DropZoneWidget(QFrame):
     """시각적 드래그 앤 드롭 영역 (테마 대응)"""
-    fileDropped = pyqtSignal(str)
-    clicked = pyqtSignal()
+    fileDropped = Signal(str)
+    clicked = Signal()
 
     def __init__(self, accept_extensions: list[str] | tuple[str, ...] | None = None, parent=None):
         super().__init__(parent)

@@ -6,8 +6,8 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QGridLayout, QLabel, QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QGridLayout, QLabel, QWidget
 
 
 def pair_grid(pairs: list[tuple[str, QWidget]], columns: int = 2) -> QGridLayout:

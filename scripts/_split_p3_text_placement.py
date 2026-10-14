@@ -46,7 +46,7 @@ def main() -> None:
     geo_src = (
         '"""텍스트 배치 오버레이 기하 헬퍼."""\n'
         "from __future__ import annotations\n\n"
-        "from PyQt6.QtCore import QPoint, QRect, Qt\n\n"
+        "from PySide6.QtCore import QPoint, QRect, Qt\n\n"
         + "".join(const_lines)
         + "\n"
         + "\n".join(geo_funcs)
@@ -59,8 +59,8 @@ def main() -> None:
     new_src = (
         '"""미리보기 위 이동·리사이즈 가능한 텍스트 배치 오버레이."""\n\n'
         "from __future__ import annotations\n\n"
-        "from PyQt6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, pyqtSignal\n"
-        "from PyQt6.QtGui import (\n"
+        "from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, Signal\n"
+        "from PySide6.QtGui import (\n"
         "    QColor,\n"
         "    QFont,\n"
         "    QKeyEvent,\n"
@@ -70,7 +70,7 @@ def main() -> None:
         "    QPen,\n"
         "    QResizeEvent,\n"
         ")\n"
-        "from PyQt6.QtWidgets import QTextEdit, QWidget\n\n"
+        "from PySide6.QtWidgets import QTextEdit, QWidget\n\n"
         "from .text_placement_geometry import (\n"
         "    _HANDLE_CURSORS,\n"
         "    _HANDLE_E,\n"

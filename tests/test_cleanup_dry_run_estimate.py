@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from _deps import require_pyqt6_and_pymupdf
+from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 from src.core.worker_ops.cleanup.helpers import (
     estimate_blank_page_removals,
@@ -11,7 +11,7 @@ from src.core.worker_ops.cleanup.helpers import (
 
 
 def test_estimate_blank_and_dedupe(tmp_path):
-    require_pyqt6_and_pymupdf()
+    require_pyside6_and_pymupdf()
     path = tmp_path / "t.pdf"
     doc = fitz.open()
     # 내용 페이지
