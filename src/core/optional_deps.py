@@ -64,13 +64,28 @@ class _MissingFitzProxy:
         )
 
 
-_fitz_module = _import_optional_module("fitz")
-if _fitz_module is not None and not _has_required_attrs(
-    _fitz_module,
-    ("open", "Document", "Matrix", "Rect", "Point"),
-):
-    logger.warning("Ignoring non-PyMuPDF 'fitz' module because required PDF APIs are missing")
-    _fitz_module = None
+def _load_fitz_module() -> Any | None:
+    # Prefer the canonical `pymupdf` import. Importing via the legacy `fitz`
+    # alias unconditionally prints a deprecation warning, which crashes
+    # windowed (console-less) frozen builds where stderr is invalid.
+    # `fitz` stays as a fallback for environments that only provide the alias.
+    for _candidate in ("pymupdf", "fitz"):
+        _module = _import_optional_module(_candidate)
+        if _module is None:
+            continue
+        if _has_required_attrs(
+            _module,
+            ("open", "Document", "Matrix", "Rect", "Point"),
+        ):
+            return _module
+        logger.warning(
+            "Ignoring non-PyMuPDF '%s' module because required PDF APIs are missing",
+            _candidate,
+        )
+    return None
+
+
+_fitz_module: Any = _load_fitz_module()
 
 FITZ_AVAILABLE = _fitz_module is not None
 fitz: Any = _fitz_module if _fitz_module is not None else _MissingFitzProxy()
