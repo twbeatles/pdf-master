@@ -130,7 +130,7 @@
 
 ### Use the Prebuilt Executable (Windows)
 
-Run `dist/PDF_Master_v4.5.15.exe` directly — no installation required.
+Run `dist/PDF_Master_v4.5.17.exe` directly — no installation required.
 
 ### Run from Source
 
@@ -256,7 +256,7 @@ Menu bar → **Language** (🌐) → **Korean** or **English** → restart the a
 
 ## 🔄 Updates
 
-Windows builds check for signed GitHub Release updates after startup. Use **Help → Check for Updates** to check manually. The app verifies the release manifest signature and the downloaded file hash before replacing the executable; if its smoke check fails, it restores the prior executable. Automatic-check failures show only a one-line status-bar hint with one automatic retry after 5 minutes, while manual checks report the failure cause in a dialog. Downloads retry up to 3 times on transient network errors. Automatic updates are Windows-only; on other platforms download from the release page directly.
+Windows builds check for signed GitHub Release updates after startup. Use **Help → Check for Updates** to check manually. The app verifies the release manifest signature and the downloaded file hash before replacing the executable; if its smoke check fails, it restores the prior executable. Automatic-check failures show only a one-line status-bar hint with one automatic retry after 5 minutes, while manual checks report the failure cause in a dialog. Downloads retry up to 3 times on transient network errors. Automatic updates are Windows-only; on other platforms download from the release page directly. If automatic update failed because the executable is on a different drive than the staging drive (WinError 17 on v4.5.16 or earlier), download the new version from the releases page and install it manually once.
 
 For maintainers, update releases use a `vX.Y.Z` tag (or the Release workflow's `version` input). Keep `VERSION` current; package metadata and the EXE name are derived from it. GitHub Actions requires `PM_UPDATE_PRIVATE_KEY_B64` and `PM_UPDATE_PUBLIC_KEY_B64`; never commit the private key. The signed manifest (`updates/latest.json`) is valid for **365 days after publishing**, with an expiry warning shown from 30 days before. Re-publish before expiry — otherwise even healthy apps fail update checks after a year without releases. See `docs/release-checklist.md` for the full procedure.
 
@@ -287,7 +287,7 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-Output: `dist/PDF_Master_v4.5.15.exe` (~30–40 MB)
+Output: `dist/PDF_Master_v4.5.17.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
@@ -297,6 +297,11 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 
 ## 📝 Changelog
 
+### v4.5.17
+- **Cross-drive auto-update fix**: replacing the executable no longer fails with `WinError 17` when the staging folder (C:) and the executable (e.g. D:) are on different drives — it falls back to copy; the update helper is now copied from the staged new-version EXE
+- **Note**: if you already hit this error on v4.5.16 or earlier, download this version once from the releases page; automatic updates work normally afterwards
+### v4.5.16
+- **PySide6 unification**: Qt binding unified on PySide6 6.12.0 with Python 3.15 support, frozen-build `fitz` warning crash fix, and `python3t.dll` bundled
 ### v4.5.15
 - **Plain wording**: jargon removed across the UI (e.g. Decrypt → Remove Password, N-up → Multiple Pages per Sheet, Sanitize → Remove Hidden Info). Menus: Merge PDFs / Convert / Edit Pages / Reorder / Watermark & Security / Batch / More Tools / AI Assistant / Settings
 - **Opened PDF carries over**: a PDF you open once is filled into the empty file pickers of the screen you are on (pickers you already set and "second file" pickers are left alone; the page you were viewing is kept)

@@ -126,7 +126,12 @@ LAUNCH_HELPER_RETRY_INTERVAL = 0.5
 
 def launch_update_helper(*, target: Path, staged: Path) -> None:
     helper = staged.parent / f"pdf-master-update-helper-{uuid4().hex}.exe"
-    shutil.copy2(Path(sys.executable).resolve(), helper)
+    try:
+        # 스테이징된 신버전 EXE를 헬퍼로 복사: 같은 폴더(같은 드라이브)라 빠르고,
+        # 헬퍼가 최신 교체 로직(크로스-드라이브 대응)으로 동작한다.
+        shutil.copy2(staged, helper)
+    except OSError:
+        shutil.copy2(Path(sys.executable).resolve(), helper)
     args = [str(helper), "--apply-update", "--update-target", str(target), "--update-staged", str(staged), "--update-parent-pid", str(os.getpid())]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     last_error: OSError | None = None
@@ -190,13 +195,31 @@ def _replace_with_retry(source: Path, dest: Path) -> None:
     last_error: PermissionError | None = None
     for _ in range(max(1, REPLACE_MAX_ATTEMPTS)):
         try:
-            os.replace(source, dest)
+            _replace_file(source, dest)
             return
         except PermissionError as exc:
             last_error = exc
             time.sleep(REPLACE_RETRY_INTERVAL)
     assert last_error is not None
     raise last_error
+
+
+def _is_cross_device_error(exc: OSError) -> bool:
+    return exc.errno == errno.EXDEV or getattr(exc, "winerror", None) == 17
+
+
+def _replace_file(source: Path, dest: Path) -> None:
+    try:
+        os.replace(source, dest)
+    except OSError as exc:
+        if not _is_cross_device_error(exc):
+            raise
+        # 크로스-드라이브(C: 스테이징 → D: 설치 등): 복사+원본 정리로 교체
+        shutil.copy2(source, dest)
+        try:
+            source.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _target_dir_writable(target_path: Path) -> bool:
@@ -274,7 +297,7 @@ def apply_update(target: str, staged: str, parent_pid: int) -> int:
     except Exception as exc:
         rolled_back = False
         try:
-            if backup.is_file(): os.replace(backup, target_path); rolled_back = True
+            if backup.is_file(): _replace_with_retry(backup, target_path); rolled_back = True
         except OSError: pass
         _write_result("rolled_back" if rolled_back else "failed", error=str(exc))
         if rolled_back:

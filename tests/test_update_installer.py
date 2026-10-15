@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from src.core import update_installer
 
 
@@ -107,3 +109,64 @@ def test_nonwritable_target_elevation_declined_keeps_staged(monkeypatch, tmp_pat
     result = update_installer.consume_update_result()
     assert result is not None and result["status"] == "failed"
     assert "Access denied" in str(result.get("error"))
+
+
+def test_is_cross_device_error_covers_winerror_17() -> None:
+    """WinError 17(드라이브 간 이동 불가)을 크로스-드라이브 오류로 판정."""
+    cross = OSError("cross-drive move")
+    cross.winerror = 17  # type: ignore[attr-defined]
+    assert update_installer._is_cross_device_error(cross) is True
+    assert update_installer._is_cross_device_error(OSError(2, "missing")) is False
+
+
+def test_replace_cross_drive_falls_back_to_copy(monkeypatch, tmp_path) -> None:
+    """C: 스테이징 → D: 설치처럼 os.replace가 EXDEV로 실패해도 교체 성공."""
+    import errno as _errno
+    import os as _os
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setattr(update_installer.time, "sleep", lambda *_a, **_k: None)
+    monkeypatch.setattr(update_installer.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("gone")))
+
+    real_replace = _os.replace
+    calls = {"n": 0}
+
+    def _cross_device(src, dst):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise OSError(_errno.EXDEV, "Invalid cross-device link")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(update_installer.os, "replace", _cross_device)
+
+    class _Completed:
+        returncode = 0
+
+    monkeypatch.setattr(update_installer.subprocess, "run", lambda *a, **k: _Completed())
+    monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
+    target = tmp_path / "app.exe"
+    staged = tmp_path / "staged.exe"
+    target.write_bytes(b"old-exe")
+    staged.write_bytes(b"new-exe")
+    assert update_installer.apply_update(str(target), str(staged), 123456) == 0
+    assert target.read_bytes() == b"new-exe"
+    assert not staged.exists()
+
+
+def test_launch_helper_prefers_staged_copy(monkeypatch, tmp_path) -> None:
+    """헬퍼는 실행 중 EXE 대신 스테이징된 신버전 EXE를 복사한다."""
+    staged = tmp_path / "staged.exe"
+    staged.write_bytes(b"new-exe")
+    target = tmp_path / "app.exe"
+    target.write_bytes(b"old-exe")
+    captured: dict[str, list[str]] = {}
+
+    def _popen(args: list[str], **kwargs: object) -> None:
+        captured["args"] = list(args)
+
+    monkeypatch.setattr(update_installer.subprocess, "Popen", _popen)
+    update_installer.launch_update_helper(target=target, staged=staged)
+    assert "args" in captured
+    helper = Path(captured["args"][0])
+    assert helper.parent == tmp_path
+    assert helper.read_bytes() == b"new-exe"
