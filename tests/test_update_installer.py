@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from pathlib import Path
 
 from src.core import update_installer
@@ -170,3 +172,162 @@ def test_launch_helper_prefers_staged_copy(monkeypatch, tmp_path) -> None:
     helper = Path(captured["args"][0])
     assert helper.parent == tmp_path
     assert helper.read_bytes() == b"new-exe"
+
+
+def _mock_quiet_parent(monkeypatch) -> None:
+    """부모 종료 대기·슬립을 우회하는 공통 목."""
+    monkeypatch.setattr(update_installer.time, "sleep", lambda *_a, **_k: None)
+    monkeypatch.setattr(update_installer.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("gone")))
+
+
+class _Completed:
+    returncode = 0
+
+
+def test_backup_created_by_rename_not_copy(monkeypatch, tmp_path) -> None:
+    """WinError 5 회피: 설치본은 그 자리에서 덮어쓰지 않고 백업 이름으로 옮긴다."""
+    import shutil as _shutil
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    _mock_quiet_parent(monkeypatch)
+    monkeypatch.setattr(update_installer.subprocess, "run", lambda *a, **k: _Completed())
+    monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
+
+    copies: list[tuple[str, str]] = []
+    real_copy2 = _shutil.copy2
+
+    def _spy_copy2(src, dst, *a, **k):
+        copies.append((str(src), str(dst)))
+        return real_copy2(src, dst, *a, **k)
+
+    monkeypatch.setattr(update_installer.shutil, "copy2", _spy_copy2)
+    target = tmp_path / "app.exe"
+    staged = tmp_path / "staged.exe"
+    target.write_bytes(b"old-exe")
+    staged.write_bytes(b"new-exe")
+    assert update_installer.apply_update(str(target), str(staged), 123456) == 0
+    assert target.read_bytes() == b"new-exe"
+    assert copies == []
+
+
+def test_stale_backup_is_overwritten(monkeypatch, tmp_path) -> None:
+    """이전 시도가 남긴 낡은 백업이 다음 시도를 막지 않는다."""
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    _mock_quiet_parent(monkeypatch)
+    monkeypatch.setattr(update_installer.subprocess, "run", lambda *a, **k: _Completed())
+    monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
+    target = tmp_path / "app.exe"
+    staged = tmp_path / "staged.exe"
+    target.write_bytes(b"old-exe")
+    staged.write_bytes(b"new-exe")
+    (tmp_path / "app.exe.bak").write_bytes(b"stale-backup")
+    assert update_installer.apply_update(str(target), str(staged), 123456) == 0
+    assert target.read_bytes() == b"new-exe"
+    assert not (tmp_path / "app.exe.bak").exists()
+    result = update_installer.consume_update_result()
+    assert result is not None and result["status"] == "applied"
+
+
+def test_interrupted_swap_between_moves_recovers_backup(monkeypatch, tmp_path) -> None:
+    """두 이동 사이에서 중단됐다면 다음 실행에서 백업으로 복구 후 교체한다."""
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    _mock_quiet_parent(monkeypatch)
+    monkeypatch.setattr(update_installer.subprocess, "run", lambda *a, **k: _Completed())
+    monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
+    target = tmp_path / "app.exe"
+    staged = tmp_path / "staged.exe"
+    backup = tmp_path / "app.exe.bak"
+    backup.write_bytes(b"old-exe")
+    staged.write_bytes(b"new-exe")
+    assert not target.exists()
+    assert update_installer.apply_update(str(target), str(staged), 123456) == 0
+    assert target.read_bytes() == b"new-exe"
+    assert not backup.exists()
+
+
+def test_first_move_lock_keeps_installed_exe(monkeypatch, tmp_path) -> None:
+    """첫 이동이 잠금으로 실패하면 설치본은 그대로 남고 staged는 보존된다."""
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setattr(update_installer, "REPLACE_MAX_ATTEMPTS", 2)
+    _mock_quiet_parent(monkeypatch)
+    real_replace = os.replace
+
+    def _locked(src, dst):
+        if Path(dst).name.startswith("app"):
+            raise PermissionError(13, "Access is denied")
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(update_installer.os, "replace", _locked)
+    target = tmp_path / "app.exe"
+    staged = tmp_path / "staged.exe"
+    target.write_bytes(b"old-exe")
+    staged.write_bytes(b"new-exe")
+    assert update_installer.apply_update(str(target), str(staged), 123456) == 4
+    assert target.read_bytes() == b"old-exe"
+    assert staged.read_bytes() == b"new-exe"
+    assert not (tmp_path / "app.exe.bak").exists()
+    result = update_installer.consume_update_result()
+    assert result is not None and result["status"] == "failed"
+    assert "preserved" in str(result.get("error"))
+
+
+def test_clean_bootloader_env_strips_all_handoff_prefixes() -> None:
+    dirty = {
+        "_MEIPASS": "x", "_MEIPASS2": "x", "_MEI12345": "x",
+        "_PYI_ARCHIVE_FILE": "x", "_PYI_PARENT_PROCESS_LEVEL": "x",
+        "_PYINSTALLER_FOO": "x", "PYINSTALLER_BAR": "x",
+        "PATH": "keep", "KEEP": "yes",
+    }
+    assert update_installer.clean_bootloader_env(dict(dirty)) == {"PATH": "keep", "KEEP": "yes"}
+
+
+def test_helper_and_relaunch_strip_bootloader_env(monkeypatch, tmp_path) -> None:
+    """헬퍼·재기동 자식은 부트로더 핸드오프 변수 없는 환경으로 실행."""
+    monkeypatch.setenv("_MEIPASS2", "C:\\fake\\_MEI12345")
+    monkeypatch.setenv("_PYI_ARCHIVE_FILE", "C:\\fake\\app.exe")
+    monkeypatch.setenv("_PYI_PARENT_PROCESS_LEVEL", "1")
+    monkeypatch.setenv("PYINSTALLER_FOO", "1")
+    monkeypatch.setenv("KEEP_ME", "yes")
+
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: captured.setdefault("env", k.get("env")))
+    staged = tmp_path / "staged.exe"
+    staged.write_bytes(b"new-exe")
+    update_installer.launch_update_helper(target=tmp_path / "app.exe", staged=staged)
+    helper_env = captured.get("env")
+    assert isinstance(helper_env, dict)
+    for key in ("_MEIPASS2", "_PYI_ARCHIVE_FILE", "_PYI_PARENT_PROCESS_LEVEL", "PYINSTALLER_FOO"):
+        assert key not in helper_env
+    assert helper_env.get("KEEP_ME") == "yes"
+
+    captured.clear()
+    update_installer._relaunch(tmp_path / "app.exe")
+    relaunch_env = captured.get("env")
+    assert isinstance(relaunch_env, dict)
+    for key in ("_MEIPASS2", "_PYI_ARCHIVE_FILE", "_PYI_PARENT_PROCESS_LEVEL", "PYINSTALLER_FOO"):
+        assert key not in relaunch_env
+    assert relaunch_env.get("KEEP_ME") == "yes"
+
+
+def test_smoke_child_strips_bootloader_env(monkeypatch, tmp_path) -> None:
+    """--smoke 자식은 부트로더 핸드오프 변수 없는 환경으로 실행."""
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    monkeypatch.setenv("_MEIPASS2", "C:\\fake\\_MEI12345")
+    monkeypatch.setenv("_PYI_ARCHIVE_FILE", "C:\\fake\\app.exe")
+    _mock_quiet_parent(monkeypatch)
+    seen: dict[str, object] = {}
+
+    def _run(*a, **k):
+        seen["env"] = k.get("env")
+        return _Completed()
+
+    monkeypatch.setattr(update_installer.subprocess, "run", _run)
+    monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
+    target = tmp_path / "app.exe"
+    staged = tmp_path / "staged.exe"
+    target.write_bytes(b"old-exe")
+    staged.write_bytes(b"new-exe")
+    assert update_installer.apply_update(str(target), str(staged), 123456) == 0
+    smoke_env = seen.get("env")
+    assert isinstance(smoke_env, dict)
+    assert "_MEIPASS2" not in smoke_env and "_PYI_ARCHIVE_FILE" not in smoke_env

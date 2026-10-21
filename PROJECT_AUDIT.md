@@ -36,7 +36,7 @@ README/CLAUDE와 CodeGraph 탐색을 바탕으로 정리했다.
 * 외부 의존성: PyQt6, PyMuPDF(fitz, optional 경계 `optional_deps.py`), `cryptography`(매니페스트 서명), `google-genai`(optional AI), `keyring`(optional API 키), PyInstaller(배포).
 * 핵심 실행 흐름:
   * `UI 액션 → run_worker(mode, output_path, **kwargs) → _prepare_preview_for_same_path_output → _augment_worker_passwords_from_preview → WorkerThread.run → _preflight_inputs → OperationSpec handler → atomic save → finished/error/cancelled 시그널 → preview 복원·undo 스냅샷`
-  * `기동 → UpdateMixin(Windows만, idle 단일 비행) → download/verify manifest(별도 스레드) → _offer_update(모달 1회) → _download_update(진행률) → stage_update(고유 스테이징명) → launch_update_helper → 종료 → helper: 대기→백업→교체→smoke→성공 시 재기동/실패 시 롤백+결과 JSON → 다음 기동에서 1회 소비·표시`
+  * `기동 → UpdateMixin(Windows만, idle 단일 비행) → download/verify manifest(별도 스레드) → _offer_update(모달 1회) → _download_update(진행률) → stage_update(고유 스테이징명) → launch_update_helper → 종료 → helper: 대기→중단 복구→백업 이동→교체 이동→smoke(clean env)→성공 시 재기동/실패 시 롤백+결과 JSON → 다음 기동에서 1회 소비·표시`
 
 ## 3. Audit Coverage & Limitations
 

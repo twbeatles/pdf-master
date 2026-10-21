@@ -124,6 +124,20 @@ LAUNCH_HELPER_MAX_ATTEMPTS = 3
 LAUNCH_HELPER_RETRY_INTERVAL = 0.5
 
 
+#: PyInstaller onefile bootloader hand-off vars inherited by children.
+_BOOTLOADER_ENV_EXACT = frozenset({"_MEIPASS", "_MEIPASS2"})
+_BOOTLOADER_ENV_PREFIXES = ("_MEIPASS", "_MEI", "_PYI", "_PYINSTALLER", "PYINSTALLER_")
+
+
+def clean_bootloader_env(env: dict[str, str] | None = None) -> dict[str, str]:
+    """Return a child-process env dict without bootloader hand-off vars."""
+    base = dict(os.environ) if env is None else dict(env)
+    for key in list(base):
+        if key in _BOOTLOADER_ENV_EXACT or key.startswith(_BOOTLOADER_ENV_PREFIXES):
+            del base[key]
+    return base
+
+
 def launch_update_helper(*, target: Path, staged: Path) -> None:
     helper = staged.parent / f"pdf-master-update-helper-{uuid4().hex}.exe"
     try:
@@ -137,7 +151,7 @@ def launch_update_helper(*, target: Path, staged: Path) -> None:
     last_error: OSError | None = None
     for _ in range(max(1, LAUNCH_HELPER_MAX_ATTEMPTS)):
         try:
-            subprocess.Popen(args, close_fds=True, creationflags=flags)
+            subprocess.Popen(args, close_fds=True, creationflags=flags, env=clean_bootloader_env())
             return
         except OSError as exc:
             last_error = exc
@@ -188,6 +202,15 @@ def _wait_for_parent_exit(parent_pid: int) -> bool:
             return True
         time.sleep(PARENT_WAIT_INTERVAL)
     return False
+
+
+def _overwrite_backup_with_target(target_path: Path, backup: Path) -> None:
+    """Stale backup overwrite: unlink-then-rename, unlink failures are non-fatal."""
+    try:
+        backup.unlink(missing_ok=True)
+    except OSError:
+        pass
+    _replace_with_retry(target_path, backup)
 
 
 def _replace_with_retry(source: Path, dest: Path) -> None:
@@ -259,12 +282,25 @@ def _relaunch_elevated(*, target: Path, staged: Path, parent_pid: int) -> bool:
 
 def _relaunch(path: Path) -> None:
     flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    subprocess.Popen([str(path)], close_fds=True, creationflags=flags)
+    subprocess.Popen([str(path)], close_fds=True, creationflags=flags, env=clean_bootloader_env())
 
 
 def apply_update(target: str, staged: str, parent_pid: int) -> int:
     target_path, staged_path = Path(target).resolve(), Path(staged).resolve()
-    if parent_pid <= 0 or target_path.suffix.lower() != ".exe" or staged_path.suffix.lower() != ".exe" or not target_path.is_file() or not staged_path.is_file():
+    if parent_pid <= 0 or target_path.suffix.lower() != ".exe" or staged_path.suffix.lower() != ".exe":
+        _write_result("failed", error="Invalid update paths"); return 2
+    backup = target_path.with_suffix(target_path.suffix + ".bak")
+    if not target_path.is_file() and backup.is_file():
+        try:
+            _replace_with_retry(backup, target_path)
+        except OSError as exc:
+            _write_result("failed", error=f"Interrupted update could not restore the previous version ({exc}); staged update preserved at {staged_path}"); return 4
+        if not staged_path.is_file():
+            _write_result("rolled_back", error="Interrupted update restored the previous version")
+            try: _relaunch(target_path)
+            except OSError: pass
+            return 4
+    if not target_path.is_file() or not staged_path.is_file():
         _write_result("failed", error="Invalid update paths"); return 2
     if not _wait_for_parent_exit(parent_pid):
         _write_result("failed", error="Timed out waiting for the application to close"); return 3
@@ -277,8 +313,8 @@ def apply_update(target: str, staged: str, parent_pid: int) -> int:
         return 4
     backup = target_path.with_suffix(target_path.suffix + ".bak")
     try:
-        backup.unlink(missing_ok=True); shutil.copy2(target_path, backup); _replace_with_retry(staged_path, target_path)
-        if subprocess.run([str(target_path), "--smoke"], timeout=60, check=False, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode != 0: raise RuntimeError("Updated executable smoke check failed")
+        _overwrite_backup_with_target(target_path, backup); _replace_with_retry(staged_path, target_path)
+        if subprocess.run([str(target_path), "--smoke"], timeout=60, check=False, env=clean_bootloader_env(), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode != 0: raise RuntimeError("Updated executable smoke check failed")
         backup.unlink(missing_ok=True); _write_result("applied"); _relaunch(target_path); return 0
     except PermissionError as exc:
         rolled_back = False
