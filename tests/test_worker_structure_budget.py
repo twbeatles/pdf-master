@@ -119,7 +119,7 @@ def test_legacy_public_import_paths_still_export_expected_symbols():
     assert isinstance(KEYRING_AVAILABLE, bool)
     assert isinstance(SETTINGS_FILE, str)
     assert VERSION
-    assert PAGE_SIZES["A4"]
+    assert len(PAGE_SIZES["A4"]) > 0
     assert ThemeColors.PRIMARY == "#4f8cff"
     assert DARK_STYLESHEET and LIGHT_STYLESHEET
 
