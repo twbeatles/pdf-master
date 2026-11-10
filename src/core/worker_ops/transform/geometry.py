@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import logging
 from typing import Any, cast
+
 from ..._typing import WorkerHost
 from ...constants import (
     DEFAULT_PAGE_SIZE,
@@ -13,6 +15,7 @@ from ...worker_runtime.args import (
     _as_str,
 )
 from ..cleanup_ops import _content_bbox
+
 logger = logging.getLogger(__name__)
 
 

@@ -7,9 +7,22 @@ from collections import OrderedDict
 from typing import Any, Callable, Optional
 
 from .cache import AICacheMixin
-from .client import GENAI_AVAILABLE, GENAI_CLIENT, PerfTimer, _GENAI_MODULE, _response_text, fitz
+from .client import (
+    _GENAI_MODULE,
+    GENAI_AVAILABLE,
+    GENAI_CLIENT,
+    PerfTimer,
+    _response_text,
+    fitz,
+)
 from .config import AI_DEFAULT_TIMEOUT, AI_MAX_TEXT_LENGTH
-from .errors import AIServiceError, APIKeyError, APIRateLimitError, APITimeoutError, retry_with_backoff
+from .errors import (
+    AIServiceError,
+    APIKeyError,
+    APIRateLimitError,
+    APITimeoutError,
+    retry_with_backoff,
+)
 from .extraction import AIExtractionMixin
 from .generation import AIGenerationMixin
 from .prompts import AIPromptMixin

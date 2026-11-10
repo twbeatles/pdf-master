@@ -5,9 +5,9 @@ from PySide6.QtWidgets import (
     QLabel,
     QVBoxLayout,
 )
-from ....fluent_widgets import PrimaryButton, QTextEdit
 
 from .....core.i18n import tm
+from ....fluent_widgets import PrimaryButton, QTextEdit
 from ....widgets import FileSelectorWidget
 
 

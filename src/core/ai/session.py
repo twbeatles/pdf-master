@@ -1,10 +1,9 @@
 from __future__ import annotations
-# pyright: reportAttributeAccessIssue=false
 
+# pyright: reportAttributeAccessIssue=false
 import logging
 import threading
 from typing import Any, Callable
-
 
 logger = logging.getLogger(__name__)
 

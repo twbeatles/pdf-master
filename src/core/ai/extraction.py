@@ -1,6 +1,6 @@
 from __future__ import annotations
-# pyright: reportAttributeAccessIssue=false
 
+# pyright: reportAttributeAccessIssue=false
 import logging
 import os
 from typing import Any

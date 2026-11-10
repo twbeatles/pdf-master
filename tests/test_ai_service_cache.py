@@ -160,9 +160,10 @@ def test_clear_chat_session_removes_all_versions_for_same_pdf(tmp_path):
 
 
 def test_clear_chat_session_removes_uploaded_file_and_deletes_remote(tmp_path):
+    from collections import OrderedDict
+
     from src.core.ai_service import AIService
     from src.core.path_utils import normalize_path_key
-    from collections import OrderedDict
 
     class FakeFilesApi:
         def __init__(self):
@@ -192,8 +193,9 @@ def test_clear_chat_session_removes_uploaded_file_and_deletes_remote(tmp_path):
 
 
 def test_shutdown_executor_deletes_cached_remote_uploads():
-    from src.core.ai_service import AIService
     from collections import OrderedDict
+
+    from src.core.ai_service import AIService
 
     class FakeFilesApi:
         def __init__(self):

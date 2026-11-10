@@ -91,7 +91,6 @@ def test_dark_menu_rules_declare_text_color():
     colors. QMenu inherits the (light) app palette, so a dark menu background
     without `color` renders black-on-black (invisible) on dark OS themes."""
     from scripts.check_theme_contrast import check_sheet
-
     from src.ui.theme import DARK_STYLESHEET, NATIVE_DARK_STYLESHEET
 
     issues = check_sheet("NATIVE_DARK", NATIVE_DARK_STYLESHEET, "#141922")
@@ -104,7 +103,6 @@ def test_light_menu_rules_declare_text_color():
     explicit QMenu*/QMenuBar* text colors. Otherwise items inherit the
     palette (e.g. disabled entries render #BEBEBE on white, ~1.8:1)."""
     from scripts.check_theme_contrast import check_sheet
-
     from src.ui.theme import LIGHT_STYLESHEET, NATIVE_LIGHT_STYLESHEET
 
     issues = check_sheet("NATIVE_LIGHT", NATIVE_LIGHT_STYLESHEET, "#ffffff")

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
-from .markup_actions.deps import ToastWidget, tm
 from .markup_actions.annotations import (
     action_add_annotation_basic,
     action_add_background,
@@ -18,6 +17,7 @@ from .markup_actions.annotations import (
     action_list_annotations,
     action_remove_annotations,
 )
+from .markup_actions.deps import ToastWidget, tm
 from .markup_actions.redact import (
     _on_preview_region_selected_for_redact,
     _on_redact_region_mode_changed,

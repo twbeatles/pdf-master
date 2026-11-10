@@ -1,17 +1,18 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
-# (this module uses no fluent-shadowed widgets)
 
-from .markup_sections.search_highlight import build_search_highlight
 from .markup_sections.annotations import build_annotations
-from .markup_sections.text_markup import build_text_markup
 from .markup_sections.background import build_background
-from .markup_sections.redact import build_redact
-from .markup_sections.sticky import build_sticky
 from .markup_sections.ink import build_ink
-from .markup_sections.shapes import build_shapes
 from .markup_sections.links import build_links
+from .markup_sections.redact import build_redact
+
+# (this module uses no fluent-shadowed widgets)
+from .markup_sections.search_highlight import build_search_highlight
+from .markup_sections.shapes import build_shapes
+from .markup_sections.sticky import build_sticky
+from .markup_sections.text_markup import build_text_markup
 
 
 def _create_markup_subtab(self):

@@ -1,3 +1,4 @@
+from .._typing import MainWindowHost
 from .actions import (
     _ask_ai_question,
     _clear_chat_history,
@@ -16,7 +17,6 @@ from .storage import (
     _save_chat_histories,
     _trim_chat_histories,
 )
-from .._typing import MainWindowHost
 
 
 class MainWindowTabsAiMixin(MainWindowHost):

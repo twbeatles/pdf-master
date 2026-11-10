@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 
 from .....core.i18n import tm
-from ....fluent_widgets import PrimaryButton, PasswordLineEdit
+from ....fluent_widgets import PasswordLineEdit, PrimaryButton
 from ....widgets import FileSelectorWidget
 
 

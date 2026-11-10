@@ -1,3 +1,4 @@
+from .._typing import MainWindowHost
 from .active_file import _carry_active_pdf_to_visible_tools
 from .menu import (
     _change_language,
@@ -10,7 +11,12 @@ from .menu import (
     _toggle_save_chat_histories,
     _update_recent_menu_bar,
 )
-from .shortcuts import _install_wheel_filters, _relax_spinbox_min_widths, _setup_shortcuts, _shortcut_open_file
+from .shortcuts import (
+    _install_wheel_filters,
+    _relax_spinbox_min_widths,
+    _setup_shortcuts,
+    _shortcut_open_file,
+)
 from .state import (
     _choose_output_directory,
     _choose_save_file,
@@ -22,7 +28,6 @@ from .state import (
     _save_splitter_state,
 )
 from .theme import _apply_theme, _create_header, _on_system_theme_changed, _toggle_theme
-from .._typing import MainWindowHost
 
 
 class MainWindowCoreMixin(MainWindowHost):

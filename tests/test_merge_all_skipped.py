@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 from _deps import require_pyside6_and_pymupdf
+
 from src.core.optional_deps import fitz
 from src.core.path_utils import normalize_path_key
 from src.core.worker import WorkerThread

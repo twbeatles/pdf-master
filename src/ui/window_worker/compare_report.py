@@ -5,9 +5,8 @@ from __future__ import annotations
 import logging
 import os
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,

@@ -1,4 +1,5 @@
 from _deps import require_pyside6_and_pymupdf
+
 from src.core.optional_deps import fitz
 
 

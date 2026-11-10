@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 
-
 def default_settings() -> dict:
     """
     기본 설정 생성.

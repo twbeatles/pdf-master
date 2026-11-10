@@ -6,7 +6,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from _deps import require_pyside6, require_pyside6_and_pymupdf
 
 

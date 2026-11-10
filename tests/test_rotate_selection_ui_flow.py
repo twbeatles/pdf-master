@@ -1,6 +1,5 @@
 from typing import Any
 
-
 from _deps import require_pyside6
 
 

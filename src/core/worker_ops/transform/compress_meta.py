@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import logging
 import os
 from typing import Any, cast
+
 from ..._typing import WorkerHost
 from ...constants import (
     COMPRESSION_SETTINGS,
@@ -10,15 +12,16 @@ from ...worker_runtime.args import (
     _as_dict,
     _as_str,
 )
-from .._pdf_helpers import (
-    optimize_pdf_images,
-    subset_document_fonts,
-)
 from ...worker_runtime.save_profiles import (
     normalize_save_profile,
     quality_to_save_profile,
     resolve_image_optimize_options,
 )
+from .._pdf_helpers import (
+    optimize_pdf_images,
+    subset_document_fonts,
+)
+
 logger = logging.getLogger(__name__)
 
 

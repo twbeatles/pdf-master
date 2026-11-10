@@ -1,11 +1,17 @@
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QProgressBar, QGraphicsDropShadowEffect, QFrame
-)
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QResizeEvent
-from ...core.i18n import tm
+from PySide6.QtWidgets import (
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
+from ...core.i18n import tm
 
 
 class ProgressOverlayWidget(QFrame):

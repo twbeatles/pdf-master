@@ -2,7 +2,6 @@ import ast
 import re
 from pathlib import Path
 
-
 TARGET_WORKER_FILES = sorted(Path("src/core/worker_ops").rglob("*.py"))
 
 

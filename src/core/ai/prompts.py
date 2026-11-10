@@ -1,8 +1,7 @@
 from __future__ import annotations
+
 # pyright: reportAttributeAccessIssue=false
-
 import logging
-
 
 logger = logging.getLogger(__name__)
 

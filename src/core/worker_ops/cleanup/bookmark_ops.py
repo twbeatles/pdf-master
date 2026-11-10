@@ -4,6 +4,7 @@ import logging
 import os
 import re
 from typing import Any, cast
+
 from ..._typing import WorkerHost
 from ...optional_deps import fitz
 from ...worker_runtime.args import (
@@ -11,9 +12,8 @@ from ...worker_runtime.args import (
     _as_int,
     _as_str,
 )
-
-
 from .helpers import _collect_heading_toc
+
 logger = logging.getLogger(__name__)
 _HEADING_MIN_SIZE = 12.0
 _HEADING_SIZE_GAP = 1.5

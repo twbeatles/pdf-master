@@ -1,12 +1,13 @@
 """PDF helpers: markdown."""
 from __future__ import annotations
 
-from __future__ import annotations
 import json
 import logging
 import os
 from typing import Any, cast
+
 from ...worker_runtime.args import _as_str
+
 logger = logging.getLogger(__name__)
 
 def _fallback_markdown_from_text(page: Any) -> str:

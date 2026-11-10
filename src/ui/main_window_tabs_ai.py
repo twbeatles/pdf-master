@@ -14,7 +14,11 @@ from PySide6.QtWidgets import (
 
 from ..core.i18n import tm
 from ..core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
-from .main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS  # noqa: F401 -- keeper used by test_ai_encrypted_ui_access.py:143,test_ai_encrypted_ui_access.py:91
+from .main_window_config import (  # noqa: F401 -- keeper used by test_ai_encrypted_ui_access.py:143,test_ai_encrypted_ui_access.py:91
+    AI_AVAILABLE,
+    MAX_CHAT_HISTORY_ENTRIES,
+    MAX_CHAT_HISTORY_PDFS,
+)
 from .tabs_ai import MainWindowTabsAiMixin as _MainWindowTabsAiMixin
 from .widgets import ToastWidget
 

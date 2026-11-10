@@ -8,8 +8,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QVBoxLayout,
 )
-from ..fluent_widgets import PrimaryButton
 
+from ..fluent_widgets import PrimaryButton
 
 logger = logging.getLogger(__name__)
 

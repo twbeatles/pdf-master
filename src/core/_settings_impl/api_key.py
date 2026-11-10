@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-
 from ..optional_deps import KEYRING_AVAILABLE, keyring
 from .config import KEYRING_SERVICE, KEYRING_USERNAME, logger
 from .persistence import load_settings, save_settings
+
 
 def get_api_key() -> str:
     """

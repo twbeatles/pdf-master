@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import logging
+
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
@@ -14,20 +16,21 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
 from ...core.i18n import tm
+from .document_api import PreviewDocumentApiMixin
+from .interaction_overlays import PreviewInteractionMixin
+from .navigation import PreviewNavigationMixin
+from .queue_overlay import QueueGhostOverlay
 from .region_select import (
     RegionSelectOverlay,
 )
-from .queue_overlay import QueueGhostOverlay
 from .search import PreviewSearchLineEdit
-from .text_placement import TextPlacementOverlay
-
-from .document_api import PreviewDocumentApiMixin
-from .navigation import PreviewNavigationMixin
-from .zoom import PreviewZoomMixin
 from .search_panel import PreviewSearchPanelMixin
+from .text_placement import TextPlacementOverlay
 from .theme_api import PreviewThemeMixin
-from .interaction_overlays import PreviewInteractionMixin
+from .zoom import PreviewZoomMixin
+
 logger = logging.getLogger(__name__)
 
 

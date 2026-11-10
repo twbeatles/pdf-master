@@ -1,8 +1,7 @@
 """Fluent redesign P1 foundation regression (DESKTOP_UI_DESIGN_RULES §5·§6·§20)."""
 
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 from src.ui import design_tokens as tok
 from src.ui import fluent_theme

@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from _deps import require_pyside6_and_pymupdf
+
 from src.core.optional_deps import fitz
 from src.core.worker_runtime.save_profiles import (
     resolve_image_optimize_options,

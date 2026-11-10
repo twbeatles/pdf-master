@@ -1,5 +1,6 @@
 from . import deps
 
+
 def action_highlight_text(self):
     """텍스트 하이라이트"""
     path = self.sel_search.get_path()

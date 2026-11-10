@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import logging
+
 from ..._typing import WorkerHost
 from ...optional_deps import fitz
 from ...worker_runtime.args import (
@@ -10,6 +12,7 @@ from ...worker_runtime.args import (
 from .._pdf_helpers import (
     text_needs_cjk,
 )
+
 logger = logging.getLogger(__name__)
 
 

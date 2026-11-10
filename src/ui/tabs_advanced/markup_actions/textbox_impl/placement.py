@@ -10,6 +10,7 @@ from .coords_style import (
     _textbox_session,
 )
 
+
 def _ensure_textbox_preview_ready(self, path: str):
     """텍스트 상자용 미리보기 동기화. 실패 시 warning 결과, 성공 시 preview 위젯."""
     preview = getattr(self, "preview_image", None)

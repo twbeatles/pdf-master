@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from .. import deps
 
+
 def _textbox_page_size_pts(self) -> tuple[float, float]:
     """현재 대상 PDF 페이지 크기(pt). 실패 시 A4."""
     from ...textbox_presets import A4_HEIGHT_PT, A4_WIDTH_PT

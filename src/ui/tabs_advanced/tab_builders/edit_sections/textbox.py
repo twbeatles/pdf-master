@@ -7,11 +7,20 @@ from PySide6.QtWidgets import (
     QListWidget,
     QVBoxLayout,
 )
-from ....fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox, QDoubleSpinBox, QSpinBox, QTextEdit, WarningButton
 
 from .....core.i18n import tm
-from ....widgets import FileSelectorWidget
+from ....fluent_widgets import (
+    PrimaryButton,
+    PushButton,
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QSpinBox,
+    QTextEdit,
+    WarningButton,
+)
 from ....form_rows import pair_grid
+from ....widgets import FileSelectorWidget
 
 
 def build_textbox(self, layout) -> None:

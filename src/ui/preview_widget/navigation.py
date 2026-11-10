@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from .._typing import PreviewWidgetHost
 import logging
+
 from PySide6.QtCore import QPointF
 from PySide6.QtPdfWidgets import QPdfView
+
+from .._typing import PreviewWidgetHost
+
 logger = logging.getLogger(__name__)
 
 

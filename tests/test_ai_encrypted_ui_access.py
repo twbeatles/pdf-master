@@ -129,7 +129,7 @@ def test_action_ai_summarize_encrypted_without_preview_access_blocks(monkeypatch
     require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    from PySide6.QtWidgets import QApplication, QWidget, QMessageBox
+    from PySide6.QtWidgets import QApplication, QMessageBox, QWidget
 
     from src.ui import main_window_config
     from src.ui.tabs_ai import actions as ai_actions

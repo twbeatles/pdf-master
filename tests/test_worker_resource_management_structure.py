@@ -1,7 +1,6 @@
 import ast
 from pathlib import Path
 
-
 TARGET_METHODS = [
     "get_pdf_info",
     "get_bookmarks",

@@ -2,6 +2,7 @@ import os
 from typing import Any, cast
 
 from _deps import require_pyside6_and_pymupdf
+
 from src.core.optional_deps import fitz
 
 
@@ -33,6 +34,7 @@ def test_thumbnail_grid_load_pdf_shows_encrypted_message_without_password(tmp_pa
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     from PySide6.QtWidgets import QApplication
+
     from src.core.i18n import tm
     from src.ui.thumbnail_grid import ThumbnailGridWidget
 
@@ -56,6 +58,7 @@ def test_thumbnail_loader_emits_loading_complete_once_without_password(tmp_path)
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     from PySide6.QtWidgets import QApplication
+
     from src.ui.thumbnail_grid import ThumbnailLoaderThread
 
     app = QApplication.instance() or QApplication([])
@@ -79,6 +82,7 @@ def test_thumbnail_loader_emits_loading_complete_once_with_password(tmp_path):
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     from PySide6.QtWidgets import QApplication
+
     from src.ui.thumbnail_grid import ThumbnailLoaderThread
 
     app = QApplication.instance() or QApplication([])
@@ -103,6 +107,7 @@ def test_cleanup_loader_thread_does_not_force_terminate(tmp_path):
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     from PySide6.QtWidgets import QApplication
+
     from src.ui.thumbnail_grid import ThumbnailGridWidget
 
     app = QApplication.instance() or QApplication([])

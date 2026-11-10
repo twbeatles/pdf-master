@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from .._typing import PreviewWidgetHost
 import logging
+
 from PySide6.QtCore import QRectF
+
+from .._typing import PreviewWidgetHost
 from .region_select import (
     compute_page_display_rect,
     map_viewport_rect_to_page_points,
 )
+
 logger = logging.getLogger(__name__)
 
 

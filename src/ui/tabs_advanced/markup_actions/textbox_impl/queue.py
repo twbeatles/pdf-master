@@ -10,6 +10,7 @@ from .coords_style import (
     _textbox_style_kwargs,
 )
 
+
 def _textbox_queue_ensure(self) -> list:
     return _textbox_session(self).queue
 

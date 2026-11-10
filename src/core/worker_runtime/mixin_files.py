@@ -6,8 +6,8 @@ from typing import Any
 from .._typing import WorkerHost
 from .io import (
     atomic_binary_save,
-    atomic_pixmap_save,
     atomic_pdf_save,
+    atomic_pixmap_save,
     atomic_text_save,
     build_safe_attachment_output_path,
     build_unique_output_stem,

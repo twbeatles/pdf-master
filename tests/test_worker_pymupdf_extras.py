@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from _deps import require_pyside6_and_pymupdf
+
 from src.core.optional_deps import fitz
 from src.core.worker_runtime.dispatch import get_operation_spec
 

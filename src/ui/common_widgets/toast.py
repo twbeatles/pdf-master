@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QPushButton,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +89,7 @@ class ToastWidget(QFrame):
         self.adjustSize()
 
         # Import here to avoid circular import
-        from PySide6.QtCore import QTimer, QPropertyAnimation, QEasingCurve
+        from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QTimer
         from PySide6.QtWidgets import QGraphicsOpacityEffect
 
         # Opacity effect for fade animation

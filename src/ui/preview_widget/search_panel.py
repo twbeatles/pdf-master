@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from .._typing import PreviewWidgetHost
 import logging
+
 from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtWidgets import (
     QListWidgetItem,
 )
+
 from ...core.i18n import tm
+from .._typing import PreviewWidgetHost
+
 logger = logging.getLogger(__name__)
 
 

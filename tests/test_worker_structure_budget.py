@@ -80,12 +80,14 @@ def test_legacy_shims_stay_thin_after_refactor():
 
 
 def test_legacy_public_import_paths_still_export_expected_symbols():
-    from src.core.ai_service import AIService, GENAI_AVAILABLE, get_ai_service
+    from src.core.ai_service import GENAI_AVAILABLE, AIService, get_ai_service
     from src.core.constants import PAGE_SIZES, VERSION
     from src.core.settings import KEYRING_AVAILABLE, SETTINGS_FILE, load_settings
     from src.core.undo_manager import ActionRecord, UndoManager
     from src.core.worker_ops import WorkerPdfOpsMixin
-    from src.core.worker_ops._pdf_impl import WorkerPdfOpsMixin as WorkerPdfOpsMixinFacade
+    from src.core.worker_ops._pdf_impl import (
+        WorkerPdfOpsMixin as WorkerPdfOpsMixinFacade,
+    )
     from src.core.worker_ops.annotation_ops import WorkerAnnotationOpsMixin
     from src.core.worker_ops.cleanup_ops import WorkerCleanupOpsMixin, _content_bbox
     from src.core.worker_ops.extract_ops import WorkerExtractOpsMixin
@@ -155,8 +157,10 @@ def test_split_domain_packages_export_composed_mixins():
         "add_freehand_signature",
     }
     # textbox 패키지 분리 surface
+    from src.core.worker_ops.annotation.highlight_markup import (
+        WorkerAnnotationHighlightMixin,
+    )
     from src.core.worker_ops.annotation.textbox import WorkerAnnotationTextboxMixin
-    from src.core.worker_ops.annotation.highlight_markup import WorkerAnnotationHighlightMixin
 
     assert hasattr(WorkerAnnotationTextboxMixin, "insert_textbox")
     assert hasattr(WorkerAnnotationTextboxMixin, "extract_text_in_rect")
@@ -187,28 +191,34 @@ def test_split_domain_packages_export_composed_mixins():
     assert hasattr(WorkerCompareOpsMixin, "compare_pdfs")
     assert hasattr(WorkerCompareOpsMixin, "_legacy_compare_pdfs")
 
-    from src.core.worker_ops.ai_ops import WorkerAiOpsMixin
-    from src.core.worker_ops.batch_ops import WorkerBatchOpsMixin
-    from src.core.worker_ops.compose_ops import WorkerComposeOpsMixin
-    from src.core.worker_ops.form_ops import WorkerFormOpsMixin
-    from src.core.worker_ops.security_ops import WorkerSecurityOpsMixin, _resolve_permissions
     from src.core.worker_ops._pdf_helpers import text_needs_cjk
+    from src.core.worker_ops.ai_ops import WorkerAiOpsMixin
     from src.core.worker_ops.annotation.textbox_helpers import (
         ensure_textbox_rect,
         resolve_textbox_fontname,
         write_textbox_content,
     )
+    from src.core.worker_ops.batch_ops import WorkerBatchOpsMixin
     from src.core.worker_ops.compare.helpers import collect_text_blocks, diff_blocks
+    from src.core.worker_ops.compose_ops import WorkerComposeOpsMixin
+    from src.core.worker_ops.form_ops import WorkerFormOpsMixin
+    from src.core.worker_ops.security_ops import (
+        WorkerSecurityOpsMixin,
+        _resolve_permissions,
+    )
+    from src.ui.preview_widget.text_placement import (
+        TextPlacementOverlay,
+        hit_test_handle,
+    )
+    from src.ui.preview_widget.text_placement_geometry import apply_resize
     from src.ui.tabs_advanced.markup_actions.textbox import (
         action_insert_textbox,
         action_textbox_queue_add,
     )
-    from src.ui.preview_widget.text_placement import TextPlacementOverlay, hit_test_handle
-    from src.ui.preview_widget.text_placement_geometry import apply_resize
-    from src.ui.thumbnail.grid import ThumbnailGridWidget
-    from src.ui.thumbnail.grid_loading import ThumbnailGridLoadingMixin
     from src.ui.tabs_advanced.tab_builders.edit import _create_edit_subtab
     from src.ui.tabs_advanced.tab_builders.markup import _create_markup_subtab
+    from src.ui.thumbnail.grid import ThumbnailGridWidget
+    from src.ui.thumbnail.grid_loading import ThumbnailGridLoadingMixin
 
     for name in ("ai_summarize", "ai_ask_question", "ai_extract_keywords"):
         assert hasattr(WorkerAiOpsMixin, name), name
@@ -236,14 +246,22 @@ def test_split_domain_packages_export_composed_mixins():
     assert callable(_create_edit_subtab)
     assert callable(_create_markup_subtab)
 
+    from src.ui._typing import PreviewWidgetHost, ThumbnailGridHost
+    from src.ui.common_widgets.file_selection import DropZoneWidget, FileSelectorWidget
+    from src.ui.main_window_worker import (
+        MainWindowWorkerMixin,
+        ToastWidget,
+        WorkerThread,
+    )
     from src.ui.preview_widget.interaction_overlays import PreviewInteractionMixin
     from src.ui.preview_widget.interaction_region import PreviewRegionInteractionMixin
-    from src.ui.common_widgets.file_selection import DropZoneWidget, FileSelectorWidget
-    from src.ui.tabs_ai.actions import action_ai_summarize, _extract_keywords, AI_AVAILABLE
-    from src.ui.tabs_basic.security import setup_edit_sec_tab, action_protect
     from src.ui.tabs_advanced.tab_builders.misc import _create_misc_subtab
-    from src.ui.main_window_worker import MainWindowWorkerMixin, ToastWidget, WorkerThread
-    from src.ui._typing import PreviewWidgetHost, ThumbnailGridHost
+    from src.ui.tabs_ai.actions import (
+        AI_AVAILABLE,
+        _extract_keywords,
+        action_ai_summarize,
+    )
+    from src.ui.tabs_basic.security import action_protect, setup_edit_sec_tab
 
     assert hasattr(PreviewInteractionMixin, "set_region_select_mode")
     assert hasattr(PreviewRegionInteractionMixin, "set_region_select_mode")

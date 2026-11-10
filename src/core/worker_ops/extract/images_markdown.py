@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import json
 import logging
 import os
+
 from ..._typing import WorkerHost
 from ...worker_runtime.args import (
     _as_bool,
@@ -13,6 +15,7 @@ from .._pdf_helpers import (
     _markdown_front_matter,
     _page_asset_placeholders,
 )
+
 logger = logging.getLogger(__name__)
 
 

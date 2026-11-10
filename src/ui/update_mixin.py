@@ -12,7 +12,12 @@ from typing import Any, cast
 from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import QApplication, QMessageBox
 
-from ..core.constants import UPDATE_MANIFEST_URL, UPDATE_PUBLIC_KEY_B64, UPDATE_RELEASES_URL, VERSION
+from ..core.constants import (
+    UPDATE_MANIFEST_URL,
+    UPDATE_PUBLIC_KEY_B64,
+    UPDATE_RELEASES_URL,
+    VERSION,
+)
 from ..core.i18n import tm
 from ..core.update_installer import consume_update_result, launch_update_helper
 from ..core.update_manifest import (

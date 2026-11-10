@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 FALLBACK_MESSAGES = {
     "err_ai_module_not_found": "AI 서비스 모듈을 찾을 수 없습니다.",
     "err_pdf_not_found": "PDF 파일을 찾을 수 없습니다.",

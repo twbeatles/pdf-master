@@ -4,10 +4,10 @@ import logging
 import os
 
 from PySide6.QtWidgets import QDialog, QMessageBox, QVBoxLayout
-from ..fluent_widgets import PushButton
 
 from ...core.i18n import tm
 from ...core.worker_runtime.io import atomic_text_write
+from ..fluent_widgets import PushButton
 from ..main_window_config import AI_AVAILABLE
 from ..widgets import ToastWidget, is_pdf_encrypted
 from .meta import build_summary_save_text
@@ -192,7 +192,10 @@ def _load_chat_history_for_path(self, path: str):
     self.txt_chat_history.clear()
     if not path:
         return
-    from ..window_worker.results import format_chat_assistant_html, format_chat_user_html
+    from ..window_worker.results import (
+        format_chat_assistant_html,
+        format_chat_user_html,
+    )
 
     history = self._chat_histories.get(_chat_history_key(path), [])
     for entry in history:

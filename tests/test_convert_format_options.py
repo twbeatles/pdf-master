@@ -4,6 +4,7 @@ from _deps import require_pyside6
 
 def _build_window():
     from PySide6.QtWidgets import QTabWidget, QWidget
+
     from src.ui.main_window_tabs_basic import MainWindowTabsBasicMixin
 
     class DummyWindow(QWidget, MainWindowTabsBasicMixin):
@@ -40,6 +41,7 @@ def test_convert_format_combo_exposes_expected_formats():
 def test_convert_preset_falls_back_when_old_format_not_supported(monkeypatch):
     require_pyside6()
     from PySide6.QtWidgets import QApplication
+
     import src.ui.main_window_tabs_basic as tabs_basic_module
 
     app = QApplication.instance() or QApplication([])

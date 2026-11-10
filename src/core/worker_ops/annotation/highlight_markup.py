@@ -1,11 +1,14 @@
 from __future__ import annotations
+
 import logging
+
 from ..._typing import WorkerHost
 from ...optional_deps import fitz
 from ...worker_runtime.args import (
     _as_int,
     _as_str,
 )
+
 logger = logging.getLogger(__name__)
 
 

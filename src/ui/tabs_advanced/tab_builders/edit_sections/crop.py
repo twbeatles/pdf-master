@@ -4,11 +4,11 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
 )
-from ....fluent_widgets import PrimaryButton, QCheckBox, QSpinBox
 
 from .....core.i18n import tm
-from ....widgets import FileSelectorWidget
+from ....fluent_widgets import PrimaryButton, QCheckBox, QSpinBox
 from ....form_rows import pair_grid
+from ....widgets import FileSelectorWidget
 
 
 def build_crop(self, layout) -> None:

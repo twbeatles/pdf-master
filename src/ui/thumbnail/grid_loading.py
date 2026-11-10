@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from .._typing import ThumbnailGridHost
 import logging
+
 from PySide6.QtCore import Slot
 from PySide6.QtGui import QPixmap
+
 from ...core.i18n import tm
+from .._typing import ThumbnailGridHost
 from .document import _open_thumbnail_document
 from .loader import ThumbnailLoaderThread
 from .tile import ThumbnailLabel
+
 logger = logging.getLogger(__name__)
 
 

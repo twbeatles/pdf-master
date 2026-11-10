@@ -1,11 +1,12 @@
 """PDF helpers: image_optimize."""
 from __future__ import annotations
 
-from __future__ import annotations
 import logging
 from collections.abc import Callable
 from typing import Any
+
 from ...optional_deps import fitz
+
 logger = logging.getLogger(__name__)
 
 def _pixmap_for_reencode(pix: Any, *, grayscale: bool) -> Any:

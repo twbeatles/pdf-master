@@ -4,7 +4,6 @@ from collections import OrderedDict
 
 from PySide6.QtGui import QPixmap
 
-
 logger = logging.getLogger(__name__)
 
 def _ensure_preview_cache(self):

@@ -11,10 +11,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ..fluent_widgets import PrimaryButton, PushButton
-from ..tab_shell import add_tab
 
 from ...core.i18n import tm
+from ..fluent_widgets import PrimaryButton, PushButton
+from ..tab_shell import add_tab
 from ..widgets import FileListWidget
 
 logger = logging.getLogger(__name__)

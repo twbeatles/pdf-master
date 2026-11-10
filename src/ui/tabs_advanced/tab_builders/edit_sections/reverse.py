@@ -4,9 +4,9 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QVBoxLayout,
 )
-from ....fluent_widgets import PrimaryButton
 
 from .....core.i18n import tm
+from ....fluent_widgets import PrimaryButton
 from ....widgets import FileSelectorWidget
 
 

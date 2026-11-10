@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import logging
+
 from ..._typing import WorkerHost
 from ...optional_deps import fitz
 from ...worker_runtime.args import (
     _as_str,
 )
-
-
 from .helpers import _is_blank_page, _page_signature
+
 logger = logging.getLogger(__name__)
 _HEADING_MIN_SIZE = 12.0
 _HEADING_SIZE_GAP = 1.5

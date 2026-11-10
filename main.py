@@ -1,8 +1,8 @@
-import sys
-import os
 import logging
-import traceback
+import os
+import sys
 import tempfile
+import traceback
 from logging.handlers import RotatingFileHandler
 
 # 로그 파일 경로
@@ -48,8 +48,8 @@ suppress_child_console_windows()
 # qfluentwidgets / google-genai / main_window 등 무거운 모듈은 스플래시 표시 이후
 # main() 내부에서 지연 import하여 cold-start blank 기간을 최소화한다.
 from PySide6.QtCore import QLockFile
+from PySide6.QtGui import QFont, QGuiApplication, QIcon, QPixmap
 from PySide6.QtWidgets import QApplication, QMessageBox, QSplashScreen
-from PySide6.QtGui import QGuiApplication, QFont, QIcon, QPixmap
 
 from src.core.path_utils import resource_path
 
@@ -272,13 +272,12 @@ def main() -> int:
 
             # Keep every heavy import inside splash cleanup protection.
             # Explicit imports also ensure PyInstaller bundles them.
-            import src.ui.styles  # noqa: F401
-            import src.ui.widgets  # noqa: F401
             import src.core.settings  # noqa: F401
             import src.core.worker  # noqa: F401
-            from src.ui.main_window import PDFMasterApp
-
+            import src.ui.styles  # noqa: F401
+            import src.ui.widgets  # noqa: F401
             from src.ui.fluent_theme import setup_app_theme
+            from src.ui.main_window import PDFMasterApp
 
             if not setup_app_theme(app):
                 raise RuntimeError(

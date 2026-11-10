@@ -1,7 +1,6 @@
 import re
 from pathlib import Path
 
-
 CURRENT_AUDIT_FILE = "PROJECT_AUDIT.md"
 # 레거시 감사 파일명 — maintained docs에 남아 있으면 존재하는 파일만 허용
 LEGACY_AUDIT_FILE_PATTERN = re.compile(r"FUNCTIONAL_IMPLEMENTATION_AUDIT_\d{4}-\d{2}-\d{2}\.md")

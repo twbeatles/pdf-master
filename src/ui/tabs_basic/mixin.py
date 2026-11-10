@@ -1,3 +1,4 @@
+from .._typing import MainWindowHost
 from .batch import (
     _batch_add_files,
     _batch_add_folder,
@@ -45,7 +46,6 @@ from .security import (
     action_watermark,
     setup_edit_sec_tab,
 )
-from .._typing import MainWindowHost
 
 
 class MainWindowTabsBasicMixin(MainWindowHost):

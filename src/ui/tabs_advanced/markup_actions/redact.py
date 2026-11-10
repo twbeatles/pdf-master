@@ -1,5 +1,6 @@
 from . import deps
 
+
 def action_start_redact_region_select(self):
     """미리보기에서 드래그로 교정 영역을 선택한다."""
     path = self.sel_redact.get_path() if hasattr(self, "sel_redact") else ""

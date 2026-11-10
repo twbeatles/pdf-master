@@ -203,8 +203,8 @@ class _SignalStub:
 def test_run_worker_warns_when_undo_snapshot_unavailable(monkeypatch):
     require_pyside6()
     import src.ui.main_window_worker as worker_module
-    from src.ui.main_window_worker import MainWindowWorkerMixin
     from src.core.i18n import tm
+    from src.ui.main_window_worker import MainWindowWorkerMixin
 
     class FakeWorker:
         def __init__(self, mode, **kwargs):

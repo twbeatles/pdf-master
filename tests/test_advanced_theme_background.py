@@ -5,9 +5,9 @@ lifecycle from contaminating the smaller callback/boundary regression suite.
 """
 
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 from _deps import require_pyside6
 

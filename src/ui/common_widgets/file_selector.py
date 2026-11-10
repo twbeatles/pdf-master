@@ -13,9 +13,9 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ..fluent_widgets import DangerButton
 
 from ...core.settings import load_settings
+from ..fluent_widgets import DangerButton
 from .drop_zone import DropZoneWidget
 
 logger = logging.getLogger(__name__)

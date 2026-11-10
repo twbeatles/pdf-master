@@ -13,11 +13,11 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ..fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox, QSpinBox
-from ..tab_shell import add_tab
 
 from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
+from ..fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox, QSpinBox
+from ..tab_shell import add_tab
 from ..widgets import FileListWidget, ImageListWidget
 
 logger = logging.getLogger(__name__)

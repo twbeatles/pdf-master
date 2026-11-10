@@ -1,21 +1,21 @@
 from __future__ import annotations
 
 from .ai import (
+    _GENAI_MODULE,
+    GENAI_AVAILABLE,
+    GENAI_CLIENT,
     AIService,
     AIServiceError,
     APIKeyError,
     APIRateLimitError,
     APITimeoutError,
-    GENAI_AVAILABLE,
-    GENAI_CLIENT,
     PerfTimer,
-    _GENAI_MODULE,
     _response_text,
     fitz,
     get_ai_service,
     retry_with_backoff,
 )
-from .ai.client import _PerfTimerFallback, _import_optional_module
+from .ai.client import _import_optional_module, _PerfTimerFallback
 
 __all__ = [
     "AIService",

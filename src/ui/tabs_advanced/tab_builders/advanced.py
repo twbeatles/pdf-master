@@ -4,8 +4,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-# (this module uses TabShell only; no fluent-shadowed widgets)
 
+# (this module uses TabShell only; no fluent-shadowed widgets)
 from ....core.i18n import tm
 
 

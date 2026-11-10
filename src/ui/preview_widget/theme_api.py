@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from .._typing import PreviewWidgetHost
 import logging
+
+from .._typing import PreviewWidgetHost
+
 logger = logging.getLogger(__name__)
 
 

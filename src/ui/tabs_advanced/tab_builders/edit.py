@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
-# (this module uses no fluent-shadowed widgets)
 
+from .edit_sections.blank import build_blank
+from .edit_sections.cleanup import build_cleanup
+from .edit_sections.crop import build_crop
+from .edit_sections.duplicate import build_duplicate
+from .edit_sections.resize import build_resize
+from .edit_sections.reverse import build_reverse
+
+# (this module uses no fluent-shadowed widgets)
 from .edit_sections.split import build_split
 from .edit_sections.stamp import build_stamp
-from .edit_sections.crop import build_crop
-from .edit_sections.cleanup import build_cleanup
-from .edit_sections.blank import build_blank
-from .edit_sections.resize import build_resize
-from .edit_sections.duplicate import build_duplicate
-from .edit_sections.reverse import build_reverse
 from .edit_sections.textbox import build_textbox
 
 

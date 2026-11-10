@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from .._typing import ThumbnailGridHost
 import logging
 from typing import Iterable
+
 from PySide6.QtCore import Qt, Slot
+
+from .._typing import ThumbnailGridHost
+
 logger = logging.getLogger(__name__)
 
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import logging
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
@@ -11,14 +13,15 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ...core.i18n import tm
-from .loader import ThumbnailLoaderThread
-from .tile import ThumbnailLabel
 
+from ...core.i18n import tm
 from .grid_layout import ThumbnailGridLayoutMixin
 from .grid_loading import ThumbnailGridLoadingMixin
 from .grid_selection import ThumbnailGridSelectionMixin
 from .grid_theme import ThumbnailGridThemeMixin
+from .loader import ThumbnailLoaderThread
+from .tile import ThumbnailLabel
+
 logger = logging.getLogger(__name__)
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .queue_overlay import QueueGhostOverlay
 from .region_select import (
     RegionSelectOverlay,
     compute_page_display_rect,
@@ -7,7 +8,6 @@ from .region_select import (
     map_page_points_to_viewport_rect,
     map_viewport_rect_to_page_points,
 )
-from .queue_overlay import QueueGhostOverlay
 from .search import PreviewSearchLineEdit
 from .text_placement import TextPlacementOverlay, apply_resize, hit_test_handle
 from .widget import ZoomablePreviewWidget

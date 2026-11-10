@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from .text_info import WorkerExtractTextInfoMixin
-from .bookmarks import WorkerExtractBookmarksMixin
-from .search_tables import WorkerExtractSearchTablesMixin
 from .annotations_links import WorkerExtractAnnotationsLinksMixin
 from .attachments import WorkerExtractAttachmentsMixin
+from .bookmarks import WorkerExtractBookmarksMixin
 from .images_markdown import WorkerExtractImagesMarkdownMixin
+from .search_tables import WorkerExtractSearchTablesMixin
+from .text_info import WorkerExtractTextInfoMixin
 
 
 class WorkerExtractOpsMixin(

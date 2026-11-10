@@ -4,7 +4,11 @@ import logging
 import os
 
 from ...core.i18n import tm
-from ...core.path_utils import make_chat_history_key, normalize_path_key, parse_chat_history_key
+from ...core.path_utils import (
+    make_chat_history_key,
+    normalize_path_key,
+    parse_chat_history_key,
+)
 from ...core.worker_runtime import get_operation_spec
 
 logger = logging.getLogger(__name__)

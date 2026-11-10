@@ -1,3 +1,4 @@
+from .._typing import MainWindowHost
 from .cache import (
     _ensure_preview_cache,
     _get_cached_preview_pixmap,
@@ -6,9 +7,9 @@ from .cache import (
 )
 from .document import (
     _close_preview_document,
-    _ensure_preview_watchers,
     _ensure_preview_access,
     _ensure_preview_document,
+    _ensure_preview_watchers,
     _load_qpdf_document,
     _on_preview_directory_changed,
     _on_preview_file_changed,
@@ -18,17 +19,6 @@ from .document import (
     _reset_preview_state,
     _unwatch_preview_file,
     _watch_preview_file,
-)
-from .navigation import (
-    _next_preview_page,
-    _open_page_setup,
-    _on_preview_page_requested,
-    _on_list_item_clicked,
-    _prev_preview_page,
-    _print_current_preview,
-    _print_pdf,
-    _render_preview_page,
-    _schedule_preview_rerender,
 )
 from .focus import (
     _enter_preview_fullscreen,
@@ -41,10 +31,20 @@ from .focus import (
     _sync_preview_focus_chrome,
     _toggle_preview_focus_mode,
 )
+from .navigation import (
+    _next_preview_page,
+    _on_list_item_clicked,
+    _on_preview_page_requested,
+    _open_page_setup,
+    _prev_preview_page,
+    _print_current_preview,
+    _print_pdf,
+    _render_preview_page,
+    _schedule_preview_rerender,
+)
 from .panel import _create_preview_panel, _set_preview_navigation_enabled
 from .search import _focus_preview_search, _on_preview_search_visibility_changed
 from .update import _add_to_recent_files, _update_preview
-from .._typing import MainWindowHost
 
 
 class MainWindowPreviewMixin(MainWindowHost):

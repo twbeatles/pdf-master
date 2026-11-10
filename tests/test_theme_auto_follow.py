@@ -5,8 +5,9 @@
 - 'auto' mode must re-apply when the OS theme flips (watcher callbacks).
 """
 
-import pytest
 import weakref
+
+import pytest
 
 darkdetect = pytest.importorskip("darkdetect")
 

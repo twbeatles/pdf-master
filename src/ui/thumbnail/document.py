@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 
-
 from ...core.i18n import tm
 from ...core.optional_deps import fitz
 

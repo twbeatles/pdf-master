@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from _deps import require_pyside6, require_pyside6_and_pymupdf
+
 from src.core.optional_deps import fitz
 
 

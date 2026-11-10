@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-
 from _deps import require_pyside6_and_pymupdf
+
 from src.core.optional_deps import fitz
 
 
@@ -90,8 +90,8 @@ class _CleanupHost:
 
 def test_cancel_cleanup_removes_only_created_convert_outputs(monkeypatch, tmp_path):
     require_pyside6_and_pymupdf()
-    from src.core.worker import CancelledError, WorkerThread
     import src.ui.window_worker.lifecycle as lifecycle
+    from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "src.pdf"
     out_dir = tmp_path / "out"
@@ -134,8 +134,8 @@ def test_cancel_cleanup_removes_only_created_convert_outputs(monkeypatch, tmp_pa
 
 def test_cancel_cleanup_removes_binary_output_after_post_write_cancel(monkeypatch, tmp_path):
     require_pyside6_and_pymupdf()
-    from src.core.worker import CancelledError, WorkerThread
     import src.ui.window_worker.lifecycle as lifecycle
+    from src.core.worker import CancelledError, WorkerThread
 
     src = tmp_path / "with_attachment.pdf"
     out_dir = tmp_path / "attachments"
@@ -170,8 +170,8 @@ def test_cancel_cleanup_removes_binary_output_after_post_write_cancel(monkeypatc
 
 def test_cancel_cleanup_keeps_preexisting_batch_outputs(monkeypatch, tmp_path):
     require_pyside6_and_pymupdf()
-    from src.core.worker import CancelledError, WorkerThread
     import src.ui.window_worker.lifecycle as lifecycle
+    from src.core.worker import CancelledError, WorkerThread
 
     out_dir = tmp_path / "batch_out"
     out_dir.mkdir()

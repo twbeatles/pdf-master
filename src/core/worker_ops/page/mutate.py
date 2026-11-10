@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import logging
+
 from ..._typing import WorkerHost
 from ...constants import (
     DEFAULT_PAGE_SIZE,
@@ -10,6 +12,7 @@ from ...worker_runtime.args import (
     _as_int,
     _as_str,
 )
+
 logger = logging.getLogger(__name__)
 
 

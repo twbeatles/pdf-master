@@ -1,12 +1,15 @@
 from __future__ import annotations
+
 import hashlib
 import logging
 from collections import Counter
 from typing import Any, cast
+
 from ...optional_deps import fitz
 from ...worker_runtime.args import (
     _as_str,
 )
+
 logger = logging.getLogger(__name__)
 _HEADING_MIN_SIZE = 12.0
 _HEADING_SIZE_GAP = 1.5

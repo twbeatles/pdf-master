@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from .._typing import ThumbnailGridHost
 import logging
+
 from ...core.i18n import tm
+from .._typing import ThumbnailGridHost
+
 logger = logging.getLogger(__name__)
 
 

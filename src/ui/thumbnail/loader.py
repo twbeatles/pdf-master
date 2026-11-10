@@ -7,10 +7,8 @@ from PySide6.QtGui import QImage, QPixmap
 
 from ...core.optional_deps import fitz
 from ...core.perf import PerfTimer
-
-
-
 from .document import _open_thumbnail_document
+
 logger = logging.getLogger(__name__)
 
 class ThumbnailLoaderThread(QThread):

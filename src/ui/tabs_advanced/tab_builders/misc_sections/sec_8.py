@@ -6,9 +6,9 @@ from PySide6.QtWidgets import (
     QListWidget,
     QVBoxLayout,
 )
-from ....fluent_widgets import PrimaryButton, PushButton
 
 from .....core.i18n import tm
+from ....fluent_widgets import PrimaryButton, PushButton
 from ....widgets import FileSelectorWidget
 
 

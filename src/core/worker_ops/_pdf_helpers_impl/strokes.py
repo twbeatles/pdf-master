@@ -1,9 +1,9 @@
 """PDF helpers: strokes."""
 from __future__ import annotations
 
-from __future__ import annotations
 import logging
 from typing import Any
+
 logger = logging.getLogger(__name__)
 
 def _normalize_stroke_points(raw_points: Any) -> list[list[float]]:

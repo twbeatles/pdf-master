@@ -1,5 +1,6 @@
 
 from _deps import require_pyside6_and_pymupdf
+
 from src.core.optional_deps import fitz
 
 
@@ -52,8 +53,8 @@ def test_list_attachments_sets_result_payload(tmp_path):
 
 def test_worker_on_success_consumes_form_fields_payload(monkeypatch):
     require_pyside6_and_pymupdf()
-    from src.ui.main_window_worker import MainWindowWorkerMixin
     import src.ui.main_window_worker as worker_ui_module
+    from src.ui.main_window_worker import MainWindowWorkerMixin
 
     infos = []
 

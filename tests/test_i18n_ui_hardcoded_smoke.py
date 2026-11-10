@@ -1,7 +1,6 @@
-import re
 import ast
+import re
 from pathlib import Path
-
 
 EXCLUDED_UI_FILES = {
     "src/ui/styles.py",

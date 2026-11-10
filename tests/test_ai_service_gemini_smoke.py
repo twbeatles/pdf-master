@@ -1,8 +1,8 @@
 import os
 
 import pytest
-
 from _deps import require_pymupdf
+
 from src.core.optional_deps import fitz
 
 
@@ -26,7 +26,7 @@ def test_gemini_file_api_smoke_summary_chat_keywords(tmp_path):
         pytest.skip("Set GEMINI_API_KEY to run the Gemini File API smoke.")
 
     require_pymupdf()
-    from src.core.ai_service import AIService, GENAI_AVAILABLE
+    from src.core.ai_service import GENAI_AVAILABLE, AIService
 
     if not GENAI_AVAILABLE:
         pytest.skip("google-genai is not installed.")

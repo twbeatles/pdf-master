@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import sys
 
-
 CHAT_HISTORY_KEY_PREFIX = "v2:"
 
 

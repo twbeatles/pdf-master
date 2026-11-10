@@ -36,8 +36,8 @@ def test_show_thumbnail_grid_uses_preview_password_and_active_page(monkeypatch, 
 
     from PySide6.QtWidgets import QApplication, QWidget
 
-    from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
     import src.ui.thumbnail_grid as thumbnail_grid_module
+    from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
 
     app = QApplication.instance() or QApplication([])
     _ = app
@@ -96,8 +96,8 @@ def test_show_thumbnail_grid_uses_preview_message_when_access_fails(monkeypatch,
 
     from PySide6.QtWidgets import QApplication, QWidget
 
-    from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
     import src.ui.thumbnail_grid as thumbnail_grid_module
+    from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
 
     app = QApplication.instance() or QApplication([])
     _ = app

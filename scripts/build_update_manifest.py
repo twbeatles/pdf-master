@@ -8,11 +8,15 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from src.core.constants import UPDATE_PUBLIC_KEY_B64
-from src.core.update_manifest import MANIFEST_DEFAULT_VALIDITY_DAYS, canonical_manifest_payload
+from src.core.update_manifest import (
+    MANIFEST_DEFAULT_VALIDITY_DAYS,
+    canonical_manifest_payload,
+)
 
 parser = argparse.ArgumentParser(description="Sign a release artifact into updates/latest.json")
 parser.add_argument("--version", required=True)

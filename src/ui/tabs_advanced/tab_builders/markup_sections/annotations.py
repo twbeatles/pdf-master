@@ -5,9 +5,9 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QVBoxLayout,
 )
-from ....fluent_widgets import DangerButton, PushButton
 
 from .....core.i18n import tm
+from ....fluent_widgets import DangerButton, PushButton
 from ....widgets import FileSelectorWidget
 
 

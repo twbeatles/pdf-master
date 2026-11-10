@@ -1,5 +1,6 @@
 
 from _deps import require_pyside6_and_pymupdf
+
 from src.core.optional_deps import fitz
 
 
@@ -47,8 +48,8 @@ def test_batch_watermark_generates_output(tmp_path):
 
 def test_batch_reports_failed_file_reasons(tmp_path):
     require_pyside6_and_pymupdf()
-    from src.core.worker import WorkerThread
     from src.core.i18n import tm
+    from src.core.worker import WorkerThread
 
     src = tmp_path / "ok.pdf"
     _make_pdf(src, "OK")

@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
 )
 
 from ...core.i18n import tm
-from ..form_rows import pair_grid
 from ..fluent_widgets import (
     PasswordLineEdit,
     PrimaryButton,
@@ -22,6 +21,7 @@ from ..fluent_widgets import (
     SearchLineEdit,
     connect_search,
 )
+from ..form_rows import pair_grid
 from ..main_window_config import (
     AI_AVAILABLE,
 )

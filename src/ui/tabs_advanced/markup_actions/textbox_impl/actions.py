@@ -14,6 +14,7 @@ from .placement import (
     _ensure_textbox_preview_ready,
 )
 
+
 def action_insert_textbox(self):
     """텍스트 상자 삽입 (same-path / 연속 배치 옵션 지원)."""
     path = self.sel_textbox.get_path() if hasattr(self, "sel_textbox") else ""

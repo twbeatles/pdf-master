@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
-# (this module uses no fluent-shadowed widgets)
 
-from .misc_sections.sec_8 import build_sec_8
 from .misc_sections.pdf import build_pdf
+from .misc_sections.pdf_2 import build_pdf_2
+
+# (this module uses no fluent-shadowed widgets)
+from .misc_sections.sec_8 import build_sec_8
 from .misc_sections.sec_63 import build_sec_63
 from .misc_sections.sec_100 import build_sec_100
-from .misc_sections.pdf_2 import build_pdf_2
 from .misc_sections.sec_159 import build_sec_159
-from .misc_sections.v4_5_pdf import build_v4_5_pdf
 from .misc_sections.v4_5_3_f_07_ui import build_v4_5_3_f_07_ui
 from .misc_sections.v4_5_3_f_07_ui_2 import build_v4_5_3_f_07_ui_2
 from .misc_sections.v4_5_3_f_07_ui_3 import build_v4_5_3_f_07_ui_3
+from .misc_sections.v4_5_pdf import build_v4_5_pdf
 
 
 def _create_misc_subtab(self):

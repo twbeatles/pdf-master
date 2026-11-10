@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections import OrderedDict
 from pathlib import Path
 
-
 from _deps import require_pyside6, require_pyside6_and_pymupdf
 
 
@@ -22,7 +21,10 @@ def test_shutdown_executor_clears_text_cache():
 
 
 def test_scrub_sensitive_worker_kwargs():
-    from src.ui.window_worker.helpers import copy_kwargs_for_pending, scrub_sensitive_worker_kwargs
+    from src.ui.window_worker.helpers import (
+        copy_kwargs_for_pending,
+        scrub_sensitive_worker_kwargs,
+    )
 
     raw = {
         "file_path": "a.pdf",

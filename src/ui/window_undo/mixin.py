@@ -1,3 +1,4 @@
+from .._typing import MainWindowHost
 from .backup import _create_backup_for_undo, _redo_from_output, _restore_from_backup
 from .cleanup import (
     _cleanup_old_undo_backups,
@@ -5,7 +6,6 @@ from .cleanup import (
     _cleanup_unused_undo_backups,
 )
 from .history import _redo_action, _register_undo_action, _undo_action
-from .._typing import MainWindowHost
 
 
 class MainWindowUndoMixin(MainWindowHost):

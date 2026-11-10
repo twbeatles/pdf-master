@@ -1,5 +1,6 @@
 from . import deps
 
+
 def action_draw_shape(self):
     """도형 그리기"""
     path = self.sel_shape.get_path()

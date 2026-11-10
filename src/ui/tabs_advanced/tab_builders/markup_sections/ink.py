@@ -5,11 +5,11 @@ from PySide6.QtWidgets import (
     QLabel,
     QVBoxLayout,
 )
-from ....fluent_widgets import PrimaryButton, QComboBox, QLineEdit, QSpinBox
 
 from .....core.i18n import tm
-from ....widgets import FileSelectorWidget
+from ....fluent_widgets import PrimaryButton, QComboBox, QLineEdit, QSpinBox
 from ....form_rows import pair_grid
+from ....widgets import FileSelectorWidget
 
 
 def build_ink(self, layout) -> None:

@@ -1,8 +1,8 @@
 """PDF helpers: text_cjk."""
 from __future__ import annotations
 
-from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 
 def text_needs_cjk(text: str) -> bool:

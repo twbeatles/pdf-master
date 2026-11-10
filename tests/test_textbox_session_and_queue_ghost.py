@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from src.ui.tabs_advanced.textbox_session import TextboxEditorSession, ensure_textbox_session
+from src.ui.tabs_advanced.textbox_session import (
+    TextboxEditorSession,
+    ensure_textbox_session,
+)
 
 
 def test_session_path_mismatch_and_commit_error():
@@ -73,9 +76,10 @@ def test_extract_text_in_rect_worker(tmp_path):
 
 
 def test_queue_ghost_overlay_set_items():
+    import sys
+
     from PySide6.QtCore import QRect
     from PySide6.QtWidgets import QApplication
-    import sys
 
     app = QApplication.instance() or QApplication(sys.argv)
     from src.ui.preview_widget.queue_overlay import QueueGhostOverlay

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from .convert import WorkerTransformConvertMixin
 from .compress_meta import WorkerTransformCompressMetaMixin
+from .convert import WorkerTransformConvertMixin
 from .geometry import WorkerTransformGeometryMixin
 
 

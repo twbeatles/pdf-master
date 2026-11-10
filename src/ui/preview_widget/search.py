@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

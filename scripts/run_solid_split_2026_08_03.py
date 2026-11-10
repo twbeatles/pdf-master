@@ -399,9 +399,9 @@ class ZoomablePreviewWidget({bases}):
 
 def verify_imports() -> None:
     sys.path.insert(0, str(ROOT))
-    from src.ui.tabs_advanced import actions_markup as am
     from src.core.worker_ops.annotation.markup import WorkerAnnotationMarkupMixin
     from src.ui.preview_widget.widget import ZoomablePreviewWidget
+    from src.ui.tabs_advanced import actions_markup as am
 
     assert hasattr(am, "action_insert_textbox")
     assert hasattr(am, "action_highlight_text")

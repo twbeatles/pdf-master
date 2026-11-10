@@ -3,11 +3,16 @@ import os
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage, QPainter
-from PySide6.QtPrintSupport import QAbstractPrintDialog, QPageSetupDialog, QPrintPreviewDialog, QPrinter
+from PySide6.QtPrintSupport import (
+    QAbstractPrintDialog,
+    QPageSetupDialog,
+    QPrinter,
+    QPrintPreviewDialog,
+)
 from PySide6.QtWidgets import QMessageBox
 
-from ...core.optional_deps import fitz
 from ...core.i18n import tm
+from ...core.optional_deps import fitz
 from ..widgets import ToastWidget
 
 logger = logging.getLogger(__name__)

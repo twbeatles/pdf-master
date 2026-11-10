@@ -4,6 +4,7 @@ import logging
 from typing import Any, Callable
 
 from .models import ActionRecord
+
 logger = logging.getLogger(__name__)
 
 class UndoManager:

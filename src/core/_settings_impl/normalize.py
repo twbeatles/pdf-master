@@ -3,7 +3,12 @@ from __future__ import annotations
 import os
 
 from ..constants import MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
-from ..path_utils import make_chat_history_key, normalize_path_key, parse_chat_history_key
+from ..path_utils import (
+    make_chat_history_key,
+    normalize_path_key,
+    parse_chat_history_key,
+)
+
 
 def _normalize_recent_files(value) -> list[str]:
     if not isinstance(value, list):

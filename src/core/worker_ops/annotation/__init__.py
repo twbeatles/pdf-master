@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from .watermark import WorkerAnnotationWatermarkMixin
 from .annotations_crud import WorkerAnnotationCrudMixin
 from .markup import WorkerAnnotationMarkupMixin
-from .shapes_links import WorkerAnnotationShapesLinksMixin
 from .redaction import WorkerAnnotationRedactionMixin
+from .shapes_links import WorkerAnnotationShapesLinksMixin
 from .signatures import WorkerAnnotationSignaturesMixin
+from .watermark import WorkerAnnotationWatermarkMixin
 
 
 class WorkerAnnotationOpsMixin(

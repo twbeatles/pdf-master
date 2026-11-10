@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import logging
 from typing import Any, cast
+
 from ..._typing import WorkerHost
 from ...optional_deps import fitz
 from ...worker_runtime.args import (
@@ -11,6 +13,7 @@ from ...worker_runtime.args import (
 from .._pdf_helpers import (
     _normalize_stroke_points,
 )
+
 logger = logging.getLogger(__name__)
 
 

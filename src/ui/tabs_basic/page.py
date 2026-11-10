@@ -11,10 +11,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from ..fluent_widgets import PrimaryButton, EditableComboBox, QComboBox, QLineEdit
-from ..tab_shell import add_tab
 
 from ...core.i18n import tm
+from ..fluent_widgets import EditableComboBox, PrimaryButton, QComboBox, QLineEdit
+from ..tab_shell import add_tab
 from ..thumbnail_grid import ThumbnailGridWidget
 from ..widgets import FileSelectorWidget
 

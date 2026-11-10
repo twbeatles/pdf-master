@@ -12,10 +12,8 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
 )
 
-
-
-
 from .validators import _item_user_data, _item_user_path, is_valid_pdf
+
 logger = logging.getLogger(__name__)
 
 class FileListWidget(QListWidget):

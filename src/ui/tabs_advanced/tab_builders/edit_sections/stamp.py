@@ -6,9 +6,9 @@ from PySide6.QtWidgets import (
     QLabel,
     QVBoxLayout,
 )
-from ....fluent_widgets import PrimaryButton, EditableComboBox, QComboBox
 
 from .....core.i18n import tm
+from ....fluent_widgets import EditableComboBox, PrimaryButton, QComboBox
 from ....widgets import FileSelectorWidget
 
 

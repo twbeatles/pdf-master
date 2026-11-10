@@ -1,4 +1,10 @@
-from .dispatch import MODE_TO_HANDLER, OPERATION_SPECS, OperationSpec, get_handler_method_name, get_operation_spec
+from .dispatch import (
+    MODE_TO_HANDLER,
+    OPERATION_SPECS,
+    OperationSpec,
+    get_handler_method_name,
+    get_operation_spec,
+)
 from .mixin import WorkerRuntimeMixin
 from .mixin_access import WorkerRuntimeAccessMixin
 from .mixin_files import WorkerRuntimeFilesMixin

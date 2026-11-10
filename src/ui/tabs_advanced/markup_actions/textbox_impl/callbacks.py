@@ -11,6 +11,7 @@ from .coords_style import (
 from .placement import action_start_textbox_region_select
 from .queue import _textbox_queue_refresh_list
 
+
 def _on_textbox_worker_success(self) -> None:
     """삽입/교체 성공 후 큐 정리 및 연속 배치 재개."""
     sess = _textbox_session(self)

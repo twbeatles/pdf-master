@@ -1,10 +1,9 @@
 from __future__ import annotations
-# pyright: reportAttributeAccessIssue=false
 
+# pyright: reportAttributeAccessIssue=false
 import json
 import logging
 from typing import Any
-
 
 logger = logging.getLogger(__name__)
 

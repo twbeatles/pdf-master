@@ -7,7 +7,6 @@ import time
 from unittest.mock import MagicMock
 
 import pytest
-
 from _deps import require_pyside6, require_pyside6_and_pymupdf
 
 
@@ -154,6 +153,7 @@ def test_thumbnail_ready_ignores_stale_loader_sender(tmp_path):
 
     from PySide6.QtGui import QPixmap
     from PySide6.QtWidgets import QApplication
+
     from src.ui.thumbnail_grid import ThumbnailGridWidget
 
     app = QApplication.instance() or QApplication([])
