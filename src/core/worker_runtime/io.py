@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 def _mark_document_closed(doc: Any) -> None:
     try:
-        setattr(doc, "_pdf_master_closed_by_atomic_save", True)
+        doc._pdf_master_closed_by_atomic_save = True
         doc.close = lambda: None
     except Exception:
         logger.debug("Failed to mark document as already closed", exc_info=True)

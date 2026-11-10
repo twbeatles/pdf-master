@@ -192,7 +192,7 @@ def _register_system_theme_follow(self):
 
         set_settings_theme_provider(_settings_mode)
         register_system_theme_callback(self._on_system_theme_changed)
-        setattr(self, "_system_theme_follow_registered", True)
+        self._system_theme_follow_registered = True
     except Exception:
         logger.debug("System theme follow install failed", exc_info=True)
 

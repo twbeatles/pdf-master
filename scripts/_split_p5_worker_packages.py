@@ -168,7 +168,7 @@ def main() -> None:
     package_pdf_helpers()
 
     # Verify public names exist in facades
-    for mod, names in [
+    for mod, _names in [
         ("ai_ops", ["WorkerAiOpsMixin"]),
         ("batch_ops", ["WorkerBatchOpsMixin"]),
         ("compose_ops", ["WorkerComposeOpsMixin"]),

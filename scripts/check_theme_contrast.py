@@ -82,7 +82,7 @@ def _effective_background(value: str, base: tuple[int, int, int]) -> tuple[int, 
         red, green, blue, alpha = int(rgba.group(1)), int(rgba.group(2)), int(rgba.group(3)), float(rgba.group(4))
         blended = [
             round(alpha * channel + (1.0 - alpha) * ground)
-            for channel, ground in zip((red, green, blue), base)
+            for channel, ground in zip((red, green, blue), base)  # noqa: B905 -- base is a caller-provided 3-tuple; strict= would add a new exception path (behavior change), deferred per S3 policy
         ]
         return (blended[0], blended[1], blended[2])
     hexes = [_to_rgb("#" + digits) for digits in HEX_RE.findall(value)]
@@ -140,7 +140,7 @@ def check_all_sheets() -> dict[str, list[str]]:
 def main() -> int:
     failures = {name: issues for name, issues in check_all_sheets().items() if issues}
     if failures:
-        for name, issues in failures.items():
+        for _name, issues in failures.items():
             for issue in issues:
                 print(f"FAIL {issue}")
         return 1
