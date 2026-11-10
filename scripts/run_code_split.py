@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import re
 import sys
 from pathlib import Path
 
@@ -180,14 +179,7 @@ def split_settings() -> None:
     for fname, names in modules.items():
         body_parts = [funcs[n].source for n in names]
         header = preamble
-        extra_imports = ""
-        if fname == "normalize.py":
-            extra_imports = (
-                "from ..constants import MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS\n"
-                "from ..path_utils import make_chat_history_key, normalize_path_key, parse_chat_history_key\n\n"
-            )
-            # preamble already has these — ok duplicate risk. Strip duplicates by using preamble only.
-            extra_imports = ""
+        # normalize.py: preamble already carries these imports (duplicate risk) — preamble only.
         if fname == "defaults.py":
             pass
         if fname == "persistence.py":
@@ -201,52 +193,10 @@ def split_settings() -> None:
         text = header.rstrip() + "\n\n\n" + "\n".join(body_parts)
         (pkg / fname).write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
 
-    init = '''from __future__ import annotations
-
-from .api_key import _legacy_set_api_key, get_api_key, set_api_key
-from .defaults import default_settings
-from .normalize import (
-    _normalize_bool,
-    _normalize_chat_histories,
-    _normalize_language,
-    _normalize_last_output_dir,
-    _normalize_recent_files,
-    _normalize_splitter_sizes,
-    _normalize_theme,
-    _normalize_window_geometry,
-)
-from .persistence import load_settings, reset_settings, save_settings
-
-# re-export module constants used by tests/callers via settings facade
-from .persistence import SETTINGS_FILE  # type: ignore  # may not exist
-
-__all__ = [
-    "SETTINGS_FILE",
-    "KEYRING_SERVICE",
-    "KEYRING_USERNAME",
-    "default_settings",
-    "get_api_key",
-    "_legacy_set_api_key",
-    "set_api_key",
-    "load_settings",
-    "save_settings",
-    "reset_settings",
-    "_normalize_recent_files",
-    "_normalize_chat_histories",
-    "_normalize_splitter_sizes",
-    "_normalize_theme",
-    "_normalize_language",
-    "_normalize_window_geometry",
-    "_normalize_last_output_dir",
-    "_normalize_bool",
-]
-'''
     # Fix: SETTINGS_FILE lives in preamble assignments — put constants module
-    constants_mod = preamble  # includes SETTINGS_FILE, KEYRING_*
     (pkg / "config.py").write_text(preamble, encoding="utf-8")
 
     # Rewrite modules to import config
-    config_import = "from .config import *  # noqa: F403\nfrom .config import KEYRING_SERVICE, KEYRING_USERNAME, SETTINGS_FILE\nimport logging\nimport os\nimport json\nimport shutil\nimport tempfile\nfrom datetime import datetime\nfrom ..optional_deps import KEYRING_AVAILABLE, keyring\nlogger = logging.getLogger(__name__)\n"
 
     # Simpler approach: one shared config + function modules with explicit imports
     shared = '''from __future__ import annotations
@@ -444,20 +394,6 @@ def split_constants() -> None:
     src = ROOT / "src/core/constants.py"
     text = src.read_text(encoding="utf-8")
     # split by section comments
-    sections = {
-        "app": [],
-        "chat": [],
-        "pages": [],
-        "images": [],
-        "watermark": [],
-        "stamp": [],
-        "signature": [],
-        "compress": [],
-        "limits": [],
-        "undo": [],
-        "ai": [],
-        "misc": [],
-    }
     # simpler: keep one package with themed modules by regex on comment headers
     pkg = ROOT / "src/core/_constants_impl"
     pkg.mkdir(parents=True, exist_ok=True)
@@ -465,20 +401,6 @@ def split_constants() -> None:
     # Parse assignments with preceding comments groups manually via line scan
     lines = text.splitlines(keepends=True)
     # Keep full content in domain modules by comment markers
-    markers = [
-        ("app", "앱 정보"),
-        ("chat", "채팅 히스토리"),
-        ("pages", "페이지 크기"),
-        ("images", "이미지 설정"),
-        ("watermark", "워터마크"),
-        ("stamp", "스탬프"),
-        ("signature", "서명"),
-        ("compress", "압축"),
-        ("ai", "AI"),
-        ("undo", "UNDO"),
-        ("limits", "제한"),
-        ("misc", None),
-    ]
     # Easier approach: write entire constants body to values.py and facade re-exports all names
     tree = ast.parse(text)
     names = []
@@ -491,7 +413,6 @@ def split_constants() -> None:
             names.append(node.target.name)
 
     # Strip module docstring for values module, keep assignments
-    values = "from __future__ import annotations\n\n"
     # keep everything except first docstring-only expr if any
     body_lines = []
     started = False
@@ -543,7 +464,6 @@ def split_constants() -> None:
 def split_undo() -> None:
     src = ROOT / "src/core/undo_manager.py"
     source = src.read_text(encoding="utf-8")
-    preamble = extract_module_assignments_and_imports(source)
     # deepen for package
     def deepen(p: str) -> str:
         out = []
@@ -642,20 +562,8 @@ def split_ui_widget_mixins(
 
     # composed widget class in package __init__ or widget.py
     import_lines = "\n".join(f"from .{mod} import {name}" for mod, name in imports)
-    bases = f"{init_bases_extra}, " + ", ".join(parts) if init_bases_extra else ", ".join(parts)
     # Actually original is class X(QWidget) — mixins shouldn't also inherit QWidget multiple times
     # Pattern: class X(QWidget, Mixin1, Mixin2)
-    composed = f'''from __future__ import annotations
-
-{preamble.rstrip()}
-{import_lines}
-
-
-class {class_name}({init_bases_extra}, {", ".join(parts)}):
-    """Composed widget split into SRP mixins."""
-
-    pass
-'''
     # Wait - methods and signals are on mixins; composed empty may not call cooperative inits.
     # Better: keep __init__ and _setup_ui on primary mixin; composed class is just MRO merge without redefining.
     # Empty body with pass is fine if all methods are on mixins and __init__ is on one mixin.

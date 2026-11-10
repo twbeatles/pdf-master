@@ -4,13 +4,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QListWidget,
-    QPushButton,
     QScrollArea,
-    QSpinBox,
-    QTabWidget,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import html
 
-import pytest
 
 from _deps import require_pyside6, require_pyside6_and_pymupdf
 

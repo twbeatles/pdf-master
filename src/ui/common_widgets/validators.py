@@ -4,26 +4,13 @@ import logging
 import os
 from typing import Any
 
-from PySide6.QtCore import QEvent, QObject, Qt, Signal
-from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent, QDragMoveEvent, QDropEvent
+from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QFileDialog,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QListWidget,
     QListWidgetItem,
-    QMenu,
-    QPushButton,
-    QToolButton,
-    QVBoxLayout,
-    QWidget,
 )
 
 from ...core.optional_deps import FITZ_AVAILABLE, fitz
 from ...core.pdf_validation import validate_pdf_file
-from ...core.settings import load_settings
 
 logger = logging.getLogger(__name__)
 

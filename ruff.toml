@@ -1,0 +1,6 @@
+# pdf-master — Ruff S1 baseline (E4,E7,E9,F).
+# S2 (I) / S3 (B) / S4 (UP) intentionally deferred.
+line-length = 88
+
+[lint]
+select = ["E4", "E7", "E9", "F"]

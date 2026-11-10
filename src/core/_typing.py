@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from .optional_deps import fitz
 
 
 class SignalLike:

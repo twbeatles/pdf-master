@@ -1,7 +1,5 @@
 """blank/dedupe dry-run 카운트 헬퍼 회귀."""
 
-from pathlib import Path
-
 from _deps import require_pyside6_and_pymupdf
 from src.core.optional_deps import fitz
 from src.core.worker_ops.cleanup.helpers import (

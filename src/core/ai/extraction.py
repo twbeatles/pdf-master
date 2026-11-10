@@ -1,18 +1,11 @@
 from __future__ import annotations
 # pyright: reportAttributeAccessIssue=false
 
-import json
 import logging
 import os
-import threading
-import time
-from collections import OrderedDict
-from typing import Any, Callable, cast
+from typing import Any
 
-from ..path_utils import normalize_path_key
-from .client import GENAI_AVAILABLE, GENAI_CLIENT, PerfTimer, _GENAI_MODULE, _response_text, fitz
-from .config import AI_BASE_DELAY, AI_DEFAULT_TIMEOUT, AI_MAX_DELAY, AI_MAX_RETRIES, AI_MAX_TEXT_LENGTH
-from .errors import APIKeyError, APIRateLimitError, APITimeoutError, retry_with_backoff
+from .client import PerfTimer, fitz
 
 logger = logging.getLogger(__name__)
 

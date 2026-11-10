@@ -6,7 +6,6 @@ move-only: AST 줄 슬라이스로 본문을 옮기고 facade re-export 를 유�
 """
 from __future__ import annotations
 
-import ast
 import re
 import sys
 from pathlib import Path

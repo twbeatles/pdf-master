@@ -28,7 +28,6 @@ def test_escape_chat_html_and_format_helpers():
 def test_partial_result_escapes_chat_html():
     require_pyside6()
     from src.ui.main_window_worker import MainWindowWorkerMixin
-    from src.ui.window_worker.results import _replace_last_chat_block
 
     calls: list[str] = []
 
@@ -44,7 +43,6 @@ def test_partial_result_escapes_chat_html():
         def sender(self):
             return self.worker
 
-    host = Host()
 
     def capture_replace(widget, html_text):
         calls.append(html_text)
@@ -134,9 +132,7 @@ def test_extract_text_ocr_unavailable_hard_fail(tmp_path, monkeypatch):
     doc.close()
 
     # 모든 페이지 OCR 실패 유도
-    from src.core.worker_ops.extract import text_info as text_info_mod
 
-    real_open = None
 
     worker = WorkerThread(
         "extract_text",
@@ -147,11 +143,10 @@ def test_extract_text_ocr_unavailable_hard_fail(tmp_path, monkeypatch):
 
     # page.get_textpage_ocr 를 강제로 없애기 위해 monkeypatch page class 는 어렵고
     # Worker 내부에서 getattr 실패를 유도: fitz Page 에 속성 제거 불가 → side effect mock
-    original_extract = worker.extract_text
 
     def _fake_extract():
         # 페이지 루프 중 OCR 실패 시나리오를 직접 흉내
-        from src.core.worker_runtime.args import _as_bool, _as_str
+        from src.core.worker_runtime.args import _as_str
 
         file_path = _as_str(worker.kwargs.get("file_path"))
         output_path = _as_str(worker.kwargs.get("output_path"))
@@ -200,7 +195,7 @@ def test_extract_text_ocr_real_hard_fail_when_ocr_raises(tmp_path):
     src = tmp_path / "src.pdf"
     out = tmp_path / "out.txt"
     doc = fitz.open()
-    page = doc.new_page(width=200, height=200)
+    doc.new_page(width=200, height=200)
     doc.save(str(src))
     doc.close()
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -16,7 +15,6 @@ from pathlib import Path
 from _deps import require_pyside6
 
 from src.core.update_manifest import (
-    NoUpdateAvailableError,
     ReleaseManifest,
     days_until_expiry,
     manifest_expiry_status,
@@ -212,8 +210,12 @@ class _EmitStub:
 
 class _UpdateSignalsStub:
     def __init__(self):
-        self.ready = _EmitStub(); self.current = _EmitStub(); self.failed = _EmitStub()
-        self.staged = _EmitStub(); self.progress = _EmitStub(); self.notice = _EmitStub()
+        self.ready = _EmitStub()
+        self.current = _EmitStub()
+        self.failed = _EmitStub()
+        self.staged = _EmitStub()
+        self.progress = _EmitStub()
+        self.notice = _EmitStub()
 
 
 def _update_dummy():
@@ -298,8 +300,10 @@ def test_run_worker_queues_without_modal(monkeypatch) -> None:
         def __init__(self, mode, **kwargs):
             self.mode = mode
             self.kwargs = kwargs
-            self.progress_signal = _SignalStub(); self.finished_signal = _SignalStub()
-            self.error_signal = _SignalStub(); self.cancelled_signal = _SignalStub()
+            self.progress_signal = _SignalStub()
+            self.finished_signal = _SignalStub()
+            self.error_signal = _SignalStub()
+            self.cancelled_signal = _SignalStub()
 
         def start(self):
             return None
@@ -380,8 +384,10 @@ def test_pending_queue_cap_still_enforced(monkeypatch) -> None:
 
     class _RunningWorkerStub:
         def __init__(self):
-            self.progress_signal = _SignalStub(); self.finished_signal = _SignalStub()
-            self.error_signal = _SignalStub(); self.cancelled_signal = _SignalStub()
+            self.progress_signal = _SignalStub()
+            self.finished_signal = _SignalStub()
+            self.error_signal = _SignalStub()
+            self.cancelled_signal = _SignalStub()
 
         def isRunning(self):
             return True

@@ -5,13 +5,8 @@ to the folder-based window_undo package.
 """
 
 import logging
-import os
-import shutil
-import time
 
-from PySide6.QtWidgets import QMessageBox
 
-from ..core.i18n import tm
-from .window_undo import MainWindowUndoMixin
+from .window_undo import MainWindowUndoMixin  # noqa: F401 -- keeper used by main_window.py,test_undo_backup_flow.py
 
 logger = logging.getLogger(__name__)

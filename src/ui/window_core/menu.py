@@ -1,26 +1,14 @@
 import logging
 import os
-import subprocess
 
-from PySide6.QtCore import QByteArray, QUrl
-from PySide6.QtGui import QAction, QDesktopServices, QKeySequence, QShortcut
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
-    QApplication,
-    QComboBox,
-    QFileDialog,
-    QHBoxLayout,
-    QLabel,
     QMessageBox,
-    QPushButton,
-    QSpinBox,
 )
 
 from ...core.i18n import tm
 from ...core.settings import save_settings
 from ..main_window_config import APP_NAME, VERSION
-from ..styles import DARK_STYLESHEET, LIGHT_STYLESHEET
-from ..widgets import DropZoneWidget, EmptyStateWidget, FileSelectorWidget
-from ..zoomable_preview import ZoomablePreviewWidget
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +170,8 @@ def _change_language(self, lang_code):
     # 메뉴 상태 업데이트 (체크 표시)
     # 메뉴 상태 업데이트 (체크 표시)
     for action in self.lang_menu.actions():
-        if action.isSeparator(): continue
+        if action.isSeparator():
+            continue
         action.setChecked(action.data() == lang_code)
     from ..tabs_settings.page import sync_settings_combo
 

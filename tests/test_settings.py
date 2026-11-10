@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 
 def test_load_settings_defaults_not_shared(tmp_path, monkeypatch):

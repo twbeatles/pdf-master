@@ -5,32 +5,18 @@ implementation to the folder-based tabs_ai package.
 """
 
 import logging
-import os
 from typing import cast
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QComboBox,
-    QDialog,
-    QFileDialog,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
     QMessageBox,
-    QPushButton,
-    QScrollArea,
-    QSpinBox,
-    QTextEdit,
-    QVBoxLayout,
     QWidget,
 )
 
 from ..core.i18n import tm
 from ..core.settings import KEYRING_AVAILABLE, get_api_key, save_settings, set_api_key
-from .main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
+from .main_window_config import AI_AVAILABLE, MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS  # noqa: F401 -- keeper used by test_ai_encrypted_ui_access.py:143,test_ai_encrypted_ui_access.py:91
 from .tabs_ai import MainWindowTabsAiMixin as _MainWindowTabsAiMixin
-from .widgets import FileSelectorWidget, ToastWidget, is_pdf_encrypted
+from .widgets import ToastWidget
 
 logger = logging.getLogger(__name__)
 

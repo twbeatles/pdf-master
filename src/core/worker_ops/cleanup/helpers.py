@@ -1,17 +1,10 @@
 from __future__ import annotations
 import hashlib
 import logging
-import os
-import re
 from collections import Counter
 from typing import Any, cast
-from ..._typing import WorkerHost
 from ...optional_deps import fitz
 from ...worker_runtime.args import (
-    _as_bool,
-    _as_float,
-    _as_int,
-    _as_list,
     _as_str,
 )
 logger = logging.getLogger(__name__)

@@ -1,5 +1,3 @@
-import pytest
-
 from _deps import require_pyside6
 
 

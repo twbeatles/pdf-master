@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 
-from PySide6.QtWidgets import QDialog, QMessageBox, QPushButton, QVBoxLayout
+from PySide6.QtWidgets import QDialog, QMessageBox, QVBoxLayout
 from ..fluent_widgets import PushButton
 
 from ...core.i18n import tm

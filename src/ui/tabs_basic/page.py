@@ -1,32 +1,22 @@
 import logging
 import os
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QFileDialog,
-    QFormLayout,
+    QFileDialog,  # noqa: F401 -- keeper used by test_rotate_selection_ui_flow.py
     QGroupBox,
     QHBoxLayout,
-    QInputDialog,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
     QMessageBox,
-    QPushButton,
     QScrollArea,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
-from ..fluent_widgets import PrimaryButton, EditableComboBox, PushButton, QComboBox, QLineEdit
+from ..fluent_widgets import PrimaryButton, EditableComboBox, QComboBox, QLineEdit
 from ..tab_shell import add_tab
 
-from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
-from ...core.settings import save_settings
 from ..thumbnail_grid import ThumbnailGridWidget
-from ..widgets import FileListWidget, FileSelectorWidget, ImageListWidget, ToastWidget
+from ..widgets import FileSelectorWidget
 
 logger = logging.getLogger(__name__)
 

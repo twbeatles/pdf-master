@@ -2,24 +2,8 @@ import logging
 import os
 from collections import OrderedDict
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QPixmap
-from PySide6.QtPrintSupport import QPrintDialog, QPrinter
-from PySide6.QtWidgets import (
-    QFrame,
-    QGraphicsOpacityEffect,
-    QHBoxLayout,
-    QLabel,
-    QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtGui import QPixmap
 
-from ...core.i18n import tm
-from ...core.settings import save_settings
-from ..widgets import FileSelectorWidget
-from ..zoomable_preview import ZoomablePreviewWidget
 
 logger = logging.getLogger(__name__)
 

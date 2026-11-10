@@ -21,8 +21,6 @@ from split_mixin_package import (  # noqa: E402
     extract_module_functions,
     methods_by_name,
     pick,
-    write_composed_init,
-    write_facade,
     write_mixin_module,
 )
 
@@ -370,10 +368,8 @@ def split_preview_widget() -> None:
 
     # Class attributes (signals) between class start and __init__
     first_method_line = min(m.lineno for m in methods.values())
-    attr_src = "".join(lines[class_node.lineno : first_method_line - 1])
     # attr_src includes "class ZoomablePreviewWidget(QWidget):\n" partial — slice carefully
     # lines[class_node.lineno-1] is class line
-    class_header = lines[class_node.lineno - 1]
     body_attrs = "".join(lines[class_node.lineno : first_method_line - 1])
 
     imports_mixins = "\n".join(
@@ -404,7 +400,6 @@ class ZoomablePreviewWidget({bases}):
 def verify_imports() -> None:
     sys.path.insert(0, str(ROOT))
     from src.ui.tabs_advanced import actions_markup as am
-    from src.ui.tabs_advanced.actions_markup import action_insert_textbox
     from src.core.worker_ops.annotation.markup import WorkerAnnotationMarkupMixin
     from src.ui.preview_widget.widget import ZoomablePreviewWidget
 

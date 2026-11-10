@@ -1,26 +1,18 @@
 from __future__ import annotations
 
-import hashlib
 import logging
-import os
-import re
-from collections import Counter
-from typing import Any, cast
 from ..._typing import WorkerHost
 from ...optional_deps import fitz
 from ...worker_runtime.args import (
     _as_bool,
-    _as_float,
     _as_int,
-    _as_list,
     _as_str,
 )
+
+
 logger = logging.getLogger(__name__)
 _HEADING_MIN_SIZE = 12.0
 _HEADING_SIZE_GAP = 1.5
-
-
-from .helpers import _page_text_len, _page_image_count, _page_drawing_count, _is_blank_page, _page_signature, _content_bbox, _collect_heading_toc
 
 class WorkerCleanupSanitizeNupMixin(WorkerHost):
     def sanitize_pdf(self):

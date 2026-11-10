@@ -1,10 +1,7 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QProgressBar, QGraphicsDropShadowEffect, QFrame
+    QLabel
 )
-from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QColor, QResizeEvent
-from ...core.i18n import tm
+from PySide6.QtCore import Qt
 
 
 class LoadingSpinner(QLabel):

@@ -1,32 +1,11 @@
 import logging
 import os
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QCheckBox,
-    QComboBox,
-    QFileDialog,
-    QFormLayout,
-    QGroupBox,
-    QHBoxLayout,
-    QInputDialog,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QMessageBox,
-    QPushButton,
-    QScrollArea,
-    QSpinBox,
-    QVBoxLayout,
-    QWidget,
 )
 from ....core.optional_deps import fitz
-from ....core.constants import SUPPORTED_IMAGE_FORMATS
 from ....core.i18n import tm
-from ....core.worker_runtime.save_profiles import DEFAULT_COMPRESSION_SAVE_PROFILE, SAVE_PROFILE_CHOICES
-from ....core.settings import save_settings
-from ...widgets import FileListWidget, FileSelectorWidget, ImageListWidget, ToastWidget
+from ....core.worker_runtime.save_profiles import DEFAULT_COMPRESSION_SAVE_PROFILE
 logger = logging.getLogger(__name__)
 
 def _load_metadata(self, path):

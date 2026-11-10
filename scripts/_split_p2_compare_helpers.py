@@ -140,7 +140,6 @@ def draw_overlay_rect(
     src = src.replace(old_nested, new_nested, 1)
 
     # Add import for helpers after existing imports
-    needle = "from .._pdf_helpers import (\n"
     if "from .helpers import" not in src:
         insert = (
             "from .helpers import (\n"

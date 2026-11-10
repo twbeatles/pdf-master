@@ -5,35 +5,18 @@ implementation to the folder-based tabs_basic package.
 """
 
 import logging
-import os
 from typing import cast
 
-from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QAbstractItemView,
-    QComboBox,
-    QFileDialog,
-    QFormLayout,
-    QGroupBox,
-    QHBoxLayout,
     QInputDialog,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QMessageBox,
-    QPushButton,
-    QScrollArea,
-    QSpinBox,
-    QVBoxLayout,
     QWidget,
 )
 
-from ..core.constants import SUPPORTED_IMAGE_FORMATS
 from ..core.i18n import tm
 from ..core.settings import save_settings
 from .tabs_basic import MainWindowTabsBasicMixin as _MainWindowTabsBasicMixin
-from .widgets import FileListWidget, FileSelectorWidget, ImageListWidget, ToastWidget
+from .widgets import ToastWidget
 
 logger = logging.getLogger(__name__)
 

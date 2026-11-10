@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import ast
-import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -38,7 +37,6 @@ def extract_class_methods(source: str, class_name: str) -> tuple[list[str], list
     """returns (import/header lines as text blocks before class, methods, module docstring)."""
     tree = ast.parse(source)
     lines = source.splitlines(keepends=True)
-    module_doc: str | None = ast.get_docstring(tree, clean=False)
 
     target: ast.ClassDef | None = None
     for node in tree.body:

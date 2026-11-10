@@ -2,11 +2,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QProgressBar, QGraphicsDropShadowEffect, QFrame
 )
-from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QResizeEvent
 from ...core.i18n import tm
 
-from .spinner import LoadingSpinner
 
 
 class ProgressOverlayWidget(QFrame):

@@ -1,27 +1,16 @@
 import logging
 import os
-import subprocess
 
-from PySide6.QtCore import QByteArray, Qt, QUrl
-from PySide6.QtGui import QAction, QDesktopServices, QKeySequence, QShortcut
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QApplication,
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,
-    QHBoxLayout,
-    QLabel,
-    QMessageBox,
-    QPushButton,
     QSpinBox,
 )
 
 from ...core.i18n import tm
-from ...core.settings import save_settings
-from ..main_window_config import APP_NAME, VERSION
-from ..styles import DARK_STYLESHEET, LIGHT_STYLESHEET
-from ..widgets import DropZoneWidget, EmptyStateWidget, FileSelectorWidget
-from ..zoomable_preview import ZoomablePreviewWidget
 
 logger = logging.getLogger(__name__)
 

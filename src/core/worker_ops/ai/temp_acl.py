@@ -32,7 +32,7 @@ def _restrict_temp_file_permissions(path: str) -> bool:
             logger.warning("Windows ACL restrict skipped (no USERNAME) for %s", path)
             return False
         result = subprocess.run(
-            ["icacls", path, "/inheritance:r", f"/grant:r", f"{user}:(F)"],
+            ["icacls", path, "/inheritance:r", "/grant:r", f"{user}:(F)"],
             check=False,
             capture_output=True,
             timeout=8,

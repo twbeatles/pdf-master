@@ -1,24 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable
 
-from PySide6.QtCore import QThread, Qt, Signal, Slot
-from PySide6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
-from PySide6.QtWidgets import (
-    QFrame,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QScrollArea,
-    QSpinBox,
-    QVBoxLayout,
-    QWidget,
-)
 
 from ...core.i18n import tm
 from ...core.optional_deps import fitz
-from ...core.perf import PerfTimer
 
 logger = logging.getLogger(__name__)
 

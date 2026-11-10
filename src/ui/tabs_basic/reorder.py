@@ -4,20 +4,11 @@ import os
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QComboBox,
-    QFileDialog,
-    QFormLayout,
-    QGroupBox,
     QHBoxLayout,
-    QInputDialog,
     QLabel,
-    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
-    QPushButton,
-    QScrollArea,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -25,10 +16,8 @@ from ..fluent_widgets import PrimaryButton, PushButton
 from ..tab_shell import add_tab
 
 from ...core.optional_deps import fitz
-from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
-from ...core.settings import save_settings
-from ..widgets import FileListWidget, FileSelectorWidget, ImageListWidget, ToastWidget
+from ..widgets import FileSelectorWidget
 
 logger = logging.getLogger(__name__)
 

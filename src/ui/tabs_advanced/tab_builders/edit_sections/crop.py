@@ -1,21 +1,10 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QComboBox,
-    QDoubleSpinBox,
     QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QPushButton,
-    QScrollArea,
-    QTabWidget,
-    QTextEdit,
     QVBoxLayout,
-    QWidget,
 )
-from ....fluent_widgets import PrimaryButton, PushButton, QCheckBox, QSpinBox
+from ....fluent_widgets import PrimaryButton, QCheckBox, QSpinBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget

@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections import OrderedDict
 from pathlib import Path
 
-import pytest
 
 from _deps import require_pyside6, require_pyside6_and_pymupdf
 

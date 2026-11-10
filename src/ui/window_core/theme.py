@@ -1,18 +1,10 @@
 import logging
-import os
-import subprocess
 
-from PySide6.QtCore import QByteArray, QUrl
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QKeySequence, QPalette, QShortcut
+from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import (
     QApplication,
-    QComboBox,
-    QFileDialog,
     QHBoxLayout,
     QLabel,
-    QMessageBox,
-    QPushButton,
-    QSpinBox,
 )
 from ..fluent_widgets import PushButton
 

@@ -1,35 +1,10 @@
 from __future__ import annotations
-import csv
-import io
-import json
 import logging
-import os
-from collections import Counter
-from typing import Any, cast
 from ..._typing import WorkerHost
-from ...constants import (
-    DEFAULT_PAGE_SIZE,
-    PAGE_SIZES,
-    WATERMARK_DEFAULTS,
-    WATERMARK_TILE_SPACING_X,
-    WATERMARK_TILE_SPACING_Y,
-)
 from ...optional_deps import fitz
 from ...worker_runtime.args import (
-    _as_bool,
-    _as_dict,
-    _as_float,
     _as_int,
-    _as_list,
     _as_str,
-)
-from .._pdf_helpers import (
-    _extract_page_markdown,
-    _fallback_markdown_from_text,
-    _markdown_front_matter,
-    _normalize_stroke_points,
-    _page_asset_placeholders,
-    _sample_diff_text,
 )
 logger = logging.getLogger(__name__)
 

@@ -2,24 +2,11 @@ from __future__ import annotations
 
 import logging
 
-from PySide6.QtCore import QModelIndex, QPointF, Qt, QTimer, Signal
-from PySide6.QtGui import QCloseEvent
-from PySide6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
-from PySide6.QtPdfWidgets import QPdfView
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QHBoxLayout,
-    QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QPushButton,
-    QTabWidget,
-    QTreeView,
-    QVBoxLayout,
-    QWidget,
 )
 
-from ...core.i18n import tm
 
 logger = logging.getLogger(__name__)
 

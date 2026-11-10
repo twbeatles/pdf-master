@@ -30,12 +30,12 @@ def hit_test_handle(box: QRect, pos: QPoint, hit: int = _HANDLE_HIT) -> str:
     if box.width() <= 0 or box.height() <= 0:
         return _HANDLE_NONE
     x, y = pos.x(), pos.y()
-    l, t, r, b = box.left(), box.top(), box.right(), box.bottom()
-    near_l = abs(x - l) <= hit
+    left, t, r, b = box.left(), box.top(), box.right(), box.bottom()
+    near_l = abs(x - left) <= hit
     near_r = abs(x - r) <= hit
     near_t = abs(y - t) <= hit
     near_b = abs(y - b) <= hit
-    in_x = (l - hit) <= x <= (r + hit)
+    in_x = (left - hit) <= x <= (r + hit)
     in_y = (t - hit) <= y <= (b + hit)
     if near_t and near_l:
         return _HANDLE_NW

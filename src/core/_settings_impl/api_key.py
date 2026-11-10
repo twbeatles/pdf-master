@@ -1,16 +1,8 @@
 from __future__ import annotations
 
-import json
-import logging
-import os
-import shutil
-import tempfile
-from datetime import datetime
 
-from ..constants import MAX_CHAT_HISTORY_ENTRIES, MAX_CHAT_HISTORY_PDFS
 from ..optional_deps import KEYRING_AVAILABLE, keyring
-from ..path_utils import make_chat_history_key, normalize_path_key, parse_chat_history_key
-from .config import KEYRING_SERVICE, KEYRING_USERNAME, SETTINGS_FILE, logger
+from .config import KEYRING_SERVICE, KEYRING_USERNAME, logger
 from .persistence import load_settings, save_settings
 
 def get_api_key() -> str:

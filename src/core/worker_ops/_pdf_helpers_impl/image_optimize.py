@@ -2,13 +2,10 @@
 from __future__ import annotations
 
 from __future__ import annotations
-import json
 import logging
-import os
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 from ...optional_deps import fitz
-from ...worker_runtime.args import _as_str
 logger = logging.getLogger(__name__)
 
 def _pixmap_for_reencode(pix: Any, *, grayscale: bool) -> Any:

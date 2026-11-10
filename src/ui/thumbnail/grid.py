@@ -1,10 +1,8 @@
 from __future__ import annotations
 import logging
-from typing import Iterable
-from PySide6.QtCore import QThread, Qt, Signal, Slot
-from PySide6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
-    QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -14,10 +12,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from ...core.i18n import tm
-from ...core.optional_deps import fitz
-from ...core.perf import PerfTimer
-logger = logging.getLogger(__name__)
-from .document import _open_thumbnail_document
 from .loader import ThumbnailLoaderThread
 from .tile import ThumbnailLabel
 
@@ -25,6 +19,7 @@ from .grid_layout import ThumbnailGridLayoutMixin
 from .grid_loading import ThumbnailGridLoadingMixin
 from .grid_selection import ThumbnailGridSelectionMixin
 from .grid_theme import ThumbnailGridThemeMixin
+logger = logging.getLogger(__name__)
 
 
 class ThumbnailGridWidget(ThumbnailGridLayoutMixin, ThumbnailGridLoadingMixin, ThumbnailGridSelectionMixin, ThumbnailGridThemeMixin, QWidget):

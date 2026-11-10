@@ -1,7 +1,11 @@
 """Build a signed update manifest for a GitHub Release asset."""
 from __future__ import annotations
 
-import argparse, base64, hashlib, json, os
+import argparse
+import base64
+import hashlib
+import json
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization
@@ -11,8 +15,10 @@ from src.core.constants import UPDATE_PUBLIC_KEY_B64
 from src.core.update_manifest import MANIFEST_DEFAULT_VALIDITY_DAYS, canonical_manifest_payload
 
 parser = argparse.ArgumentParser(description="Sign a release artifact into updates/latest.json")
-parser.add_argument("--version", required=True); parser.add_argument("--artifact", required=True)
-parser.add_argument("--artifact-url", required=True); parser.add_argument("--output", required=True)
+parser.add_argument("--version", required=True)
+parser.add_argument("--artifact", required=True)
+parser.add_argument("--artifact-url", required=True)
+parser.add_argument("--output", required=True)
 parser.add_argument(
     "--expires-days",
     type=int,

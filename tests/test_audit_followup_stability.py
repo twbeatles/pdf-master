@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock
 
 from _deps import require_pyside6, require_pyside6_and_pymupdf

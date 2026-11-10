@@ -17,17 +17,8 @@ from PySide6.QtWidgets import QTextEdit, QWidget
 
 from .text_placement_geometry import (
     _HANDLE_CURSORS,
-    _HANDLE_E,
-    _HANDLE_HIT,
-    _HANDLE_N,
-    _HANDLE_NE,
     _HANDLE_NONE,
-    _HANDLE_NW,
-    _HANDLE_S,
-    _HANDLE_SE,
     _HANDLE_SIZE,
-    _HANDLE_SW,
-    _HANDLE_W,
     apply_resize,
     hit_test_handle,
 )

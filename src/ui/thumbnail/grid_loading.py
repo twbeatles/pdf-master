@@ -2,26 +2,13 @@ from __future__ import annotations
 
 from .._typing import ThumbnailGridHost
 import logging
-from typing import Iterable
-from PySide6.QtCore import QThread, Qt, Signal, Slot
-from PySide6.QtGui import QCloseEvent, QCursor, QImage, QMouseEvent, QPixmap
-from PySide6.QtWidgets import (
-    QFrame,
-    QGridLayout,
-    QHBoxLayout,
-    QLabel,
-    QScrollArea,
-    QSpinBox,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtCore import Slot
+from PySide6.QtGui import QPixmap
 from ...core.i18n import tm
-from ...core.optional_deps import fitz
-from ...core.perf import PerfTimer
-logger = logging.getLogger(__name__)
 from .document import _open_thumbnail_document
 from .loader import ThumbnailLoaderThread
 from .tile import ThumbnailLabel
+logger = logging.getLogger(__name__)
 
 
 class ThumbnailGridLoadingMixin(ThumbnailGridHost):

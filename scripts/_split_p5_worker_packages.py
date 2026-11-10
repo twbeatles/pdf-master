@@ -176,7 +176,6 @@ def main() -> None:
         ("security_ops", ["WorkerSecurityOpsMixin", "_resolve_permissions"]),
         ("_pdf_helpers", ["text_needs_cjk", "optimize_pdf_images"]),
     ]:
-        ns: dict = {}
         code = (OPS / f"{mod}.py").read_text(encoding="utf-8")
         # just syntax
         ast.parse(code)

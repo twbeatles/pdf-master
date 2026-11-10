@@ -1,15 +1,13 @@
 from __future__ import annotations
 import logging
-from PySide6.QtCore import QEvent, QModelIndex, QPointF, QRect, QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import QCloseEvent, QColor
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtPdf import QPdfBookmarkModel, QPdfDocument, QPdfSearchModel
 from PySide6.QtPdfWidgets import QPdfView
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QListWidget,
-    QListWidgetItem,
     QPushButton,
     QTabWidget,
     QTreeView,
@@ -17,13 +15,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from ...core.i18n import tm
-logger = logging.getLogger(__name__)
 from .region_select import (
     RegionSelectOverlay,
-    compute_page_display_rect,
-    format_rect_coords,
-    map_page_points_to_viewport_rect,
-    map_viewport_rect_to_page_points,
 )
 from .queue_overlay import QueueGhostOverlay
 from .search import PreviewSearchLineEdit
@@ -35,6 +28,7 @@ from .zoom import PreviewZoomMixin
 from .search_panel import PreviewSearchPanelMixin
 from .theme_api import PreviewThemeMixin
 from .interaction_overlays import PreviewInteractionMixin
+logger = logging.getLogger(__name__)
 
 
 class ZoomablePreviewWidget(PreviewDocumentApiMixin, PreviewNavigationMixin, PreviewZoomMixin, PreviewSearchPanelMixin, PreviewThemeMixin, PreviewInteractionMixin, QWidget):

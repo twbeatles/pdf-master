@@ -5,26 +5,8 @@ to the folder-based window_preview package.
 """
 
 import logging
-import os
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QPixmap
-from PySide6.QtPrintSupport import QPrintDialog, QPrinter
-from PySide6.QtWidgets import (
-    QFrame,
-    QGraphicsOpacityEffect,
-    QHBoxLayout,
-    QLabel,
-    QMessageBox,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
 
-from ..core.i18n import tm
-from ..core.settings import save_settings
-from .widgets import FileSelectorWidget
-from .window_preview import MainWindowPreviewMixin
-from .zoomable_preview import ZoomablePreviewWidget
+from .window_preview import MainWindowPreviewMixin  # noqa: F401 -- keeper used by main_window.py,test_preview_doc_reuse.py
 
 logger = logging.getLogger(__name__)

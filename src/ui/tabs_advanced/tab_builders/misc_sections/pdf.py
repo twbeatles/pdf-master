@@ -4,17 +4,9 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QListWidget,
-    QPushButton,
-    QScrollArea,
-    QSpinBox,
-    QTabWidget,
-    QTextEdit,
     QVBoxLayout,
-    QWidget,
 )
-from ....fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox
+from ....fluent_widgets import PrimaryButton, QCheckBox, QComboBox
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget

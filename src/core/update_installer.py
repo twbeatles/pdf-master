@@ -27,8 +27,10 @@ def update_result_path() -> Path:
 
 
 def _write_result(status: str, **extra: object) -> None:
-    root = update_root(); root.mkdir(parents=True, exist_ok=True)
-    target = update_result_path(); tmp = target.with_suffix(".tmp")
+    root = update_root()
+    root.mkdir(parents=True, exist_ok=True)
+    target = update_result_path()
+    tmp = target.with_suffix(".tmp")
     tmp.write_text(json.dumps({"status": status, **extra}, ensure_ascii=False), encoding="utf-8")
     os.replace(tmp, target)
 
@@ -41,15 +43,19 @@ def consume_update_result() -> dict[str, object] | None:
     except (OSError, ValueError, json.JSONDecodeError):
         return None
     finally:
-        try: path.unlink(missing_ok=True)
-        except OSError: pass
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _cleanup_old_helpers(root: Path) -> None:
     for path in root.glob("pdf-master-update-helper-*.exe"):
         try:
-            if time.time() - path.stat().st_mtime > 24 * 3600: path.unlink()
-        except OSError: pass
+            if time.time() - path.stat().st_mtime > 24 * 3600:
+                path.unlink()
+        except OSError:
+            pass
 
 
 #: 일시적 네트워크 오류 시 다운로드 재시도 횟수 (PROJECT_AUDIT.md ISSUE-003 대응).
@@ -79,12 +85,16 @@ def _stage_update_once(manifest: ReleaseManifest, progress: Callable[[int], None
             raise ValueError("Artifact redirect must remain HTTPS")
         while chunk := response.read(1024 * 1024):
             total += len(chunk)
-            if total > manifest.artifact_size: raise ValueError("Update artifact size mismatch")
-            digest.update(chunk); out.write(chunk)
-            if progress: progress(min(99, int(total * 100 / manifest.artifact_size)))
+            if total > manifest.artifact_size:
+                raise ValueError("Update artifact size mismatch")
+            digest.update(chunk)
+            out.write(chunk)
+            if progress:
+                progress(min(99, int(total * 100 / manifest.artifact_size)))
     if total != manifest.artifact_size or digest.hexdigest().lower() != manifest.artifact_sha256:
         raise ValueError("Update artifact integrity check failed")
-    if progress: progress(100)
+    if progress:
+        progress(100)
     return staged
 
 
@@ -96,7 +106,9 @@ def stage_update(
     retry_backoff: float = STAGE_UPDATE_RETRY_BACKOFF,
 ) -> Path:
     """서명 아티팩트를 스테이징. 일시 네트워크 오류에 한해 재시도한다."""
-    root = update_root(); root.mkdir(parents=True, exist_ok=True); _cleanup_old_helpers(root)
+    root = update_root()
+    root.mkdir(parents=True, exist_ok=True)
+    _cleanup_old_helpers(root)
     staged = root / f"PDF_Master_v{manifest.version}-{uuid4().hex}.exe"
     attempts = max(1, int(max_retries))
     last_error: BaseException | None = None
@@ -110,8 +122,10 @@ def stage_update(
                 raise
             # 부분 진행률 잔상 방지: 다음 시도 전 0%로 되돌림
             if progress:
-                try: progress(0)
-                except Exception: pass
+                try:
+                    progress(0)
+                except Exception:
+                    pass
             time.sleep(retry_backoff * (2 ** (attempt - 1)))
     assert last_error is not None
     raise last_error
@@ -249,8 +263,10 @@ def _target_dir_writable(target_path: Path) -> bool:
     try:
         probe = target_path.parent / f".pdf_master_write_test_{uuid4().hex}.tmp"
         fd = os.open(probe, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        try: os.close(fd)
-        finally: probe.unlink(missing_ok=True)
+        try:
+            os.close(fd)
+        finally:
+            probe.unlink(missing_ok=True)
         return True
     except OSError:
         return False
@@ -288,22 +304,28 @@ def _relaunch(path: Path) -> None:
 def apply_update(target: str, staged: str, parent_pid: int) -> int:
     target_path, staged_path = Path(target).resolve(), Path(staged).resolve()
     if parent_pid <= 0 or target_path.suffix.lower() != ".exe" or staged_path.suffix.lower() != ".exe":
-        _write_result("failed", error="Invalid update paths"); return 2
+        _write_result("failed", error="Invalid update paths")
+        return 2
     backup = target_path.with_suffix(target_path.suffix + ".bak")
     if not target_path.is_file() and backup.is_file():
         try:
             _replace_with_retry(backup, target_path)
         except OSError as exc:
-            _write_result("failed", error=f"Interrupted update could not restore the previous version ({exc}); staged update preserved at {staged_path}"); return 4
+            _write_result("failed", error=f"Interrupted update could not restore the previous version ({exc}); staged update preserved at {staged_path}")
+            return 4
         if not staged_path.is_file():
             _write_result("rolled_back", error="Interrupted update restored the previous version")
-            try: _relaunch(target_path)
-            except OSError: pass
+            try:
+                _relaunch(target_path)
+            except OSError:
+                pass
             return 4
     if not target_path.is_file() or not staged_path.is_file():
-        _write_result("failed", error="Invalid update paths"); return 2
+        _write_result("failed", error="Invalid update paths")
+        return 2
     if not _wait_for_parent_exit(parent_pid):
-        _write_result("failed", error="Timed out waiting for the application to close"); return 3
+        _write_result("failed", error="Timed out waiting for the application to close")
+        return 3
     if not _target_dir_writable(target_path):
         # 보호 위치(Program Files 등): 상승된 헬퍼에 위임하고 조용히 종료.
         # 결과 파일은 쓰지 않는다 — 상승 인스턴스가 최종 결과를 기록한다.
@@ -313,30 +335,45 @@ def apply_update(target: str, staged: str, parent_pid: int) -> int:
         return 4
     backup = target_path.with_suffix(target_path.suffix + ".bak")
     try:
-        _overwrite_backup_with_target(target_path, backup); _replace_with_retry(staged_path, target_path)
-        if subprocess.run([str(target_path), "--smoke"], timeout=60, check=False, env=clean_bootloader_env(), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode != 0: raise RuntimeError("Updated executable smoke check failed")
-        backup.unlink(missing_ok=True); _write_result("applied"); _relaunch(target_path); return 0
+        _overwrite_backup_with_target(target_path, backup)
+        _replace_with_retry(staged_path, target_path)
+        if subprocess.run([str(target_path), "--smoke"], timeout=60, check=False, env=clean_bootloader_env(), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode != 0:
+            raise RuntimeError("Updated executable smoke check failed")
+        backup.unlink(missing_ok=True)
+        _write_result("applied")
+        _relaunch(target_path)
+        return 0
     except PermissionError as exc:
         rolled_back = False
         try:
-            if backup.is_file(): _replace_with_retry(backup, target_path); rolled_back = True
-        except OSError: pass
+            if backup.is_file():
+                _replace_with_retry(backup, target_path)
+                rolled_back = True
+        except OSError:
+            pass
         if rolled_back:
             error = f"Access denied replacing {target_path} ({exc}); restored the previous version"
         else:
             error = f"Access denied replacing {target_path} ({exc}); staged update preserved at {staged_path}"
         _write_result("rolled_back" if rolled_back else "failed", error=error)
         if rolled_back:
-            try: _relaunch(target_path)
-            except OSError: pass
+            try:
+                _relaunch(target_path)
+            except OSError:
+                pass
         return 4
     except Exception as exc:
         rolled_back = False
         try:
-            if backup.is_file(): _replace_with_retry(backup, target_path); rolled_back = True
-        except OSError: pass
+            if backup.is_file():
+                _replace_with_retry(backup, target_path)
+                rolled_back = True
+        except OSError:
+            pass
         _write_result("rolled_back" if rolled_back else "failed", error=str(exc))
         if rolled_back:
-            try: _relaunch(target_path)
-            except OSError: pass
+            try:
+                _relaunch(target_path)
+            except OSError:
+                pass
         return 4

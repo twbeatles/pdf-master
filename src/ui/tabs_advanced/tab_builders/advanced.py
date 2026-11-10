@@ -1,25 +1,12 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QPushButton,
-    QScrollArea,
-    QSpinBox,
-    QTabWidget,
-    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 # (this module uses TabShell only; no fluent-shadowed widgets)
 
 from ....core.i18n import tm
-from ...widgets import FileSelectorWidget
 
 
 def setup_advanced_tab(self):

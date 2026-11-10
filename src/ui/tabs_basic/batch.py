@@ -3,17 +3,11 @@ import os
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QAbstractItemView,
     QFileDialog,
-    QFormLayout,
-    QGroupBox,
     QHBoxLayout,
-    QInputDialog,
     QLabel,
-    QListWidget,
     QListWidgetItem,
     QMessageBox,
-    QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
@@ -21,10 +15,8 @@ from PySide6.QtWidgets import (
 from ..fluent_widgets import PrimaryButton, PushButton, QCheckBox, QComboBox, QDoubleSpinBox, QLineEdit, QSpinBox
 from ..tab_shell import add_tab
 
-from ...core.constants import SUPPORTED_IMAGE_FORMATS
 from ...core.i18n import tm
-from ...core.settings import save_settings
-from ..widgets import FileListWidget, FileSelectorWidget, ImageListWidget, ToastWidget
+from ..widgets import FileListWidget
 
 logger = logging.getLogger(__name__)
 

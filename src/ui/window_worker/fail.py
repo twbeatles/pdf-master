@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from ...core.i18n import tm
 from .helpers import _chat_history_key_for
 from .results import _clear_meta_label, _replace_last_chat_block
 
