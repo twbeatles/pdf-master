@@ -1,6 +1,12 @@
+# main.py E402s are load-bearing startup ordering: console suppression
+# must precede any child-process creation; heavy Qt imports are deferred
+# past the splash to minimize cold-start blank time (see inline comments).
 # pdf-master — Ruff S1 baseline (E4,E7,E9,F).
 # S2 (I) / S3 (B) / S4 (UP) intentionally deferred.
 line-length = 88
 
 [lint]
 select = ["E4", "E7", "E9", "F"]
+
+[lint.per-file-ignores]
+"main.py" = ["E402"]

@@ -3,7 +3,6 @@ import os
 import logging
 import traceback
 import tempfile
-from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
 # 로그 파일 경로
