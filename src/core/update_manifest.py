@@ -4,9 +4,10 @@ from __future__ import annotations
 import base64
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Mapping
+from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
@@ -70,8 +71,8 @@ def verify_release_manifest(document: bytes | str | Mapping[str, Any], *, public
         raise ValueError("Update artifact size is invalid")
     expires_at = datetime.fromisoformat(str(payload.get("expires_at", "")).replace("Z", "+00:00"))
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at <= datetime.now(timezone.utc):
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if expires_at <= datetime.now(UTC):
         raise ValueError("Manifest is expired")
     return ReleaseManifest(version, url, sha256, size, expires_at)
 
@@ -87,8 +88,8 @@ def days_until_expiry(expires_at: datetime) -> int:
     """만료까지 남은 일수 (자정 기준 내림, 만료 시 0 이하)."""
     moment = expires_at
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    delta = moment - datetime.now(timezone.utc)
+        moment = moment.replace(tzinfo=UTC)
+    delta = moment - datetime.now(UTC)
     return int(delta.total_seconds() // 86400)
 
 
@@ -96,8 +97,8 @@ def manifest_expiry_status(expires_at: datetime, *, warn_days: int = MANIFEST_EX
     """만료 상태 분류: "valid" | "expiring_soon" | "expired"."""
     moment = expires_at
     if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    if moment <= datetime.now(timezone.utc):
+        moment = moment.replace(tzinfo=UTC)
+    if moment <= datetime.now(UTC):
         return "expired"
     if days_until_expiry(moment) <= warn_days:
         return "expiring_soon"

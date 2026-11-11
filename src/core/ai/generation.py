@@ -2,7 +2,8 @@ from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .client import _response_text
 from .errors import retry_with_backoff

@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from _deps import require_pyside6
@@ -45,24 +45,24 @@ def _payload(**overrides) -> dict:
         "artifact_url": "https://github.com/twbeatles/pdf-master/releases/download/v9/PDF_Master_v9.exe",
         "sha256": "0" * 64,
         "size": 1,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=100)).isoformat(),
+        "expires_at": (datetime.now(UTC) + timedelta(days=100)).isoformat(),
     }
     base.update(overrides)
     return base
 
 
 def test_manifest_expiry_status_classification() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     assert manifest_expiry_status(now - timedelta(days=1)) == "expired"
     assert manifest_expiry_status(now + timedelta(days=10)) == "expiring_soon"
     assert manifest_expiry_status(now + timedelta(days=400)) == "valid"
     # naive datetime도 UTC로 간주
-    assert manifest_expiry_status(datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)) == "expired"
+    assert manifest_expiry_status(datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)) == "expired"
     assert days_until_expiry(now + timedelta(days=10, hours=12)) == 10
 
 
 def test_verify_expired_manifest_rejected() -> None:
-    document, public = _signed_document(_payload(expires_at=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat()))
+    document, public = _signed_document(_payload(expires_at=(datetime.now(UTC) - timedelta(days=1)).isoformat()))
     try:
         verify_release_manifest(document, public_key=public, current_version="1.0.0")
     except ValueError as exc:
@@ -81,7 +81,7 @@ def test_stage_update_retries_then_succeeds(monkeypatch, tmp_path) -> None:
         artifact_url="https://example.com/PDF_Master_v9.9.9.exe",
         artifact_sha256=hashlib.sha256(data).hexdigest(),
         artifact_size=len(data),
-        expires_at=datetime.now(timezone.utc) + timedelta(days=100),
+        expires_at=datetime.now(UTC) + timedelta(days=100),
     )
 
     from urllib.error import URLError
@@ -133,7 +133,7 @@ def test_stage_update_failure_cleans_staging(monkeypatch, tmp_path) -> None:
         artifact_url="https://example.com/x.exe",
         artifact_sha256="0" * 64,
         artifact_size=8,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=100),
+        expires_at=datetime.now(UTC) + timedelta(days=100),
     )
 
     from urllib.error import URLError
@@ -158,7 +158,7 @@ def test_stage_update_policy_error_does_not_retry(monkeypatch, tmp_path) -> None
         artifact_url="https://example.com/x.exe",
         artifact_sha256="0" * 64,
         artifact_size=8,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=100),
+        expires_at=datetime.now(UTC) + timedelta(days=100),
     )
     calls = {"count": 0}
 
@@ -190,7 +190,7 @@ def test_update_service_delegates(monkeypatch) -> None:
     from src.core import update_service as service
 
     sentinel = ReleaseManifest("9.0.0", "https://example.com/x.exe", "0" * 64, 1,
-                               datetime.now(timezone.utc) + timedelta(days=10))
+                               datetime.now(UTC) + timedelta(days=10))
     monkeypatch.setattr(service, "download_release_manifest", lambda url: b"doc")
     monkeypatch.setattr(service, "verify_release_manifest", lambda doc, **kw: sentinel)
     assert service.check_for_update(manifest_url="https://m", public_key="k", current_version="1") is sentinel
@@ -272,7 +272,7 @@ def test_offer_update_includes_expiry_warning(monkeypatch) -> None:
         artifact_url="https://example.com/x.exe",
         artifact_sha256="0" * 64,
         artifact_size=1,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=10, hours=1),
+        expires_at=datetime.now(UTC) + timedelta(days=10, hours=1),
     )
     captured = {}
 
@@ -527,12 +527,12 @@ def test_check_manifest_expiry_states(tmp_path) -> None:
     from scripts.check_update_manifest_expiry import check_manifest
 
     manifest = tmp_path / "latest.json"
-    _write_manifest_doc(manifest, (datetime.now(timezone.utc) + timedelta(days=100)).isoformat())
+    _write_manifest_doc(manifest, (datetime.now(UTC) + timedelta(days=100)).isoformat())
     assert check_manifest(manifest, 30)[0] == 0
-    _write_manifest_doc(manifest, (datetime.now(timezone.utc) + timedelta(days=10)).isoformat())
+    _write_manifest_doc(manifest, (datetime.now(UTC) + timedelta(days=10)).isoformat())
     code, message = check_manifest(manifest, 30)
     assert code == 2
     assert "10" in message
-    _write_manifest_doc(manifest, (datetime.now(timezone.utc) - timedelta(days=1)).isoformat())
+    _write_manifest_doc(manifest, (datetime.now(UTC) - timedelta(days=1)).isoformat())
     assert check_manifest(manifest, 30)[0] == 1
     assert check_manifest(tmp_path / "missing.json", 30)[0] == 1

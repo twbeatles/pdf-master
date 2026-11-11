@@ -5,7 +5,7 @@ import logging
 import sys
 import threading
 import webbrowser
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -89,7 +89,7 @@ class UpdateMixin:
     def _handle_check_failure(self, exc: BaseException, silent: bool) -> str:
         logger.warning("Update check failed", exc_info=True)
         self._last_update_check_error = str(exc) or repr(exc)
-        self._last_update_check_at = datetime.now(timezone.utc)
+        self._last_update_check_at = datetime.now(UTC)
         self._update_state = "idle"
         if silent:
             self._update_signals.notice.emit(tm.get("update_check_failed_hint"))

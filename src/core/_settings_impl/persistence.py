@@ -39,7 +39,7 @@ def load_settings():
     defaults = default_settings()
     if os.path.exists(settings_file):
         try:
-            with open(settings_file, 'r', encoding='utf-8') as f:
+            with open(settings_file, encoding='utf-8') as f:
                 settings = json.load(f)
                 if not isinstance(settings, dict):
                     logger.warning("Settings file content is not a JSON object, falling back to defaults")

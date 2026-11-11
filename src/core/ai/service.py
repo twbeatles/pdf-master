@@ -4,7 +4,8 @@ import atexit
 import logging
 import threading
 from collections import OrderedDict
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from .cache import AICacheMixin
 from .client import (
@@ -274,7 +275,7 @@ class AIService(
         return {"keywords": deduped, "meta": meta}
 
 
-_ai_service_instance: Optional[AIService] = None
+_ai_service_instance: AIService | None = None
 _ai_service_lock = threading.Lock()
 
 

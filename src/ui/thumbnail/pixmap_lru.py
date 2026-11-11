@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Hashable
+from collections.abc import Hashable
 
 from PySide6.QtGui import QPixmap
 

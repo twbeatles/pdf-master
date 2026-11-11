@@ -10,7 +10,7 @@
 line-length = 88
 
 [lint]
-select = ["E4", "E7", "E9", "F", "I", "B"]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
 
 [lint.per-file-ignores]
 "main.py" = ["E402"]
@@ -19,3 +19,9 @@ select = ["E4", "E7", "E9", "F", "I", "B"]
 # iteration (parent rebound each iteration) -- no late-binding defect in
 # practice; rebinding via default arg would edit test semantics.
 "tests/test_i18n_worker_hardcoded_smoke.py" = ["B023"]
+# UP031 deferred: printf-formatting inside a multi-line QSS template
+# (file_selector) and a codegen snippet (test); .format conversion is
+# churn without benefit, and an inline noqa on the opening-quote line
+# would land inside the string literal.
+"src/ui/common_widgets/file_selector.py" = ["UP031"]
+"tests/test_startup_single_instance.py" = ["UP031"]

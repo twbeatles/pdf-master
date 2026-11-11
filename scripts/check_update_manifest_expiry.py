@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # NOTE: CI dependency-free intentionally — this script must run on a bare
@@ -31,8 +31,8 @@ def check_manifest(manifest_path: Path, warn_days: int) -> tuple[int, str]:
     except ValueError:
         return 1, f"manifest expires_at is invalid in {manifest_path}"
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    now = datetime.now(timezone.utc)
+        expires_at = expires_at.replace(tzinfo=UTC)
+    now = datetime.now(UTC)
     if expires_at <= now:
         return 1, f"update manifest expired at {expires_at.isoformat()} — re-publish a release"
     days_left = int((expires_at - now).total_seconds() // 86400)

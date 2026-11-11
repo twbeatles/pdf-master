@@ -6,7 +6,7 @@ import base64
 import hashlib
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -38,6 +38,6 @@ derived_public = base64.b64encode(key.public_key().public_bytes(serialization.En
 if configured_public != UPDATE_PUBLIC_KEY_B64 or derived_public != UPDATE_PUBLIC_KEY_B64:
     raise ValueError("Update signing secrets do not match the embedded public key")
 artifact = Path(args.artifact)
-payload = {"version": args.version, "artifact_url": args.artifact_url, "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(), "size": artifact.stat().st_size, "expires_at": (datetime.now(timezone.utc) + timedelta(days=args.expires_days)).replace(microsecond=0).isoformat()}
+payload = {"version": args.version, "artifact_url": args.artifact_url, "sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(), "size": artifact.stat().st_size, "expires_at": (datetime.now(UTC) + timedelta(days=args.expires_days)).replace(microsecond=0).isoformat()}
 Path(args.output).write_text(json.dumps({"payload": payload, "signature": base64.b64encode(key.sign(canonical_manifest_payload(payload))).decode("ascii")}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(f"Manifest for v{args.version} valid for {args.expires_days} days (expires {payload['expires_at']})")

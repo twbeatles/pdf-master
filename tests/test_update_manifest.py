@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -21,7 +21,7 @@ def _signed_document(version: str = "9.0.0") -> tuple[dict[str, object], str]:
         "artifact_url": "https://github.com/twbeatles/pdf-master/releases/download/v9/PDF_Master_v9.exe",
         "sha256": "0" * 64,
         "size": 1,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
+        "expires_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
     }
     document = {
         "payload": payload,
