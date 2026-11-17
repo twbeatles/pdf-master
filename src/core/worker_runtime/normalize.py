@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 def _normalize_draw_shapes(kwargs: dict[str, Any]) -> None:
     shapes = kwargs.get("shapes")
-    if not shapes and any(k in kwargs for k in ("shape_type", "x", "y", "width", "height")):
+    if not shapes and any(
+        k in kwargs for k in ("shape_type", "x", "y", "width", "height")
+    ):
         shape_type = kwargs.get("shape_type", "rect")
         x = float(kwargs.get("x", 100))
         y = float(kwargs.get("y", 100))
@@ -54,7 +56,9 @@ def _normalize_insert_textbox(kwargs: dict[str, Any]) -> None:
         kwargs["rect"] = [x, y, x + w, y + h]
 
 
-def _normalize_copy_page_between_docs(kwargs: dict[str, Any], parse_page_range: Callable[[str, int], list[int]]) -> None:
+def _normalize_copy_page_between_docs(
+    kwargs: dict[str, Any], parse_page_range: Callable[[str, int], list[int]]
+) -> None:
     if not kwargs.get("target_path"):
         kwargs["target_path"] = kwargs.get("file_path")
     source_pages = kwargs.get("source_pages")
@@ -80,7 +84,7 @@ def _normalize_image_watermark(kwargs: dict[str, Any]) -> None:
     if "scale" in kwargs and kwargs.get("image_path"):
         try:
             scale = float(kwargs.get("scale", 1.0))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             scale = 1.0
         scale = max(0.01, scale)
         try:
@@ -90,16 +94,24 @@ def _normalize_image_watermark(kwargs: dict[str, Any]) -> None:
             kwargs["width"] = max(1, int(base_w * scale))
             kwargs["height"] = max(1, int(base_h * scale))
         except Exception:
-            logger.debug("Failed to compute watermark image size from scale", exc_info=True)
+            logger.debug(
+                "Failed to compute watermark image size from scale", exc_info=True
+            )
 
 
 NORMALIZERS = {
     "draw_shapes": lambda kwargs, parse_page_range: _normalize_draw_shapes(kwargs),
     "add_link": lambda kwargs, parse_page_range: _normalize_add_link(kwargs),
-    "insert_textbox": lambda kwargs, parse_page_range: _normalize_insert_textbox(kwargs),
-    "replace_text_in_rect": lambda kwargs, parse_page_range: _normalize_insert_textbox(kwargs),
+    "insert_textbox": lambda kwargs, parse_page_range: _normalize_insert_textbox(
+        kwargs
+    ),
+    "replace_text_in_rect": lambda kwargs, parse_page_range: _normalize_insert_textbox(
+        kwargs
+    ),
     "copy_page_between_docs": _normalize_copy_page_between_docs,
-    "image_watermark": lambda kwargs, parse_page_range: _normalize_image_watermark(kwargs),
+    "image_watermark": lambda kwargs, parse_page_range: _normalize_image_watermark(
+        kwargs
+    ),
 }
 
 

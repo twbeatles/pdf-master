@@ -126,7 +126,9 @@ def _enter_preview_fullscreen(self) -> None:
     if host is None:
         host = PreviewFullscreenHost(self)
         # X/Esc: 포커스 유지. F11 cycle: 전체화면+포커스 해제(메인 순환과 동일).
-        host.hostClosing.connect(lambda: _exit_preview_fullscreen(self, restore_focus=True))
+        host.hostClosing.connect(
+            lambda: _exit_preview_fullscreen(self, restore_focus=True)
+        )
         host.layoutCycleExitRequested.connect(lambda: _toggle_preview_focus_mode(self))
         host.placeTextboxRequested.connect(self.action_start_textbox_region_select)
         host.insertTextboxRequested.connect(self.action_insert_textbox)
@@ -231,10 +233,16 @@ def _on_preview_focus_escape(self) -> None:
             if callable(overlay.is_editing) and overlay.is_editing():
                 overlay.cancel_inline_edit()
                 return
-        if hasattr(preview, "is_text_placement_mode") and preview.is_text_placement_mode():
+        if (
+            hasattr(preview, "is_text_placement_mode")
+            and preview.is_text_placement_mode()
+        ):
             preview.set_text_placement_mode(False)
             return
-        if hasattr(preview, "is_region_select_mode") and preview.is_region_select_mode():
+        if (
+            hasattr(preview, "is_region_select_mode")
+            and preview.is_region_select_mode()
+        ):
             preview.set_region_select_mode(False)
             return
     if _is_preview_fullscreen(self):
@@ -260,11 +268,15 @@ def _persist_preview_layout_settings(self) -> None:
 def _refresh_text_placement_after_layout(self) -> None:
     preview = getattr(self, "preview_image", None)
     if preview is not None and hasattr(preview, "is_text_placement_mode"):
-        if preview.is_text_placement_mode() and hasattr(preview, "update_text_placement_content"):
+        if preview.is_text_placement_mode() and hasattr(
+            preview, "update_text_placement_content"
+        ):
             try:
                 preview.update_text_placement_content()
             except Exception:
-                logger.debug("text placement refresh after layout change failed", exc_info=True)
+                logger.debug(
+                    "text placement refresh after layout change failed", exc_info=True
+                )
 
 
 __all__ = [

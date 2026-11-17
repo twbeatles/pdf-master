@@ -17,14 +17,23 @@ def test_ui_run_worker_calls_satisfy_static_required_kwargs():
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
-            if not isinstance(node.func, ast.Attribute) or node.func.attr != "run_worker":
+            if (
+                not isinstance(node.func, ast.Attribute)
+                or node.func.attr != "run_worker"
+            ):
                 continue
-            if not node.args or not isinstance(node.args[0], ast.Constant) or not isinstance(node.args[0].value, str):
+            if (
+                not node.args
+                or not isinstance(node.args[0], ast.Constant)
+                or not isinstance(node.args[0].value, str)
+            ):
                 continue
 
             mode = node.args[0].value
             spec = OPERATION_SPECS.get(mode)
-            if spec is None or (not spec.required_kwargs and not spec.required_any_kwargs):
+            if spec is None or (
+                not spec.required_kwargs and not spec.required_any_kwargs
+            ):
                 continue
 
             if any(keyword.arg is None for keyword in node.keywords):

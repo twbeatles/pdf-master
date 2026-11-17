@@ -39,10 +39,12 @@ def load_settings():
     defaults = default_settings()
     if os.path.exists(settings_file):
         try:
-            with open(settings_file, encoding='utf-8') as f:
+            with open(settings_file, encoding="utf-8") as f:
                 settings = json.load(f)
                 if not isinstance(settings, dict):
-                    logger.warning("Settings file content is not a JSON object, falling back to defaults")
+                    logger.warning(
+                        "Settings file content is not a JSON object, falling back to defaults"
+                    )
                     return defaults
                 # 누락된 키에 기본값 추가
                 for key, default_value in defaults.items():
@@ -50,13 +52,23 @@ def load_settings():
                         settings[key] = default_value
 
                 # 타입 방어: 잘못된 타입이면 기본값으로 교체
-                settings["recent_files"] = _normalize_recent_files(settings.get("recent_files", []))
-                settings["chat_histories"] = _normalize_chat_histories(settings.get("chat_histories", {}))
-                settings["splitter_sizes"] = _normalize_splitter_sizes(settings.get("splitter_sizes"))
+                settings["recent_files"] = _normalize_recent_files(
+                    settings.get("recent_files", [])
+                )
+                settings["chat_histories"] = _normalize_chat_histories(
+                    settings.get("chat_histories", {})
+                )
+                settings["splitter_sizes"] = _normalize_splitter_sizes(
+                    settings.get("splitter_sizes")
+                )
                 settings["theme"] = _normalize_theme(settings.get("theme"))
                 settings["language"] = _normalize_language(settings.get("language"))
-                settings["window_geometry"] = _normalize_window_geometry(settings.get("window_geometry"))
-                settings["last_output_dir"] = _normalize_last_output_dir(settings.get("last_output_dir"))
+                settings["window_geometry"] = _normalize_window_geometry(
+                    settings.get("window_geometry")
+                )
+                settings["last_output_dir"] = _normalize_last_output_dir(
+                    settings.get("last_output_dir")
+                )
                 settings["preview_search_expanded"] = _normalize_bool(
                     settings.get("preview_search_expanded"),
                     True,
@@ -73,7 +85,9 @@ def load_settings():
                     True,
                 )
                 notify = settings.get("notify_mode", "dialog")
-                settings["notify_mode"] = notify if notify in {"dialog", "toast"} else "dialog"
+                settings["notify_mode"] = (
+                    notify if notify in {"dialog", "toast"} else "dialog"
+                )
                 settings["clear_pending_on_cancel"] = _normalize_bool(
                     settings.get("clear_pending_on_cancel"),
                     True,
@@ -81,10 +95,14 @@ def load_settings():
                 return settings
         except json.JSONDecodeError as e:
             # 손상된 설정 파일 백업
-            backup_path = f"{settings_file}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            backup_path = (
+                f"{settings_file}.backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
             try:
                 shutil.copy2(settings_file, backup_path)
-                logger.warning(f"Settings file corrupted, backed up to {backup_path}: {e}")
+                logger.warning(
+                    f"Settings file corrupted, backed up to {backup_path}: {e}"
+                )
             except Exception as backup_error:
                 logger.error(f"Failed to backup corrupted settings: {backup_error}")
             # 기본 설정 반환
@@ -94,6 +112,7 @@ def load_settings():
             return defaults
     # 기본 설정 반환
     return defaults
+
 
 def save_settings(settings):
     """Save application settings to JSON file (atomic write for safety)."""
@@ -110,8 +129,7 @@ def save_settings(settings):
             os.makedirs(dir_name, exist_ok=True)
 
         with tempfile.NamedTemporaryFile(
-            mode='w', encoding='utf-8', dir=dir_name,
-            delete=False, suffix='.tmp'
+            mode="w", encoding="utf-8", dir=dir_name, delete=False, suffix=".tmp"
         ) as tmp:
             json.dump(settings, tmp, ensure_ascii=False, indent=2)
             tmp_path = tmp.name
@@ -129,6 +147,7 @@ def save_settings(settings):
                 logger.debug("Failed to remove temporary settings file", exc_info=True)
         return False
 
+
 def reset_settings():
     """Reset settings to defaults."""
     settings_file = _resolve_settings_file()
@@ -141,7 +160,9 @@ def reset_settings():
             try:
                 keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
             except Exception:
-                logger.debug("Failed to delete API key from keyring during reset", exc_info=True)
+                logger.debug(
+                    "Failed to delete API key from keyring during reset", exc_info=True
+                )
 
         logger.info("Settings reset to defaults")
         return True

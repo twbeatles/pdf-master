@@ -17,7 +17,12 @@ def _get_worker_payload(worker) -> dict:
     if not isinstance(kwargs, dict):
         return {}
     if "summary_result" in kwargs:
-        return {"title": "", "summary": kwargs.get("summary_result", ""), "key_points": [], "meta": {}}
+        return {
+            "title": "",
+            "summary": kwargs.get("summary_result", ""),
+            "key_points": [],
+            "meta": {},
+        }
     if "answer_result" in kwargs:
         return {"answer": kwargs.get("answer_result", ""), "meta": {}}
     if "keywords_result" in kwargs:
@@ -30,13 +35,21 @@ def _get_worker_payload(worker) -> dict:
         return {"annotations": kwargs.get("result_annotations", [])}
     return {}
 
+
 def _coerce_payload_defaults(mode: str, payload: dict) -> dict:
     spec = get_operation_spec(mode)
     if spec is None or not spec.result_payload_keys:
         return payload
 
     normalized = dict(payload)
-    list_keys = {"key_points", "keywords", "fields", "attachments", "annotations", "results"}
+    list_keys = {
+        "key_points",
+        "keywords",
+        "fields",
+        "attachments",
+        "annotations",
+        "results",
+    }
     dict_keys = {"meta"}
     missing_keys: list[str] = []
     for key in spec.result_payload_keys:
@@ -50,8 +63,13 @@ def _coerce_payload_defaults(mode: str, payload: dict) -> dict:
         )
 
     if missing_keys:
-        logger.warning("Worker payload for mode '%s' is missing keys: %s", mode, ", ".join(missing_keys))
+        logger.warning(
+            "Worker payload for mode '%s' is missing keys: %s",
+            mode,
+            ", ".join(missing_keys),
+        )
     return normalized
+
 
 def _format_summary_payload(payload: dict) -> str:
     title = str(payload.get("title", "") or "").strip()
@@ -67,6 +85,7 @@ def _format_summary_payload(payload: dict) -> str:
         if bullets:
             text_parts.append(bullets)
     return "\n\n".join(part for part in text_parts if part).strip()
+
 
 def _format_compare_summary(payload: dict) -> str:
     diff_count = int(payload.get("diff_count") or 0)
@@ -100,6 +119,7 @@ def _format_compare_summary(payload: dict) -> str:
             lines.append(tm.get("compare_summary_more", len(results) - max_rows))
     return "\n".join(lines)
 
+
 def escape_chat_html(text: str) -> str:
     """채팅 HTML 표시용 이스케이프 (partial/최종/히스토리 공용)."""
     import html as _html
@@ -125,6 +145,7 @@ def _replace_last_chat_block(chat_history, html: str) -> None:
     cursor.deletePreviousChar()
     chat_history.append(html)
 
+
 def _set_meta_label(label, meta: dict) -> None:
     if label is None:
         return
@@ -142,6 +163,7 @@ def _set_meta_label(label, meta: dict) -> None:
     set_visible = getattr(label, "setVisible", None)
     if callable(set_visible):
         set_visible(bool(meta_text))
+
 
 def _clear_meta_label(label) -> None:
     if label is None:

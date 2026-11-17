@@ -20,7 +20,9 @@ class QueueGhostOverlay(QWidget):
         self._items: list[tuple[QRect, str]] = []
 
     def set_items(self, items: list[tuple[QRect, str]]) -> None:
-        self._items = [(QRect(r), str(lab)) for r, lab in items if r.width() > 1 and r.height() > 1]
+        self._items = [
+            (QRect(r), str(lab)) for r, lab in items if r.width() > 1 and r.height() > 1
+        ]
         if self._items:
             self.show()
             self.raise_()
@@ -54,7 +56,11 @@ class QueueGhostOverlay(QWidget):
                 tr = box.adjusted(4, 2, -4, -2)
                 painter.drawText(
                     tr,
-                    int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop | Qt.TextFlag.TextWordWrap),
+                    int(
+                        Qt.AlignmentFlag.AlignLeft
+                        | Qt.AlignmentFlag.AlignTop
+                        | Qt.TextFlag.TextWordWrap
+                    ),
                     label,
                 )
         painter.end()

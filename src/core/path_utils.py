@@ -52,7 +52,7 @@ def parse_chat_history_key(key: object) -> tuple[str, int | None]:
     if not text:
         return "", None
     if text.startswith(CHAT_HISTORY_KEY_PREFIX):
-        remainder = text[len(CHAT_HISTORY_KEY_PREFIX):]
+        remainder = text[len(CHAT_HISTORY_KEY_PREFIX) :]
         mtime_text, sep, path_text = remainder.partition(":")
         if not sep:
             return "", None

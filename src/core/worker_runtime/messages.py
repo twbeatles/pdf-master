@@ -172,6 +172,6 @@ def get_message(key: str, *args: object) -> str:
     if args:
         try:
             return msg.format(*args)
-        except (IndexError, KeyError):
+        except IndexError, KeyError:
             return msg
     return msg

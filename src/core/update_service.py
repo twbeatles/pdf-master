@@ -3,6 +3,7 @@
 `UpdateMixin`(Qt 상태/UI)과 네트워크·설치 로직의 경계를 분리해 단위 테스트
 가능 영역을 넓힌다. Qt 의존성 없이 호출 가능한 순수 함수만 둔다.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -23,7 +24,9 @@ __all__ = [
 ]
 
 
-def check_for_update(*, manifest_url: str, public_key: str, current_version: str) -> ReleaseManifest:
+def check_for_update(
+    *, manifest_url: str, public_key: str, current_version: str
+) -> ReleaseManifest:
     """매니페스트 다운로드+검증. 새 버전이 없으면 NoUpdateAvailableError."""
     return verify_release_manifest(
         download_release_manifest(manifest_url),

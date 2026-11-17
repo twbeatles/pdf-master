@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """compare/ops.py 중첩 순수 함수를 helpers 모듈로 리프트 (move-only)."""
+
 from __future__ import annotations
 
 import ast
@@ -84,7 +85,7 @@ def draw_overlay_rect(
 
     # Rewrite ops.py: remove nested defs and use helpers; keep _pixel_diff_ratio nested
     # Strategy: string replace the nested function block with import + aliases
-    old_nested = '''        def _normalize_block_text(text: Any) -> str:
+    old_nested = """        def _normalize_block_text(text: Any) -> str:
             return " ".join(str(text or "").split()).casefold()
 
         def _collect_text_blocks(page: Any) -> list[dict[str, Any]]:
@@ -128,13 +129,13 @@ def draw_overlay_rect(
             shape.draw_rect(rect)
             shape.finish(color=stroke, fill=fill, fill_opacity=0.25)
             shape.commit()
-'''
-    new_nested = '''        _normalize_block_text = normalize_block_text
+"""
+    new_nested = """        _normalize_block_text = normalize_block_text
         _collect_text_blocks = collect_text_blocks
         _diff_blocks = diff_blocks
         _scale_rect = scale_rect
         _draw_overlay_rect = draw_overlay_rect
-'''
+"""
     if old_nested not in src:
         raise SystemExit("nested block not found — ops.py may have changed")
     src = src.replace(old_nested, new_nested, 1)
@@ -161,7 +162,9 @@ def draw_overlay_rect(
     OPS.write_text(src, encoding="utf-8")
     ast.parse(src)
     ast.parse(helpers_src)
-    print(f"OK compare helpers={len(helpers_src.splitlines())} ops={len(src.splitlines())}")
+    print(
+        f"OK compare helpers={len(helpers_src.splitlines())} ops={len(src.splitlines())}"
+    )
 
 
 if __name__ == "__main__":

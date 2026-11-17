@@ -117,7 +117,12 @@ def test_preview_toolbar_buttons_size_hint_fits_labels():
         _assert_button_fits_text(btn)
 
     # 과도한 fixed size 회귀 방지: 텍스트 버튼에 좁은 fixed width 금지
-    for btn in (widget.btn_prev, widget.btn_next, widget.btn_fit, widget.btn_page_setup):
+    for btn in (
+        widget.btn_prev,
+        widget.btn_next,
+        widget.btn_fit,
+        widget.btn_page_setup,
+    ):
         assert btn.minimumWidth() == 0 or btn.minimumWidth() >= 40
         # fixed size 였다면 maximum == minimum == 고정값
         if btn.minimumWidth() == btn.maximumWidth() and btn.maximumWidth() < 16777215:

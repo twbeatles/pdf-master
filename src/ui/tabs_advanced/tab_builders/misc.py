@@ -27,7 +27,6 @@ def _create_misc_subtab(self):
     layout = QVBoxLayout(content)
     layout.setSpacing(12)
 
-
     build_sec_8(self, layout)
     build_pdf(self, layout)
     build_sec_63(self, layout)

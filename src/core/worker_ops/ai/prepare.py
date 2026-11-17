@@ -1,4 +1,5 @@
 """AI PDF 경로 준비·임시 복호·partial 콜백."""
+
 from __future__ import annotations
 
 import logging

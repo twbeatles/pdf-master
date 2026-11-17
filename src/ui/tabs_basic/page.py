@@ -35,6 +35,7 @@ def _ensure_preview_ready(self, path):
     self._update_preview(path)
     return True, None
 
+
 def setup_page_tab(self):
     tab = QWidget()
     layout = QVBoxLayout(tab)
@@ -70,7 +71,15 @@ def setup_page_tab(self):
     opt_pn.addWidget(self.cmb_pn_pos)
     opt_pn.addWidget(QLabel(tm.get("lbl_format")))
     self.cmb_pn_format = EditableComboBox()
-    self.cmb_pn_format.addItems(["{n} / {total}", "Page {n} of {total}", "- {n} -", "{n}", tm.get("format_page_local")])
+    self.cmb_pn_format.addItems(
+        [
+            "{n} / {total}",
+            "Page {n} of {total}",
+            "- {n} -",
+            "{n}",
+            tm.get("format_page_local"),
+        ]
+    )
     self.cmb_pn_format.setEditable(True)
     opt_pn.addWidget(self.cmb_pn_format)
     l_pn.addLayout(opt_pn)
@@ -157,25 +166,32 @@ def setup_page_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    add_tab(self.tabs, tab, tm.get('tab_page'), icon="CUT")
+    add_tab(self.tabs, tab, tm.get("tab_page"), icon="CUT")
+
 
 def action_split(self):
     path = self.sel_split.get_path()
     rng = self.inp_range.text()
     if not path or not rng:
-        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_range_required"))
+        return QMessageBox.warning(
+            self, tm.get("info"), tm.get("msg_file_and_range_required")
+        )
     d = self._choose_output_directory(tm.get("dlg_select_output_dir"))
     if d:
         self.run_worker("split", file_path=path, output_dir=d, page_range=rng)
+
 
 def action_delete_pages(self):
     path = self.sel_del.get_path()
     rng = self.inp_del_range.text()
     if not path or not rng:
-        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_file_and_delete_range_required"))
+        return QMessageBox.warning(
+            self, tm.get("info"), tm.get("msg_file_and_delete_range_required")
+        )
     s, _ = self._choose_save_file(tm.get("save"), "deleted.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("delete_pages", file_path=path, output_path=s, page_range=rng)
+
 
 def action_rotate(self):
     path = self.sel_rot.get_path()
@@ -185,10 +201,19 @@ def action_rotate(self):
     if angle is None:
         angle = 90
     page_indices = None
-    if getattr(self, "cmb_rot_target", None) is not None and self.cmb_rot_target.currentData() == "selected":
-        page_indices = self.rot_thumb_grid.get_selected_pages() if hasattr(self, "rot_thumb_grid") else []
+    if (
+        getattr(self, "cmb_rot_target", None) is not None
+        and self.cmb_rot_target.currentData() == "selected"
+    ):
+        page_indices = (
+            self.rot_thumb_grid.get_selected_pages()
+            if hasattr(self, "rot_thumb_grid")
+            else []
+        )
         if not page_indices:
-            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_rotate_pages"))
+            return QMessageBox.warning(
+                self, tm.get("info"), tm.get("msg_select_rotate_pages")
+            )
     s, _ = self._choose_save_file(tm.get("save"), "rotated.pdf", "PDF (*.pdf)")
     if s:
         kwargs = {
@@ -199,6 +224,7 @@ def action_rotate(self):
         if page_indices is not None:
             kwargs["page_indices"] = page_indices
         self.run_worker("rotate", **kwargs)
+
 
 def _on_rotate_pdf_changed(self, path):
     if not hasattr(self, "rot_thumb_grid"):
@@ -211,7 +237,10 @@ def _on_rotate_pdf_changed(self, path):
         self.rot_thumb_grid.show_status_message(self.preview_label.text())
         return
     self.rot_thumb_grid.load_pdf(path, password=password)
-    self.rot_thumb_grid.set_active_page(getattr(self, "_current_preview_page", 0), emit_signal=False)
+    self.rot_thumb_grid.set_active_page(
+        getattr(self, "_current_preview_page", 0), emit_signal=False
+    )
+
 
 def _on_rotate_thumbnail_page_selected(self, page_index: int):
     path = self.sel_rot.get_path() if hasattr(self, "sel_rot") else ""
@@ -225,6 +254,7 @@ def _on_rotate_thumbnail_page_selected(self, page_index: int):
     if hasattr(self, "status_label"):
         self.status_label.setText(tm.get("status_page_sel").format(page_index + 1))
 
+
 def _sync_rotate_thumbnail_with_preview(self):
     if not hasattr(self, "rot_thumb_grid") or not hasattr(self, "sel_rot"):
         return
@@ -234,7 +264,10 @@ def _sync_rotate_thumbnail_with_preview(self):
         return
     if os.path.abspath(rotate_path) != os.path.abspath(preview_path):
         return
-    self.rot_thumb_grid.set_active_page(getattr(self, "_current_preview_page", 0), emit_signal=False)
+    self.rot_thumb_grid.set_active_page(
+        getattr(self, "_current_preview_page", 0), emit_signal=False
+    )
+
 
 def action_page_numbers(self):
     """페이지 번호 삽입 실행"""
@@ -247,5 +280,10 @@ def action_page_numbers(self):
 
     s, _ = self._choose_save_file(tm.get("save"), "numbered.pdf", "PDF (*.pdf)")
     if s:
-        self.run_worker("add_page_numbers", file_path=path, output_path=s,
-                      position=position, format=format_str)
+        self.run_worker(
+            "add_page_numbers",
+            file_path=path,
+            output_path=s,
+            position=position,
+            format=format_str,
+        )

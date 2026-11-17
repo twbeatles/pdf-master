@@ -1,4 +1,5 @@
 """단일 텍스트 상자 삽입."""
+
 from __future__ import annotations
 
 from ....optional_deps import fitz
@@ -39,7 +40,9 @@ class WorkerTextboxSingleMixin(WorkerTextboxBaseMixin):
         try:
             if page_num < 0 or page_num >= len(doc):
                 self.error_signal.emit(
-                    self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc)))
+                    self._get_msg(
+                        "err_page_out_of_range", str(page_num + 1), str(len(doc))
+                    )
                 )
                 return
 
@@ -72,7 +75,9 @@ class WorkerTextboxSingleMixin(WorkerTextboxBaseMixin):
 
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(self._get_msg("msg_textbox_inserted", page_num + 1))
+            self.finished_signal.emit(
+                self._get_msg("msg_textbox_inserted", page_num + 1)
+            )
         finally:
             doc.close()
 

@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 class WorkerAnnotationHighlightMixin(WorkerHost):
     def highlight_text(self):
         """PDF 내 텍스트 하이라이트"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        search_term = _as_str(self.kwargs.get('search_term'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        color = self.kwargs.get('color', (1, 1, 0))  # 기본 노란색
+        file_path = _as_str(self.kwargs.get("file_path"))
+        search_term = _as_str(self.kwargs.get("search_term"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        color = self.kwargs.get("color", (1, 1, 0))  # 기본 노란색
 
         doc = self._open_pdf_document(file_path)
         highlight_count = 0
@@ -36,20 +36,26 @@ class WorkerAnnotationHighlightMixin(WorkerHost):
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
 
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(self._get_msg("msg_highlight_done", search_term, highlight_count))
+            self.finished_signal.emit(
+                self._get_msg("msg_highlight_done", search_term, highlight_count)
+            )
         finally:
             doc.close()
 
     def add_text_markup(self):
         """검색어에 밑줄 또는 취소선 추가"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        search_term = _as_str(self.kwargs.get('search_term'))
-        markup_type = _as_str(self.kwargs.get('markup_type'), 'underline')  # underline, strikeout, squiggly
-        valid_markup_types = {'underline', 'strikeout', 'squiggly'}
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        search_term = _as_str(self.kwargs.get("search_term"))
+        markup_type = _as_str(
+            self.kwargs.get("markup_type"), "underline"
+        )  # underline, strikeout, squiggly
+        valid_markup_types = {"underline", "strikeout", "squiggly"}
 
         if markup_type not in valid_markup_types:
-            self.error_signal.emit(self._get_msg("err_invalid_markup_type", str(markup_type)))
+            self.error_signal.emit(
+                self._get_msg("err_invalid_markup_type", str(markup_type))
+            )
             return
 
         doc = self._open_pdf_document(file_path)
@@ -62,11 +68,11 @@ class WorkerAnnotationHighlightMixin(WorkerHost):
                 instances = page.search_for(search_term)
                 for inst in instances:
                     annot = None
-                    if markup_type == 'underline':
+                    if markup_type == "underline":
                         annot = page.add_underline_annot(inst)
-                    elif markup_type == 'strikeout':
+                    elif markup_type == "strikeout":
                         annot = page.add_strikeout_annot(inst)
-                    elif markup_type == 'squiggly':
+                    elif markup_type == "squiggly":
                         annot = page.add_squiggly_annot(inst)
                     if annot:
                         annot.update()
@@ -77,20 +83,24 @@ class WorkerAnnotationHighlightMixin(WorkerHost):
             markup_name = self._get_msg(f"msg_markup_label_{markup_type}")
             if markup_name == f"msg_markup_label_{markup_type}":
                 markup_name = markup_type
-            self.finished_signal.emit(self._get_msg("msg_text_markup_added", markup_name, search_term, count))
+            self.finished_signal.emit(
+                self._get_msg("msg_text_markup_added", markup_name, search_term, count)
+            )
         finally:
             doc.close()
 
     def add_sticky_note(self):
         """PDF에 스티키 노트(텍스트 주석) 추가"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        page_num = _as_int(self.kwargs.get('page_num'), 0)
-        x = _as_int(self.kwargs.get('x'), 100)  # 노트 위치 X
-        y = _as_int(self.kwargs.get('y'), 100)  # 노트 위치 Y
-        content = _as_str(self.kwargs.get('content'))  # 노트 내용
-        title = _as_str(self.kwargs.get('title'), '메모')  # 노트 제목
-        icon = _as_str(self.kwargs.get('icon'), 'Note')  # Note, Comment, Key, Help, Insert, Paragraph
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        page_num = _as_int(self.kwargs.get("page_num"), 0)
+        x = _as_int(self.kwargs.get("x"), 100)  # 노트 위치 X
+        y = _as_int(self.kwargs.get("y"), 100)  # 노트 위치 Y
+        content = _as_str(self.kwargs.get("content"))  # 노트 내용
+        title = _as_str(self.kwargs.get("title"), "메모")  # 노트 제목
+        icon = _as_str(
+            self.kwargs.get("icon"), "Note"
+        )  # Note, Comment, Key, Help, Insert, Paragraph
 
         doc = self._open_pdf_document(file_path)
         try:
@@ -109,6 +119,8 @@ class WorkerAnnotationHighlightMixin(WorkerHost):
 
             self._emit_progress_if_due(100)
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(self._get_msg("msg_sticky_note_added", resolved_page_num + 1, icon))
+            self.finished_signal.emit(
+                self._get_msg("msg_sticky_note_added", resolved_page_num + 1, icon)
+            )
         finally:
             doc.close()

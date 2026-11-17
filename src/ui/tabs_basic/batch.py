@@ -28,6 +28,7 @@ from ..widgets import FileListWidget
 
 logger = logging.getLogger(__name__)
 
+
 def setup_batch_tab(self):
     tab = QWidget()
     layout = QVBoxLayout(tab)
@@ -153,7 +154,9 @@ def setup_batch_tab(self):
     perm_layout.addLayout(perm_row2)
     content_layout.addWidget(self._batch_perm_box)
 
-    self.cmb_batch_op.currentIndexChanged.connect(lambda _i: _sync_batch_option_rows(self))
+    self.cmb_batch_op.currentIndexChanged.connect(
+        lambda _i: _sync_batch_option_rows(self)
+    )
     _sync_batch_option_rows(self)
 
     step3 = QLabel(tm.get("step_batch_3"))
@@ -168,7 +171,8 @@ def setup_batch_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    add_tab(self.tabs, tab, tm.get('tab_batch'), icon="LIBRARY")
+    add_tab(self.tabs, tab, tm.get("tab_batch"), icon="LIBRARY")
+
 
 def _sync_batch_option_rows(self):
     """선택한 일괄 작업에 맞는 옵션만 보이게 하고, 비밀번호는 가려서 입력받는다."""
@@ -194,23 +198,27 @@ def _sync_batch_option_rows(self):
 
 
 def _batch_add_files(self):
-    files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")
+    files, _ = QFileDialog.getOpenFileNames(
+        self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)"
+    )
     for f in files:
         item = QListWidgetItem(f"📄 {os.path.basename(f)}")
         item.setData(Qt.ItemDataRole.UserRole, f)
         item.setToolTip(f)
         self.batch_list.addItem(item)
 
+
 def _batch_add_folder(self):
     folder = QFileDialog.getExistingDirectory(self, tm.get("dlg_select_folder"))
     if folder:
         for f in os.listdir(folder):
-            if f.lower().endswith('.pdf'):
+            if f.lower().endswith(".pdf"):
                 path = os.path.join(folder, f)
                 item = QListWidgetItem(f"📄 {f}")
                 item.setData(Qt.ItemDataRole.UserRole, path)
                 item.setToolTip(path)
                 self.batch_list.addItem(item)
+
 
 def action_batch(self):
     files = self.batch_list.get_all_paths()
@@ -233,17 +241,35 @@ def action_batch(self):
     }
     if op == "encrypt":
         permissions: list[str] = ["accessibility"]
-        if getattr(self, "chk_batch_perm_print", None) is not None and self.chk_batch_perm_print.isChecked():
+        if (
+            getattr(self, "chk_batch_perm_print", None) is not None
+            and self.chk_batch_perm_print.isChecked()
+        ):
             permissions.append("print")
-        if getattr(self, "chk_batch_perm_copy", None) is not None and self.chk_batch_perm_copy.isChecked():
+        if (
+            getattr(self, "chk_batch_perm_copy", None) is not None
+            and self.chk_batch_perm_copy.isChecked()
+        ):
             permissions.append("copy")
-        if getattr(self, "chk_batch_perm_modify", None) is not None and self.chk_batch_perm_modify.isChecked():
+        if (
+            getattr(self, "chk_batch_perm_modify", None) is not None
+            and self.chk_batch_perm_modify.isChecked()
+        ):
             permissions.append("modify")
-        if getattr(self, "chk_batch_perm_annotate", None) is not None and self.chk_batch_perm_annotate.isChecked():
+        if (
+            getattr(self, "chk_batch_perm_annotate", None) is not None
+            and self.chk_batch_perm_annotate.isChecked()
+        ):
             permissions.append("annotate")
-        if getattr(self, "chk_batch_perm_form", None) is not None and self.chk_batch_perm_form.isChecked():
+        if (
+            getattr(self, "chk_batch_perm_form", None) is not None
+            and self.chk_batch_perm_form.isChecked()
+        ):
             permissions.append("form")
-        if getattr(self, "chk_batch_perm_assemble", None) is not None and self.chk_batch_perm_assemble.isChecked():
+        if (
+            getattr(self, "chk_batch_perm_assemble", None) is not None
+            and self.chk_batch_perm_assemble.isChecked()
+        ):
             permissions.append("assemble")
         kwargs["permissions"] = permissions
     if op == "watermark":

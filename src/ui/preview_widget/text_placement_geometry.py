@@ -1,4 +1,5 @@
 """텍스트 배치 오버레이 기하 헬퍼."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, QRect, Qt
@@ -24,6 +25,7 @@ _HANDLE_CURSORS = {
 }
 _HANDLE_SIZE = 8
 _HANDLE_HIT = 10
+
 
 def hit_test_handle(box: QRect, pos: QPoint, hit: int = _HANDLE_HIT) -> str:
     """박스 기준 마우스 위치가 어느 리사이즈 핸들인지 반환."""
@@ -54,6 +56,7 @@ def hit_test_handle(box: QRect, pos: QPoint, hit: int = _HANDLE_HIT) -> str:
     if near_r and in_y:
         return _HANDLE_E
     return _HANDLE_NONE
+
 
 def apply_resize(
     box: QRect,

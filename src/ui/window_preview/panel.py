@@ -25,7 +25,9 @@ def _create_preview_panel(self):
     # 헤더: 상태 라벨 + 포커스 토글
     header = QHBoxLayout()
     self.preview_label = QLabel(tm.get("preview_default"))
-    self.preview_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+    self.preview_label.setAlignment(
+        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+    )
     self.preview_label.setWordWrap(True)
     self.preview_label.setMaximumHeight(120)
     header.addWidget(self.preview_label, 1)
@@ -59,7 +61,9 @@ def _create_preview_panel(self):
     self.btn_focus_place_textbox = QPushButton(tm.get("btn_textbox_drag_select"))
     self.btn_focus_place_textbox.setObjectName("toolbarSecondaryBtn")
     self.btn_focus_place_textbox.setToolTip(tm.get("tooltip_textbox_drag_select"))
-    self.btn_focus_place_textbox.clicked.connect(self.action_start_textbox_region_select)
+    self.btn_focus_place_textbox.clicked.connect(
+        self.action_start_textbox_region_select
+    )
     focus_bar_layout.addWidget(self.btn_focus_place_textbox)
 
     self.btn_focus_insert_textbox = QPushButton(tm.get("btn_insert_textbox"))

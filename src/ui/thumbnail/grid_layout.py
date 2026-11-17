@@ -63,7 +63,9 @@ class ThumbnailGridLayoutMixin(ThumbnailGridHost):
             return 0, -1
         scrollbar = self.scroll_area.verticalScrollBar()
         viewport = self.scroll_area.viewport()
-        viewport_h = max(1, viewport.height()) if viewport is not None else self._ROW_HEIGHT
+        viewport_h = (
+            max(1, viewport.height()) if viewport is not None else self._ROW_HEIGHT
+        )
         top = scrollbar.value() if scrollbar is not None else 0
         bottom = top + viewport_h
         start_row = max(0, (top // self._ROW_HEIGHT) - self._PREFETCH_ROWS)

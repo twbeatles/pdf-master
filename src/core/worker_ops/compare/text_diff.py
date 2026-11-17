@@ -1,4 +1,5 @@
 """텍스트 diff 단계 (순수 라인 diff + 블록 수집)."""
+
 from __future__ import annotations
 
 from typing import Any

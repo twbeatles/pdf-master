@@ -118,7 +118,9 @@ def _create_extract_subtab(self):
     self.chk_md_page_markers = QCheckBox(tm.get("chk_markdown_page_markers"))
     self.chk_md_page_markers.setChecked(True)
     l_md.addWidget(self.chk_md_page_markers)
-    self.chk_md_asset_placeholders = QCheckBox(tm.get("chk_markdown_asset_placeholders"))
+    self.chk_md_asset_placeholders = QCheckBox(
+        tm.get("chk_markdown_asset_placeholders")
+    )
     self.chk_md_asset_placeholders.setChecked(False)
     l_md.addWidget(self.chk_md_asset_placeholders)
     b_md = PrimaryButton(tm.get("btn_extract_md"))

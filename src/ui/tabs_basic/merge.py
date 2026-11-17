@@ -19,6 +19,7 @@ from ..widgets import FileListWidget
 
 logger = logging.getLogger(__name__)
 
+
 def setup_merge_tab(self):
     tab = QWidget()
     layout = QVBoxLayout(tab)
@@ -57,7 +58,12 @@ def setup_merge_tab(self):
 
     b_del = PushButton(tm.get("btn_remove_sel"))
     b_del.setObjectName("secondaryBtn")
-    b_del.clicked.connect(lambda: [self.merge_list.takeItem(self.merge_list.row(i)) for i in self.merge_list.selectedItems()])
+    b_del.clicked.connect(
+        lambda: [
+            self.merge_list.takeItem(self.merge_list.row(i))
+            for i in self.merge_list.selectedItems()
+        ]
+    )
 
     b_clr = PushButton(tm.get("btn_clear_merge"))
     b_clr.setObjectName("secondaryBtn")
@@ -78,35 +84,46 @@ def setup_merge_tab(self):
     b_run.clicked.connect(self.action_merge)
     layout.addWidget(b_run)
 
-    add_tab(self.tabs, tab, tm.get('tab_merge'), icon="DOCUMENT")
+    add_tab(self.tabs, tab, tm.get("tab_merge"), icon="DOCUMENT")
+
 
 def _merge_add_files(self):
-    files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")
+    files, _ = QFileDialog.getOpenFileNames(
+        self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)"
+    )
     for f in files:
         item = QListWidgetItem(f"📄 {os.path.basename(f)}")
         item.setData(Qt.ItemDataRole.UserRole, f)
         item.setToolTip(f)
         self.merge_list.addItem(item)
 
+
 def _update_merge_count(self):
     """병합 탭 파일 개수 업데이트"""
     count = self.merge_list.count()
     self.merge_count_label.setText(tm.get("lbl_merge_count").format(count))
 
+
 def _confirm_clear_merge(self):
     """전체 삭제 확인 다이얼로그"""
     if self.merge_list.count() == 0:
         return
-    reply = QMessageBox.question(self, tm.get("confirm"), 
-                                tm.get("msg_confirm_clear").format(self.merge_list.count()),
-                                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+    reply = QMessageBox.question(
+        self,
+        tm.get("confirm"),
+        tm.get("msg_confirm_clear").format(self.merge_list.count()),
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+    )
     if reply == QMessageBox.StandardButton.Yes:
         self.merge_list.clear()
+
 
 def action_merge(self):
     files = self.merge_list.get_all_paths()
     if len(files) < 2:
-        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_merge_count_error"))
+        return QMessageBox.warning(
+            self, tm.get("info"), tm.get("msg_merge_count_error")
+        )
     save, _ = self._choose_save_file(tm.get("save"), "merged.pdf", "PDF (*.pdf)")
     if save:
         self.run_worker("merge", files=files, output_path=save)

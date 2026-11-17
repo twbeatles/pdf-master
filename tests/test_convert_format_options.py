@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6
 
 
@@ -71,4 +70,3 @@ def test_convert_preset_falls_back_when_old_format_not_supported(monkeypatch):
 
     assert win.cmb_fmt.currentText() == "png"
     assert win.spn_dpi.value() == 180
-

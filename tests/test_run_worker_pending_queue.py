@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6
 
 
@@ -58,7 +57,9 @@ def test_run_worker_queues_multiple_pending_requests(monkeypatch):
 
     class Dummy(worker_module.MainWindowWorkerMixin):
         def __init__(self):
-            self.worker = _RunningWorkerStub("rotate", file_path="a.pdf", output_path="out.pdf")
+            self.worker = _RunningWorkerStub(
+                "rotate", file_path="a.pdf", output_path="out.pdf"
+            )
             self._pending_workers = []
             self._cancel_pending = False
             self._cancel_handled = False
@@ -85,7 +86,11 @@ def test_run_worker_queues_multiple_pending_requests(monkeypatch):
             return None
 
     monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
-    monkeypatch.setattr(worker_module.QMessageBox, "question", lambda *_args, **_kwargs: worker_module.QMessageBox.StandardButton.Yes)
+    monkeypatch.setattr(
+        worker_module.QMessageBox,
+        "question",
+        lambda *_args, **_kwargs: worker_module.QMessageBox.StandardButton.Yes,
+    )
 
     dummy = Dummy()
     dummy.run_worker("merge", file_paths=["a.pdf", "b.pdf"], output_path="merged.pdf")
@@ -105,14 +110,24 @@ def test_run_pending_worker_pops_fifo_order(monkeypatch):
     class Dummy:
         worker = None
         _pending_workers = [
-            {"mode": "merge", "output_path": "merged.pdf", "kwargs": {"file_paths": ["a.pdf"]}},
-            {"mode": "compress", "output_path": "out.pdf", "kwargs": {"file_path": "a.pdf"}},
+            {
+                "mode": "merge",
+                "output_path": "merged.pdf",
+                "kwargs": {"file_paths": ["a.pdf"]},
+            },
+            {
+                "mode": "compress",
+                "output_path": "out.pdf",
+                "kwargs": {"file_path": "a.pdf"},
+            },
         ]
 
         def run_worker(self, mode, output_path=None, **kwargs):
             calls.append((mode, output_path, kwargs))
 
-    monkeypatch.setattr(lifecycle_module.QTimer, "singleShot", lambda _delay, callback: callback())
+    monkeypatch.setattr(
+        lifecycle_module.QTimer, "singleShot", lambda _delay, callback: callback()
+    )
 
     lifecycle_module._run_pending_worker(Dummy())
 

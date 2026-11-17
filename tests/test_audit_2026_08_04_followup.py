@@ -19,7 +19,9 @@ def test_theme_qss_has_no_hangul_string_constants():
         tree = ast.parse(source)
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                assert not pattern.search(node.value), f"{rel} still has Hangul in string constant"
+                assert not pattern.search(node.value), (
+                    f"{rel} still has Hangul in string constant"
+                )
 
 
 def test_batch_watermark_cjk(tmp_path):
@@ -127,7 +129,7 @@ def test_text_needs_cjk():
 
 def test_chat_html_escape_roundtrip():
     """이스케이프 유틸 동작 스모크 (UI 통합은 수동/별도)."""
-    raw = '<b>x</b>&"\''
+    raw = "<b>x</b>&\"'"
     escaped = html.escape(raw, quote=True)
     assert "<b>" not in escaped
     assert "&lt;b&gt;" in escaped

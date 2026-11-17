@@ -3,6 +3,7 @@
 실제 단계 구현은 `text_diff` / `visual_diff` / `report` 믹스인에 있다.
 public surface (`compare_pdfs`, `_legacy_compare_pdfs`) 는 그대로 유지된다.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,8 +38,12 @@ class WorkerCompareOpsMixin(
             self.kwargs.get("generate_visual_diff"),
             default=do_visual,  # visual/both 모드는 기본으로 visual PDF 생성
         )
-        visual_dpi = max(36.0, min(150.0, _as_float(self.kwargs.get("visual_dpi"), 72.0) or 72.0))
-        visual_threshold = max(0.0, min(1.0, _as_float(self.kwargs.get("visual_threshold"), 0.02) or 0.02))
+        visual_dpi = max(
+            36.0, min(150.0, _as_float(self.kwargs.get("visual_dpi"), 72.0) or 72.0)
+        )
+        visual_threshold = max(
+            0.0, min(1.0, _as_float(self.kwargs.get("visual_threshold"), 0.02) or 0.02)
+        )
 
         doc1 = None
         doc2 = None
@@ -58,11 +63,27 @@ class WorkerCompareOpsMixin(
                 page2 = doc2[index] if index < len(doc2) else None
                 if page1 is None:
                     results.append({"page": index + 1, "status": "missing_file1"})
-                    diff_pages.append({"page_index": index, "page1": None, "page2": page2, "file1_only": [], "file2_only": []})
+                    diff_pages.append(
+                        {
+                            "page_index": index,
+                            "page1": None,
+                            "page2": page2,
+                            "file1_only": [],
+                            "file2_only": [],
+                        }
+                    )
                     continue
                 if page2 is None:
                     results.append({"page": index + 1, "status": "missing_file2"})
-                    diff_pages.append({"page_index": index, "page1": page1, "page2": None, "file1_only": [], "file2_only": []})
+                    diff_pages.append(
+                        {
+                            "page_index": index,
+                            "page1": page1,
+                            "page2": None,
+                            "file1_only": [],
+                            "file2_only": [],
+                        }
+                    )
                     continue
 
                 text1 = _as_str(page1.get_text()) if do_text or do_visual else ""

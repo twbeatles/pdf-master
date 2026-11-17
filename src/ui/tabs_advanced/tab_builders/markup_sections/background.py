@@ -40,4 +40,3 @@ def build_background(self, layout) -> None:
     b_bg.clicked.connect(self.action_add_background)
     l_bg.addWidget(b_bg)
     layout.addWidget(grp_bg)
-

@@ -19,7 +19,12 @@ def build_crop(self, layout) -> None:
     self.sel_crop = FileSelectorWidget()
     self.sel_crop.pathChanged.connect(self._update_preview)
     l_crop.addWidget(self.sel_crop)
-    labels = [tm.get("lbl_left"), tm.get("lbl_top"), tm.get("lbl_right"), tm.get("lbl_bottom")]
+    labels = [
+        tm.get("lbl_left"),
+        tm.get("lbl_top"),
+        tm.get("lbl_right"),
+        tm.get("lbl_bottom"),
+    ]
     attr_sides = ["left", "top", "right", "bottom"]
     crop_pairs = []
     for i, side_name in enumerate(attr_sides):
@@ -38,4 +43,3 @@ def build_crop(self, layout) -> None:
     b_crop.clicked.connect(self.action_crop)
     l_crop.addWidget(b_crop)
     layout.addWidget(grp_crop)
-

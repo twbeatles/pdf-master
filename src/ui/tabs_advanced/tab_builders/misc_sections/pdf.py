@@ -44,4 +44,3 @@ def build_pdf(self, layout) -> None:
     b_compare.clicked.connect(self.action_compare_pdfs)
     l_compare.addWidget(b_compare)
     layout.addWidget(grp_compare)
-

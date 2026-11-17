@@ -24,4 +24,3 @@ def build_reverse(self, layout) -> None:
     b_rev.clicked.connect(self.action_reverse_pages)
     l_rev.addWidget(b_rev)
     layout.addWidget(grp_rev)
-

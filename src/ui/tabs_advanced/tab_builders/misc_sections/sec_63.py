@@ -23,7 +23,7 @@ def build_sec_63(self, layout) -> None:
     l_sig.addWidget(self.sel_sig_pdf)
     l_sig.addWidget(QLabel(tm.get("lbl_sig_img")))
     self.sel_sig_img = FileSelectorWidget()
-    self.sel_sig_img.drop_zone.accept_extensions = ['.png', '.jpg', '.jpeg']
+    self.sel_sig_img.drop_zone.accept_extensions = [".png", ".jpg", ".jpeg"]
     l_sig.addWidget(self.sel_sig_img)
     sig_opts = QHBoxLayout()
     sig_opts.addWidget(QLabel(tm.get("lbl_position")))
@@ -51,4 +51,3 @@ def build_sec_63(self, layout) -> None:
     b_sig.clicked.connect(self.action_insert_signature)
     l_sig.addWidget(b_sig)
     layout.addWidget(grp_sig)
-

@@ -20,11 +20,17 @@ class EmptyStateWidget(QFrame):
 
     파일이 없거나 시작 상태일 때 표시되는 친근한 안내 UI
     """
+
     actionClicked = Signal()
 
-    def __init__(self, icon: str = "📄", title: str | None = None,
-                 description: str | None = None,
-                 action_text: str | None = None, parent=None):
+    def __init__(
+        self,
+        icon: str = "📄",
+        title: str | None = None,
+        description: str | None = None,
+        action_text: str | None = None,
+        parent=None,
+    ):
         super().__init__(parent)
         from ...core.i18n import tm
 
@@ -34,7 +40,6 @@ class EmptyStateWidget(QFrame):
             description = tm.get("empty_desc")
 
         self._is_dark_theme = True
-
 
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -114,7 +119,12 @@ class EmptyStateWidget(QFrame):
         self._is_dark_theme = is_dark
         self._apply_theme_style()
 
-    def set_content(self, icon: str | None = None, title: str | None = None, description: str | None = None):
+    def set_content(
+        self,
+        icon: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+    ):
         """내용 업데이트"""
         if icon:
             self.icon_label.setText(icon)

@@ -8,7 +8,7 @@ from .persistence import load_settings, save_settings
 def get_api_key() -> str:
     """
     API 키 안전하게 가져오기 (keyring 우선, 파일 폴백)
-    
+
     Returns:
         API 키 문자열 (없으면 빈 문자열)
     """
@@ -19,18 +19,19 @@ def get_api_key() -> str:
                 return key
         except Exception as e:
             logger.warning(f"Failed to get API key from keyring: {e}")
-    
+
     # 파일에서 폴백
     settings = load_settings()
     return settings.get("gemini_api_key", "")
 
+
 def _legacy_set_api_key(api_key: str) -> bool:
     """
     API 키 안전하게 저장하기 (keyring 우선, 파일 폴백)
-    
+
     Args:
         api_key: 저장할 API 키
-        
+
     Returns:
         저장 성공 여부
     """
@@ -43,22 +44,25 @@ def _legacy_set_api_key(api_key: str) -> bool:
                     keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
                 except Exception:
                     pass  # 삭제할 키가 없는 경우 무시
-            
+
             # 파일에서 기존 키 제거 (보안)
             settings = load_settings()
             if "gemini_api_key" in settings:
                 del settings["gemini_api_key"]
                 save_settings(settings)
-            
+
             logger.info("API key saved to keyring")
             return True
         except Exception as e:
-            logger.warning(f"Failed to save API key to keyring, falling back to file: {e}")
-    
+            logger.warning(
+                f"Failed to save API key to keyring, falling back to file: {e}"
+            )
+
     # 파일에 폴백 저장
     settings = load_settings()
     settings["gemini_api_key"] = api_key
     return save_settings(settings)
+
 
 def set_api_key(api_key: str, allow_file_fallback: bool = False) -> bool:
     """
@@ -79,7 +83,9 @@ def set_api_key(api_key: str, allow_file_fallback: bool = False) -> bool:
             try:
                 keyring.delete_password(KEYRING_SERVICE, KEYRING_USERNAME)
             except Exception:
-                logger.debug("API key was not present in keyring during delete", exc_info=True)
+                logger.debug(
+                    "API key was not present in keyring during delete", exc_info=True
+                )
         if "gemini_api_key" in settings:
             del settings["gemini_api_key"]
             return save_settings(settings)
@@ -102,5 +108,7 @@ def set_api_key(api_key: str, allow_file_fallback: bool = False) -> bool:
         return False
 
     settings["gemini_api_key"] = api_key
-    logger.warning("Saving API key to plaintext settings file due to explicit fallback approval")
+    logger.warning(
+        "Saving API key to plaintext settings file due to explicit fallback approval"
+    )
     return save_settings(settings)

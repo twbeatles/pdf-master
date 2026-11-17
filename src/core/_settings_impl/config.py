@@ -14,4 +14,3 @@ if not KEYRING_AVAILABLE:
 
 KEYRING_SERVICE = "PDFMaster"
 KEYRING_USERNAME = "gemini_api_key"
-

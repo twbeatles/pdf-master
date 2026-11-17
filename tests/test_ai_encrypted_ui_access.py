@@ -73,7 +73,9 @@ class _LabelStub:
         return None
 
 
-def test_action_ai_summarize_encrypted_with_preview_access_runs_worker(monkeypatch, tmp_path):
+def test_action_ai_summarize_encrypted_with_preview_access_runs_worker(
+    monkeypatch, tmp_path
+):
     require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -125,7 +127,9 @@ def test_action_ai_summarize_encrypted_with_preview_access_runs_worker(monkeypat
     assert dummy._ai_worker_mode is True
 
 
-def test_action_ai_summarize_encrypted_without_preview_access_blocks(monkeypatch, tmp_path):
+def test_action_ai_summarize_encrypted_without_preview_access_blocks(
+    monkeypatch, tmp_path
+):
     require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 

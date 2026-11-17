@@ -15,28 +15,33 @@ logger = logging.getLogger(__name__)
 
 class ToastWidget(QFrame):
     """비차단형 토스트 알림 위젯 (페이드 애니메이션 + 스택)"""
+
     closed = Signal()
     _active_toasts = []  # 활성 토스트 스택 관리
 
-    def __init__(self, message, toast_type='info', duration=3000, parent=None):
+    def __init__(self, message, toast_type="info", duration=3000, parent=None):
         super().__init__(parent)
         self.duration = duration
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.Tool
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
         # 색상 맵
         colors = {
-            'success': ('#00d9a0', '#0a3a2a'),
-            'error': ('#ff6b6b', '#3a1a1a'),
-            'warning': ('#ffb347', '#3a2a1a'),
-            'info': ('#5dade2', '#1a2a3a')
+            "success": ("#00d9a0", "#0a3a2a"),
+            "error": ("#ff6b6b", "#3a1a1a"),
+            "warning": ("#ffb347", "#3a2a1a"),
+            "info": ("#5dade2", "#1a2a3a"),
         }
-        fg, bg = colors.get(toast_type, colors['info'])
+        fg, bg = colors.get(toast_type, colors["info"])
 
         # 아이콘 맵
-        icons = {'success': '✅', 'error': '❌', 'warning': '⚠️', 'info': 'ℹ️'}
-        icon = icons.get(toast_type, 'ℹ️')
+        icons = {"success": "✅", "error": "❌", "warning": "⚠️", "info": "ℹ️"}
+        icon = icons.get(toast_type, "ℹ️")
 
         # 향상된 스타일 (v4.1)
         self.setStyleSheet(f"""
@@ -129,7 +134,10 @@ class ToastWidget(QFrame):
 
             # 같은 부모에 속한 토스트만 계산하여 스택 오프셋 적용
             for toast in ToastWidget._active_toasts[:-1]:
-                if toast.isVisible() and getattr(toast, '_parent_widget', None) == parent_widget:
+                if (
+                    toast.isVisible()
+                    and getattr(toast, "_parent_widget", None) == parent_widget
+                ):
                     y -= toast.height() + 10
 
             self.move(x, y)

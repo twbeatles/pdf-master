@@ -7,7 +7,9 @@ def test_worker_dispatch_registry_covers_public_worker_handlers():
 
     public_handlers = set()
     for cls in WorkerThread.__mro__:
-        if cls.__module__.startswith("src.core") and not cls.__module__.endswith("_typing"):
+        if cls.__module__.startswith("src.core") and not cls.__module__.endswith(
+            "_typing"
+        ):
             for name, value in cls.__dict__.items():
                 if name.startswith("_") or name in {"cancel", "run"}:
                     continue
@@ -23,7 +25,9 @@ def test_worker_dispatch_registry_covers_public_worker_handlers():
         assert spec.handler == handler_name
         assert spec.title_key
         handler = getattr(WorkerThread, handler_name, None)
-        assert callable(handler), f"Dispatch target for mode '{mode}' is not callable: {handler_name}"
+        assert callable(handler), (
+            f"Dispatch target for mode '{mode}' is not callable: {handler_name}"
+        )
 
 
 def test_worker_dispatch_specs_expose_extended_metadata():

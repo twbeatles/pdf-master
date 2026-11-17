@@ -132,7 +132,9 @@ def test_cancel_cleanup_removes_only_created_convert_outputs(monkeypatch, tmp_pa
     assert not created_file.exists()
 
 
-def test_cancel_cleanup_removes_binary_output_after_post_write_cancel(monkeypatch, tmp_path):
+def test_cancel_cleanup_removes_binary_output_after_post_write_cancel(
+    monkeypatch, tmp_path
+):
     require_pyside6_and_pymupdf()
     import src.ui.window_worker.lifecycle as lifecycle
     from src.core.worker import CancelledError, WorkerThread
@@ -141,7 +143,9 @@ def test_cancel_cleanup_removes_binary_output_after_post_write_cancel(monkeypatc
     out_dir = tmp_path / "attachments"
     _make_pdf_with_attachment(src)
 
-    worker = WorkerThread("extract_attachments", file_path=str(src), output_dir=str(out_dir))
+    worker = WorkerThread(
+        "extract_attachments", file_path=str(src), output_dir=str(out_dir)
+    )
     calls = {"count": 0}
 
     def _cancel_after_binary_write():

@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6
 
 
@@ -43,7 +42,9 @@ def _dummy_adv(pdf_path, sig_path, page_value):
         def _choose_save_file(self, title, default_name, file_filter):
             import src.ui.main_window_tabs_advanced as adv_module
 
-            return adv_module.QFileDialog.getSaveFileName(self, title, default_name, file_filter)
+            return adv_module.QFileDialog.getSaveFileName(
+                self, title, default_name, file_filter
+            )
 
     return Dummy()
 
@@ -57,7 +58,9 @@ def test_normalize_page_input_helper():
     assert dummy._normalize_page_input(3, last_page_value=0) == 2
 
 
-def test_insert_signature_action_uses_1_based_ui_and_0_based_worker(monkeypatch, tmp_path):
+def test_insert_signature_action_uses_1_based_ui_and_0_based_worker(
+    monkeypatch, tmp_path
+):
     require_pyside6()
     import src.ui.main_window_tabs_advanced as adv_module
 
@@ -86,4 +89,3 @@ def test_insert_signature_action_uses_1_based_ui_and_0_based_worker(monkeypatch,
     mode, kwargs = dummy.called
     assert mode == "insert_signature"
     assert kwargs["page_num"] == 2
-

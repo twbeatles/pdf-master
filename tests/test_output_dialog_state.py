@@ -20,7 +20,9 @@ class _DummyHost:
         return state._remember_output_location(self, selected_path)
 
 
-def test_choose_save_file_uses_last_output_dir_and_updates_setting(monkeypatch, tmp_path):
+def test_choose_save_file_uses_last_output_dir_and_updates_setting(
+    monkeypatch, tmp_path
+):
     require_pyside6()
     import src.ui.window_core.state as state
 
@@ -38,7 +40,9 @@ def test_choose_save_file_uses_last_output_dir_and_updates_setting(monkeypatch, 
     monkeypatch.setattr(state.QFileDialog, "getSaveFileName", _fake_get_save_file_name)
 
     dummy = _DummyHost(str(start_dir))
-    path, selected_filter = state._choose_save_file(dummy, "Save PDF", "default.pdf", "PDF (*.pdf)")
+    path, selected_filter = state._choose_save_file(
+        dummy, "Save PDF", "default.pdf", "PDF (*.pdf)"
+    )
 
     assert path == str(selected)
     assert selected_filter == "PDF (*.pdf)"
@@ -47,7 +51,9 @@ def test_choose_save_file_uses_last_output_dir_and_updates_setting(monkeypatch, 
     assert dummy.saved_delays == [400]
 
 
-def test_choose_output_directory_uses_last_output_dir_and_updates_setting(monkeypatch, tmp_path):
+def test_choose_output_directory_uses_last_output_dir_and_updates_setting(
+    monkeypatch, tmp_path
+):
     require_pyside6()
     import src.ui.window_core.state as state
 
@@ -62,7 +68,9 @@ def test_choose_output_directory_uses_last_output_dir_and_updates_setting(monkey
         seen["initial_dir"] = initial_dir
         return str(chosen_dir)
 
-    monkeypatch.setattr(state.QFileDialog, "getExistingDirectory", _fake_get_existing_directory)
+    monkeypatch.setattr(
+        state.QFileDialog, "getExistingDirectory", _fake_get_existing_directory
+    )
 
     dummy = _DummyHost(str(start_dir))
     selected = state._choose_output_directory(dummy, "Select output")

@@ -16,7 +16,7 @@ def test_escape_chat_html_and_format_helpers():
         format_chat_user_html,
     )
 
-    raw = '<b>x</b>&"\''
+    raw = "<b>x</b>&\"'"
     escaped = escape_chat_html(raw)
     assert "<b>" not in escaped
     assert "&lt;b&gt;" in escaped
@@ -41,7 +41,6 @@ def test_partial_result_escapes_chat_html():
 
         def sender(self):
             return self.worker
-
 
     def capture_replace(widget, html_text):
         calls.append(html_text)
@@ -132,7 +131,6 @@ def test_extract_text_ocr_unavailable_hard_fail(tmp_path, monkeypatch):
 
     # 모든 페이지 OCR 실패 유도
 
-
     worker = WorkerThread(
         "extract_text",
         file_path=str(src),
@@ -159,10 +157,12 @@ def test_extract_text_ocr_unavailable_hard_fail(tmp_path, monkeypatch):
             chunks = []
             for i in range(len(doc)):
                 pages_processed += 1
-                chunks.append(f"\n--- Page {i+1} ---\n")
+                chunks.append(f"\n--- Page {i + 1} ---\n")
                 if use_ocr:
                     try:
-                        raise RuntimeError("page.get_textpage_ocr is not available in this PyMuPDF build")
+                        raise RuntimeError(
+                            "page.get_textpage_ocr is not available in this PyMuPDF build"
+                        )
                     except Exception as exc:
                         ocr_hard_fail = str(exc)
                         ocr_fail_pages += 1
@@ -171,7 +171,9 @@ def test_extract_text_ocr_unavailable_hard_fail(tmp_path, monkeypatch):
         finally:
             doc.close()
         if use_ocr and pages_processed > 0 and ocr_success_pages == 0:
-            worker.error_signal.emit(worker._get_msg("err_ocr_unavailable", ocr_hard_fail or "fail"))
+            worker.error_signal.emit(
+                worker._get_msg("err_ocr_unavailable", ocr_hard_fail or "fail")
+            )
             return
 
     worker.extract_text = _fake_extract  # type: ignore[method-assign]
@@ -301,7 +303,9 @@ def test_attachment_too_large_preflight(tmp_path):
     from src.core.worker import WorkerThread
 
     pdf = tmp_path / "a.pdf"
-    pdf.write_bytes(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n")
+    pdf.write_bytes(
+        b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"
+    )
     big = tmp_path / "big.bin"
     # 상한보다 크다고 표시되도록 size만 큰 파일 생성은 느릴 수 있음 → mock getsize
     big.write_bytes(b"x")

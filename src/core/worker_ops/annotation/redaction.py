@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 class WorkerAnnotationRedactionMixin(WorkerHost):
     def redact_text(self):
         """PDF에서 텍스트 영구 삭제 (교정)"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        search_term = _as_str(self.kwargs.get('search_term'))
-        fill_color = self.kwargs.get('fill_color', (0, 0, 0))  # 검정색 기본
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        search_term = _as_str(self.kwargs.get("search_term"))
+        fill_color = self.kwargs.get("fill_color", (0, 0, 0))  # 검정색 기본
         images = _as_int(self.kwargs.get("images"), 2)  # apply_redactions images flag
 
         if not search_term:
@@ -127,9 +127,13 @@ class WorkerAnnotationRedactionMixin(WorkerHost):
             if skipped_invalid > 0:
                 self._update_result_payload(skipped_invalid_rects=skipped_invalid)
                 self.finished_signal.emit(
-                    self._get_msg("msg_redact_done_partial", redact_count, skipped_invalid)
+                    self._get_msg(
+                        "msg_redact_done_partial", redact_count, skipped_invalid
+                    )
                 )
             else:
-                self.finished_signal.emit(self._get_msg("msg_redact_done", redact_count))
+                self.finished_signal.emit(
+                    self._get_msg("msg_redact_done", redact_count)
+                )
         finally:
             doc.close()

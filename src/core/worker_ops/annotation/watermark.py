@@ -18,23 +18,34 @@ logger = logging.getLogger(__name__)
 
 class WorkerAnnotationWatermarkMixin(WorkerHost):
     def watermark(self):
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        text = _as_str(self.kwargs.get('text'))
-        opacity = _as_float(self.kwargs.get('opacity'), 0.3)
-        color = tuple(self.kwargs.get('color', (0.5, 0.5, 0.5)))
-        fontsize = _as_int(self.kwargs.get('fontsize'), 40)
-        rotation = _as_int(self.kwargs.get('rotation'), 45)
-        fontname = _as_str(self.kwargs.get('fontname'), 'helv')
-        position = _as_str(self.kwargs.get('position'), 'center')
-        layer = _as_str(self.kwargs.get('layer'), 'foreground')
-        scale_percent = _as_int(self.kwargs.get('scale_percent'), 100)
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        text = _as_str(self.kwargs.get("text"))
+        opacity = _as_float(self.kwargs.get("opacity"), 0.3)
+        color = tuple(self.kwargs.get("color", (0.5, 0.5, 0.5)))
+        fontsize = _as_int(self.kwargs.get("fontsize"), 40)
+        rotation = _as_int(self.kwargs.get("rotation"), 45)
+        fontname = _as_str(self.kwargs.get("fontname"), "helv")
+        position = _as_str(self.kwargs.get("position"), "center")
+        layer = _as_str(self.kwargs.get("layer"), "foreground")
+        scale_percent = _as_int(self.kwargs.get("scale_percent"), 100)
 
         # v4.5: 입력 검증 강화
-        valid_positions = ['center', 'tile', 'top', 'bottom', 'top-left', 'top-right', 'bottom-left', 'bottom-right']
+        valid_positions = [
+            "center",
+            "tile",
+            "top",
+            "bottom",
+            "top-left",
+            "top-right",
+            "bottom-left",
+            "bottom-right",
+        ]
         if position not in valid_positions:
-            logger.warning(f"Invalid watermark position '{position}', defaulting to 'center'")
-            position = 'center'
+            logger.warning(
+                f"Invalid watermark position '{position}', defaulting to 'center'"
+            )
+            position = "center"
 
         # opacity 범위 제한
         opacity = max(0.0, min(1.0, opacity))
@@ -53,7 +64,13 @@ class WorkerAnnotationWatermarkMixin(WorkerHost):
             # CJK 텍스트면 임베드 폰트명 사용 (helv 고정 실패 방지)
             resolved_font = fontname
             if text_needs_cjk(text) or (fontname or "").strip().lower() in {
-                "cjk", "cjk_safe", "ko", "korean", "auto", "default", ""
+                "cjk",
+                "cjk_safe",
+                "ko",
+                "korean",
+                "auto",
+                "default",
+                "",
             }:
                 if hasattr(self, "_resolve_textbox_fontname"):
                     resolved_font = self._resolve_textbox_fontname(  # type: ignore[attr-defined]
@@ -62,7 +79,9 @@ class WorkerAnnotationWatermarkMixin(WorkerHost):
                 else:
                     try:
                         registered = "pdfmaster_cjk"
-                        doc[0].insert_font(fontname=registered, fontbuffer=fitz.Font("cjk").buffer)
+                        doc[0].insert_font(
+                            fontname=registered, fontbuffer=fitz.Font("cjk").buffer
+                        )
                         resolved_font = registered
                     except Exception:
                         logger.warning("CJK watermark font embed failed", exc_info=True)
@@ -75,67 +94,89 @@ class WorkerAnnotationWatermarkMixin(WorkerHost):
 
                 # v4.5: 모든 위치 옵션 지원
                 positions = {
-                    'center': (rect.width / 2, rect.height / 2),
-                    'top': (rect.width / 2, margin + actual_fontsize),
-                    'bottom': (rect.width / 2, rect.height - margin),
-                    'top-left': (margin, margin + actual_fontsize),
-                    'top-right': (rect.width - margin, margin + actual_fontsize),
-                    'bottom-left': (margin, rect.height - margin),
-                    'bottom-right': (rect.width - margin, rect.height - margin),
+                    "center": (rect.width / 2, rect.height / 2),
+                    "top": (rect.width / 2, margin + actual_fontsize),
+                    "bottom": (rect.width / 2, rect.height - margin),
+                    "top-left": (margin, margin + actual_fontsize),
+                    "top-right": (rect.width - margin, margin + actual_fontsize),
+                    "bottom-left": (margin, rect.height - margin),
+                    "bottom-right": (rect.width - margin, rect.height - margin),
                 }
 
-                if layer == 'background':
+                if layer == "background":
                     shape = page.new_shape()
-                    if position == 'tile':
+                    if position == "tile":
                         for y in range(0, int(rect.height), 200):
                             for x in range(0, int(rect.width), 300):
                                 shape.insert_text(
-                                    fitz.Point(x, y), text, fontsize=actual_fontsize,
-                                    fontname=resolved_font, rotate=rotation,
-                                    color=color, fill_opacity=opacity
+                                    fitz.Point(x, y),
+                                    text,
+                                    fontsize=actual_fontsize,
+                                    fontname=resolved_font,
+                                    rotate=rotation,
+                                    color=color,
+                                    fill_opacity=opacity,
                                 )
                     else:
-                        x, y = positions.get(position, positions['center'])
+                        x, y = positions.get(position, positions["center"])
                         shape.insert_text(
-                            fitz.Point(x, y), text, fontsize=actual_fontsize,
-                            fontname=resolved_font, rotate=rotation,
-                            color=color, fill_opacity=opacity
+                            fitz.Point(x, y),
+                            text,
+                            fontsize=actual_fontsize,
+                            fontname=resolved_font,
+                            rotate=rotation,
+                            color=color,
+                            fill_opacity=opacity,
                         )
                     shape.commit(overlay=False)
                 else:
-                    if position == 'tile':
+                    if position == "tile":
                         for y in range(0, int(rect.height), 200):
                             for x in range(0, int(rect.width), 300):
                                 page.insert_text(
-                                    fitz.Point(x, y), text, fontsize=actual_fontsize,
-                                    fontname=resolved_font, rotate=rotation,
-                                    color=color, fill_opacity=opacity
+                                    fitz.Point(x, y),
+                                    text,
+                                    fontsize=actual_fontsize,
+                                    fontname=resolved_font,
+                                    rotate=rotation,
+                                    color=color,
+                                    fill_opacity=opacity,
                                 )
                     else:
-                        x, y = positions.get(position, positions['center'])
+                        x, y = positions.get(position, positions["center"])
                         page.insert_text(
-                            fitz.Point(x, y), text, fontsize=actual_fontsize,
-                            fontname=resolved_font, rotate=rotation,
-                            color=color, fill_opacity=opacity
+                            fitz.Point(x, y),
+                            text,
+                            fontsize=actual_fontsize,
+                            fontname=resolved_font,
+                            rotate=rotation,
+                            color=color,
+                            fill_opacity=opacity,
                         )
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))
             self._atomic_pdf_save(doc, output_path)
-            layer_name = self._get_msg("msg_layer_background" if layer == 'background' else "msg_layer_foreground")
-            self.finished_signal.emit(self._get_msg("msg_watermark_applied", layer_name, int(opacity * 100)))
+            layer_name = self._get_msg(
+                "msg_layer_background"
+                if layer == "background"
+                else "msg_layer_foreground"
+            )
+            self.finished_signal.emit(
+                self._get_msg("msg_watermark_applied", layer_name, int(opacity * 100))
+            )
         finally:
             doc.close()
 
     def image_watermark(self):
         """이미지 워터마크"""
         self._normalize_mode_kwargs()
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        image_path = _as_str(self.kwargs.get('image_path'))
-        position = _as_str(self.kwargs.get('position'), 'center')
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        image_path = _as_str(self.kwargs.get("image_path"))
+        position = _as_str(self.kwargs.get("position"), "center")
         # v4.5: 크기/투명도 파라미터 지원
-        img_width = _as_int(self.kwargs.get('width'), 150)
-        img_height = _as_int(self.kwargs.get('height'), 150)
-        opacity = _as_float(self.kwargs.get('opacity'), 1.0)  # 0.0 ~ 1.0
+        img_width = _as_int(self.kwargs.get("width"), 150)
+        img_height = _as_int(self.kwargs.get("height"), 150)
+        opacity = _as_float(self.kwargs.get("opacity"), 1.0)  # 0.0 ~ 1.0
 
         doc = self._open_pdf_document(file_path)
         try:
@@ -144,17 +185,17 @@ class WorkerAnnotationWatermarkMixin(WorkerHost):
                 page = doc[i]
                 self._check_cancelled()  # 취소 체크포인트
                 rect = page.rect
-                if position == 'center':
+                if position == "center":
                     x, y = (rect.width - img_width) / 2, (rect.height - img_height) / 2
-                elif position == 'top':
+                elif position == "top":
                     x, y = (rect.width - img_width) / 2, 20
-                elif position == 'bottom':
+                elif position == "bottom":
                     x, y = (rect.width - img_width) / 2, rect.height - img_height - 20
-                elif position == 'top-left':
+                elif position == "top-left":
                     x, y = 20, 20
-                elif position == 'top-right':
+                elif position == "top-right":
                     x, y = rect.width - img_width - 20, 20
-                elif position == 'bottom-left':
+                elif position == "bottom-left":
                     x, y = 20, rect.height - img_height - 20
                 else:  # bottom-right
                     x, y = rect.width - img_width - 20, rect.height - img_height - 20
@@ -162,20 +203,26 @@ class WorkerAnnotationWatermarkMixin(WorkerHost):
                 img_rect = fitz.Rect(x, y, x + img_width, y + img_height)
                 # v4.5: opacity를 alpha로 변환 (0~255)
                 alpha = int(opacity * 255) if 0 <= opacity <= 1 else 255
-                page.insert_image(img_rect, filename=image_path, overlay=True, alpha=alpha)
+                page.insert_image(
+                    img_rect, filename=image_path, overlay=True, alpha=alpha
+                )
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))
 
             self._atomic_pdf_save(doc, output_path)
             opacity_pct = int(opacity * 100) if 0 <= opacity <= 1 else 100
-            self.finished_signal.emit(self._get_msg("msg_image_watermark_done", img_width, img_height, opacity_pct))
+            self.finished_signal.emit(
+                self._get_msg(
+                    "msg_image_watermark_done", img_width, img_height, opacity_pct
+                )
+            )
         finally:
             doc.close()
 
     def add_background(self):
         """PDF 페이지에 배경색 추가"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        color = self.kwargs.get('color', [1, 1, 0.9])  # 연한 노란색 기본
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        color = self.kwargs.get("color", [1, 1, 0.9])  # 연한 노란색 기본
 
         # v4.5: 색상 값 범위 검증 (0.0-1.0)
         if isinstance(color, (list, tuple)):

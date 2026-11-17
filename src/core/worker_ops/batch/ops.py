@@ -27,16 +27,22 @@ _BATCH_OPERATIONS_REQUIRING_OPTION = frozenset({"watermark", "encrypt"})
 class WorkerBatchOpsMixin(WorkerHost):
     def batch(self):
         """일괄 처리"""
-        files = [path for path in _as_list(self.kwargs.get("files")) if isinstance(path, str)]
+        files = [
+            path for path in _as_list(self.kwargs.get("files")) if isinstance(path, str)
+        ]
         output_dir = _as_str(self.kwargs.get("output_dir"))
         operation = _as_str(self.kwargs.get("operation"))
         option = _as_str(self.kwargs.get("option"))
 
         if operation not in _BATCH_OPERATIONS:
-            self.error_signal.emit(self._get_msg("err_batch_unsupported_operation", operation))
+            self.error_signal.emit(
+                self._get_msg("err_batch_unsupported_operation", operation)
+            )
             return
         if operation in _BATCH_OPERATIONS_REQUIRING_OPTION and not option:
-            self.error_signal.emit(self._get_msg("err_batch_option_required", operation))
+            self.error_signal.emit(
+                self._get_msg("err_batch_option_required", operation)
+            )
             return
 
         failed_files: list[tuple[str, str]] = []
@@ -91,7 +97,9 @@ class WorkerBatchOpsMixin(WorkerHost):
                 elif operation == "watermark":
                     # 단일 워터마크/텍스트 상자와 동일 계열: CJK 자동 임베드 + 옵션 kwargs
                     wm_fontsize = max(1, _as_int(self.kwargs.get("fontsize"), 40))
-                    wm_opacity = max(0.0, min(1.0, _as_float(self.kwargs.get("opacity"), 0.3)))
+                    wm_opacity = max(
+                        0.0, min(1.0, _as_float(self.kwargs.get("opacity"), 0.3))
+                    )
                     wm_rotation = _as_int(self.kwargs.get("rotation"), 0) % 360
                     wm_rotation = int(round(wm_rotation / 90.0) * 90) % 360
                     wm_fontname = _as_str(self.kwargs.get("fontname"), "")
@@ -111,9 +119,12 @@ class WorkerBatchOpsMixin(WorkerHost):
                             40,
                             (page.rect.height / 2) - max(30.0, float(wm_fontsize)),
                             page.rect.width - 40,
-                            (page.rect.height / 2) + max(30.0, float(wm_fontsize) * 1.5),
+                            (page.rect.height / 2)
+                            + max(30.0, float(wm_fontsize) * 1.5),
                         )
-                        resolved = self._resolve_textbox_fontname(page, wm_fontname, option)
+                        resolved = self._resolve_textbox_fontname(
+                            page, wm_fontname, option
+                        )
                         ok = self._write_textbox_content(
                             page,
                             text_rect,
@@ -135,7 +146,11 @@ class WorkerBatchOpsMixin(WorkerHost):
                     # 단일 protect와 동일 권한 해석 (미지정 시 기본 accessibility/print/copy)
                     raw_perm = self.kwargs.get("permissions")
                     if raw_perm is None:
-                        perm = FITZ_PDF_PERM_ACCESSIBILITY | FITZ_PDF_PERM_PRINT | FITZ_PDF_PERM_COPY
+                        perm = (
+                            FITZ_PDF_PERM_ACCESSIBILITY
+                            | FITZ_PDF_PERM_PRINT
+                            | FITZ_PDF_PERM_COPY
+                        )
                     else:
                         perm = _resolve_permissions(raw_perm)
                     owner_pw = _as_str(self.kwargs.get("owner_password")) or option
@@ -176,5 +191,7 @@ class WorkerBatchOpsMixin(WorkerHost):
                 for name, reason in failed_files[:3]:
                     result_msg += self._get_msg("msg_batch_failed_row", name, reason)
                 if len(failed_files) > 3:
-                    result_msg += self._get_msg("msg_batch_failed_more", len(failed_files) - 3)
+                    result_msg += self._get_msg(
+                        "msg_batch_failed_more", len(failed_files) - 3
+                    )
         self.finished_signal.emit(result_msg)

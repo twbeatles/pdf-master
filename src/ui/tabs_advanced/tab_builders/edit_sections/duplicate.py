@@ -21,7 +21,7 @@ def build_duplicate(self, layout) -> None:
     self.sel_dup.pathChanged.connect(self._update_preview)
     l_dup.addWidget(self.sel_dup)
     dup_opts = QHBoxLayout()
-    dup_opts.addWidget(QLabel(tm.get("lbl_page"))) # Reuse tab_page key for "Page"
+    dup_opts.addWidget(QLabel(tm.get("lbl_page")))  # Reuse tab_page key for "Page"
     self.spn_dup_page = QSpinBox()
     self.spn_dup_page.setRange(1, 9999)
     dup_opts.addWidget(self.spn_dup_page)
@@ -37,4 +37,3 @@ def build_duplicate(self, layout) -> None:
     b_dup.clicked.connect(self.action_duplicate_page)
     l_dup.addWidget(b_dup)
     layout.addWidget(grp_dup)
-

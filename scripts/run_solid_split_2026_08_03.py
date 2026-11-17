@@ -4,6 +4,7 @@
 Move-only: 함수/메서드 본문은 AST 줄 슬라이스로 그대로 옮긴다.
 public import 경로 유지 (facade).
 """
+
 from __future__ import annotations
 
 import ast
@@ -40,7 +41,9 @@ def _class_methods(source: str, class_name: str) -> list[MethodChunk]:
     raise ValueError(class_name)
 
 
-def _write_func_module(path: Path, preamble: str, funcs: list[FuncChunk], extra_top: str = "") -> None:
+def _write_func_module(
+    path: Path, preamble: str, funcs: list[FuncChunk], extra_top: str = ""
+) -> None:
     body = "\n".join(f.source for f in funcs)
     content = (
         (extra_top.rstrip() + "\n\n" if extra_top.strip() else "")
@@ -60,9 +63,7 @@ def split_actions_markup() -> None:
     # 상대 import 유지 (actions_markup.py 와 동일 깊이 — 패키지 내부는 .. 로 조정)
     preamble_pkg = preamble.replace(
         "from ...core.i18n import tm", "from ....core.i18n import tm"
-    ).replace(
-        "from ..widgets import ToastWidget", "from ...widgets import ToastWidget"
-    )
+    ).replace("from ..widgets import ToastWidget", "from ...widgets import ToastWidget")
     funcs = {f.name: f for f in extract_module_functions(source)}
     used: set[str] = set()
 
@@ -160,7 +161,11 @@ def split_actions_markup() -> None:
     src_path.write_text("\n".join(facade_lines), encoding="utf-8")
 
     # package __init__ re-export
-    init_lines = ['"""actions_markup package."""', "from __future__ import annotations", ""]
+    init_lines = [
+        '"""actions_markup package."""',
+        "from __future__ import annotations",
+        "",
+    ]
     for stem, names in groups.items():
         init_lines.append(f"from .{stem} import (")
         for n in names:
@@ -373,8 +378,7 @@ def split_preview_widget() -> None:
     body_attrs = "".join(lines[class_node.lineno : first_method_line - 1])
 
     imports_mixins = "\n".join(
-        f"from .{stem} import {cls}"
-        for stem, (cls, _) in groups.items()
+        f"from .{stem} import {cls}" for stem, (cls, _) in groups.items()
     )
 
     shell_methods = "\n".join(m.source for m in shell_chunks)
@@ -382,7 +386,7 @@ def split_preview_widget() -> None:
     # bases order: mixins then QWidget
     bases = ", ".join(mixin_bases + ["QWidget"])
 
-    new_widget = f'''{preamble.rstrip()}
+    new_widget = f"""{preamble.rstrip()}
 
 {imports_mixins}
 
@@ -391,7 +395,7 @@ class ZoomablePreviewWidget({bases}):
 {body_attrs.rstrip()}
 
 {shell_methods}
-'''
+"""
     # Fix indentation of body_attrs if needed — original attrs are indented 4 spaces
     src_path.write_text(new_widget, encoding="utf-8")
     print(f"OK preview widget: shell+{len(groups)} mixins, methods={len(used)}")

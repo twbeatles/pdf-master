@@ -22,10 +22,12 @@ logger = logging.getLogger(__name__)
 class WorkerExtractImagesMarkdownMixin(WorkerHost):
     def extract_images(self):
         """PDF에서 모든 이미지 추출"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_dir = _as_str(self.kwargs.get('output_dir'))
-        include_info = _as_bool(self.kwargs.get('include_info'), True)  # v3.2: 상세 정보 포함
-        deduplicate = _as_bool(self.kwargs.get('deduplicate'), True)  # v3.2: 중복 제거
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_dir = _as_str(self.kwargs.get("output_dir"))
+        include_info = _as_bool(
+            self.kwargs.get("include_info"), True
+        )  # v3.2: 상세 정보 포함
+        deduplicate = _as_bool(self.kwargs.get("deduplicate"), True)  # v3.2: 중복 제거
 
         doc = self._open_pdf_document(file_path)
         image_count = 0
@@ -51,7 +53,10 @@ class WorkerExtractImagesMarkdownMixin(WorkerHost):
                         image_bytes = base_image["image"]
                         image_ext = base_image["ext"]
 
-                        image_path = os.path.join(output_dir, f"page{page_num + 1}_img{img_idx + 1}.{image_ext}")
+                        image_path = os.path.join(
+                            output_dir,
+                            f"page{page_num + 1}_img{img_idx + 1}.{image_ext}",
+                        )
                         self._atomic_binary_save(image_path, image_bytes)
 
                         # v3.2: 상세 정보 수집
@@ -62,16 +67,20 @@ class WorkerExtractImagesMarkdownMixin(WorkerHost):
                                 "xref": xref,
                                 "width": base_image.get("width", 0),
                                 "height": base_image.get("height", 0),
-                                "colorspace": str(base_image.get("colorspace", "unknown")),
+                                "colorspace": str(
+                                    base_image.get("colorspace", "unknown")
+                                ),
                                 "bpc": base_image.get("bpc", 0),  # bits per component
                                 "size_bytes": len(image_bytes),
-                                "format": image_ext
+                                "format": image_ext,
                             }
                             image_info_list.append(info)
 
                         image_count += 1
                     except Exception as e:
-                        logger.error(f"Image extraction error on page {page_num + 1}: {e}")
+                        logger.error(
+                            f"Image extraction error on page {page_num + 1}: {e}"
+                        )
 
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
 
@@ -86,18 +95,22 @@ class WorkerExtractImagesMarkdownMixin(WorkerHost):
         finally:
             doc.close()
         dedup_msg = self._get_msg("msg_dedup_removed_suffix") if deduplicate else ""
-        self.finished_signal.emit(self._get_msg("msg_images_extracted", dedup_msg, image_count))
+        self.finished_signal.emit(
+            self._get_msg("msg_images_extracted", dedup_msg, image_count)
+        )
 
     def extract_markdown(self):
         """PDF를 Markdown으로 추출"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        markdown_mode = _as_str(self.kwargs.get('markdown_mode'), 'auto')
-        if markdown_mode not in {'auto', 'native', 'text'}:
-            markdown_mode = 'auto'
-        include_front_matter = _as_bool(self.kwargs.get('include_front_matter'), False)
-        include_page_markers = _as_bool(self.kwargs.get('include_page_markers'), True)
-        include_asset_placeholders = _as_bool(self.kwargs.get('include_asset_placeholders'), False)
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        markdown_mode = _as_str(self.kwargs.get("markdown_mode"), "auto")
+        if markdown_mode not in {"auto", "native", "text"}:
+            markdown_mode = "auto"
+        include_front_matter = _as_bool(self.kwargs.get("include_front_matter"), False)
+        include_page_markers = _as_bool(self.kwargs.get("include_page_markers"), True)
+        include_asset_placeholders = _as_bool(
+            self.kwargs.get("include_asset_placeholders"), False
+        )
 
         doc = self._open_pdf_document(file_path)
         markdown_chunks: list[str] = []
@@ -108,8 +121,12 @@ class WorkerExtractImagesMarkdownMixin(WorkerHost):
             if include_front_matter:
                 markdown_chunks.append(_markdown_front_matter(file_path, doc))
 
-            metadata = doc.metadata if isinstance(getattr(doc, "metadata", None), dict) else {}
-            document_title = _as_str(metadata.get("title")) or os.path.basename(file_path)
+            metadata = (
+                doc.metadata if isinstance(getattr(doc, "metadata", None), dict) else {}
+            )
+            document_title = _as_str(metadata.get("title")) or os.path.basename(
+                file_path
+            )
             markdown_chunks.append(f"# {document_title}\n\n")
 
             for page_num in range(total_pages):
@@ -126,7 +143,7 @@ class WorkerExtractImagesMarkdownMixin(WorkerHost):
                         markdown_chunks.append("\n".join(placeholders))
                         markdown_chunks.append("\n\n")
 
-                if markdown_mode == 'text':
+                if markdown_mode == "text":
                     markdown_text = _fallback_markdown_from_text(page)
                 else:
                     try:

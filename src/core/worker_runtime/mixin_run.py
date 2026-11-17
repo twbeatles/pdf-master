@@ -1,4 +1,5 @@
 """작업 생명주기 (dispatch → preflight → handler → 에러 매핑)."""
+
 from __future__ import annotations
 
 import logging
@@ -34,7 +35,9 @@ class WorkerRuntimeRunMixin(WorkerHost):
         try:
             self._normalize_mode_kwargs()
             spec = get_operation_spec(self.mode)
-            handler_name = spec.handler if spec is not None else get_handler_method_name(self.mode)
+            handler_name = (
+                spec.handler if spec is not None else get_handler_method_name(self.mode)
+            )
             method = getattr(self, handler_name, None) if handler_name else None
             if method:
                 if not self._preflight_inputs():
@@ -43,7 +46,9 @@ class WorkerRuntimeRunMixin(WorkerHost):
                 self.result_payload = {}
                 self._last_progress_value = None
                 self._last_progress_emit_ts_ms = 0.0
-                with PerfTimer(f"core.worker.{self.mode}", logger=logger, extra={"mode": self.mode}):
+                with PerfTimer(
+                    f"core.worker.{self.mode}", logger=logger, extra={"mode": self.mode}
+                ):
                     method()
                 if not self._cancel_requested:
                     logger.info("Task completed: %s", self.mode)
@@ -70,7 +75,9 @@ class WorkerRuntimeRunMixin(WorkerHost):
                 logger.error("PDF FileDataError in %s: %s", self.mode, exc)
                 self.error_signal.emit(error_msg)
             else:
-                logger.error("Unexpected error in %s: %s", self.mode, exc, exc_info=True)
+                logger.error(
+                    "Unexpected error in %s: %s", self.mode, exc, exc_info=True
+                )
                 self.error_signal.emit(self._get_msg("err_operation_failed", str(exc)))
 
 

@@ -15,8 +15,10 @@ logger = logging.getLogger(__name__)
 
 class WorkerComposeOpsMixin(WorkerHost):
     def merge(self):
-        files = [path for path in _as_list(self.kwargs.get('files')) if isinstance(path, str)]
-        output_path = _as_str(self.kwargs.get('output_path'))
+        files = [
+            path for path in _as_list(self.kwargs.get("files")) if isinstance(path, str)
+        ]
+        output_path = _as_str(self.kwargs.get("output_path"))
         if not files:
             self.error_signal.emit(self._get_msg("err_no_files_selected"))
             return
@@ -58,7 +60,9 @@ class WorkerComposeOpsMixin(WorkerHost):
 
             self._atomic_pdf_save(doc_merged, output_path)
 
-            result_msg = self._get_msg("msg_merge_done", len(valid_files) - skipped_count)
+            result_msg = self._get_msg(
+                "msg_merge_done", len(valid_files) - skipped_count
+            )
             if skipped_count > 0:
                 result_msg += self._get_msg("msg_merge_skipped", skipped_count)
             self.finished_signal.emit(result_msg)
@@ -66,8 +70,10 @@ class WorkerComposeOpsMixin(WorkerHost):
             doc_merged.close()
 
     def images_to_pdf(self):
-        files = [path for path in _as_list(self.kwargs.get('files')) if isinstance(path, str)]
-        output_path = _as_str(self.kwargs.get('output_path'))
+        files = [
+            path for path in _as_list(self.kwargs.get("files")) if isinstance(path, str)
+        ]
+        output_path = _as_str(self.kwargs.get("output_path"))
         doc = None
         try:
             doc = fitz.open()
@@ -85,7 +91,9 @@ class WorkerComposeOpsMixin(WorkerHost):
                     img_pdf.close()
                 self._emit_progress_if_due(int((idx + 1) / len(files) * 100))
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(self._get_msg("msg_images_to_pdf_done", len(files)))
+            self.finished_signal.emit(
+                self._get_msg("msg_images_to_pdf_done", len(files))
+            )
         finally:
             if doc:
                 doc.close()
@@ -93,12 +101,14 @@ class WorkerComposeOpsMixin(WorkerHost):
     def copy_page_between_docs(self):
         """다른 PDF에서 페이지 복사"""
         self._normalize_mode_kwargs()
-        source_path = _as_str(self.kwargs.get('source_path'))
-        target_path = _as_str(self.kwargs.get('target_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        source_pages = self.kwargs.get('source_pages')  # 복사할 페이지 번호들 (0-indexed)
-        page_range = self.kwargs.get('page_range', '')
-        insert_at = self.kwargs.get('insert_at', -1)  # 삽입 위치 (-1 = 끝)
+        source_path = _as_str(self.kwargs.get("source_path"))
+        target_path = _as_str(self.kwargs.get("target_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        source_pages = self.kwargs.get(
+            "source_pages"
+        )  # 복사할 페이지 번호들 (0-indexed)
+        page_range = self.kwargs.get("page_range", "")
+        insert_at = self.kwargs.get("insert_at", -1)  # 삽입 위치 (-1 = 끝)
 
         source_doc = self._open_pdf_document(source_path)
         target_doc = self._open_pdf_document(target_path)
@@ -115,30 +125,44 @@ class WorkerComposeOpsMixin(WorkerHost):
             elif isinstance(source_pages, str):
                 source_pages = self._parse_page_range(source_pages, len(source_doc))
             elif not isinstance(source_pages, list):
-                self.error_signal.emit(self._get_msg("err_invalid_page_range", str(source_pages)))
+                self.error_signal.emit(
+                    self._get_msg("err_invalid_page_range", str(source_pages))
+                )
                 return
 
             if not source_pages:
-                input_text = page_range if isinstance(page_range, str) and page_range.strip() else str(source_pages)
-                self.error_signal.emit(self._get_msg("err_invalid_page_range", input_text))
+                input_text = (
+                    page_range
+                    if isinstance(page_range, str) and page_range.strip()
+                    else str(source_pages)
+                )
+                self.error_signal.emit(
+                    self._get_msg("err_invalid_page_range", input_text)
+                )
                 return
 
             normalized_source_pages = []
             for raw_page in source_pages:
                 try:
                     page_num = int(raw_page)
-                except (TypeError, ValueError):
-                    self.error_signal.emit(self._get_msg("err_page_number_numeric", str(raw_page)))
+                except TypeError, ValueError:
+                    self.error_signal.emit(
+                        self._get_msg("err_page_number_numeric", str(raw_page))
+                    )
                     return
                 if page_num < 0 or page_num >= len(source_doc):
-                    self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num), str(len(source_doc))))
+                    self.error_signal.emit(
+                        self._get_msg(
+                            "err_page_out_of_range", str(page_num), str(len(source_doc))
+                        )
+                    )
                     return
                 normalized_source_pages.append(page_num)
             source_pages = normalized_source_pages
 
             try:
                 insert_pos = int(insert_at)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 insert_pos = -1
             if insert_pos < 0:
                 insert_pos = len(target_doc)
@@ -149,7 +173,12 @@ class WorkerComposeOpsMixin(WorkerHost):
 
             for i, page_num in enumerate(source_pages):
                 self._check_cancelled()  # v4.5: 취소 체크포인트 추가
-                target_doc.insert_pdf(source_doc, from_page=page_num, to_page=page_num, start_at=insert_pos + inserted_count)
+                target_doc.insert_pdf(
+                    source_doc,
+                    from_page=page_num,
+                    to_page=page_num,
+                    start_at=insert_pos + inserted_count,
+                )
                 inserted_count += 1
                 self._emit_progress_if_due(int((i + 1) / total_to_copy * 100))
 

@@ -21,7 +21,7 @@ def build_text_markup(self, layout) -> None:
     self.sel_markup.pathChanged.connect(self._update_preview)
     l_markup.addWidget(self.sel_markup)
     markup_opts = QHBoxLayout()
-    markup_opts.addWidget(QLabel(tm.get("lbl_keyword"))) # Reuse keyword label
+    markup_opts.addWidget(QLabel(tm.get("lbl_keyword")))  # Reuse keyword label
     self.inp_markup = QLineEdit()
     self.inp_markup.setPlaceholderText(tm.get("ph_markup"))
     markup_opts.addWidget(self.inp_markup)
@@ -41,4 +41,3 @@ def build_text_markup(self, layout) -> None:
     b_markup.clicked.connect(self.action_add_text_markup)
     l_markup.addWidget(b_markup)
     layout.addWidget(grp_markup)
-

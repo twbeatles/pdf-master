@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Worker annotation textbox helpers 추출 (move-only)."""
+
 from __future__ import annotations
 
 import ast
@@ -19,7 +20,10 @@ def main() -> None:
     methods: dict[str, str] = {}
     cls: ast.ClassDef | None = None
     for node in tree.body:
-        if isinstance(node, ast.ClassDef) and node.name == "WorkerAnnotationTextboxMixin":
+        if (
+            isinstance(node, ast.ClassDef)
+            and node.name == "WorkerAnnotationTextboxMixin"
+        ):
             cls = node
             for b in node.body:
                 if isinstance(b, ast.FunctionDef) and b.name in (
@@ -28,7 +32,9 @@ def main() -> None:
                     "_resolve_textbox_fontname",
                 ):
                     assert b.end_lineno
-                    methods[b.name] = "".join(lines[b.lineno - 1 : b.end_lineno]).rstrip() + "\n"
+                    methods[b.name] = (
+                        "".join(lines[b.lineno - 1 : b.end_lineno]).rstrip() + "\n"
+                    )
             break
     if cls is None:
         raise SystemExit("class not found")
@@ -46,7 +52,9 @@ def main() -> None:
         first = first.replace(f"def {name}", f"def {new_name}", 1)
         return first + "\n" + rest
 
-    helpers_body = [method_to_func(old, methods[old], new) for old, new in mapping.items()]
+    helpers_body = [
+        method_to_func(old, methods[old], new) for old, new in mapping.items()
+    ]
     helpers_src = (
         '"""텍스트상자 삽입 순수 헬퍼 (self 비의존)."""\n'
         "from __future__ import annotations\n\n"
@@ -54,8 +62,7 @@ def main() -> None:
         "from typing import Any\n\n"
         "from ...optional_deps import fitz\n"
         "from .._pdf_helpers import text_needs_cjk\n\n"
-        "logger = logging.getLogger(__name__)\n\n\n"
-        + "\n".join(helpers_body)
+        "logger = logging.getLogger(__name__)\n\n\n" + "\n".join(helpers_body)
     )
     HELPERS.write_text(helpers_src, encoding="utf-8")
 
@@ -129,7 +136,9 @@ def main() -> None:
     SRC.write_text(new_src, encoding="utf-8")
     ast.parse(new_src)
     ast.parse(helpers_src)
-    print(f"OK helpers={len(helpers_src.splitlines())} textbox={len(new_src.splitlines())}")
+    print(
+        f"OK helpers={len(helpers_src.splitlines())} textbox={len(new_src.splitlines())}"
+    )
 
 
 if __name__ == "__main__":

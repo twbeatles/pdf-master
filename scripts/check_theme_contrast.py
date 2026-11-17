@@ -63,23 +63,37 @@ def _to_rgb(value: str) -> tuple[int, int, int] | None:
 def _luminance(rgb: tuple[int, int, int]) -> float:
     def linear(channel: float) -> float:
         channel /= 255.0
-        return channel / 12.92 if channel <= 0.03928 else ((channel + 0.055) / 1.055) ** 2.4
+        return (
+            channel / 12.92
+            if channel <= 0.03928
+            else ((channel + 0.055) / 1.055) ** 2.4
+        )
 
     red, green, blue = rgb
     return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
 
 
 def contrast(fg: tuple[int, int, int], bg: tuple[int, int, int]) -> float:
-    light, dark = max(_luminance(fg), _luminance(bg)), min(_luminance(fg), _luminance(bg))
+    light, dark = (
+        max(_luminance(fg), _luminance(bg)),
+        min(_luminance(fg), _luminance(bg)),
+    )
     return (light + 0.05) / (dark + 0.05)
 
 
-def _effective_background(value: str, base: tuple[int, int, int]) -> tuple[int, int, int] | None:
+def _effective_background(
+    value: str, base: tuple[int, int, int]
+) -> tuple[int, int, int] | None:
     """Resolve a background value to one RGB: solid hex, darkest gradient
     stop, or rgba blended over the sheet base. Returns None when unknown."""
     rgba = RGBA_RE.search(value)
     if rgba:
-        red, green, blue, alpha = int(rgba.group(1)), int(rgba.group(2)), int(rgba.group(3)), float(rgba.group(4))
+        red, green, blue, alpha = (
+            int(rgba.group(1)),
+            int(rgba.group(2)),
+            int(rgba.group(3)),
+            float(rgba.group(4)),
+        )
         blended = [
             round(alpha * channel + (1.0 - alpha) * ground)
             for channel, ground in zip((red, green, blue), base)  # noqa: B905 -- base is a caller-provided 3-tuple; strict= would add a new exception path (behavior change), deferred per S3 policy
@@ -118,7 +132,10 @@ def check_sheet(name: str, sheet: str, base_bg: str) -> list[str]:
             continue
         threshold = (
             STATE_MIN_CONTRAST
-            if any(state in selector for state in (":selected", ":disabled", ":hover", ":checked"))
+            if any(
+                state in selector
+                for state in (":selected", ":disabled", ":hover", ":checked")
+            )
             else NORMAL_MIN_CONTRAST
         )
         ratio = contrast(fg, bg)
@@ -131,10 +148,7 @@ def check_sheet(name: str, sheet: str, base_bg: str) -> list[str]:
 
 
 def check_all_sheets() -> dict[str, list[str]]:
-    return {
-        name: check_sheet(name, sheet, base)
-        for name, sheet, base in SHEETS
-    }
+    return {name: check_sheet(name, sheet, base) for name, sheet, base in SHEETS}
 
 
 def main() -> int:

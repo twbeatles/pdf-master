@@ -48,4 +48,3 @@ def build_cleanup(self, layout) -> None:
     nup_row.addStretch()
     l_cleanup.addLayout(nup_row)
     layout.addWidget(grp_cleanup)
-

@@ -16,7 +16,11 @@ class PreviewNavigationMixin(PreviewWidgetHost):
         if self._doc is None or self._total_pages <= 0:
             return
         if 0 <= page_index < self._total_pages:
-            zoom = self.pdf_view.zoomFactor() if self.pdf_view.zoomMode() == QPdfView.ZoomMode.Custom else 0.0
+            zoom = (
+                self.pdf_view.zoomFactor()
+                if self.pdf_view.zoomMode() == QPdfView.ZoomMode.Custom
+                else 0.0
+            )
             navigator = self.pdf_view.pageNavigator()
             if navigator is not None:
                 navigator.jump(page_index, QPointF(), zoom)

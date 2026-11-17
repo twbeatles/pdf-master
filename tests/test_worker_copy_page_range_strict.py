@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6_and_pymupdf
 
 from src.core.optional_deps import fitz
@@ -37,7 +36,9 @@ def test_copy_page_invalid_range_hard_fails_and_no_output(tmp_path):
     worker.copy_page_between_docs()
 
     assert errors
-    assert any(("페이지 범위" in msg) or ("page range" in msg.lower()) for msg in errors)
+    assert any(
+        ("페이지 범위" in msg) or ("page range" in msg.lower()) for msg in errors
+    )
     assert not out.exists()
 
 

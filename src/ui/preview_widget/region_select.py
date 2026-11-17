@@ -104,7 +104,9 @@ def map_page_points_to_viewport_rect(
     )
 
 
-def format_rect_coords(coords: tuple[float, float, float, float], *, decimals: int = 1) -> str:
+def format_rect_coords(
+    coords: tuple[float, float, float, float], *, decimals: int = 1
+) -> str:
     return ",".join(f"{v:.{decimals}f}" for v in coords)
 
 

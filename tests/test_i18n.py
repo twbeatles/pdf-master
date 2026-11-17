@@ -7,7 +7,9 @@ def test_translation_manager_auto_detect_uses_non_deprecated_locale(monkeypatch)
     monkeypatch.setattr(
         i18n.locale,
         "getdefaultlocale",
-        lambda: (_ for _ in ()).throw(AssertionError("getdefaultlocale should not be used")),
+        lambda: (_ for _ in ()).throw(
+            AssertionError("getdefaultlocale should not be used")
+        ),
         raising=False,
     )
     monkeypatch.setattr(i18n.locale, "getlocale", lambda: ("ko_KR", "UTF-8"))

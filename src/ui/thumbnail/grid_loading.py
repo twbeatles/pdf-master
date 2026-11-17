@@ -177,13 +177,17 @@ class ThumbnailGridLoadingMixin(ThumbnailGridHost):
             lru = getattr(self, "_pixmap_lru", None)
             if lru is not None:
                 lru.put(self._thumbnail_cache_key(index), pixmap)
-        self.loadingProgress.emit(int((len(self._loaded_indices) / max(1, self._total_pages)) * 100))
+        self.loadingProgress.emit(
+            int((len(self._loaded_indices) / max(1, self._total_pages)) * 100)
+        )
 
     @Slot(int)
     def _on_loader_progress(self, _value: int):
         if not self._is_active_loader_sender():
             return
-        self.loadingProgress.emit(int((len(self._loaded_indices) / max(1, self._total_pages)) * 100))
+        self.loadingProgress.emit(
+            int((len(self._loaded_indices) / max(1, self._total_pages)) * 100)
+        )
 
     @Slot()
     def _on_loading_complete(self):
@@ -191,7 +195,9 @@ class ThumbnailGridLoadingMixin(ThumbnailGridHost):
             return
         logger.debug("Thumbnail batch loading complete")
         unfinished = [
-            index for index in self._active_batch_indices if index not in self._loaded_indices
+            index
+            for index in self._active_batch_indices
+            if index not in self._loaded_indices
         ]
         self._requested_indices.difference_update(self._active_batch_indices)
         self._pending_indices.update(unfinished)

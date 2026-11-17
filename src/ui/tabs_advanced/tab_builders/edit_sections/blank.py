@@ -33,4 +33,3 @@ def build_blank(self, layout) -> None:
     b_blank.clicked.connect(self.action_blank_page)
     l_blank.addWidget(b_blank)
     layout.addWidget(grp_blank)
-

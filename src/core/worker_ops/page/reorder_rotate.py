@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 
 class WorkerPageReorderRotateMixin(WorkerHost):
     def rotate(self):
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        angle = _as_int(self.kwargs.get('angle'))
-        raw_page_indices = self.kwargs.get('page_indices')
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        angle = _as_int(self.kwargs.get("angle"))
+        raw_page_indices = self.kwargs.get("page_indices")
 
         doc = self._open_pdf_document(file_path)
         try:
@@ -40,12 +40,20 @@ class WorkerPageReorderRotateMixin(WorkerHost):
                 for raw_page_index in requested_indices:
                     try:
                         page_index = int(raw_page_index)
-                    except (TypeError, ValueError):
-                        self.error_signal.emit(self._get_msg("err_page_number_numeric", str(raw_page_index)))
+                    except TypeError, ValueError:
+                        self.error_signal.emit(
+                            self._get_msg(
+                                "err_page_number_numeric", str(raw_page_index)
+                            )
+                        )
                         return
                     if page_index < 0 or page_index >= total_pages:
                         self.error_signal.emit(
-                            self._get_msg("err_page_out_of_range", str(page_index + 1), str(total_pages))
+                            self._get_msg(
+                                "err_page_out_of_range",
+                                str(page_index + 1),
+                                str(total_pages),
+                            )
                         )
                         return
                     if page_index not in seen:
@@ -63,15 +71,19 @@ class WorkerPageReorderRotateMixin(WorkerHost):
                 page.set_rotation(page.rotation + angle)
                 self._emit_progress_if_due(int((idx + 1) / total_to_rotate * 100))
             self._atomic_pdf_save(doc, output_path)
-            self.finished_signal.emit(self._get_msg("msg_pages_rotated", len(page_indices), angle))
+            self.finished_signal.emit(
+                self._get_msg("msg_pages_rotated", len(page_indices), angle)
+            )
         finally:
             doc.close()
 
     def reorder(self):
         """페이지 순서 변경"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        page_order = [_as_int(page_num) for page_num in _as_list(self.kwargs.get('page_order'))]
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        page_order = [
+            _as_int(page_num) for page_num in _as_list(self.kwargs.get("page_order"))
+        ]
 
         doc_src = None
         doc_out = None
@@ -85,7 +97,9 @@ class WorkerPageReorderRotateMixin(WorkerHost):
                 self._emit_progress_if_due(int((idx + 1) / len(page_order) * 100))
 
             self._atomic_pdf_save(doc_out, output_path)
-            self.finished_signal.emit(self._get_msg("msg_reorder_done", len(page_order)))
+            self.finished_signal.emit(
+                self._get_msg("msg_reorder_done", len(page_order))
+            )
         finally:
             if doc_out:
                 doc_out.close()
@@ -94,8 +108,8 @@ class WorkerPageReorderRotateMixin(WorkerHost):
 
     def reverse_pages(self):
         """페이지 역순 정렬"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
 
         doc = self._open_pdf_document(file_path)
         try:

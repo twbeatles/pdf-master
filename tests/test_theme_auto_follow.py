@@ -133,8 +133,12 @@ def test_poll_enforces_explicit_choice(monkeypatch):
     old_provider = fluent_theme._SETTINGS_THEME_PROVIDER
     try:
         fluent_calls = []
-        monkeypatch.setattr(fluent_theme, "sync_system_theme", lambda: fluent_calls.append("os"))
-        monkeypatch.setattr(fluent_theme, "sync_fluent_theme", lambda m: fluent_calls.append(m))
+        monkeypatch.setattr(
+            fluent_theme, "sync_system_theme", lambda: fluent_calls.append("os")
+        )
+        monkeypatch.setattr(
+            fluent_theme, "sync_fluent_theme", lambda m: fluent_calls.append(m)
+        )
         themes = iter(["Dark", "Light"])
         monkeypatch.setattr(darkdetect, "theme", lambda: next(themes))
         fluent_theme._LAST_SYSTEM_THEME = None

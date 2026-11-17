@@ -7,38 +7,58 @@ def action_highlight_text(self):
     term = self.inp_search.text().strip()
 
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
     if not term:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_enter_keyword"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_enter_keyword")
+        )
 
     s, _ = self._choose_save_file(deps.tm.get("save"), "highlighted.pdf", "PDF (*.pdf)")
     if s:
-        self.run_worker("highlight_text", file_path=path, output_path=s, search_term=term)
+        self.run_worker(
+            "highlight_text", file_path=path, output_path=s, search_term=term
+        )
+
 
 def action_list_annotations(self):
     """주석 목록 추출"""
     path = self.sel_annot.get_path()
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
-    s, _ = self._choose_save_file(deps.tm.get("save"), "annotations.txt", "Text (*.txt)")
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
+    s, _ = self._choose_save_file(
+        deps.tm.get("save"), "annotations.txt", "Text (*.txt)"
+    )
     if s:
         self.run_worker("list_annotations", file_path=path, output_path=s)
+
 
 def action_remove_annotations(self):
     """모든 주석 삭제"""
     path = self.sel_annot.get_path()
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
 
-    reply = deps.QMessageBox.question(self, deps.tm.get("confirm"), 
-                                deps.tm.get("msg_confirm_remove_annotations"),
-                                deps.QMessageBox.StandardButton.Yes | deps.QMessageBox.StandardButton.No)
+    reply = deps.QMessageBox.question(
+        self,
+        deps.tm.get("confirm"),
+        deps.tm.get("msg_confirm_remove_annotations"),
+        deps.QMessageBox.StandardButton.Yes | deps.QMessageBox.StandardButton.No,
+    )
     if reply != deps.QMessageBox.StandardButton.Yes:
         return
 
-    s, _ = self._choose_save_file(deps.tm.get("save"), "no_annotations.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(
+        deps.tm.get("save"), "no_annotations.pdf", "PDF (*.pdf)"
+    )
     if s:
         self.run_worker("remove_annotations", file_path=path, output_path=s)
+
 
 def action_add_text_markup(self):
     """텍스트 마크업 추가"""
@@ -46,28 +66,43 @@ def action_add_text_markup(self):
     term = self.inp_markup.text().strip()
 
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
     if not term:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_enter_markup_text"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_enter_markup_text")
+        )
 
     markup_type = self.cmb_markup.currentData() or "underline"
 
     s, _ = self._choose_save_file(deps.tm.get("save"), "marked_up.pdf", "PDF (*.pdf)")
     if s:
-        self.run_worker("add_text_markup", file_path=path, output_path=s, 
-                      search_term=term, markup_type=markup_type)
+        self.run_worker(
+            "add_text_markup",
+            file_path=path,
+            output_path=s,
+            search_term=term,
+            markup_type=markup_type,
+        )
+
 
 def action_add_background(self):
     """배경색 추가"""
     path = self.sel_bg.get_path()
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
 
     color = self.cmb_bg_color.currentData() or [1, 1, 0.9]
 
-    s, _ = self._choose_save_file(deps.tm.get("save"), "with_background.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(
+        deps.tm.get("save"), "with_background.pdf", "PDF (*.pdf)"
+    )
     if s:
         self.run_worker("add_background", file_path=path, output_path=s, color=color)
+
 
 def action_add_sticky_note(self):
     """스티키 노트 추가"""
@@ -75,9 +110,13 @@ def action_add_sticky_note(self):
     content = self.txt_sticky_content.text().strip()
 
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
     if not content:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_enter_note_content"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_enter_note_content")
+        )
 
     x = self.spn_sticky_x.value()
     y = self.spn_sticky_y.value()
@@ -86,8 +125,17 @@ def action_add_sticky_note(self):
 
     s, _ = self._choose_save_file(deps.tm.get("save"), "with_note.pdf", "PDF (*.pdf)")
     if s:
-        self.run_worker("add_sticky_note", file_path=path, output_path=s,
-                      page_num=page_num, x=x, y=y, content=content, icon=icon)
+        self.run_worker(
+            "add_sticky_note",
+            file_path=path,
+            output_path=s,
+            page_num=page_num,
+            x=x,
+            y=y,
+            content=content,
+            icon=icon,
+        )
+
 
 def action_add_ink_annotation(self):
     """프리핸드 드로잉 추가"""
@@ -95,9 +143,13 @@ def action_add_ink_annotation(self):
     points_text = self.txt_ink_points.text().strip()
 
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
     if not points_text:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_enter_coords"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_enter_coords")
+        )
 
     # 좌표 파싱
     try:
@@ -108,29 +160,47 @@ def action_add_ink_annotation(self):
                 points.append([float(coords[0]), float(coords[1])])
 
         if len(points) < 2:
-            return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_min_two_points"))
+            return deps.QMessageBox.warning(
+                self, deps.tm.get("info"), deps.tm.get("msg_min_two_points")
+            )
     except Exception as e:
-        return deps.QMessageBox.warning(self, deps.tm.get("error"), deps.tm.get("msg_coord_format_error", str(e)))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("error"), deps.tm.get("msg_coord_format_error", str(e))
+        )
 
     page_num = self.spn_ink_page.value() - 1
     width = self.spn_ink_width.value()
 
     color = self.cmb_ink_color.currentData() or (0, 0, 1)
 
-    s, _ = self._choose_save_file(deps.tm.get("save"), "with_drawing.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(
+        deps.tm.get("save"), "with_drawing.pdf", "PDF (*.pdf)"
+    )
     if s:
-        self.run_worker("add_ink_annotation", file_path=path, output_path=s,
-                      page_num=page_num, points=points, color=color, width=width)
+        self.run_worker(
+            "add_ink_annotation",
+            file_path=path,
+            output_path=s,
+            page_num=page_num,
+            points=points,
+            color=color,
+            width=width,
+        )
+
 
 def action_add_annotation_basic(self):
     """기본 주석 추가(text/freetext)"""
     path = self.sel_add_annot.get_path()
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
 
     text = self.txt_add_annot_text.text().strip()
     if not text:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_enter_note_content"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_enter_note_content")
+        )
 
     annot_type = self.cmb_add_annot_type.currentData() or "text"
     page_num = self.spn_add_annot_page.value() - 1
@@ -139,19 +209,36 @@ def action_add_annotation_basic(self):
 
     try:
         if annot_type == "text":
-            point_tokens = [p.strip() for p in self.txt_add_annot_point.text().strip().split(",") if p.strip()]
+            point_tokens = [
+                p.strip()
+                for p in self.txt_add_annot_point.text().strip().split(",")
+                if p.strip()
+            ]
             if len(point_tokens) != 2:
                 raise ValueError(deps.tm.get("msg_need_two_coords"))
             point = [float(point_tokens[0]), float(point_tokens[1])]
         else:
-            rect_tokens = [p.strip() for p in self.txt_add_annot_rect.text().strip().split(",") if p.strip()]
+            rect_tokens = [
+                p.strip()
+                for p in self.txt_add_annot_rect.text().strip().split(",")
+                if p.strip()
+            ]
             if len(rect_tokens) != 4:
                 raise ValueError(deps.tm.get("msg_need_four_coords"))
-            rect = [float(rect_tokens[0]), float(rect_tokens[1]), float(rect_tokens[2]), float(rect_tokens[3])]
+            rect = [
+                float(rect_tokens[0]),
+                float(rect_tokens[1]),
+                float(rect_tokens[2]),
+                float(rect_tokens[3]),
+            ]
     except ValueError as exc:
-        return deps.QMessageBox.warning(self, deps.tm.get("error"), deps.tm.get("msg_coord_format_error", str(exc)))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("error"), deps.tm.get("msg_coord_format_error", str(exc))
+        )
 
-    s, _ = self._choose_save_file(deps.tm.get("save"), "with_annotation.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(
+        deps.tm.get("save"), "with_annotation.pdf", "PDF (*.pdf)"
+    )
     if s:
         self.run_worker(
             "add_annotation",

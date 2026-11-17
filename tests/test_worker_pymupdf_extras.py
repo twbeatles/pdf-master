@@ -8,7 +8,9 @@ from src.core.optional_deps import fitz
 from src.core.worker_runtime.dispatch import get_operation_spec
 
 
-def _text_pdf(path: Path, pages: list[str], *, title_sizes: list[float] | None = None) -> None:
+def _text_pdf(
+    path: Path, pages: list[str], *, title_sizes: list[float] | None = None
+) -> None:
     doc = fitz.open()
     for i, text in enumerate(pages):
         page = doc.new_page(width=300, height=400)
@@ -55,7 +57,9 @@ def test_remove_blank_pages(tmp_path):
     out = tmp_path / "out.pdf"
     _blank_and_content_pdf(src)
 
-    worker = WorkerThread("remove_blank_pages", file_path=str(src), output_path=str(out))
+    worker = WorkerThread(
+        "remove_blank_pages", file_path=str(src), output_path=str(out)
+    )
     errors: list[str] = []
     worker.error_signal.connect(lambda m: errors.append(m))
     worker.remove_blank_pages()
@@ -83,7 +87,9 @@ def test_dedupe_pages(tmp_path):
     doc = fitz.open(str(out))
     try:
         texts = [doc[i].get_text().strip() for i in range(len(doc))]
-        assert texts == ["A", "B"] or (len(texts) == 2 and "A" in texts[0] and "B" in texts[1])
+        assert texts == ["A", "B"] or (
+            len(texts) == 2 and "A" in texts[0] and "B" in texts[1]
+        )
     finally:
         doc.close()
 

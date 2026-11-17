@@ -1,4 +1,5 @@
 """텍스트상자 UI 액션 facade (호환 경로)."""
+
 from __future__ import annotations
 
 from .textbox_impl import (

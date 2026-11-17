@@ -54,11 +54,15 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             if not self._enqueue_pending_worker(mode, output_path, kwargs):
                 return
             pending = len(getattr(self, "_pending_workers", []) or [])
-            toast = ToastWidget(tm.get("msg_worker_queued_auto", pending), toast_type="info", duration=2000)
+            toast = ToastWidget(
+                tm.get("msg_worker_queued_auto", pending),
+                toast_type="info",
+                duration=2000,
+            )
             toast.show_toast(self)
             try:
                 self.status_label.setText(tm.get("msg_worker_queued_auto", pending))
-            except (AttributeError, RuntimeError):
+            except AttributeError, RuntimeError:
                 pass
             return
 
@@ -68,7 +72,9 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                     logger.warning("Previous worker still running; deferring new task")
                     if not self._enqueue_pending_worker(mode, output_path, kwargs):
                         return
-                    toast = ToastWidget(tm.get("msg_worker_queued"), toast_type="info", duration=2000)
+                    toast = ToastWidget(
+                        tm.get("msg_worker_queued"), toast_type="info", duration=2000
+                    )
                     toast.show_toast(self)
                     return
             self._finalize_worker()
@@ -124,7 +130,11 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
                         "output_path": output,
                     }
                 else:
-                    ToastWidget(tm.get("msg_undo_unavailable"), toast_type="warning", duration=3000).show_toast(self)
+                    ToastWidget(
+                        tm.get("msg_undo_unavailable"),
+                        toast_type="warning",
+                        duration=3000,
+                    ).show_toast(self)
 
         description = _get_operation_description(mode) + "..."
 
@@ -148,7 +158,9 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         if sender is not None and sender is not self.worker:
             return
         # 취소 요청 이후 partial 갱신 차단 (레이아웃 오염·잔여 스트림 표시 방지)
-        if getattr(self, "_cancel_pending", False) or getattr(self, "_cancel_handled", False):
+        if getattr(self, "_cancel_pending", False) or getattr(
+            self, "_cancel_handled", False
+        ):
             return
         if not isinstance(payload, dict):
             return
@@ -156,16 +168,28 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         if not isinstance(text, str) or not text:
             return
 
-        if hasattr(self, "_ai_worker_mode") and self._ai_worker_mode and hasattr(self, "txt_summary_result"):
-            self._summary_partial_text = getattr(self, "_summary_partial_text", "") + text
+        if (
+            hasattr(self, "_ai_worker_mode")
+            and self._ai_worker_mode
+            and hasattr(self, "txt_summary_result")
+        ):
+            self._summary_partial_text = (
+                getattr(self, "_summary_partial_text", "") + text
+            )
             self.txt_summary_result.setPlainText(self._summary_partial_text)
             return
 
-        if hasattr(self, "_chat_worker_mode") and self._chat_worker_mode and hasattr(self, "txt_chat_history"):
+        if (
+            hasattr(self, "_chat_worker_mode")
+            and self._chat_worker_mode
+            and hasattr(self, "txt_chat_history")
+        ):
             self._chat_partial_text = getattr(self, "_chat_partial_text", "") + text
             _replace_last_chat_block(
                 self.txt_chat_history,
-                format_chat_assistant_html(tm.get("chat_assistant_prefix"), self._chat_partial_text),
+                format_chat_assistant_html(
+                    tm.get("chat_assistant_prefix"), self._chat_partial_text
+                ),
             )
 
     def on_cancelled(self, msg):
@@ -192,9 +216,13 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         self.progress_overlay.hide_progress()
         self.status_label.setText(tm.get("completed"))
         self.progress_bar.setValue(100)
-        self.btn_open_folder.setVisible(bool(getattr(self, "_has_output", False) and self._last_output_path))
+        self.btn_open_folder.setVisible(
+            bool(getattr(self, "_has_output", False) and self._last_output_path)
+        )
         mode = getattr(self.worker, "mode", "") if self.worker else ""
-        payload = _coerce_payload_defaults(mode, _get_worker_payload(self.worker) if self.worker else {})
+        payload = _coerce_payload_defaults(
+            mode, _get_worker_payload(self.worker) if self.worker else {}
+        )
 
         apply_ai_success_state(self, payload)
         apply_undo_registration(self, ToastWidget)
@@ -214,7 +242,9 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
         # notify_mode: toast = 모달 생략, dialog = 기존 toast+정보 모달
         notify_mode = "dialog"
         try:
-            notify_mode = str((getattr(self, "settings", {}) or {}).get("notify_mode") or "dialog")
+            notify_mode = str(
+                (getattr(self, "settings", {}) or {}).get("notify_mode") or "dialog"
+            )
         except Exception:
             notify_mode = "dialog"
         if not custom_dialog_shown and notify_mode != "toast":

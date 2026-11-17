@@ -1,4 +1,3 @@
-
 import pytest
 from _deps import require_pyside6_and_pymupdf
 
@@ -36,7 +35,9 @@ def test_split_checks_cancellation_inside_page_loop(tmp_path):
     out_dir.mkdir()
     _make_pdf(src, page_count=4)
 
-    worker = WorkerThread("split", file_path=str(src), output_dir=str(out_dir), page_range="1-4")
+    worker = WorkerThread(
+        "split", file_path=str(src), output_dir=str(out_dir), page_range="1-4"
+    )
     worker._check_cancelled = _cancel_after(2)
 
     with pytest.raises(CancelledError):
@@ -132,7 +133,9 @@ def test_search_text_checks_cancellation_inside_page_loop(tmp_path):
     out = tmp_path / "search.txt"
     _make_pdf(src, page_count=4)
 
-    worker = WorkerThread("search_text", file_path=str(src), output_path=str(out), search_term="PAGE")
+    worker = WorkerThread(
+        "search_text", file_path=str(src), output_path=str(out), search_term="PAGE"
+    )
     worker._check_cancelled = _cancel_after(2)
 
     with pytest.raises(CancelledError):

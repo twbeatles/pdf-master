@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 _HEADING_MIN_SIZE = 12.0
 _HEADING_SIZE_GAP = 1.5
 
+
 class WorkerCleanupBlankDedupeMixin(WorkerHost):
     def remove_blank_pages(self):
         file_path = _as_str(self.kwargs.get("file_path"))
@@ -53,7 +54,9 @@ class WorkerCleanupBlankDedupeMixin(WorkerHost):
                 out.close()
 
             removed = total - len(keep)
-            self.finished_signal.emit(self._get_msg("msg_remove_blank_done", removed, len(keep)))
+            self.finished_signal.emit(
+                self._get_msg("msg_remove_blank_done", removed, len(keep))
+            )
         finally:
             doc.close()
 

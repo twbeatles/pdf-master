@@ -62,7 +62,11 @@ def test_extract_text_with_meta_marks_truncation(tmp_path, monkeypatch):
 
     class FakeDoc:
         def __init__(self):
-            self._pages = [FakePage("a" * 20000), FakePage("b" * 20000), FakePage("c" * 10)]
+            self._pages = [
+                FakePage("a" * 20000),
+                FakePage("b" * 20000),
+                FakePage("c" * 10),
+            ]
 
         def __len__(self):
             return len(self._pages)
@@ -93,10 +97,28 @@ def test_file_api_fallback_helper_is_restricted_to_upload_like_errors():
 
     service = AIService(api_key="")
 
-    assert service._should_fallback_from_file_api(RuntimeError("File upload failed: unsupported mime type")) is True
-    assert service._should_fallback_from_file_api(RuntimeError("invalid argument: file too large")) is True
-    assert service._should_fallback_from_file_api(RuntimeError("API key invalid for upload")) is False
-    assert service._should_fallback_from_file_api(RuntimeError("schema parse error")) is False
+    assert (
+        service._should_fallback_from_file_api(
+            RuntimeError("File upload failed: unsupported mime type")
+        )
+        is True
+    )
+    assert (
+        service._should_fallback_from_file_api(
+            RuntimeError("invalid argument: file too large")
+        )
+        is True
+    )
+    assert (
+        service._should_fallback_from_file_api(
+            RuntimeError("API key invalid for upload")
+        )
+        is False
+    )
+    assert (
+        service._should_fallback_from_file_api(RuntimeError("schema parse error"))
+        is False
+    )
 
 
 def test_generate_structured_payload_only_falls_back_for_upload_errors(monkeypatch):
@@ -107,7 +129,9 @@ def test_generate_structured_payload_only_falls_back_for_upload_errors(monkeypat
     monkeypatch.setattr(
         service,
         "_upload_pdf_file",
-        lambda _path, **_kw: (_ for _ in ()).throw(RuntimeError("upload failed: file too large")),
+        lambda _path, **_kw: (_ for _ in ()).throw(
+            RuntimeError("upload failed: file too large")
+        ),
     )
     monkeypatch.setattr(
         service,
@@ -125,7 +149,9 @@ def test_generate_structured_payload_only_falls_back_for_upload_errors(monkeypat
     monkeypatch.setattr(
         service,
         "_upload_pdf_file",
-        lambda _path, **_kw: (_ for _ in ()).throw(RuntimeError("auth error: invalid api key")),
+        lambda _path, **_kw: (_ for _ in ()).throw(
+            RuntimeError("auth error: invalid api key")
+        ),
     )
     try:
         service._generate_structured_payload(
@@ -150,7 +176,11 @@ def test_clear_chat_session_removes_all_versions_for_same_pdf(tmp_path):
     AIService._chat_sessions = {
         ("gemini-2.5-flash", abs_path, 1): object(),
         ("gemini-2.5-flash", abs_path, 2): object(),
-        ("gemini-2.5-flash", normalize_path_key(str(tmp_path / "other.pdf")), 1): object(),
+        (
+            "gemini-2.5-flash",
+            normalize_path_key(str(tmp_path / "other.pdf")),
+            1,
+        ): object(),
     }
 
     AIService.clear_chat_session(str(pdf_path))
@@ -183,7 +213,13 @@ def test_clear_chat_session_removes_uploaded_file_and_deletes_remote(tmp_path):
     client = FakeClient()
 
     AIService._uploaded_file_cache = OrderedDict(
-        {((abs_path, int(mtime_ns))): {"file": object(), "name": "files/sample", "client": client}}
+        {
+            ((abs_path, int(mtime_ns))): {
+                "file": object(),
+                "name": "files/sample",
+                "client": client,
+            }
+        }
     )
 
     AIService.clear_chat_session(str(pdf_path), all_versions=False)
@@ -216,7 +252,9 @@ def test_shutdown_executor_deletes_cached_remote_uploads():
         }
     )
     AIService._chat_sessions = {("model", "a", 1): object()}
-    AIService._text_cache = OrderedDict({("p", 1, None, 1): ("secret-pdf-text", 10, {})})
+    AIService._text_cache = OrderedDict(
+        {("p", 1, None, 1): ("secret-pdf-text", 10, {})}
+    )
     AIService._text_cache_bytes = 10
 
     AIService.shutdown_executor()

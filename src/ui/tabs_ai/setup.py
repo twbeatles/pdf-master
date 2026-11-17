@@ -30,6 +30,7 @@ from ..widgets import FileSelectorWidget
 
 logger = logging.getLogger(__name__)
 
+
 def setup_ai_tab(self):
     """AI 요약 탭 설정"""
     tab = QWidget()
@@ -86,7 +87,7 @@ def setup_ai_tab(self):
     step1.setObjectName("stepLabel")
     l_summary.addWidget(step1)
 
-    self.sel_ai_pdf = FileSelectorWidget(tm.get("lbl_ai_file"), ['.pdf'])
+    self.sel_ai_pdf = FileSelectorWidget(tm.get("lbl_ai_file"), [".pdf"])
     self.sel_ai_pdf.pathChanged.connect(self._update_preview)
     l_summary.addWidget(self.sel_ai_pdf)
 
@@ -145,7 +146,9 @@ def setup_ai_tab(self):
     l_summary.addWidget(step3)
 
     self.txt_summary_result = QTextEdit()
-    self.txt_summary_result.setPlaceholderText(tm.get("ph_ai_result") if AI_AVAILABLE else tm.get("msg_ai_disabled"))
+    self.txt_summary_result.setPlaceholderText(
+        tm.get("ph_ai_result") if AI_AVAILABLE else tm.get("msg_ai_disabled")
+    )
     self.txt_summary_result.setMinimumHeight(200)
     self.txt_summary_result.setReadOnly(True)
     l_summary.addWidget(self.txt_summary_result)
@@ -171,7 +174,7 @@ def setup_ai_tab(self):
     thumb_desc.setObjectName("desc")
     l_thumb.addWidget(thumb_desc)
 
-    self.sel_thumb_pdf = FileSelectorWidget(tm.get("lbl_thumb_file"), ['.pdf'])
+    self.sel_thumb_pdf = FileSelectorWidget(tm.get("lbl_thumb_file"), [".pdf"])
     self.sel_thumb_pdf.pathChanged.connect(self._update_preview)
     l_thumb.addWidget(self.sel_thumb_pdf)
 
@@ -191,7 +194,7 @@ def setup_ai_tab(self):
     l_chat.addWidget(chat_step)
 
     # PDF 파일 선택 (채팅용)
-    self.sel_chat_pdf = FileSelectorWidget(tm.get("lbl_ai_file"), ['.pdf'])
+    self.sel_chat_pdf = FileSelectorWidget(tm.get("lbl_ai_file"), [".pdf"])
     self.sel_chat_pdf.pathChanged.connect(self._on_chat_pdf_changed)
     l_chat.addWidget(self.sel_chat_pdf)
 
@@ -238,7 +241,7 @@ def setup_ai_tab(self):
     l_keywords = QVBoxLayout(grp_keywords)
 
     # PDF 파일 선택 (키워드용)
-    self.sel_kw_pdf = FileSelectorWidget(tm.get("lbl_ai_file"), ['.pdf'])
+    self.sel_kw_pdf = FileSelectorWidget(tm.get("lbl_ai_file"), [".pdf"])
     self.sel_kw_pdf.pathChanged.connect(self._update_preview)
     l_keywords.addWidget(self.sel_kw_pdf)
 
@@ -283,4 +286,4 @@ def setup_ai_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    add_tab(self.tabs, tab, tm.get('tab_ai'), icon="ROBOT")
+    add_tab(self.tabs, tab, tm.get("tab_ai"), icon="ROBOT")

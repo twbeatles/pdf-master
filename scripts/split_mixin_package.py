@@ -3,6 +3,7 @@
 
 원본 메서드 본문을 줄 단위로 그대로 옮기고, 심볼 누락 여부를 검증한다.
 """
+
 from __future__ import annotations
 
 import ast
@@ -33,7 +34,9 @@ def _slice_lines(lines: list[str], start: int, end: int) -> str:
     return "".join(lines[start - 1 : end])
 
 
-def extract_class_methods(source: str, class_name: str) -> tuple[list[str], list[MethodChunk], str | None]:
+def extract_class_methods(
+    source: str, class_name: str
+) -> tuple[list[str], list[MethodChunk], str | None]:
     """returns (import/header lines as text blocks before class, methods, module docstring)."""
     tree = ast.parse(source)
     lines = source.splitlines(keepends=True)
@@ -53,7 +56,8 @@ def extract_class_methods(source: str, class_name: str) -> tuple[list[str], list
             methods.append(
                 MethodChunk(
                     name=node.name,
-                    source=_slice_lines(lines, node.lineno, node.end_lineno).rstrip() + "\n",
+                    source=_slice_lines(lines, node.lineno, node.end_lineno).rstrip()
+                    + "\n",
                     lineno=node.lineno,
                     end_lineno=node.end_lineno,
                 )
@@ -71,7 +75,8 @@ def extract_module_functions(source: str) -> list[FuncChunk]:
             out.append(
                 FuncChunk(
                     name=node.name,
-                    source=_slice_lines(lines, node.lineno, node.end_lineno).rstrip() + "\n",
+                    source=_slice_lines(lines, node.lineno, node.end_lineno).rstrip()
+                    + "\n",
                 )
             )
     return out
@@ -85,7 +90,9 @@ def extract_module_assignments_and_imports(source: str) -> str:
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
-        if isinstance(node, ast.Expr) and isinstance(getattr(node, "value", None), ast.Constant):
+        if isinstance(node, ast.Expr) and isinstance(
+            getattr(node, "value", None), ast.Constant
+        ):
             # module docstring — skip here; callers can add separately
             if node is tree.body[0]:
                 continue
@@ -157,9 +164,7 @@ def write_composed_init(
 
 def write_facade(path: Path, import_stmt: str, names: list[str]) -> None:
     body = (
-        "from __future__ import annotations\n\n"
-        f"{import_stmt}\n\n"
-        f"__all__ = {names!r}\n"
+        f"from __future__ import annotations\n\n{import_stmt}\n\n__all__ = {names!r}\n"
     )
     path.write_text(body, encoding="utf-8")
 

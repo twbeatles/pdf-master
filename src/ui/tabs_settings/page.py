@@ -21,15 +21,23 @@ THEME_LABEL_KEYS = {"dark": "theme_dark", "light": "theme_light", "auto": "theme
 LANGUAGE_OPTIONS = ("auto", "ko", "en")
 LANGUAGE_LABEL_KEYS = {"auto": "lang_auto", "ko": "lang_ko", "en": "lang_en"}
 NOTIFY_OPTIONS = ("dialog", "toast")
-NOTIFY_LABEL_KEYS = {"dialog": "settings_notify_dialog", "toast": "settings_notify_toast"}
+NOTIFY_LABEL_KEYS = {
+    "dialog": "settings_notify_dialog",
+    "toast": "settings_notify_toast",
+}
 
 SETTINGS_SECTIONS = (
     ("settings_appearance", ("theme", "language")),
-    ("settings_history", ("notify_mode", "clear_pending_on_cancel", "save_chat_histories")),
+    (
+        "settings_history",
+        ("notify_mode", "clear_pending_on_cancel", "save_chat_histories"),
+    ),
 )
 
 
-def _combo_row(label_key: str, options, current: str, on_change, host=None, attr: str = "") -> QHBoxLayout:
+def _combo_row(
+    label_key: str, options, current: str, on_change, host=None, attr: str = ""
+) -> QHBoxLayout:
     from PySide6.QtWidgets import QLabel
 
     row = QHBoxLayout()
@@ -77,18 +85,34 @@ def setup_settings_tab(self) -> None:
     layout.setContentsMargins(8, 8, 8, 8)
     layout.setSpacing(12)
 
-    card, card_layout = wrap_page(tm.get("settings_appearance"), tm.get("settings_appearance_desc"))
-    card_layout.addLayout(
-        _combo_row("settings_theme", THEME_OPTIONS, self.settings.get("theme", "dark"), lambda v: _on_settings_theme(self, v),
-                   host=self, attr="_settings_theme_combo")
+    card, card_layout = wrap_page(
+        tm.get("settings_appearance"), tm.get("settings_appearance_desc")
     )
     card_layout.addLayout(
-        _combo_row("settings_language", LANGUAGE_OPTIONS, self.settings.get("language", "auto"), lambda v: _on_settings_language(self, v),
-                   host=self, attr="_settings_language_combo")
+        _combo_row(
+            "settings_theme",
+            THEME_OPTIONS,
+            self.settings.get("theme", "dark"),
+            lambda v: _on_settings_theme(self, v),
+            host=self,
+            attr="_settings_theme_combo",
+        )
+    )
+    card_layout.addLayout(
+        _combo_row(
+            "settings_language",
+            LANGUAGE_OPTIONS,
+            self.settings.get("language", "auto"),
+            lambda v: _on_settings_language(self, v),
+            host=self,
+            attr="_settings_language_combo",
+        )
     )
     layout.addWidget(card)
 
-    card_h, card_h_layout = wrap_page(tm.get("settings_history"), tm.get("settings_history_desc"))
+    card_h, card_h_layout = wrap_page(
+        tm.get("settings_history"), tm.get("settings_history_desc")
+    )
     card_h_layout.addLayout(
         _combo_row(
             "settings_notify_mode",
@@ -101,12 +125,16 @@ def setup_settings_tab(self) -> None:
     )
     chk_pending = CheckBox(tm.get("settings_clear_pending"))
     chk_pending.setChecked(bool(self.settings.get("clear_pending_on_cancel", True)))
-    chk_pending.stateChanged.connect(lambda _s: _on_settings_clear_pending(self, chk_pending.isChecked()))
+    chk_pending.stateChanged.connect(
+        lambda _s: _on_settings_clear_pending(self, chk_pending.isChecked())
+    )
     card_h_layout.addWidget(chk_pending)
     chk_save_chat = CheckBox(tm.get("settings_save_chat"))
     chk_save_chat.setChecked(bool(self.settings.get("save_chat_histories", True)))
     chk_save_chat.setToolTip(tm.get("tip_save_chat_histories"))
-    chk_save_chat.stateChanged.connect(lambda _s: _on_settings_save_chat(self, chk_save_chat.isChecked()))
+    chk_save_chat.stateChanged.connect(
+        lambda _s: _on_settings_save_chat(self, chk_save_chat.isChecked())
+    )
     card_h_layout.addWidget(chk_save_chat)
     layout.addWidget(card_h)
 

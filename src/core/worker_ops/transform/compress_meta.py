@@ -48,7 +48,9 @@ class WorkerTransformCompressMetaMixin(WorkerHost):
             )
             extra_save_kwargs = {}
             if not raw_save_profile:
-                extra_save_kwargs = dict(COMPRESSION_SETTINGS.get(quality, COMPRESSION_SETTINGS["high"]))
+                extra_save_kwargs = dict(
+                    COMPRESSION_SETTINGS.get(quality, COMPRESSION_SETTINGS["high"])
+                )
 
             optimize_opts = resolve_image_optimize_options(
                 save_profile,
@@ -61,6 +63,7 @@ class WorkerTransformCompressMetaMixin(WorkerHost):
 
             images_replaced = 0
             if optimize_opts.get("optimize_images"):
+
                 def _image_progress(done: int, total: int) -> None:
                     # 이미지 단계: 0~70%
                     ratio = done / max(1, total)
@@ -102,7 +105,13 @@ class WorkerTransformCompressMetaMixin(WorkerHost):
         ratio = (1 - new_size / original_size) * 100 if original_size > 0 else 0
         self._emit_progress_if_due(100)
         self.finished_signal.emit(
-            self._get_msg("msg_compression_done", save_profile, original_size // 1024, new_size // 1024, ratio)
+            self._get_msg(
+                "msg_compression_done",
+                save_profile,
+                original_size // 1024,
+                new_size // 1024,
+                ratio,
+            )
         )
 
     def metadata_update(self):

@@ -3,7 +3,9 @@ from pathlib import Path
 
 CURRENT_AUDIT_FILE = "PROJECT_AUDIT.md"
 # 레거시 감사 파일명 — maintained docs에 남아 있으면 존재하는 파일만 허용
-LEGACY_AUDIT_FILE_PATTERN = re.compile(r"FUNCTIONAL_IMPLEMENTATION_AUDIT_\d{4}-\d{2}-\d{2}\.md")
+LEGACY_AUDIT_FILE_PATTERN = re.compile(
+    r"FUNCTIONAL_IMPLEMENTATION_AUDIT_\d{4}-\d{2}-\d{2}\.md"
+)
 
 
 def test_pytest_config_uses_repo_local_basetemp():
@@ -76,7 +78,9 @@ def test_docs_reference_validation_manifest_and_commands():
 
 def test_maintained_docs_do_not_reference_missing_functional_audits():
     """레거시 FUNCTIONAL audit 파일명을 가리키면, 해당 파일이 실제로 존재해야 한다."""
-    existing = {path.name for path in Path(".").glob("FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md")}
+    existing = {
+        path.name for path in Path(".").glob("FUNCTIONAL_IMPLEMENTATION_AUDIT_*.md")
+    }
     maintained_docs = [
         Path("README.md"),
         Path("README_EN.md"),
@@ -95,7 +99,9 @@ def test_maintained_docs_do_not_reference_missing_functional_audits():
             if match not in existing:
                 missing.append(f"{path}:{match}")
 
-    assert not missing, "Missing audit files referenced by maintained docs:\n" + "\n".join(missing)
+    assert not missing, (
+        "Missing audit files referenced by maintained docs:\n" + "\n".join(missing)
+    )
 
 
 def test_project_audit_is_current_ssot():

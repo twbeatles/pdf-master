@@ -29,6 +29,7 @@ from ...widgets import FileSelectorWidget
 
 logger = logging.getLogger(__name__)
 
+
 def setup_edit_sec_tab(self):
     tab = QWidget()
     layout = QVBoxLayout(tab)
@@ -94,7 +95,7 @@ def setup_edit_sec_tab(self):
     self.sel_img_wm_pdf.pathChanged.connect(self._update_preview)
     l_img_wm.addWidget(self.sel_img_wm_pdf)
     l_img_wm.addWidget(QLabel(tm.get("lbl_wm_image")))
-    self.sel_img_wm_img = FileSelectorWidget("", ['.png', '.jpg', '.jpeg'])
+    self.sel_img_wm_img = FileSelectorWidget("", [".png", ".jpg", ".jpeg"])
     l_img_wm.addWidget(self.sel_img_wm_img)
     wm_opts1 = QHBoxLayout()
     wm_opts1.addWidget(QLabel(tm.get("lbl_wm_position")))
@@ -203,7 +204,9 @@ def setup_edit_sec_tab(self):
     h_comp.addWidget(QLabel(tm.get("lbl_compress_profile")))
     self.cmb_compress_profile = QComboBox()
     for profile_name in SAVE_PROFILE_CHOICES:
-        self.cmb_compress_profile.addItem(tm.get(f"save_profile_{profile_name}"), userData=profile_name)
+        self.cmb_compress_profile.addItem(
+            tm.get(f"save_profile_{profile_name}"), userData=profile_name
+        )
     default_index = self.cmb_compress_profile.findData(DEFAULT_COMPRESSION_SAVE_PROFILE)
     if default_index >= 0:
         self.cmb_compress_profile.setCurrentIndex(default_index)
@@ -219,5 +222,4 @@ def setup_edit_sec_tab(self):
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    add_tab(self.tabs, tab, tm.get('tab_edit'), icon="VPN")
-
+    add_tab(self.tabs, tab, tm.get("tab_edit"), icon="VPN")

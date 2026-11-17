@@ -30,7 +30,9 @@ class _MissingDependencyCallable:
         )
 
 
-def _make_missing_type(module_name: str, attr_name: str, base: type[object] = object) -> type[object]:
+def _make_missing_type(
+    module_name: str, attr_name: str, base: type[object] = object
+) -> type[object]:
     class _MissingType(base):
         def __init__(self, *args: object, **kwargs: object) -> None:
             raise ModuleNotFoundError(
@@ -55,7 +57,9 @@ class _MissingFitzProxy:
     Rect = _make_missing_type("fitz", "Rect")
     Point = _make_missing_type("fitz", "Point")
     Pixmap = _make_missing_type("fitz", "Pixmap")
-    FileDataError = cast(type[Exception], _make_missing_type("fitz", "FileDataError", Exception))
+    FileDataError = cast(
+        type[Exception], _make_missing_type("fitz", "FileDataError", Exception)
+    )
     open = _MissingDependencyCallable("fitz", "open")
 
     def __getattr__(self, name: str) -> Any:
@@ -96,7 +100,9 @@ if _keyring_module is not None and not _has_required_attrs(
     _keyring_module,
     ("get_password", "set_password", "delete_password"),
 ):
-    logger.warning("Ignoring 'keyring' module because required credential APIs are missing")
+    logger.warning(
+        "Ignoring 'keyring' module because required credential APIs are missing"
+    )
     _keyring_module = None
 
 KEYRING_AVAILABLE = _keyring_module is not None

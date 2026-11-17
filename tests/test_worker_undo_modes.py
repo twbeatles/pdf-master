@@ -28,19 +28,73 @@ def test_is_undo_eligible_mode_matches_single_output_mutations():
     require_pyside6()
     from src.ui.main_window_worker import _is_undo_eligible_mode
 
-    assert _is_undo_eligible_mode("protect", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
-    assert _is_undo_eligible_mode("fill_form", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
-    assert _is_undo_eligible_mode("add_attachment", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
-    assert _is_undo_eligible_mode("resize_pages", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
-    assert _is_undo_eligible_mode("insert_signature", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
-    assert _is_undo_eligible_mode("highlight_text", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
-    assert _is_undo_eligible_mode("add_sticky_note", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
-    assert _is_undo_eligible_mode("add_ink_annotation", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
-    assert _is_undo_eligible_mode("copy_page_between_docs", {"file_path": "src.pdf", "output_path": "out.pdf"}) is True
+    assert (
+        _is_undo_eligible_mode(
+            "protect", {"file_path": "src.pdf", "output_path": "out.pdf"}
+        )
+        is True
+    )
+    assert (
+        _is_undo_eligible_mode(
+            "fill_form", {"file_path": "src.pdf", "output_path": "out.pdf"}
+        )
+        is True
+    )
+    assert (
+        _is_undo_eligible_mode(
+            "add_attachment", {"file_path": "src.pdf", "output_path": "out.pdf"}
+        )
+        is True
+    )
+    assert (
+        _is_undo_eligible_mode(
+            "resize_pages", {"file_path": "src.pdf", "output_path": "out.pdf"}
+        )
+        is True
+    )
+    assert (
+        _is_undo_eligible_mode(
+            "insert_signature", {"file_path": "src.pdf", "output_path": "out.pdf"}
+        )
+        is True
+    )
+    assert (
+        _is_undo_eligible_mode(
+            "highlight_text", {"file_path": "src.pdf", "output_path": "out.pdf"}
+        )
+        is True
+    )
+    assert (
+        _is_undo_eligible_mode(
+            "add_sticky_note", {"file_path": "src.pdf", "output_path": "out.pdf"}
+        )
+        is True
+    )
+    assert (
+        _is_undo_eligible_mode(
+            "add_ink_annotation", {"file_path": "src.pdf", "output_path": "out.pdf"}
+        )
+        is True
+    )
+    assert (
+        _is_undo_eligible_mode(
+            "copy_page_between_docs", {"file_path": "src.pdf", "output_path": "out.pdf"}
+        )
+        is True
+    )
 
     assert _is_undo_eligible_mode("ai_summarize", {"file_path": "src.pdf"}) is False
-    assert _is_undo_eligible_mode("compare_pdfs", {"file_path1": "a.pdf", "file_path2": "b.pdf", "output_path": "out.txt"}) is False
-    assert _is_undo_eligible_mode("split", {"file_path": "src.pdf", "output_dir": "out"}) is False
+    assert (
+        _is_undo_eligible_mode(
+            "compare_pdfs",
+            {"file_path1": "a.pdf", "file_path2": "b.pdf", "output_path": "out.txt"},
+        )
+        is False
+    )
+    assert (
+        _is_undo_eligible_mode("split", {"file_path": "src.pdf", "output_dir": "out"})
+        is False
+    )
 
 
 def test_run_worker_registers_pending_undo_for_newly_supported_mode(monkeypatch):
@@ -97,7 +151,9 @@ def test_run_worker_registers_pending_undo_for_newly_supported_mode(monkeypatch)
     monkeypatch.setattr(worker_module, "WorkerThread", FakeWorker)
 
     dummy = Dummy()
-    dummy.run_worker("resize_pages", file_path="src.pdf", output_path="out.pdf", target_size="A4")
+    dummy.run_worker(
+        "resize_pages", file_path="src.pdf", output_path="out.pdf", target_size="A4"
+    )
 
     assert dummy._pending_undo is not None
     assert dummy._pending_undo["action_type"] == "resize_pages"
@@ -188,7 +244,10 @@ def test_worker_password_mapping_is_augmented_from_authenticated_preview(tmp_pat
     assert isinstance(passwords, dict)
     assert passwords[path_key] == "preview-secret"
 
-    explicit: dict[str, object] = {"file_path": str(pdf_path), "passwords": {path_key: "explicit-secret"}}
+    explicit: dict[str, object] = {
+        "file_path": str(pdf_path),
+        "passwords": {path_key: "explicit-secret"},
+    }
     dummy._augment_worker_passwords_from_preview(explicit)
     explicit_passwords = explicit["passwords"]
     assert isinstance(explicit_passwords, dict)
@@ -265,7 +324,9 @@ def test_run_worker_warns_when_undo_snapshot_unavailable(monkeypatch):
     monkeypatch.setattr(worker_module, "ToastWidget", DummyToast)
 
     dummy = Dummy()
-    dummy.run_worker("resize_pages", file_path="src.pdf", output_path="out.pdf", target_size="A4")
+    dummy.run_worker(
+        "resize_pages", file_path="src.pdf", output_path="out.pdf", target_size="A4"
+    )
 
     assert dummy._pending_undo is None
     assert tm.get("msg_undo_unavailable") in toasts

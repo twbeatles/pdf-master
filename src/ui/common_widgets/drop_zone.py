@@ -16,12 +16,15 @@ logger = logging.getLogger(__name__)
 
 class DropZoneWidget(QFrame):
     """시각적 드래그 앤 드롭 영역 (테마 대응)"""
+
     fileDropped = Signal(str)
     clicked = Signal()
 
-    def __init__(self, accept_extensions: list[str] | tuple[str, ...] | None = None, parent=None):
+    def __init__(
+        self, accept_extensions: list[str] | tuple[str, ...] | None = None, parent=None
+    ):
         super().__init__(parent)
-        self.accept_extensions = list(accept_extensions or ['.pdf'])
+        self.accept_extensions = list(accept_extensions or [".pdf"])
         self.setAcceptDrops(True)
         self.setMinimumHeight(76)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -35,10 +38,13 @@ class DropZoneWidget(QFrame):
         layout.setSpacing(2)
 
         self.icon_label = QLabel("📄")
-        self.icon_label.setStyleSheet("font-size: 20px; background: transparent; border: none;")
+        self.icon_label.setStyleSheet(
+            "font-size: 20px; background: transparent; border: none;"
+        )
         self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         from ...core.i18n import tm
+
         self.text_label = QLabel(tm.get("drop_title"))
         self.text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -58,7 +64,11 @@ class DropZoneWidget(QFrame):
         self._sync_selection_state()
 
     def mouseReleaseEvent(self, a0):
-        if a0 is not None and a0.button() == Qt.MouseButton.LeftButton and self.rect().contains(a0.pos()):
+        if (
+            a0 is not None
+            and a0.button() == Qt.MouseButton.LeftButton
+            and self.rect().contains(a0.pos())
+        ):
             self.clicked.emit()
         super().mouseReleaseEvent(a0)
 
@@ -87,9 +97,15 @@ class DropZoneWidget(QFrame):
                     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(30, 40, 55, 0.95), stop:1 rgba(22, 27, 34, 0.95));
                 }
             """)
-            self.text_label.setStyleSheet("color: #8b949e; font-size: 13px; background: transparent; border: none;")
-            self.hint_label.setStyleSheet("color: #6e7681; font-size: 11px; background: transparent; border: none;")
-            self.path_label.setStyleSheet("color: #00d9a0; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+            self.text_label.setStyleSheet(
+                "color: #8b949e; font-size: 13px; background: transparent; border: none;"
+            )
+            self.hint_label.setStyleSheet(
+                "color: #6e7681; font-size: 11px; background: transparent; border: none;"
+            )
+            self.path_label.setStyleSheet(
+                "color: #00d9a0; font-size: 13px; font-weight: bold; background: transparent; border: none;"
+            )
         else:
             self.setStyleSheet("""
                 DropZoneWidget {
@@ -102,12 +118,19 @@ class DropZoneWidget(QFrame):
                     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(255, 255, 255, 1), stop:1 rgba(240, 245, 250, 0.95));
                 }
             """)
-            self.text_label.setStyleSheet("color: #656d76; font-size: 13px; background: transparent; border: none;")
-            self.hint_label.setStyleSheet("color: #8c959f; font-size: 11px; background: transparent; border: none;")
-            self.path_label.setStyleSheet("color: #00806a; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+            self.text_label.setStyleSheet(
+                "color: #656d76; font-size: 13px; background: transparent; border: none;"
+            )
+            self.hint_label.setStyleSheet(
+                "color: #8c959f; font-size: 11px; background: transparent; border: none;"
+            )
+            self.path_label.setStyleSheet(
+                "color: #00806a; font-size: 13px; font-weight: bold; background: transparent; border: none;"
+            )
 
     def dragEnterEvent(self, a0: QDragEnterEvent | None):
         from ...core.i18n import tm
+
         mime_data = a0.mimeData() if a0 is not None else None
         if mime_data is not None and mime_data.hasUrls():
             for url in mime_data.urls():
@@ -122,7 +145,9 @@ class DropZoneWidget(QFrame):
                         }
                     """)
                     self.text_label.setText(tm.get("drop_success"))
-                    self.text_label.setStyleSheet("color: #4f8cff; font-size: 15px; font-weight: bold; background: transparent; border: none;")
+                    self.text_label.setStyleSheet(
+                        "color: #4f8cff; font-size: 15px; font-weight: bold; background: transparent; border: none;"
+                    )
                     if a0 is not None:
                         a0.acceptProposedAction()
                     return
@@ -133,6 +158,7 @@ class DropZoneWidget(QFrame):
         self._is_dragging = False
         self._apply_theme_style()
         from ...core.i18n import tm
+
         self.text_label.setText(tm.get("drop_title"))
         if a0 is not None:
             super().dragLeaveEvent(a0)
@@ -147,6 +173,7 @@ class DropZoneWidget(QFrame):
                     self._current_path = path
                     self._apply_theme_style()
                     from ...core.i18n import tm
+
                     self.text_label.setText(tm.get("drop_title"))
                     self.path_label.setText(f"✓ {os.path.basename(path)}")
                     self.icon_label.setText("✅")
@@ -171,4 +198,3 @@ class DropZoneWidget(QFrame):
             self.path_label.setText("")
             self.icon_label.setText("📄")
         self._sync_selection_state()
-

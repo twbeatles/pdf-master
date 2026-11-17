@@ -1,4 +1,5 @@
 """Signed GitHub-release update manifest validation."""
+
 from __future__ import annotations
 
 import base64
@@ -32,19 +33,34 @@ class ReleaseManifest:
 
 
 def canonical_manifest_payload(payload: Mapping[str, Any]) -> bytes:
-    return json.dumps(dict(payload), ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return json.dumps(
+        dict(payload), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
 
 
 def is_newer_version(candidate: str, current: str) -> bool:
     if not _VERSION.fullmatch(candidate) or not _VERSION.fullmatch(current):
         raise ValueError("Invalid update version")
-    left, right = tuple(map(int, candidate.split("."))), tuple(map(int, current.split(".")))
+    left, right = (
+        tuple(map(int, candidate.split("."))),
+        tuple(map(int, current.split("."))),
+    )
     width = max(len(left), len(right))
     return left + (0,) * (width - len(left)) > right + (0,) * (width - len(right))
 
 
-def verify_release_manifest(document: bytes | str | Mapping[str, Any], *, public_key: str, current_version: str) -> ReleaseManifest:
-    raw = document if isinstance(document, bytes) else (document.encode("utf-8") if isinstance(document, str) else canonical_manifest_payload(document))
+def verify_release_manifest(
+    document: bytes | str | Mapping[str, Any], *, public_key: str, current_version: str
+) -> ReleaseManifest:
+    raw = (
+        document
+        if isinstance(document, bytes)
+        else (
+            document.encode("utf-8")
+            if isinstance(document, str)
+            else canonical_manifest_payload(document)
+        )
+    )
     if len(raw) > 256 * 1024:
         raise ValueError("Manifest size exceeds the allowed limit")
     parsed = json.loads(raw.decode("utf-8"))
@@ -53,7 +69,9 @@ def verify_release_manifest(document: bytes | str | Mapping[str, Any], *, public
     payload = parsed["payload"]
     try:
         signature = base64.b64decode(str(parsed.get("signature", "")), validate=True)
-        key = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key, validate=True))
+        key = Ed25519PublicKey.from_public_bytes(
+            base64.b64decode(public_key, validate=True)
+        )
         key.verify(signature, canonical_manifest_payload(payload))
     except (InvalidSignature, ValueError, TypeError) as exc:
         raise ValueError("Manifest signature verification failed") from exc
@@ -69,7 +87,9 @@ def verify_release_manifest(document: bytes | str | Mapping[str, Any], *, public
     size = int(payload.get("size", 0))
     if size <= 0 or size > 500 * 1024 * 1024:
         raise ValueError("Update artifact size is invalid")
-    expires_at = datetime.fromisoformat(str(payload.get("expires_at", "")).replace("Z", "+00:00"))
+    expires_at = datetime.fromisoformat(
+        str(payload.get("expires_at", "")).replace("Z", "+00:00")
+    )
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=UTC)
     if expires_at <= datetime.now(UTC):
@@ -93,7 +113,9 @@ def days_until_expiry(expires_at: datetime) -> int:
     return int(delta.total_seconds() // 86400)
 
 
-def manifest_expiry_status(expires_at: datetime, *, warn_days: int = MANIFEST_EXPIRY_WARN_DAYS) -> str:
+def manifest_expiry_status(
+    expires_at: datetime, *, warn_days: int = MANIFEST_EXPIRY_WARN_DAYS
+) -> str:
     """만료 상태 분류: "valid" | "expiring_soon" | "expired"."""
     moment = expires_at
     if moment.tzinfo is None:

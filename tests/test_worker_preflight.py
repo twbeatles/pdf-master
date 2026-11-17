@@ -189,7 +189,9 @@ def test_preflight_rejects_non_pdf_header_before_run(tmp_path):
     worker.run()
 
     assert errors
-    assert any(("format" in m.lower()) or ("형식" in m) or ("손상" in m) for m in errors)
+    assert any(
+        ("format" in m.lower()) or ("형식" in m) or ("손상" in m) for m in errors
+    )
     assert not out.exists()
 
 

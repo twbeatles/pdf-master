@@ -35,12 +35,16 @@ def _ensure_preview_watchers(self):
     if getattr(self, "_preview_dir_watcher", None) is None:
         parent = self if isinstance(self, QObject) else None
         self._preview_dir_watcher = QFileSystemWatcher(parent)
-        self._preview_dir_watcher.directoryChanged.connect(self._on_preview_directory_changed)
+        self._preview_dir_watcher.directoryChanged.connect(
+            self._on_preview_directory_changed
+        )
     if getattr(self, "_preview_reload_timer", None) is None:
         parent = self if isinstance(self, QObject) else None
         self._preview_reload_timer = QTimer(parent)
         self._preview_reload_timer.setSingleShot(True)
-        self._preview_reload_timer.timeout.connect(self._reload_preview_after_external_change)
+        self._preview_reload_timer.timeout.connect(
+            self._reload_preview_after_external_change
+        )
 
 
 def _watch_preview_file(self, path: str):
@@ -86,9 +90,18 @@ def _schedule_preview_reload(self, path: str | None = None):
         return
 
     _ensure_preview_watchers(self)
-    current_target = normalize_path_key(getattr(self, "_preview_reload_target_path", ""))
-    if current_target != path_key or getattr(self, "_preview_reload_restore_state", None) is None:
-        restore_state = self.preview_image.capture_view_state() if hasattr(self, "preview_image") else None
+    current_target = normalize_path_key(
+        getattr(self, "_preview_reload_target_path", "")
+    )
+    if (
+        current_target != path_key
+        or getattr(self, "_preview_reload_restore_state", None) is None
+    ):
+        restore_state = (
+            self.preview_image.capture_view_state()
+            if hasattr(self, "preview_image")
+            else None
+        )
         self._preview_reload_restore_state = restore_state
     self._preview_reload_target_path = path_key
     self._preview_reload_attempts = PREVIEW_RELOAD_MAX_ATTEMPTS
@@ -111,7 +124,10 @@ def _on_preview_directory_changed(self, _path: str):
 
 
 def _reload_preview_after_external_change(self):
-    path = normalize_path_key(getattr(self, "_preview_reload_target_path", "") or getattr(self, "_current_preview_path", ""))
+    path = normalize_path_key(
+        getattr(self, "_preview_reload_target_path", "")
+        or getattr(self, "_current_preview_path", "")
+    )
     if not path:
         _clear_preview_reload_state(self)
         return
@@ -139,7 +155,11 @@ def _close_preview_document(self):
     _unwatch_preview_file(self)
     doc = getattr(self, "_current_preview_doc", None)
     if hasattr(self, "preview_image"):
-        preview_doc = self.preview_image.document() if hasattr(self.preview_image, "document") else None
+        preview_doc = (
+            self.preview_image.document()
+            if hasattr(self.preview_image, "document")
+            else None
+        )
         self.preview_image.clear()
         if doc is not None and doc is not preview_doc:
             try:
@@ -154,7 +174,9 @@ def _close_preview_document(self):
     self._current_preview_doc = None
 
 
-def _load_qpdf_document(path: str, password: str | None = None) -> tuple[QPdfDocument, object]:
+def _load_qpdf_document(
+    path: str, password: str | None = None
+) -> tuple[QPdfDocument, object]:
     doc = QPdfDocument(None)
     if password:
         doc.setPassword(password)

@@ -1,4 +1,5 @@
 """취소·진행률·페이지 인덱스 믹스인."""
+
 from __future__ import annotations
 
 import time
@@ -60,8 +61,10 @@ class WorkerRuntimeProgressMixin(WorkerHost):
 
         try:
             page_index = int(cast(Any, raw_page_index))
-        except (TypeError, ValueError):
-            self.error_signal.emit(self._get_msg("err_page_number_numeric", str(raw_page_index)))
+        except TypeError, ValueError:
+            self.error_signal.emit(
+                self._get_msg("err_page_number_numeric", str(raw_page_index))
+            )
             return None
 
         if allow_last_page_sentinel and page_index == -1:
@@ -70,7 +73,9 @@ class WorkerRuntimeProgressMixin(WorkerHost):
         if page_index < 0 or page_index >= total_pages:
             display_page = page_index + 1 if page_index >= 0 else page_index
             self.error_signal.emit(
-                self._get_msg("err_page_out_of_range", str(display_page), str(total_pages))
+                self._get_msg(
+                    "err_page_out_of_range", str(display_page), str(total_pages)
+                )
             )
             return None
 

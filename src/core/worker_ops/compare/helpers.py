@@ -1,4 +1,5 @@
 """PDF 비교 순수 헬퍼 (compare ops 에서 리프트)."""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -23,7 +24,9 @@ def collect_text_blocks(page: Any) -> list[dict[str, Any]]:
     return blocks
 
 
-def diff_blocks(source_blocks: list[dict[str, Any]], target_blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def diff_blocks(
+    source_blocks: list[dict[str, Any]], target_blocks: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     source_counter = Counter(block["text"] for block in source_blocks)
     target_counter = Counter(block["text"] for block in target_blocks)
     remaining = source_counter - target_counter
@@ -40,7 +43,9 @@ def diff_blocks(source_blocks: list[dict[str, Any]], target_blocks: list[dict[st
 
 def scale_rect(rect: Any, source_rect: Any, canvas_rect: Any) -> Any:
     width_scale = canvas_rect.width / source_rect.width if source_rect.width else 1.0
-    height_scale = canvas_rect.height / source_rect.height if source_rect.height else 1.0
+    height_scale = (
+        canvas_rect.height / source_rect.height if source_rect.height else 1.0
+    )
     return fitz.Rect(
         rect.x0 * width_scale,
         rect.y0 * height_scale,

@@ -59,11 +59,16 @@ def build_redact(self, layout) -> None:
     l_redact.addWidget(b_redact_area)
     layout.addWidget(grp_redact)
     # 미리보기 드래그 선택 시그널 (한 번만 연결)
-    if hasattr(self, "preview_image") and not getattr(self, "_redact_region_signal_connected", False):
+    if hasattr(self, "preview_image") and not getattr(
+        self, "_redact_region_signal_connected", False
+    ):
         try:
-            self.preview_image.regionSelected.connect(self._on_preview_region_selected_for_redact)
-            self.preview_image.regionSelectModeChanged.connect(self._on_redact_region_mode_changed)
+            self.preview_image.regionSelected.connect(
+                self._on_preview_region_selected_for_redact
+            )
+            self.preview_image.regionSelectModeChanged.connect(
+                self._on_redact_region_mode_changed
+            )
             self._redact_region_signal_connected = True
         except Exception:
             pass
-

@@ -1,4 +1,5 @@
 """텍스트상자 UI 액션 구현 (SOLID 분할)."""
+
 from __future__ import annotations
 
 from .. import deps
@@ -36,6 +37,7 @@ def _ensure_textbox_preview_ready(self, path: str):
             update(path)
     return preview
 
+
 def _connect_textbox_preview_signals(self, preview) -> None:
     if getattr(self, "_textbox_region_signal_connected", False):
         return
@@ -43,33 +45,44 @@ def _connect_textbox_preview_signals(self, preview) -> None:
         if hasattr(preview, "textPlacementMoved"):
             preview.textPlacementMoved.connect(self._on_text_placement_moved)
         if hasattr(preview, "textPlacementModeChanged"):
-            preview.textPlacementModeChanged.connect(self._on_textbox_placement_mode_changed)
+            preview.textPlacementModeChanged.connect(
+                self._on_textbox_placement_mode_changed
+            )
         if hasattr(preview, "textPlacementTextEdited"):
             preview.textPlacementTextEdited.connect(self._on_text_placement_text_edited)
         # 레거시 영역 드래그 / 교체 영역 선택
         if hasattr(preview, "regionSelected"):
             preview.regionSelected.connect(self._on_preview_region_selected_for_textbox)
         if hasattr(preview, "regionSelectModeChanged"):
-            preview.regionSelectModeChanged.connect(self._on_textbox_region_mode_changed)
+            preview.regionSelectModeChanged.connect(
+                self._on_textbox_region_mode_changed
+            )
         self._textbox_region_signal_connected = True
     except Exception:
         pass
+
 
 def action_start_textbox_region_select(self):
     """미리보기에 텍스트 상자를 띄우고 드래그로 위치를 옮긴다."""
     path = self.sel_textbox.get_path() if hasattr(self, "sel_textbox") else ""
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
 
     # 모듈 함수로 호출 (믹스인/테스트 더미 모두 호환)
     text, color, fontsize, min_h = _textbox_current_style(self)
     if not text:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_enter_text"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_enter_text")
+        )
 
     preview = _ensure_textbox_preview_ready(self, path)
     if preview is None or not hasattr(preview, "set_text_placement_mode"):
         return deps.QMessageBox.warning(
-            self, deps.tm.get("warning"), deps.tm.get("err_textbox_drag_preview_unavailable")
+            self,
+            deps.tm.get("warning"),
+            deps.tm.get("err_textbox_drag_preview_unavailable"),
         )
 
     _connect_textbox_preview_signals(self, preview)
@@ -98,14 +111,20 @@ def action_start_textbox_region_select(self):
 
     # 미리보기 현재 페이지와 스핀 동기
     try:
-        state = preview.capture_view_state() if hasattr(preview, "capture_view_state") else None
+        state = (
+            preview.capture_view_state()
+            if hasattr(preview, "capture_view_state")
+            else None
+        )
         if isinstance(state, dict) and "page" in state and hasattr(self, "spn_tb_page"):
             self.spn_tb_page.setValue(max(1, int(state["page"]) + 1))
     except Exception:
         pass
 
     # 큰 미리보기에서 배치하기 쉽도록 포커스 모드 권장 진입
-    if hasattr(self, "_set_preview_focus_mode") and not getattr(self, "_preview_focus_mode", False):
+    if hasattr(self, "_set_preview_focus_mode") and not getattr(
+        self, "_preview_focus_mode", False
+    ):
         try:
             self._set_preview_focus_mode(True)
         except Exception:
@@ -123,10 +142,15 @@ def action_start_textbox_region_select(self):
     )
     if hasattr(self, "lbl_tb_drag_hint"):
         self.lbl_tb_drag_hint.setText(deps.tm.get("hint_textbox_place_active"))
-    deps.ToastWidget(deps.tm.get("msg_textbox_place_started"), toast_type="info", duration=2800).show_toast(self)
+    deps.ToastWidget(
+        deps.tm.get("msg_textbox_place_started"), toast_type="info", duration=2800
+    ).show_toast(self)
     return None
 
-def _on_text_placement_moved(self, page: int, x0: float, y0: float, x1: float, y1: float):
+
+def _on_text_placement_moved(
+    self, page: int, x0: float, y0: float, x1: float, y1: float
+):
     """미리보기에서 박스를 옮긴 뒤 좌표 필드 반영."""
     w = max(10.0, abs(x1 - x0))
     h = max(10.0, abs(y1 - y0))
@@ -146,8 +170,11 @@ def _on_text_placement_moved(self, page: int, x0: float, y0: float, x1: float, y
 
     if hasattr(self, "lbl_tb_drag_hint"):
         self.lbl_tb_drag_hint.setText(
-            deps.tm.get("hint_textbox_drag_done", page, f"{top_left_x:.1f}", f"{top_left_y:.1f}")
+            deps.tm.get(
+                "hint_textbox_drag_done", page, f"{top_left_x:.1f}", f"{top_left_y:.1f}"
+            )
         )
+
 
 def _on_textbox_placement_mode_changed(self, enabled: bool):
     if not hasattr(self, "lbl_tb_drag_hint"):
@@ -161,6 +188,7 @@ def _on_textbox_placement_mode_changed(self, enabled: bool):
             deps.tm.get("hint_textbox_drag_active"),
         ):
             self.lbl_tb_drag_hint.setText(deps.tm.get("hint_textbox_drag_idle"))
+
 
 def _sync_textbox_placement_overlay(self, *_args):
     """텍스트/스타일 변경 시 미리보기 박스 내용 갱신."""
@@ -206,7 +234,10 @@ def _sync_textbox_placement_overlay(self, *_args):
             opacity=opacity,
         )
 
-def _on_preview_region_selected_for_textbox(self, page: int, x0: float, y0: float, x1: float, y1: float):
+
+def _on_preview_region_selected_for_textbox(
+    self, page: int, x0: float, y0: float, x1: float, y1: float
+):
     """고무줄 영역 선택 — textbox 배치 또는 textbox_replace 교체."""
     target = getattr(self, "_region_select_target", None)
     if target not in ("textbox", "textbox_replace"):
@@ -224,7 +255,9 @@ def _on_preview_region_selected_for_textbox(self, page: int, x0: float, y0: floa
 
     if hasattr(self, "lbl_tb_drag_hint"):
         self.lbl_tb_drag_hint.setText(
-            deps.tm.get("hint_textbox_drag_done", page, f"{top_left_x:.1f}", f"{top_left_y:.1f}")
+            deps.tm.get(
+                "hint_textbox_drag_done", page, f"{top_left_x:.1f}", f"{top_left_y:.1f}"
+            )
         )
     self._region_select_target = None
 
@@ -256,7 +289,11 @@ def _on_preview_region_selected_for_textbox(self, page: int, x0: float, y0: floa
             )
             if extracted:
                 _set_textbox_content_text(self, extracted)
-            deps.ToastWidget(deps.tm.get("msg_textbox_replace_region_ready"), toast_type="info", duration=2500).show_toast(self)
+            deps.ToastWidget(
+                deps.tm.get("msg_textbox_replace_region_ready"),
+                toast_type="info",
+                duration=2500,
+            ).show_toast(self)
         return
 
     # 영역 선택 후 바로 이동 가능 배치 모드로 전환
@@ -278,7 +315,10 @@ def _on_preview_region_selected_for_textbox(self, page: int, x0: float, y0: floa
             align=align,
             opacity=opacity,
         )
-    deps.ToastWidget(deps.tm.get("msg_textbox_drag_applied"), toast_type="success", duration=2000).show_toast(self)
+    deps.ToastWidget(
+        deps.tm.get("msg_textbox_drag_applied"), toast_type="success", duration=2000
+    ).show_toast(self)
+
 
 def _extract_text_in_rect_sync(
     path: str,
@@ -328,12 +368,15 @@ def _extract_text_in_rect_sync(
             except Exception:
                 pass
 
+
 def _on_textbox_region_mode_changed(self, enabled: bool):
     if not hasattr(self, "lbl_tb_drag_hint"):
         return
     if enabled:
         target = getattr(self, "_region_select_target", None)
         if target == "textbox_replace":
-            self.lbl_tb_drag_hint.setText(deps.tm.get("hint_textbox_replace_drag_active"))
+            self.lbl_tb_drag_hint.setText(
+                deps.tm.get("hint_textbox_replace_drag_active")
+            )
         else:
             self.lbl_tb_drag_hint.setText(deps.tm.get("hint_textbox_drag_active"))

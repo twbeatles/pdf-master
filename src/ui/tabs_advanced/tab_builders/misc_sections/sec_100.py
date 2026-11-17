@@ -56,4 +56,3 @@ def build_sec_100(self, layout) -> None:
     b_freehand.clicked.connect(self.action_add_freehand_signature)
     l_freehand.addWidget(b_freehand)
     layout.addWidget(grp_freehand)
-

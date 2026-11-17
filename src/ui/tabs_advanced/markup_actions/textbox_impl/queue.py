@@ -1,4 +1,5 @@
 """텍스트상자 UI 액션 구현 (SOLID 분할)."""
+
 from __future__ import annotations
 
 from .. import deps
@@ -14,10 +15,12 @@ from .coords_style import (
 def _textbox_queue_ensure(self) -> list:
     return _textbox_session(self).queue
 
+
 def _textbox_norm_path(path: str) -> str:
     from ...textbox_session import _norm_path
 
     return _norm_path(path)
+
 
 def _textbox_sync_queue_ghost(self) -> None:
     """큐 고스트 오버레이를 미리보기에 반영."""
@@ -26,6 +29,7 @@ def _textbox_sync_queue_ghost(self) -> None:
         return
     sess = _textbox_session(self)
     preview.set_queue_ghost_boxes(sess.queue_snapshot())
+
 
 def _textbox_queue_refresh_list(self) -> None:
     lst = getattr(self, "lst_tb_queue", None)
@@ -49,14 +53,19 @@ def _textbox_queue_refresh_list(self) -> None:
         lbl.setText(deps.tm.get("hint_textbox_queue_count", len(q)))
     _textbox_sync_queue_ghost(self)
 
+
 def action_textbox_queue_add(self):
     """현재 좌표·텍스트를 다중 삽입 큐에 추가 (파일 경로 고정)."""
     path = self.sel_textbox.get_path() if hasattr(self, "sel_textbox") else ""
     style = _textbox_style_kwargs(self)
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
     if not style["text"]:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_enter_text"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_enter_text")
+        )
     page_num, rect = _textbox_current_rect_and_page(self)
     sess = _textbox_session(self)
     if sess.path_mismatch_with(path):
@@ -78,8 +87,11 @@ def action_textbox_queue_add(self):
     n = sess.add_box(item)
     self._textbox_queue = sess.queue
     _textbox_queue_refresh_list(self)
-    deps.ToastWidget(deps.tm.get("msg_textbox_queued", n), toast_type="success", duration=1800).show_toast(self)
+    deps.ToastWidget(
+        deps.tm.get("msg_textbox_queued", n), toast_type="success", duration=1800
+    ).show_toast(self)
     return None
+
 
 def action_textbox_queue_clear(self):
     sess = _textbox_session(self)
@@ -87,16 +99,23 @@ def action_textbox_queue_clear(self):
     self._textbox_queue = sess.queue
     _textbox_queue_refresh_list(self)
 
+
 def action_textbox_queue_commit(self):
     """큐에 쌓인 텍스트 상자를 일괄 삽입."""
     path = self.sel_textbox.get_path() if hasattr(self, "sel_textbox") else ""
     sess = _textbox_session(self)
     q = sess.queue_snapshot()
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
     err_key = sess.commit_path_error(path)
     if err_key:
-        return deps.QMessageBox.warning(self, deps.tm.get("error" if err_key != "err_textbox_queue_empty" else "info"), deps.tm.get(err_key))
+        return deps.QMessageBox.warning(
+            self,
+            deps.tm.get("error" if err_key != "err_textbox_queue_empty" else "info"),
+            deps.tm.get(err_key),
+        )
     queued_path = str(q[0].get("file_path", "") or "")
     out = _textbox_resolve_output_path(self, queued_path, destructive=False)
     if not out:

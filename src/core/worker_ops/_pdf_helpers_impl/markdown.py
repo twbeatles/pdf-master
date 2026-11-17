@@ -1,4 +1,5 @@
 """PDF helpers: markdown."""
+
 from __future__ import annotations
 
 import json
@@ -10,6 +11,7 @@ from ...worker_runtime.args import _as_str
 
 logger = logging.getLogger(__name__)
 
+
 def _fallback_markdown_from_text(page: Any) -> str:
     text = _as_str(page.get_text("text"))
     page_chunks: list[str] = []
@@ -18,6 +20,7 @@ def _fallback_markdown_from_text(page: Any) -> str:
         if stripped:
             page_chunks.append(stripped)
     return "\n\n".join(page_chunks).strip()
+
 
 def _extract_native_markdown(page: Any) -> str:
     for option in ("markdown", "md"):
@@ -29,14 +32,18 @@ def _extract_native_markdown(page: Any) -> str:
             return extracted.strip()
     return ""
 
+
 def _extract_page_markdown(page: Any, markdown_mode: str) -> str:
     if markdown_mode in {"auto", "native"}:
         native_markdown = _extract_native_markdown(page)
         if native_markdown:
             return native_markdown
         if markdown_mode == "native":
-            raise RuntimeError("Native Markdown extraction is not available for this document/runtime.")
+            raise RuntimeError(
+                "Native Markdown extraction is not available for this document/runtime."
+            )
     return _fallback_markdown_from_text(page)
+
 
 def _page_asset_placeholders(page: Any) -> list[str]:
     placeholders: list[str] = []
@@ -60,6 +67,7 @@ def _page_asset_placeholders(page: Any) -> list[str]:
     if table_count > 0:
         placeholders.append(f"_[Tables detected: {table_count}]_")
     return placeholders
+
 
 def _markdown_front_matter(file_path: str, doc: Any) -> str:
     metadata = doc.metadata if isinstance(getattr(doc, "metadata", None), dict) else {}

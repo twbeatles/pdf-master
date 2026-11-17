@@ -14,12 +14,14 @@ from ...core.i18n import tm
 
 logger = logging.getLogger(__name__)
 
+
 def _install_wheel_filters(self):
     """모든 입력 위젯에 휠 이벤트 필터 설치"""
     for widget in self.findChildren(QSpinBox):
         widget.installEventFilter(self._wheel_filter)
     for widget in self.findChildren(QComboBox):
         widget.installEventFilter(self._wheel_filter)
+
 
 def _setup_shortcuts(self):
     """Keyboard shortcuts"""
@@ -36,10 +38,15 @@ def _setup_shortcuts(self):
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._on_preview_focus_escape),
         # Ctrl+1~9: 탭 순서대로 이동
         *(
-            QShortcut(QKeySequence(f"Ctrl+{number}"), self, lambda index=number - 1: self.tabs.setCurrentIndex(index))
+            QShortcut(
+                QKeySequence(f"Ctrl+{number}"),
+                self,
+                lambda index=number - 1: self.tabs.setCurrentIndex(index),
+            )
             for number in range(1, 10)
         ),
     ]
+
 
 def _relax_spinbox_min_widths(self):
     """Fluent 숫자 입력칸의 기본 최소 폭이 넓어 한 줄 배치가 패널을 넘친다. 줄어들 수 있게 한다."""

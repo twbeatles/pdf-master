@@ -6,6 +6,7 @@ from PySide6.QtGui import QPixmap
 
 logger = logging.getLogger(__name__)
 
+
 def _ensure_preview_cache(self):
     if not hasattr(self, "_preview_pixmap_cache"):
         self._preview_pixmap_cache = OrderedDict()
@@ -14,13 +15,17 @@ def _ensure_preview_cache(self):
         # Keep the preview cache bounded even if the host did not preconfigure it.
         self._PREVIEW_CACHE_MAX_BYTES = 64 * 1024 * 1024
 
-def _make_preview_cache_key(self, path: str, page_index: int, target_w: int, target_h: int, zoom_bucket: int) -> tuple:
+
+def _make_preview_cache_key(
+    self, path: str, page_index: int, target_w: int, target_h: int, zoom_bucket: int
+) -> tuple:
     abs_path = os.path.abspath(path)
     try:
         mtime_ns = os.stat(abs_path).st_mtime_ns
     except OSError:
         mtime_ns = 0
     return abs_path, mtime_ns, page_index, zoom_bucket, target_w, target_h
+
 
 def _get_cached_preview_pixmap(self, key: tuple) -> QPixmap | None:
     self._ensure_preview_cache()
@@ -32,6 +37,7 @@ def _get_cached_preview_pixmap(self, key: tuple) -> QPixmap | None:
     logger.debug("Preview cache hit (%s bytes)", est_bytes)
     return pixmap
 
+
 def _put_cached_preview_pixmap(self, key: tuple, pixmap: QPixmap):
     self._ensure_preview_cache()
     est_bytes = max(1, pixmap.width()) * max(1, pixmap.height()) * 4
@@ -40,6 +46,9 @@ def _put_cached_preview_pixmap(self, key: tuple, pixmap: QPixmap):
         self._preview_pixmap_cache_bytes -= old[1]
     self._preview_pixmap_cache[key] = (pixmap, est_bytes)
     self._preview_pixmap_cache_bytes += est_bytes
-    while self._preview_pixmap_cache_bytes > self._PREVIEW_CACHE_MAX_BYTES and self._preview_pixmap_cache:
+    while (
+        self._preview_pixmap_cache_bytes > self._PREVIEW_CACHE_MAX_BYTES
+        and self._preview_pixmap_cache
+    ):
         _, (_, removed_bytes) = self._preview_pixmap_cache.popitem(last=False)
         self._preview_pixmap_cache_bytes -= removed_bytes

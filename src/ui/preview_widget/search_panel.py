@@ -93,13 +93,30 @@ class PreviewSearchPanelMixin(PreviewWidgetHost):
         if not query:
             return
 
-        role_names = {bytes(name).decode("utf-8"): role for role, name in self.search_model.roleNames().items()}
+        role_names = {
+            bytes(name).decode("utf-8"): role
+            for role, name in self.search_model.roleNames().items()
+        }
         row_count = self.search_model.rowCount(QModelIndex())
         for row in range(row_count):
             index = self.search_model.index(row, 0, QModelIndex())
-            page = self.search_model.data(index, role_names.get("page", int(Qt.ItemDataRole.UserRole)))
-            context_before = self.search_model.data(index, role_names.get("contextBefore", int(Qt.ItemDataRole.UserRole) + 3)) or ""
-            context_after = self.search_model.data(index, role_names.get("contextAfter", int(Qt.ItemDataRole.UserRole) + 4)) or ""
+            page = self.search_model.data(
+                index, role_names.get("page", int(Qt.ItemDataRole.UserRole))
+            )
+            context_before = (
+                self.search_model.data(
+                    index,
+                    role_names.get("contextBefore", int(Qt.ItemDataRole.UserRole) + 3),
+                )
+                or ""
+            )
+            context_after = (
+                self.search_model.data(
+                    index,
+                    role_names.get("contextAfter", int(Qt.ItemDataRole.UserRole) + 4),
+                )
+                or ""
+            )
             label = f"{int(page) + 1}. {context_before}{query}{context_after}".strip()
             item = QListWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, int(page))
@@ -122,7 +139,9 @@ class PreviewSearchPanelMixin(PreviewWidgetHost):
         if item is None:
             return
         page = item.data(Qt.ItemDataRole.UserRole)
-        self.pdf_view.setCurrentSearchResultIndex(int(item.data(Qt.ItemDataRole.UserRole + 1)))
+        self.pdf_view.setCurrentSearchResultIndex(
+            int(item.data(Qt.ItemDataRole.UserRole + 1))
+        )
         if isinstance(page, int):
             self.go_to_page(page)
 

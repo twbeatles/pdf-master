@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """PreviewInteractionMixin 을 region/placement/queue 모듈로 분할."""
+
 from __future__ import annotations
 
 import ast
@@ -83,10 +84,7 @@ def main() -> None:
         used.update(names)
         body = "\n".join(c.source for c in chunks)
         content = (
-            preamble.rstrip()
-            + "\n\n\n"
-            + f"class {cls}(PreviewWidgetHost):\n"
-            + body
+            preamble.rstrip() + "\n\n\n" + f"class {cls}(PreviewWidgetHost):\n" + body
         )
         # ensure PreviewWidgetHost import
         if "PreviewWidgetHost" not in content.split("class")[0]:

@@ -21,11 +21,13 @@ def _page_text_len(page: Any) -> int:
     except Exception:
         return 0
 
+
 def _page_image_count(page: Any) -> int:
     try:
         return len(page.get_images(full=True) or [])
     except Exception:
         return 0
+
 
 def _page_drawing_count(page: Any) -> int:
     get_drawings = getattr(page, "get_drawings", None)
@@ -37,7 +39,10 @@ def _page_drawing_count(page: Any) -> int:
     except Exception:
         return 0
 
-def estimate_blank_page_removals(doc: Any, *, text_threshold: int = 0) -> tuple[int, int]:
+
+def estimate_blank_page_removals(
+    doc: Any, *, text_threshold: int = 0
+) -> tuple[int, int]:
     """(제거 예상 페이지 수, 전체 페이지 수) dry-run."""
     total = len(doc)
     blank = 0
@@ -88,6 +93,7 @@ def _is_blank_page(page: Any, *, text_threshold: int = 0) -> bool:
         # 렌더 실패 시 빈 페이지로 오판하면 데이터 손실 → 보수적으로 유지
         return False
 
+
 def _page_signature(page: Any) -> str:
     """중복 판별용 시그니처 (텍스트 + 저해상도 해시)."""
     text = ""
@@ -105,6 +111,7 @@ def _page_signature(page: Any) -> str:
         digest.update(b"no-pix")
     return digest.hexdigest()
 
+
 def _content_bbox(page: Any, *, pad: float = 2.0) -> Any | None:
     """텍스트/이미지/드로잉 합집합 bbox. 콘텐츠 없으면 None."""
     rect = page.rect
@@ -117,7 +124,12 @@ def _content_bbox(page: Any, *, pad: float = 2.0) -> Any | None:
             if len(block) < 5:
                 continue
             # type 0 text, 1 image in blocks format when full
-            x0, y0, x1, y1 = float(block[0]), float(block[1]), float(block[2]), float(block[3])
+            x0, y0, x1, y1 = (
+                float(block[0]),
+                float(block[1]),
+                float(block[2]),
+                float(block[3]),
+            )
             if x1 <= x0 or y1 <= y0:
                 continue
             found = True
@@ -155,6 +167,7 @@ def _content_bbox(page: Any, *, pad: float = 2.0) -> Any | None:
 
     bbox = fitz.Rect(min_x - pad, min_y - pad, max_x + pad, max_y + pad)
     return bbox & rect
+
 
 def _collect_heading_toc(
     doc: Any,
@@ -200,7 +213,11 @@ def _collect_heading_toc(
     # 본문보다 큰 상위 크기만 제목으로
     body_size = size_counter.most_common(1)[0][0] if size_counter else min_size
     heading_sizes = sorted(
-        (s for s in size_counter if s >= body_size + _HEADING_SIZE_GAP or s >= min_size + 2),
+        (
+            s
+            for s in size_counter
+            if s >= body_size + _HEADING_SIZE_GAP or s >= min_size + 2
+        ),
         reverse=True,
     )
     if not heading_sizes:

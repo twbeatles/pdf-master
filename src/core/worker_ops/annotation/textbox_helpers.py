@@ -1,4 +1,5 @@
 """텍스트상자 삽입 순수 헬퍼 (self 비의존)."""
+
 from __future__ import annotations
 
 import logging
@@ -27,7 +28,9 @@ def ensure_textbox_rect(rect: list[float], text: str, fontsize: int) -> list[flo
         x1 = x0 + min_w
     return [x0, y0, x1, y1]
 
-def write_textbox_content(page: Any,
+
+def write_textbox_content(
+    page: Any,
     fitz_rect: Any,
     text: str,
     *,
@@ -54,7 +57,9 @@ def write_textbox_content(page: Any,
             overlay=overlay,
         )
     except Exception:
-        logger.warning("insert_textbox failed; trying insert_text fallback", exc_info=True)
+        logger.warning(
+            "insert_textbox failed; trying insert_text fallback", exc_info=True
+        )
         rc = -1.0
 
     # 음수 = 남은 높이 부족(텍스트 미기록 또는 부분 실패)
@@ -126,6 +131,7 @@ def write_textbox_content(page: Any,
             return True
     return False
 
+
 def resolve_textbox_fontname(page: Any, fontname: str, text: str = "") -> str:
     """UI/별칭 폰트명을 PyMuPDF insert_textbox 가 받을 수 있는 이름으로 해석."""
     key = (fontname or "").strip().lower()
@@ -152,7 +158,16 @@ def resolve_textbox_fontname(page: Any, fontname: str, text: str = "") -> str:
             return aliases[key]
 
     # CJK: fontname="cjk" 직접 전달 불가 → 임베드 후 등록명 사용
-    if key in {"cjk", "cjk_safe", "ko", "korean", "china-s", "china-t", "japan", "korea"}:
+    if key in {
+        "cjk",
+        "cjk_safe",
+        "ko",
+        "korean",
+        "china-s",
+        "china-t",
+        "japan",
+        "korea",
+    }:
         registered = "pdfmaster_cjk"
         try:
             page.insert_font(fontname=registered, fontbuffer=fitz.Font("cjk").buffer)

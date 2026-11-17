@@ -252,4 +252,3 @@ def build_textbox(self, layout) -> None:
     layout.addWidget(grp_textbox)
 
     self._textbox_queue = []
-

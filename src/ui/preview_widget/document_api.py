@@ -106,9 +106,7 @@ class PreviewDocumentApiMixin(PreviewWidgetHost):
             self.pdf_view.setZoomFactor(max(0.1, zoom_factor))
         else:
             self.pdf_view.setZoomMode(QPdfView.ZoomMode.FitInView)
-        self.set_search_panel_visible(
-            bool(state.get("search_panel_visible", True))
-        )
+        self.set_search_panel_visible(bool(state.get("search_panel_visible", True)))
         raw_side_tab_index = state.get("side_tab_index", 0)
         side_tab_index = (
             int(raw_side_tab_index)
@@ -122,9 +120,7 @@ class PreviewDocumentApiMixin(PreviewWidgetHost):
         self.search_input.setText(search_query)
         raw_search_row = state.get("search_result_row", -1)
         self._pending_restore_search_row = (
-            int(raw_search_row)
-            if isinstance(raw_search_row, (int, float))
-            else None
+            int(raw_search_row) if isinstance(raw_search_row, (int, float)) else None
         )
         if search_query:
             self._active_search_query = search_query
@@ -144,5 +140,7 @@ class PreviewDocumentApiMixin(PreviewWidgetHost):
             if self._doc is not None:
                 self._doc.close()
         except Exception:
-            logger.debug("Failed to close preview document on widget shutdown", exc_info=True)
+            logger.debug(
+                "Failed to close preview document on widget shutdown", exc_info=True
+            )
         super().closeEvent(a0)

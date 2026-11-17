@@ -12,6 +12,7 @@ def _discard_pending_undo(self, delete_backups: bool = False):
     _delete_undo_backup_file(undo_info.get("before_backup_path", ""))
     _delete_undo_backup_file(undo_info.get("after_backup_path", ""))
 
+
 def _augment_worker_passwords_from_preview(self, kwargs: dict) -> None:
     preview_password = getattr(self, "_current_preview_password", None)
     if not isinstance(preview_password, str) or not preview_password:

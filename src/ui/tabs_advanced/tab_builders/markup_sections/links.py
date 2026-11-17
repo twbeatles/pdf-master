@@ -60,4 +60,3 @@ def build_links(self, layout) -> None:
     b_link.clicked.connect(self.action_add_hyperlink)
     l_link.addWidget(b_link)
     layout.addWidget(grp_link)
-

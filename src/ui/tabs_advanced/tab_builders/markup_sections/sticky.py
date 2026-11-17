@@ -43,7 +43,9 @@ def build_sticky(self, layout) -> None:
     sticky_opts2.addWidget(QLabel(tm.get("lbl_icon")))
     self.cmb_sticky_icon = QComboBox()
     for icon_name in ("Note", "Comment", "Key", "Help", "Insert", "Paragraph"):
-        self.cmb_sticky_icon.addItem(tm.get(f"sticky_icon_{icon_name.lower()}"), userData=icon_name)
+        self.cmb_sticky_icon.addItem(
+            tm.get(f"sticky_icon_{icon_name.lower()}"), userData=icon_name
+        )
     sticky_opts2.addWidget(self.cmb_sticky_icon)
     sticky_opts2.addStretch()
     l_sticky.addLayout(sticky_opts2)
@@ -56,4 +58,3 @@ def build_sticky(self, layout) -> None:
     b_sticky.clicked.connect(self.action_add_sticky_note)
     l_sticky.addWidget(b_sticky)
     layout.addWidget(grp_sticky)
-

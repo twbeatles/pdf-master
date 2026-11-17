@@ -248,7 +248,9 @@ def _install_theme_watcher(app: object) -> None:
             _LAST_SYSTEM_THEME = None
         hints = QGuiApplication.styleHints()
         if hasattr(hints, "colorSchemeChanged"):
-            hints.colorSchemeChanged.connect(lambda _s: QTimer.singleShot(0, _poll_system_theme))
+            hints.colorSchemeChanged.connect(
+                lambda _s: QTimer.singleShot(0, _poll_system_theme)
+            )
         timer = QTimer(app)  # type: ignore[arg-type]
         timer.timeout.connect(_poll_system_theme)
         timer.start(3000)

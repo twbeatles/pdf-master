@@ -7,7 +7,9 @@ logger = logging.getLogger(__name__)
 
 
 class AIPromptMixin:
-    def _build_summary_prompt(self, language: str, style: str, max_pages: int | None) -> str:
+    def _build_summary_prompt(
+        self, language: str, style: str, max_pages: int | None
+    ) -> str:
         style_map = {
             "concise": "Keep the summary compact and easy to scan.",
             "detailed": "Provide a fuller summary with more detail.",

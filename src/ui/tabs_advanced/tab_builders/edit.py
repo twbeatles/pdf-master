@@ -26,7 +26,6 @@ def _create_edit_subtab(self):
     layout = QVBoxLayout(content)
     layout.setSpacing(12)
 
-
     build_split(self, layout)
     build_stamp(self, layout)
     build_crop(self, layout)

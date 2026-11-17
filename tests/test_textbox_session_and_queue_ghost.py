@@ -10,7 +10,9 @@ from src.ui.tabs_advanced.textbox_session import (
 
 def test_session_path_mismatch_and_commit_error():
     s = TextboxEditorSession()
-    s.add_box({"file_path": "D:/a.pdf", "page_num": 0, "rect": [0, 0, 10, 10], "text": "x"})
+    s.add_box(
+        {"file_path": "D:/a.pdf", "page_num": 0, "rect": [0, 0, 10, 10], "text": "x"}
+    )
     assert s.path_mismatch_with("D:/b.pdf") is True
     assert s.commit_path_error("D:/b.pdf") == "err_textbox_queue_path_mismatch"
     assert s.commit_path_error("D:/a.pdf") is None
@@ -27,7 +29,9 @@ def test_session_boxes_for_page():
 def test_ensure_session_absorbs_legacy_queue():
     class H:
         def __init__(self):
-            self._textbox_queue = [{"file_path": "x.pdf", "page_num": 0, "rect": [0, 0, 1, 1], "text": "t"}]
+            self._textbox_queue = [
+                {"file_path": "x.pdf", "page_num": 0, "rect": [0, 0, 1, 1], "text": "t"}
+            ]
 
     h = H()
     sess = ensure_textbox_session(h)

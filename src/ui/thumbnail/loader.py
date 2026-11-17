@@ -11,6 +11,7 @@ from .document import _open_thumbnail_document
 
 logger = logging.getLogger(__name__)
 
+
 class ThumbnailLoaderThread(QThread):
     """Background thumbnail loader for selected page indices."""
 
@@ -40,10 +41,20 @@ class ThumbnailLoaderThread(QThread):
     def run(self):
         doc = None
         try:
-            with PerfTimer("ui.thumbnail.batch_load", logger=logger, extra={"count": len(self.page_indices)}):
-                doc, error_message = _open_thumbnail_document(self.pdf_path, self.password)
+            with PerfTimer(
+                "ui.thumbnail.batch_load",
+                logger=logger,
+                extra={"count": len(self.page_indices)},
+            ):
+                doc, error_message = _open_thumbnail_document(
+                    self.pdf_path, self.password
+                )
                 if not doc:
-                    logger.warning("Thumbnail loader skipped document %s: %s", self.pdf_path, error_message)
+                    logger.warning(
+                        "Thumbnail loader skipped document %s: %s",
+                        self.pdf_path,
+                        error_message,
+                    )
                     return
 
                 total = max(1, len(self.page_indices))
@@ -54,12 +65,19 @@ class ThumbnailLoaderThread(QThread):
                         continue
 
                     page = doc[page_index]
-                    scale = min(self.thumb_w / max(page.rect.width, 1), self.thumb_h / max(page.rect.height, 1))
+                    scale = min(
+                        self.thumb_w / max(page.rect.width, 1),
+                        self.thumb_h / max(page.rect.height, 1),
+                    )
                     scale = max(0.05, scale)
                     pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale))
 
                     img_data = bytes(pix.samples)
-                    fmt = QImage.Format.Format_RGBA8888 if pix.alpha else QImage.Format.Format_RGB888
+                    fmt = (
+                        QImage.Format.Format_RGBA8888
+                        if pix.alpha
+                        else QImage.Format.Format_RGB888
+                    )
                     img = QImage(img_data, pix.width, pix.height, pix.stride, fmt)
                     pixmap = QPixmap.fromImage(img.copy())
 

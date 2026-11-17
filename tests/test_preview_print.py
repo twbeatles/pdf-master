@@ -54,7 +54,9 @@ def test_collect_print_page_indices_respects_page_ranges():
         def toPage(self):
             return 3
 
-    assert navigation._collect_print_page_indices(_PrinterStub(), total_pages=5, current_page_index=0) == [1, 2]
+    assert navigation._collect_print_page_indices(
+        _PrinterStub(), total_pages=5, current_page_index=0
+    ) == [1, 2]
 
 
 def test_collect_print_page_indices_respects_current_page():
@@ -65,7 +67,9 @@ def test_collect_print_page_indices_respects_current_page():
         def printRange(self):
             return navigation.QPrinter.PrintRange.CurrentPage
 
-    assert navigation._collect_print_page_indices(_PrinterStub(), total_pages=5, current_page_index=3) == [3]
+    assert navigation._collect_print_page_indices(
+        _PrinterStub(), total_pages=5, current_page_index=3
+    ) == [3]
 
 
 def test_print_pdf_uses_qt_preview_pipeline(monkeypatch, tmp_path):
@@ -144,12 +148,16 @@ def test_print_pdf_uses_qt_preview_pipeline(monkeypatch, tmp_path):
     monkeypatch.setattr(
         navigation,
         "_paint_pdf_document",
-        lambda _printer, path, password, current_page: rendered.append((path, password, current_page)),
+        lambda _printer, path, password, current_page: rendered.append(
+            (path, password, current_page)
+        ),
     )
     monkeypatch.setattr(
         navigation.QMessageBox,
         "warning",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("warning should not be shown")),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("warning should not be shown")
+        ),
     )
 
     dummy = Dummy()
@@ -193,7 +201,9 @@ def test_open_page_setup_uses_dialog(monkeypatch):
     monkeypatch.setattr(
         navigation.QMessageBox,
         "warning",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("warning should not be shown")),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("warning should not be shown")
+        ),
     )
 
     dummy = Dummy()

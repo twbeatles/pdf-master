@@ -11,12 +11,22 @@ def action_split_adv(self):
     if out_dir:
         mode = self.cmb_split_mode.currentData() or "each"
         if mode == "bookmarks":
-            self.run_worker("split_by_bookmarks", file_path=path, output_dir=out_dir, max_level=1)
+            self.run_worker(
+                "split_by_bookmarks", file_path=path, output_dir=out_dir, max_level=1
+            )
             return
         if mode == "range" and not self.inp_split_range.text().strip():
-            return QMessageBox.warning(self, tm.get("info"), tm.get("msg_enter_page_range"))
-        self.run_worker("split_by_pages", file_path=path, output_dir=out_dir, 
-                      split_mode=mode, ranges=self.inp_split_range.text())
+            return QMessageBox.warning(
+                self, tm.get("info"), tm.get("msg_enter_page_range")
+            )
+        self.run_worker(
+            "split_by_pages",
+            file_path=path,
+            output_dir=out_dir,
+            split_mode=mode,
+            ranges=self.inp_split_range.text(),
+        )
+
 
 def action_stamp(self):
     path = self.sel_stamp.get_path()
@@ -25,8 +35,14 @@ def action_stamp(self):
     s, _ = self._choose_save_file(tm.get("save"), "stamped.pdf", "PDF (*.pdf)")
     if s:
         pos = self.cmb_stamp_pos.currentData() or "top-right"
-        self.run_worker("add_stamp", file_path=path, output_path=s,
-                      stamp_text=self.cmb_stamp.currentText(), position=pos)
+        self.run_worker(
+            "add_stamp",
+            file_path=path,
+            output_path=s,
+            stamp_text=self.cmb_stamp.currentText(),
+            position=pos,
+        )
+
 
 def action_crop(self):
     path = self.sel_crop.get_path()
@@ -34,14 +50,25 @@ def action_crop(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
     s, _ = self._choose_save_file(tm.get("save"), "cropped.pdf", "PDF (*.pdf)")
     if s:
-        crop_mode = "content" if getattr(self, "chk_crop_content", None) and self.chk_crop_content.isChecked() else "margins"
+        crop_mode = (
+            "content"
+            if getattr(self, "chk_crop_content", None)
+            and self.chk_crop_content.isChecked()
+            else "margins"
+        )
         margins = {
-            'left': self.spn_crop_left.value(),
-            'top': self.spn_crop_top.value(),
-            'right': self.spn_crop_right.value(),
-            'bottom': self.spn_crop_bottom.value()
+            "left": self.spn_crop_left.value(),
+            "top": self.spn_crop_top.value(),
+            "right": self.spn_crop_right.value(),
+            "bottom": self.spn_crop_bottom.value(),
         }
-        self.run_worker("crop_pdf", file_path=path, output_path=s, margins=margins, crop_mode=crop_mode)
+        self.run_worker(
+            "crop_pdf",
+            file_path=path,
+            output_path=s,
+            margins=margins,
+            crop_mode=crop_mode,
+        )
 
 
 def _cleanup_confirm_with_estimate(self, path: str, *, kind: str) -> bool:
@@ -68,7 +95,11 @@ def _cleanup_confirm_with_estimate(self, path: str, *, kind: str) -> bool:
         try:
             # preview 암호 세션이 있으면 인증 시도
             password = getattr(self, "_current_preview_password", None)
-            if getattr(doc, "is_encrypted", False) and isinstance(password, str) and password:
+            if (
+                getattr(doc, "is_encrypted", False)
+                and isinstance(password, str)
+                and password
+            ):
                 try:
                     doc.authenticate(password)
                 except Exception:
@@ -149,6 +180,7 @@ def action_impose_nup(self):
         nup = self.cmb_nup.currentData() if hasattr(self, "cmb_nup") else 2
         self.run_worker("impose_nup", file_path=path, output_path=s, nup=nup or 2)
 
+
 def action_blank_page(self):
     path = self.sel_blank.get_path()
     if not path:
@@ -156,7 +188,10 @@ def action_blank_page(self):
     s, _ = self._choose_save_file(tm.get("save"), "with_blank.pdf", "PDF (*.pdf)")
     if s:
         pos = self.spn_blank_pos.value() - 1  # 0-indexed
-        self.run_worker("insert_blank_page", file_path=path, output_path=s, position=pos)
+        self.run_worker(
+            "insert_blank_page", file_path=path, output_path=s, position=pos
+        )
+
 
 def action_pdf_info(self):
     """PDF 정보 추출"""
@@ -167,6 +202,7 @@ def action_pdf_info(self):
     if s:
         self.run_worker("get_pdf_info", file_path=path, output_path=s)
 
+
 def action_duplicate_page(self):
     """페이지 복제"""
     path = self.sel_dup.get_path()
@@ -174,9 +210,14 @@ def action_duplicate_page(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
     s, _ = self._choose_save_file(tm.get("save"), "duplicated.pdf", "PDF (*.pdf)")
     if s:
-        self.run_worker("duplicate_page", file_path=path, output_path=s,
-                      page_num=self.spn_dup_page.value() - 1,  # 0-indexed
-                      count=self.spn_dup_count.value())
+        self.run_worker(
+            "duplicate_page",
+            file_path=path,
+            output_path=s,
+            page_num=self.spn_dup_page.value() - 1,  # 0-indexed
+            count=self.spn_dup_count.value(),
+        )
+
 
 def action_reverse_pages(self):
     """페이지 역순 정렬"""
@@ -187,6 +228,7 @@ def action_reverse_pages(self):
     if s:
         self.run_worker("reverse_pages", file_path=path, output_path=s)
 
+
 def action_resize_pages(self):
     """페이지 크기 변경"""
     path = self.sel_resize.get_path()
@@ -194,8 +236,13 @@ def action_resize_pages(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
     s, _ = self._choose_save_file(tm.get("save"), "resized.pdf", "PDF (*.pdf)")
     if s:
-        self.run_worker("resize_pages", file_path=path, output_path=s,
-                      target_size=self.cmb_resize.currentData() or self.cmb_resize.currentText())
+        self.run_worker(
+            "resize_pages",
+            file_path=path,
+            output_path=s,
+            target_size=self.cmb_resize.currentData() or self.cmb_resize.currentText(),
+        )
+
 
 def action_insert_signature(self):
     """전자 서명 삽입"""
@@ -205,16 +252,23 @@ def action_insert_signature(self):
     if not pdf_path:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf"))
     if not sig_path:
-        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_signature_image"))
+        return QMessageBox.warning(
+            self, tm.get("info"), tm.get("msg_select_signature_image")
+        )
 
     s, _ = self._choose_save_file(tm.get("save"), "signed.pdf", "PDF (*.pdf)")
     if s:
         raw_page = self.spn_sig_page.value()
         page_num = self._normalize_page_input(raw_page, last_page_value=0)
-        self.run_worker("insert_signature", file_path=pdf_path, output_path=s,
-                      signature_path=sig_path,
-                      page_num=page_num,
-                      position=self.cmb_sig_pos.currentData() or "bottom_right")
+        self.run_worker(
+            "insert_signature",
+            file_path=pdf_path,
+            output_path=s,
+            signature_path=sig_path,
+            page_num=page_num,
+            position=self.cmb_sig_pos.currentData() or "bottom_right",
+        )
+
 
 def action_add_freehand_signature(self):
     """프리핸드 서명 삽입"""
@@ -232,7 +286,9 @@ def action_add_freehand_signature(self):
     width = self.spn_freehand_width.value()
     color = self.cmb_freehand_color.currentData() or (0, 0, 0)
 
-    s, _ = self._choose_save_file(tm.get("save"), "with_freehand_signature.pdf", "PDF (*.pdf)")
+    s, _ = self._choose_save_file(
+        tm.get("save"), "with_freehand_signature.pdf", "PDF (*.pdf)"
+    )
     if s:
         self.run_worker(
             "add_freehand_signature",

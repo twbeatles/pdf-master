@@ -3,6 +3,7 @@
 구현: `markup_actions/` 패키지.
 테스트 monkeypatch: 이 모듈의 QMessageBox/ToastWidget 또는 `markup_actions.deps`.
 """
+
 from __future__ import annotations
 
 from PySide6.QtWidgets import QFileDialog, QMessageBox

@@ -36,7 +36,9 @@ def test_remove_annotations_checks_cancellation_inside_page_loop(tmp_path):
     out = tmp_path / "clean.pdf"
     _make_pdf_with_annotations(src, page_count=4)
 
-    worker = WorkerThread("remove_annotations", file_path=str(src), output_path=str(out))
+    worker = WorkerThread(
+        "remove_annotations", file_path=str(src), output_path=str(out)
+    )
     worker._check_cancelled = _cancel_after(2)
 
     with pytest.raises(CancelledError):

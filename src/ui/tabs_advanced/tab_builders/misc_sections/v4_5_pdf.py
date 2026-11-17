@@ -42,4 +42,3 @@ def build_v4_5_pdf(self, layout) -> None:
     b_copy_pages.clicked.connect(self.action_copy_pages)
     l_copy.addWidget(b_copy_pages)
     layout.addWidget(grp_copy_page)
-

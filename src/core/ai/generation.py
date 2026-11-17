@@ -99,7 +99,9 @@ class AIGenerationMixin:
             "parse",
             "internal",
         )
-        return any(token in text for token in allow_tokens) and not any(token in text for token in deny_tokens)
+        return any(token in text for token in allow_tokens) and not any(
+            token in text for token in deny_tokens
+        )
 
     @staticmethod
     def _run_cancel_check(cancel_check: Callable[[], None] | None) -> None:
@@ -119,9 +121,13 @@ class AIGenerationMixin:
         cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         self._run_cancel_check(cancel_check)
-        extracted_text, meta = self._extract_text_with_meta(pdf_path, max_pages=fallback_max_pages)
+        extracted_text, meta = self._extract_text_with_meta(
+            pdf_path, max_pages=fallback_max_pages
+        )
         if not extracted_text.strip():
-            raise RuntimeError(f"PDF text extraction failed after File API upload failure: {upload_error}")
+            raise RuntimeError(
+                f"PDF text extraction failed after File API upload failure: {upload_error}"
+            )
         contents = [prompt, extracted_text]
         self._run_cancel_check(cancel_check)
         if partial_callback is not None:
@@ -206,7 +212,9 @@ class AIGenerationMixin:
             config=config,
         )
         self._run_cancel_check(cancel_check)
-        return self._parse_structured_response(response, _response_text(response), schema)
+        return self._parse_structured_response(
+            response, _response_text(response), schema
+        )
 
     def _generate_structured_payload(
         self,
@@ -224,7 +232,10 @@ class AIGenerationMixin:
             # 취소·인증 오류 등은 File API fallback 대상이 아님
             if not self._should_fallback_from_file_api(exc):
                 raise
-            logger.warning("Gemini File API upload failed, falling back to local text extraction: %s", exc)
+            logger.warning(
+                "Gemini File API upload failed, falling back to local text extraction: %s",
+                exc,
+            )
             return self._generate_structured_payload_from_extracted_text(
                 prompt=prompt,
                 pdf_path=pdf_path,

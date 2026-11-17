@@ -54,7 +54,9 @@ def test_finalize_worker_scrubs_secrets():
     class FakeWorker:
         def __init__(self):
             self.kwargs = {"api_key": "SECRET", "file_path": "a.pdf"}
-            self.progress_signal = type("S", (), {"disconnect": staticmethod(lambda: None)})()
+            self.progress_signal = type(
+                "S", (), {"disconnect": staticmethod(lambda: None)}
+            )()
             self.finished_signal = self.progress_signal
             self.error_signal = self.progress_signal
             self.cancelled_signal = self.progress_signal
@@ -121,7 +123,12 @@ def test_get_pdf_info_uses_i18n_keys(tmp_path):
     assert not errors
     text = out.read_text(encoding="utf-8")
     # 하드코딩 전용 구 문자열이 아닌 i18n 산출 (KO 기본 환경이어도 키 경로 사용)
-    assert "PDF" in text or "pdf" in text.lower() or "정보" in text or "info" in text.lower()
+    assert (
+        "PDF" in text
+        or "pdf" in text.lower()
+        or "정보" in text
+        or "info" in text.lower()
+    )
     assert "페이지" in text or "Pages" in text or "pages" in text.lower()
 
 
@@ -145,7 +152,14 @@ def test_undo_backup_skips_large_source(tmp_path, monkeypatch):
             return type("S", (), {"st_size": UNDO_BACKUP_MAX_SOURCE_BYTES + 1})()
         return real_getsize(Path(path))
 
-    monkeypatch.setattr("os.path.getsize", lambda p: UNDO_BACKUP_MAX_SOURCE_BYTES + 1 if Path(p) == big else Path(p).stat().st_size)
+    monkeypatch.setattr(
+        "os.path.getsize",
+        lambda p: (
+            UNDO_BACKUP_MAX_SOURCE_BYTES + 1
+            if Path(p) == big
+            else Path(p).stat().st_size
+        ),
+    )
     result = _create_backup_for_undo(Host(), str(big))
     assert result == ""
 

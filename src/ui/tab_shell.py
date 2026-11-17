@@ -185,7 +185,9 @@ class TabShell(QWidget):
                     **kwargs,
                 )
             except Exception:
-                logger.debug("TabShell addActionItem failed for %s", label, exc_info=True)
+                logger.debug(
+                    "TabShell addActionItem failed for %s", label, exc_info=True
+                )
         return route_key
 
     def _select_route(self, route_key: str) -> None:
@@ -197,7 +199,11 @@ class TabShell(QWidget):
         self._switch_to(route_key)
 
     def setCurrentIndex(self, index: int) -> None:
-        if self._use_fluent and self._selector is not None and 0 <= index < len(self._route_keys):
+        if (
+            self._use_fluent
+            and self._selector is not None
+            and 0 <= index < len(self._route_keys)
+        ):
             try:
                 self._selector.setCurrentItem(self._route_keys[index])
             except Exception:
@@ -240,7 +246,9 @@ class TabShell(QWidget):
         assert self._tabs is not None
         return self._tabs.indexOf(widget)
 
-    def configure_rail(self, expand_width: int = 152, minimum_window_width: int = 1000) -> None:
+    def configure_rail(
+        self, expand_width: int = 152, minimum_window_width: int = 1000
+    ) -> None:
         """레일을 펼쳤을 때의 폭과, 자동으로 접히는 창 너비 기준을 정한다."""
         if not self.uses_rail:
             return
@@ -256,7 +264,10 @@ class TabShell(QWidget):
             return
         try:
             window = self.window()
-            if window is not None and window.width() < self._selector.panel.minimumExpandWidth:
+            if (
+                window is not None
+                and window.width() < self._selector.panel.minimumExpandWidth
+            ):
                 return
             self._selector.expand(useAni=False)
         except Exception:
@@ -280,7 +291,9 @@ class TabShell(QWidget):
 __all__ = ["TabShell", "add_action_item", "add_tab"]
 
 
-def add_tab(tabs, widget: QWidget, label: str, icon: str | None = None, position: str = "top") -> int:
+def add_tab(
+    tabs, widget: QWidget, label: str, icon: str | None = None, position: str = "top"
+) -> int:
     """TabShell/QTabWidget 공용 탭 추가. icon은 Fluent 셀렉터 또는 QTabWidget 아이콘으로 표시.
 
     테스트 스텁이 순수 QTabWidget을 넘겨도 `icon` 키워드로 깨지지 않는다.
@@ -300,7 +313,9 @@ def add_tab(tabs, widget: QWidget, label: str, icon: str | None = None, position
     return index
 
 
-def add_action_item(tabs, label: str, icon: str | None, callback, position: str = "bottom") -> str:
+def add_action_item(
+    tabs, label: str, icon: str | None, callback, position: str = "bottom"
+) -> str:
     """레일 하단 액션 추가. TabShell이 아니면 no-op."""
     if isinstance(tabs, TabShell):
         return tabs.addActionItem(label, icon, callback, position=position)

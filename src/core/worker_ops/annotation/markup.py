@@ -1,4 +1,5 @@
 """WorkerAnnotationMarkupMixin — highlight + textbox 합성 facade."""
+
 from __future__ import annotations
 
 from .highlight_markup import WorkerAnnotationHighlightMixin

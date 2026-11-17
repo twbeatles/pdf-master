@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """tab_builders edit/markup 을 QGroupBox 섹션 단위로 분할 (생성 순서 보존)."""
+
 from __future__ import annotations
 
 import ast
@@ -8,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-EDIT_IMPORTS = '''from __future__ import annotations
+EDIT_IMPORTS = """from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -30,9 +31,9 @@ from PySide6.QtWidgets import (
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
-'''
+"""
 
-MARKUP_IMPORTS = '''from __future__ import annotations
+MARKUP_IMPORTS = """from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -53,7 +54,7 @@ from PySide6.QtWidgets import (
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
-'''
+"""
 
 # 사람이 읽기 좋은 섹션 슬러그 (주석 제목 → id)
 EDIT_SLUGS = {
@@ -81,7 +82,9 @@ MARKUP_SLUGS = {
 }
 
 
-def _func_body_lines(source: str, func_name: str) -> tuple[list[str], list[str], int, int]:
+def _func_body_lines(
+    source: str, func_name: str
+) -> tuple[list[str], list[str], int, int]:
     """module lines, function body lines (with indent), func start lineno, end lineno."""
     tree = ast.parse(source)
     lines = source.splitlines(keepends=True)
@@ -92,7 +95,9 @@ def _func_body_lines(source: str, func_name: str) -> tuple[list[str], list[str],
     raise SystemExit(f"{func_name} not found")
 
 
-def _group_sections(body: list[str], slug_map: dict[str, str]) -> tuple[list[str], list[tuple[str, str, list[str]]], list[str]]:
+def _group_sections(
+    body: list[str], slug_map: dict[str, str]
+) -> tuple[list[str], list[tuple[str, str, list[str]]], list[str]]:
     """Split body into setup, sections, trailer.
 
     Section starts only when a `    # title` comment is followed within 3 lines by `grp_ = QGroupBox`.
@@ -108,7 +113,10 @@ def _group_sections(body: list[str], slug_map: dict[str, str]) -> tuple[list[str
         if any(re.search(r"grp_\w+\s*=\s*QGroupBox", w) for w in window):
             slug = slug_map.get(title)
             if slug is None:
-                slug = re.sub(r"[^a-zA-Z0-9]+", "_", title).strip("_").lower() or f"sec_{i}"
+                slug = (
+                    re.sub(r"[^a-zA-Z0-9]+", "_", title).strip("_").lower()
+                    or f"sec_{i}"
+                )
                 if slug[0].isdigit():
                     slug = f"sec_{slug}"
             section_starts.append((i, title, slug))
@@ -170,7 +178,7 @@ def _write_package(
     for slug, title, sec_lines in unique_sections:
         fn = f"build_{slug}"
         init_exports.append(fn)
-        content = imports + f"\n\ndef {fn}(self, layout) -> None:\n    \"\"\"{title}\"\"\"\n"
+        content = imports + f'\n\ndef {fn}(self, layout) -> None:\n    """{title}"""\n'
         for line in sec_lines:
             content += line if line.endswith("\n") else line + "\n"
         (pkg / f"{slug}.py").write_text(content, encoding="utf-8")
@@ -223,7 +231,9 @@ def _write_package(
 
     source_path.write_text(orch, encoding="utf-8")
     ast.parse(orch)
-    print(f"OK {source_path.name}: {len(unique_sections)} sections -> {sections_pkg_name}/")
+    print(
+        f"OK {source_path.name}: {len(unique_sections)} sections -> {sections_pkg_name}/"
+    )
 
 
 def main() -> None:

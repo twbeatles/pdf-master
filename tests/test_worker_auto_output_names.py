@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6_and_pymupdf
 
 from src.core.optional_deps import fitz
@@ -124,7 +123,9 @@ def test_extract_text_routes_through_atomic_text_save(tmp_path, monkeypatch):
     calls = []
     original = WorkerThread._atomic_text_save
 
-    def spy_atomic_text_save(self, output_path, text, *, encoding="utf-8", newline=None):
+    def spy_atomic_text_save(
+        self, output_path, text, *, encoding="utf-8", newline=None
+    ):
         calls.append((output_path, text))
         return original(self, output_path, text, encoding=encoding, newline=newline)
 

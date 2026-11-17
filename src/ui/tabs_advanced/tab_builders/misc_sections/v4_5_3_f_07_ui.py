@@ -44,4 +44,3 @@ def build_v4_5_3_f_07_ui(self, layout) -> None:
     b_replace.clicked.connect(self.action_replace_page)
     l_replace.addWidget(b_replace)
     layout.addWidget(grp_replace)
-

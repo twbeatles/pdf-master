@@ -3,6 +3,7 @@
 - 두 번째 인스턴스는 새 창을 띄우지 않고 종료해야 한다(중복 실행 pile-up 방지).
 - 크래시 잔해(stale lock)는 다음 실행이 회수해야 한다.
 """
+
 import os
 import subprocess
 import sys
@@ -105,7 +106,9 @@ def test_startup_splash_missing_asset_returns_none():
 
 def test_lock_storage_failure_continues_without_guard(tmp_path):
     main = _import_main()
-    acquired, lock = main.try_acquire_single_instance(str(tmp_path / "missing" / "app.lock"))
+    acquired, lock = main.try_acquire_single_instance(
+        str(tmp_path / "missing" / "app.lock")
+    )
     assert acquired is True
     assert lock is None
 
@@ -125,7 +128,7 @@ def test_startup_splash_bundled_asset_can_be_shown():
 
 
 def test_import_failure_closes_startup_splash():
-    code = r'''
+    code = r"""
 import builtins
 import main
 class Splash:
@@ -148,10 +151,12 @@ except ImportError as error:
 else:
     raise AssertionError("startup import unexpectedly succeeded")
 assert splash.closed
-'''
+"""
     result = subprocess.run(
-        [sys.executable, "-c", code], cwd=REPO_ROOT,
+        [sys.executable, "-c", code],
+        cwd=REPO_ROOT,
         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
-        capture_output=True, timeout=30,
+        capture_output=True,
+        timeout=30,
     )
     assert result.returncode == 0, result.stdout + result.stderr

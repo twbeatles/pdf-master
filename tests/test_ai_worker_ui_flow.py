@@ -153,8 +153,12 @@ def test_on_success_updates_summary_result(monkeypatch):
     import src.ui.main_window_worker as worker_module
 
     monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
-    monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None
+    )
 
     worker = _WorkerStub(
         "ai_summarize",
@@ -183,7 +187,9 @@ def test_on_success_updates_summary_result(monkeypatch):
     from src.core.i18n import tm
 
     # 문구는 쉬운 말로 바뀔 수 있으므로 카탈로그 키와 쪽수(2 / 5)로 검증한다.
-    assert dummy.lbl_summary_meta.text.startswith(tm.get("ai_meta_text_fallback_truncated").split("{")[0])
+    assert dummy.lbl_summary_meta.text.startswith(
+        tm.get("ai_meta_text_fallback_truncated").split("{")[0]
+    )
     assert "2 / 5" in dummy.lbl_summary_meta.text
     assert dummy.status_label.text
 
@@ -193,8 +199,12 @@ def test_on_success_updates_keyword_result(monkeypatch):
     import src.ui.main_window_worker as worker_module
 
     monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
-    monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None
+    )
 
     worker = _WorkerStub(
         "ai_extract_keywords",
@@ -216,8 +226,12 @@ def test_on_success_appends_chat_answer(monkeypatch):
     from src.core.i18n import tm
 
     monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
-    monkeypatch.setattr(worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        worker_module.QMessageBox, "information", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None
+    )
 
     worker = _WorkerStub(
         "ai_ask_question",
@@ -231,8 +245,13 @@ def test_on_success_appends_chat_answer(monkeypatch):
     dummy.on_success("done")
 
     assert any("answer" in entry for entry in dummy.txt_chat_history.entries)
-    assert any(tm.get("chat_assistant_prefix") in entry for entry in dummy.txt_chat_history.entries)
-    assert dummy._chat_histories[_history_key()] == [{"role": "assistant", "content": "answer"}]
+    assert any(
+        tm.get("chat_assistant_prefix") in entry
+        for entry in dummy.txt_chat_history.entries
+    )
+    assert dummy._chat_histories[_history_key()] == [
+        {"role": "assistant", "content": "answer"}
+    ]
     assert dummy.lbl_chat_meta.visible is True
     assert dummy.saved_histories == 1
 
@@ -242,7 +261,9 @@ def test_on_fail_cleans_pending_chat_history_and_appends_error(monkeypatch):
     import src.ui.main_window_worker as worker_module
 
     monkeypatch.setattr(worker_module, "ToastWidget", _ToastStub)
-    monkeypatch.setattr(worker_module.QMessageBox, "critical", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        worker_module.QMessageBox, "critical", lambda *_args, **_kwargs: None
+    )
 
     worker = _WorkerStub("ai_ask_question", {})
     dummy = _build_dummy(worker)
@@ -300,7 +321,9 @@ def test_on_success_shows_compare_summary_dialog(monkeypatch):
         "information",
         lambda _parent, title, text: dialogs.append((title, text)),
     )
-    monkeypatch.setattr(worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        worker_module.QTimer, "singleShot", lambda *_args, **_kwargs: None
+    )
 
     worker = _WorkerStub(
         "compare_pdfs",

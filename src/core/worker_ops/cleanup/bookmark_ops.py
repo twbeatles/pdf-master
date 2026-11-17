@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 _HEADING_MIN_SIZE = 12.0
 _HEADING_SIZE_GAP = 1.5
 
+
 class WorkerCleanupBookmarkOpsMixin(WorkerHost):
     def split_by_bookmarks(self):
         """북마크(목차) 기준으로 PDF 분할."""
@@ -34,7 +35,9 @@ class WorkerCleanupBookmarkOpsMixin(WorkerHost):
                 for item in toc
                 if isinstance(item, (list, tuple)) and len(item) >= 3
             ]
-            entries = [e for e in entries if e[0] <= max(1, max_level) and e[1] and e[2] >= 1]
+            entries = [
+                e for e in entries if e[0] <= max(1, max_level) and e[1] and e[2] >= 1
+            ]
             if not entries:
                 self.error_signal.emit(self._get_msg("err_no_bookmarks_to_split"))
                 return
@@ -56,7 +59,10 @@ class WorkerCleanupBookmarkOpsMixin(WorkerHost):
                 if end < start:
                     continue
 
-                safe_title = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", title).strip(" .") or f"part_{idx + 1}"
+                safe_title = (
+                    re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", title).strip(" .")
+                    or f"part_{idx + 1}"
+                )
                 safe_title = safe_title[:60]
                 stem = self._build_unique_output_stem(
                     output_dir,
@@ -77,7 +83,9 @@ class WorkerCleanupBookmarkOpsMixin(WorkerHost):
             if created == 0:
                 self.error_signal.emit(self._get_msg("err_split_no_valid_ranges"))
                 return
-            self.finished_signal.emit(self._get_msg("msg_split_by_bookmarks_done", created))
+            self.finished_signal.emit(
+                self._get_msg("msg_split_by_bookmarks_done", created)
+            )
         finally:
             doc.close()
 
@@ -100,6 +108,8 @@ class WorkerCleanupBookmarkOpsMixin(WorkerHost):
             doc.set_toc(toc)
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(self._get_msg("msg_auto_bookmarks_done", len(toc)))
+            self.finished_signal.emit(
+                self._get_msg("msg_auto_bookmarks_done", len(toc))
+            )
         finally:
             doc.close()

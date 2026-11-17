@@ -84,7 +84,9 @@ def _add_to_recent_files(self, path):
     path_key = normalize_path_key(path)
     if not path_key or not os.path.exists(path_key):
         return
-    recent = [item for item in self.settings.get("recent_files", []) if isinstance(item, str)]
+    recent = [
+        item for item in self.settings.get("recent_files", []) if isinstance(item, str)
+    ]
     if path_key in recent:
         recent.remove(path_key)
     recent.insert(0, path_key)

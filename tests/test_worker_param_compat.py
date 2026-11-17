@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6_and_pymupdf
 
 from src.core.optional_deps import fitz
@@ -102,8 +101,12 @@ def test_insert_textbox_uses_xy_when_rect_missing(tmp_path):
     words = doc[0].get_text("words")
     doc.close()
     hit = [
-        w for w in words
-        if isinstance(w, (list, tuple)) and len(w) >= 5 and isinstance(w[4], str) and "HELLO_BOX" in w[4]
+        w
+        for w in words
+        if isinstance(w, (list, tuple))
+        and len(w) >= 5
+        and isinstance(w[4], str)
+        and "HELLO_BOX" in w[4]
     ]
     assert hit
     first_word = hit[0]

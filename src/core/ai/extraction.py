@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class AIExtractionMixin:
-    def _extract_text_with_meta(self, pdf_path: str, max_pages: int | None = None) -> tuple[str, dict[str, Any]]:
+    def _extract_text_with_meta(
+        self, pdf_path: str, max_pages: int | None = None
+    ) -> tuple[str, dict[str, Any]]:
         cache_key = self._make_text_cache_key(pdf_path, max_pages)
         with PerfTimer(
             "core.ai.extract_text",
@@ -49,7 +51,11 @@ class AIExtractionMixin:
                     pages_used = i + 1
 
                 full_text = "\n\n".join(text_parts)
-                if truncated and full_text and not full_text.endswith("[... truncated ...]"):
+                if (
+                    truncated
+                    and full_text
+                    and not full_text.endswith("[... truncated ...]")
+                ):
                     full_text = full_text.rstrip() + "\n\n[... truncated ...]"
                 meta = self._build_result_meta(
                     source="text_fallback",

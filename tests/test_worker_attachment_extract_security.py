@@ -24,7 +24,9 @@ def test_extract_attachments_sanitizes_name_and_stays_in_output_dir(tmp_path):
     out_dir = tmp_path / "extract_out"
     _make_pdf_with_attachments(src)
 
-    worker = WorkerThread("extract_attachments", file_path=str(src), output_dir=str(out_dir))
+    worker = WorkerThread(
+        "extract_attachments", file_path=str(src), output_dir=str(out_dir)
+    )
     errors = []
     worker.error_signal.connect(lambda msg: errors.append(msg))
     worker.extract_attachments()

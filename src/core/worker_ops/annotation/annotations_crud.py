@@ -27,7 +27,11 @@ class WorkerAnnotationCrudMixin(WorkerHost):
         try:
             doc = self._open_pdf_document(file_path)
             if page_num < 0 or page_num >= len(doc):
-                self.error_signal.emit(self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc))))
+                self.error_signal.emit(
+                    self._get_msg(
+                        "err_page_out_of_range", str(page_num + 1), str(len(doc))
+                    )
+                )
                 return
 
             page = doc[page_num]
@@ -37,7 +41,12 @@ class WorkerAnnotationCrudMixin(WorkerHost):
             elif annot_type == "freetext":
                 annot = page.add_freetext_annot(fitz.Rect(rect), text, fontsize=12)
             else:
-                self.error_signal.emit(self._get_msg("err_operation_failed", f"unsupported annotation type: {annot_type}"))
+                self.error_signal.emit(
+                    self._get_msg(
+                        "err_operation_failed",
+                        f"unsupported annotation type: {annot_type}",
+                    )
+                )
                 return
 
             if annot:

@@ -37,14 +37,20 @@ def test_children_get_no_window_flag_by_default(created_flags):
     # 표준 라이브러리 platform 모듈의 폴백과 같은 형태의 호출
     output = subprocess.check_output("ver", shell=True, text=True)
     assert "Windows" in output  # 출력 캡처는 그대로 동작
-    subprocess.run([sys.executable, "-c", "pass"], check=True, creationflags=subprocess.DETACHED_PROCESS)
+    subprocess.run(
+        [sys.executable, "-c", "pass"],
+        check=True,
+        creationflags=subprocess.DETACHED_PROCESS,
+    )
     assert len(created_flags) == 2
     assert all(flag & CREATE_NO_WINDOW for flag in created_flags)
     assert created_flags[1] & subprocess.DETACHED_PROCESS  # 호출자가 준 플래그는 유지
 
 
 def test_explicit_new_console_request_is_respected(created_flags):
-    proc = subprocess.Popen([sys.executable, "-c", "pass"], creationflags=CREATE_NEW_CONSOLE)
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "pass"], creationflags=CREATE_NEW_CONSOLE
+    )
     proc.wait(timeout=30)
     assert created_flags == [CREATE_NEW_CONSOLE]
 
@@ -66,5 +72,9 @@ def test_guard_is_idempotent_and_restorable():
 def test_main_applies_guard_before_qt_imports():
     from pathlib import Path
 
-    source = (Path(__file__).resolve().parents[1] / "main.py").read_text(encoding="utf-8")
-    assert source.index("suppress_child_console_windows()") < source.index("from PySide6.QtCore import")
+    source = (Path(__file__).resolve().parents[1] / "main.py").read_text(
+        encoding="utf-8"
+    )
+    assert source.index("suppress_child_console_windows()") < source.index(
+        "from PySide6.QtCore import"
+    )

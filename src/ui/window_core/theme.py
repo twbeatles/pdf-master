@@ -27,14 +27,26 @@ logger = logging.getLogger(__name__)
 # 앱 테마를 따르도록 하는 팔레트 값. theme/native.py 의 앱 셸 색과 맞춘다.
 _THEME_PALETTES = {
     True: {
-        "window": "#0a0e14", "base": "#141922", "alt_base": "#1c2432", "text": "#f0f4f8",
-        "button": "#1c2432", "placeholder": "#6b7280", "disabled": "#6b7280",
-        "tooltip": "#1c2432", "tooltip_text": "#f0f4f8",
+        "window": "#0a0e14",
+        "base": "#141922",
+        "alt_base": "#1c2432",
+        "text": "#f0f4f8",
+        "button": "#1c2432",
+        "placeholder": "#6b7280",
+        "disabled": "#6b7280",
+        "tooltip": "#1c2432",
+        "tooltip_text": "#f0f4f8",
     },
     False: {
-        "window": "#f8fafc", "base": "#ffffff", "alt_base": "#f1f5f9", "text": "#1e293b",
-        "button": "#ffffff", "placeholder": "#94a3b8", "disabled": "#94a3b8",
-        "tooltip": "#ffffff", "tooltip_text": "#1e293b",
+        "window": "#f8fafc",
+        "base": "#ffffff",
+        "alt_base": "#f1f5f9",
+        "text": "#1e293b",
+        "button": "#ffffff",
+        "placeholder": "#94a3b8",
+        "disabled": "#94a3b8",
+        "tooltip": "#ffffff",
+        "tooltip_text": "#1e293b",
     },
 }
 
@@ -63,7 +75,9 @@ def build_theme_palette(is_dark: bool) -> QPalette:
     palette.setColor(role.HighlightedText, QColor("#ffffff"))
     palette.setColor(role.Link, QColor("#4f8cff"))
     for color_role in (role.WindowText, role.Text, role.ButtonText):
-        palette.setColor(QPalette.ColorGroup.Disabled, color_role, QColor(colors["disabled"]))
+        palette.setColor(
+            QPalette.ColorGroup.Disabled, color_role, QColor(colors["disabled"])
+        )
     return palette
 
 
@@ -94,7 +108,10 @@ def _create_header(self):
 
 
 def _theme_button_text(theme) -> str:
-    return {"dark": tm.get("theme_dark"), "light": tm.get("theme_light")}.get(theme, tm.get("theme_auto"))
+    return {"dark": tm.get("theme_dark"), "light": tm.get("theme_light")}.get(
+        theme, tm.get("theme_auto")
+    )
+
 
 def _toggle_theme(self):
     current = self.settings.get("theme", "dark")
@@ -107,6 +124,7 @@ def _toggle_theme(self):
 
     sync_settings_combo(self, "_settings_theme_combo", new_theme)
 
+
 def _apply_theme(self):
     theme = self.settings.get("theme", "dark")
     from ..fluent_theme import resolve_is_dark
@@ -118,7 +136,9 @@ def _apply_theme(self):
 
         app.setPalette(build_theme_palette(is_dark))
         if is_fluent_widgets_available():
-            app.setStyleSheet(NATIVE_DARK_STYLESHEET if is_dark else NATIVE_LIGHT_STYLESHEET)
+            app.setStyleSheet(
+                NATIVE_DARK_STYLESHEET if is_dark else NATIVE_LIGHT_STYLESHEET
+            )
         else:
             app.setStyleSheet(DARK_STYLESHEET if is_dark else LIGHT_STYLESHEET)
     try:  # Fluent 브리지: settings 테마를 qfluentwidgets에 반영 (미설치면 no-op)
@@ -149,16 +169,20 @@ def _apply_theme(self):
         widget.set_theme(is_dark)
 
     # 진행 오버레이 테마 동기화
-    if hasattr(self, 'progress_overlay'):
+    if hasattr(self, "progress_overlay"):
         self.progress_overlay.set_theme(is_dark)
 
     # 미리보기 패널 테마 동기화
-    if hasattr(self, 'preview_image'):
+    if hasattr(self, "preview_image"):
         self.preview_image.set_theme(is_dark)
         if is_dark:
-            self.preview_label.setStyleSheet("color: #94a3b8; padding: 12px; font-size: 13px; background: transparent;")
+            self.preview_label.setStyleSheet(
+                "color: #94a3b8; padding: 12px; font-size: 13px; background: transparent;"
+            )
         else:
-            self.preview_label.setStyleSheet("color: #64748b; padding: 12px; font-size: 13px; background: transparent;")
+            self.preview_label.setStyleSheet(
+                "color: #64748b; padding: 12px; font-size: 13px; background: transparent;"
+            )
 
     _register_system_theme_follow(self)
 

@@ -19,7 +19,11 @@ def _load_chat_histories(self):
     cleaned = {}
     for path, entries in raw.items():
         base_path, mtime_ns = parse_chat_history_key(path)
-        path_key = make_chat_history_key(base_path, mtime_ns) if mtime_ns is not None else _chat_history_key(path)
+        path_key = (
+            make_chat_history_key(base_path, mtime_ns)
+            if mtime_ns is not None
+            else _chat_history_key(path)
+        )
         if not path_key or not isinstance(entries, list):
             continue
         cleaned_entries = []
@@ -48,7 +52,9 @@ def _trim_chat_histories(self):
         if len(entries) > MAX_CHAT_HISTORY_ENTRIES:
             self._chat_histories[path] = entries[-MAX_CHAT_HISTORY_ENTRIES:]
     if len(self._chat_histories) > MAX_CHAT_HISTORY_PDFS:
-        self._chat_histories = dict(list(self._chat_histories.items())[-MAX_CHAT_HISTORY_PDFS:])
+        self._chat_histories = dict(
+            list(self._chat_histories.items())[-MAX_CHAT_HISTORY_PDFS:]
+        )
 
 
 def _save_chat_histories(self):
@@ -66,7 +72,11 @@ def _save_chat_histories(self):
 def _record_chat_entry(self, path: str, role: str, content: str):
     """채팅 기록을 추가한다."""
     base_path, mtime_ns = parse_chat_history_key(path)
-    path_key = make_chat_history_key(base_path, mtime_ns) if mtime_ns is not None else _chat_history_key(path)
+    path_key = (
+        make_chat_history_key(base_path, mtime_ns)
+        if mtime_ns is not None
+        else _chat_history_key(path)
+    )
     if not path_key or not content:
         return
     history = self._chat_histories.pop(path_key, [])

@@ -12,6 +12,7 @@ from ..main_window_config import APP_NAME, VERSION
 
 logger = logging.getLogger(__name__)
 
+
 def _create_menu_bar(self):
     """메뉴 바 생성"""
     menubar = self.menuBar()
@@ -35,7 +36,6 @@ def _create_menu_bar(self):
     exit_action.setShortcut("Ctrl+Q")
     exit_action.triggered.connect(self.close)
     file_menu.addAction(exit_action)
-
 
     # 언어 메뉴 추가
     self.lang_menu = menubar.addMenu(tm.get("menu_language"))
@@ -71,13 +71,17 @@ def _create_menu_bar(self):
 
     self._act_notify_dialog = QAction(tm.get("pref_notify_dialog"), self)
     self._act_notify_dialog.setCheckable(True)
-    self._act_notify_dialog.setChecked(self.settings.get("notify_mode", "dialog") != "toast")
+    self._act_notify_dialog.setChecked(
+        self.settings.get("notify_mode", "dialog") != "toast"
+    )
     self._act_notify_dialog.triggered.connect(lambda: self._set_notify_mode("dialog"))
     pref_menu.addAction(self._act_notify_dialog)
 
     self._act_notify_toast = QAction(tm.get("pref_notify_toast"), self)
     self._act_notify_toast.setCheckable(True)
-    self._act_notify_toast.setChecked(self.settings.get("notify_mode", "dialog") == "toast")
+    self._act_notify_toast.setChecked(
+        self.settings.get("notify_mode", "dialog") == "toast"
+    )
     self._act_notify_toast.triggered.connect(lambda: self._set_notify_mode("toast"))
     pref_menu.addAction(self._act_notify_toast)
 
@@ -85,7 +89,9 @@ def _create_menu_bar(self):
 
     self._act_clear_pending = QAction(tm.get("pref_clear_pending_on_cancel"), self)
     self._act_clear_pending.setCheckable(True)
-    self._act_clear_pending.setChecked(bool(self.settings.get("clear_pending_on_cancel", True)))
+    self._act_clear_pending.setChecked(
+        bool(self.settings.get("clear_pending_on_cancel", True))
+    )
     self._act_clear_pending.triggered.connect(self._toggle_clear_pending_on_cancel)
     pref_menu.addAction(self._act_clear_pending)
 
@@ -134,16 +140,25 @@ def _set_notify_mode(self, mode: str):
 
 
 def _toggle_clear_pending_on_cancel(self, checked: bool = False):
-    enabled = bool(checked) if isinstance(checked, bool) else bool(
-        getattr(self, "_act_clear_pending", None) and self._act_clear_pending.isChecked()
+    enabled = (
+        bool(checked)
+        if isinstance(checked, bool)
+        else bool(
+            getattr(self, "_act_clear_pending", None)
+            and self._act_clear_pending.isChecked()
+        )
     )
     self.settings["clear_pending_on_cancel"] = enabled
     save_settings(self.settings)
 
 
 def _toggle_save_chat_histories(self, checked: bool = False):
-    enabled = bool(checked) if isinstance(checked, bool) else bool(
-        getattr(self, "_act_save_chat", None) and self._act_save_chat.isChecked()
+    enabled = (
+        bool(checked)
+        if isinstance(checked, bool)
+        else bool(
+            getattr(self, "_act_save_chat", None) and self._act_save_chat.isChecked()
+        )
     )
     self.settings["save_chat_histories"] = enabled
     if not enabled:
@@ -154,9 +169,14 @@ def _toggle_save_chat_histories(self, checked: bool = False):
         try:
             from ..widgets import ToastWidget
 
-            ToastWidget(tm.get("msg_chat_history_disk_warning"), toast_type="warning", duration=4500).show_toast(self)
+            ToastWidget(
+                tm.get("msg_chat_history_disk_warning"),
+                toast_type="warning",
+                duration=4500,
+            ).show_toast(self)
         except Exception:
             pass
+
 
 def _change_language(self, lang_code):
     """언어 변경 및 재시작 안내"""
@@ -179,10 +199,9 @@ def _change_language(self, lang_code):
 
     # 재시작 안내
     QMessageBox.information(
-        self, 
-        tm.get("restart_required"),
-        tm.get("restart_required_msg")
+        self, tm.get("restart_required"), tm.get("restart_required_msg")
     )
+
 
 def _update_recent_menu_bar(self):
     """최근 파일 메뉴 업데이트"""
@@ -195,32 +214,41 @@ def _update_recent_menu_bar(self):
         for path in recent[:10]:
             if os.path.exists(path):
                 action = self.recent_menu_bar.addAction(f"📄 {os.path.basename(path)}")
-                action.triggered.connect(lambda checked, p=path: self._update_preview(p))
+                action.triggered.connect(
+                    lambda checked, p=path: self._update_preview(p)
+                )
+
 
 def _show_shortcuts(self):
     """단축키 안내 대화상자"""
-    shortcuts_text = f"""📑 {APP_NAME} v{VERSION} - {tm.get('shortcuts')}
+    shortcuts_text = f"""📑 {APP_NAME} v{VERSION} - {tm.get("shortcuts")}
 
-{tm.get('shortcut_open')}
-{tm.get('shortcut_exit')}
-{tm.get('shortcut_theme')}
-{tm.get('shortcut_preview_search')}
-{tm.get('shortcut_tabs')}
-{tm.get('shortcut_help')}"""
+{tm.get("shortcut_open")}
+{tm.get("shortcut_exit")}
+{tm.get("shortcut_theme")}
+{tm.get("shortcut_preview_search")}
+{tm.get("shortcut_tabs")}
+{tm.get("shortcut_help")}"""
     QMessageBox.information(self, tm.get("shortcuts"), shortcuts_text)
+
 
 def _show_about(self):
     """정보 대화상자"""
     about_text = f"""📑 {APP_NAME} v{VERSION}
 
-{tm.get('about_desc')}
+{tm.get("about_desc")}
 
 © 2025-2026"""
     QMessageBox.about(self, f"{APP_NAME} {tm.get('about')}", about_text)
 
+
 def _show_help(self):
-    QMessageBox.information(self, tm.get("help_title"), f"""📑 {APP_NAME} v{VERSION}
+    QMessageBox.information(
+        self,
+        tm.get("help_title"),
+        f"""📑 {APP_NAME} v{VERSION}
 
 {tm.get("help_intro")}
 
-{tm.get("help_features")}""")
+{tm.get("help_features")}""",
+    )

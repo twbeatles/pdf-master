@@ -1,4 +1,5 @@
 """텍스트 상자 일괄 삽입 (세션 큐 커밋)."""
+
 from __future__ import annotations
 
 from ....optional_deps import fitz
@@ -35,7 +36,9 @@ class WorkerTextboxBatchMixin(WorkerTextboxBaseMixin):
                 page_num = _as_int(item.get("page_num"), 0)
                 if page_num < 0 or page_num >= len(doc):
                     self.error_signal.emit(
-                        self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc)))
+                        self._get_msg(
+                            "err_page_out_of_range", str(page_num + 1), str(len(doc))
+                        )
                     )
                     return
                 rect = rect_from_source(item)
@@ -92,7 +95,9 @@ class WorkerTextboxBatchMixin(WorkerTextboxBaseMixin):
                     )
                 )
             else:
-                self.finished_signal.emit(self._get_msg("msg_textboxes_inserted", wrote_count))
+                self.finished_signal.emit(
+                    self._get_msg("msg_textboxes_inserted", wrote_count)
+                )
         finally:
             doc.close()
 

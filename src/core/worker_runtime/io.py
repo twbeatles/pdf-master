@@ -57,7 +57,9 @@ def build_safe_attachment_output_path(
     try:
         common = os.path.commonpath([output_dir_abs, out_path])
     except ValueError as exc:
-        raise ValueError(host._get_msg("err_attachment_path_invalid", raw_name)) from exc
+        raise ValueError(
+            host._get_msg("err_attachment_path_invalid", raw_name)
+        ) from exc
     if common != output_dir_abs:
         raise ValueError(host._get_msg("err_attachment_path_invalid", raw_name))
 
@@ -123,7 +125,9 @@ def atomic_text_write(
     output_existed = os.path.exists(output_path)
 
     suffix = os.path.splitext(output_path)[1] or ".tmp"
-    fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=f".tmp{suffix}", dir=out_dir)
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".pdf_master_", suffix=f".tmp{suffix}", dir=out_dir
+    )
     os.close(fd)
 
     try:
@@ -166,7 +170,9 @@ def atomic_binary_write(output_path: str, data: bytes) -> bool:
     output_existed = os.path.exists(output_path)
 
     suffix = os.path.splitext(output_path)[1] or ".bin"
-    fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=f".tmp{suffix}", dir=out_dir)
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".pdf_master_", suffix=f".tmp{suffix}", dir=out_dir
+    )
     os.close(fd)
 
     try:
@@ -202,7 +208,9 @@ def atomic_pixmap_save(host: Any, pixmap: Any, output_path: str) -> None:
     output_existed = os.path.exists(output_path)
     ext = os.path.splitext(output_path)[1] or ".png"
 
-    fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=f".tmp{ext}", dir=out_dir)
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".pdf_master_", suffix=f".tmp{ext}", dir=out_dir
+    )
     os.close(fd)
 
     try:
@@ -235,7 +243,9 @@ def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -
     os.makedirs(out_dir, exist_ok=True)
     output_existed = os.path.exists(output_path)
 
-    fd, tmp_path = tempfile.mkstemp(prefix=".pdf_master_", suffix=".tmp.pdf", dir=out_dir)
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".pdf_master_", suffix=".tmp.pdf", dir=out_dir
+    )
     os.close(fd)
 
     same_target = False
@@ -278,7 +288,9 @@ def atomic_pdf_save(host: Any, doc: Any, output_path: str, **save_kwargs: Any) -
                     doc.close()
                     _mark_document_closed(doc)
                 except Exception:
-                    logger.debug("Failed to close document before replace", exc_info=True)
+                    logger.debug(
+                        "Failed to close document before replace", exc_info=True
+                    )
                 os.replace(tmp_path, output_path)
             else:
                 raise

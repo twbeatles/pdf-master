@@ -38,7 +38,9 @@ class ThumbnailGridSelectionMixin(ThumbnailGridHost):
             return
         self._selection_mode = selection_mode
         if selection_mode == "single":
-            self._set_selected_indices([self._active_index] if self._active_index >= 0 else [])
+            self._set_selected_indices(
+                [self._active_index] if self._active_index >= 0 else []
+            )
         self._refresh_thumbnail_states()
 
     def set_active_page(self, index: int, emit_signal: bool = False):
@@ -77,7 +79,11 @@ class ThumbnailGridSelectionMixin(ThumbnailGridHost):
         self.set_active_page(page_index, emit_signal=True)
 
         if modifier_value & Qt.KeyboardModifier.ShiftModifier:
-            anchor = self._selection_anchor_index if self._selection_anchor_index >= 0 else page_index
+            anchor = (
+                self._selection_anchor_index
+                if self._selection_anchor_index >= 0
+                else page_index
+            )
             start = min(anchor, page_index)
             end = max(anchor, page_index)
             self._set_selected_indices(range(start, end + 1))

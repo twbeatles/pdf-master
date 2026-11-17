@@ -46,7 +46,7 @@ class PreviewQueueGhostMixin(PreviewWidgetHost):
         for idx, box in enumerate(self._queue_ghost_boxes, start=1):
             try:
                 pn = int(box.get("page_num", -1))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             if pn != page:
                 continue

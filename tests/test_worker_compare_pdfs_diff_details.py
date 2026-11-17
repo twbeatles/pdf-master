@@ -104,7 +104,9 @@ def test_compare_pdfs_reuses_password_mapping_for_encrypted_inputs(tmp_path):
     _make_text_pdf(second, ["beta"])
 
     for src, locked in ((first, first_locked), (second, second_locked)):
-        worker = WorkerThread("protect", file_path=str(src), output_path=str(locked), password="secret")
+        worker = WorkerThread(
+            "protect", file_path=str(src), output_path=str(locked), password="secret"
+        )
         worker.protect()
 
     worker = WorkerThread(

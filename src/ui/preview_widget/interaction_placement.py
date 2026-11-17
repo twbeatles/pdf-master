@@ -184,7 +184,9 @@ class PreviewPlacementInteractionMixin(PreviewWidgetHost):
         if mapped is None:
             return
         self._text_placement_pts = mapped
-        self.textPlacementMoved.emit(page + 1, mapped[0], mapped[1], mapped[2], mapped[3])
+        self.textPlacementMoved.emit(
+            page + 1, mapped[0], mapped[1], mapped[2], mapped[3]
+        )
 
     def _on_text_placement_cancelled(self) -> None:
         self.set_text_placement_mode(False)

@@ -1,4 +1,5 @@
 """첨부 경로·원자 저장 믹스인 (io.py thin wrapper)."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -27,7 +28,9 @@ class WorkerRuntimeFilesMixin(WorkerHost):
         index: int,
         used_names: set[str],
     ) -> tuple[str, str]:
-        return build_safe_attachment_output_path(self, output_dir, raw_name, index, used_names)
+        return build_safe_attachment_output_path(
+            self, output_dir, raw_name, index, used_names
+        )
 
     def _build_unique_output_stem(
         self,
@@ -36,7 +39,9 @@ class WorkerRuntimeFilesMixin(WorkerHost):
         reserved_suffix: str,
         used_stems: set[str],
     ) -> str:
-        return build_unique_output_stem(output_dir, preferred_stem, reserved_suffix, used_stems)
+        return build_unique_output_stem(
+            output_dir, preferred_stem, reserved_suffix, used_stems
+        )
 
     def _atomic_pdf_save(self, doc: Any, output_path: str, **save_kwargs: Any) -> None:
         atomic_pdf_save(self, doc, output_path, **save_kwargs)

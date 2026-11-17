@@ -1,4 +1,5 @@
 """UI monkeypatch / 공개 계약 표면 (테스트·리팩터 가드)."""
+
 from __future__ import annotations
 
 from .monkeypatch_surfaces import (

@@ -31,4 +31,3 @@ def build_annotations(self, layout) -> None:
     annot_btns.addWidget(b_remove_annot)
     l_annot.addLayout(annot_btns)
     layout.addWidget(grp_annot)
-

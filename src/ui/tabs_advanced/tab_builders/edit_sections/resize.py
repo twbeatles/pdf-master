@@ -33,4 +33,3 @@ def build_resize(self, layout) -> None:
     b_resize.clicked.connect(self.action_resize_pages)
     l_resize.addWidget(b_resize)
     layout.addWidget(grp_resize)
-

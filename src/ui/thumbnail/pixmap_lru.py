@@ -1,4 +1,5 @@
 """썸네일 QPixmap LRU 캐시 (경로+mtime+페이지 키)."""
+
 from __future__ import annotations
 
 from collections import OrderedDict

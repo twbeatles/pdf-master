@@ -29,7 +29,9 @@ class TextboxEditorSession:
         self.reopen_after_success = False
         self.clear_queue_after_success = False
 
-    def set_post_flags(self, *, reopen: bool = False, clear_queue: bool = False) -> None:
+    def set_post_flags(
+        self, *, reopen: bool = False, clear_queue: bool = False
+    ) -> None:
         self.reopen_after_success = bool(reopen)
         self.clear_queue_after_success = bool(clear_queue)
 
@@ -70,7 +72,7 @@ class TextboxEditorSession:
         for item in self.queue:
             try:
                 pn = int(item.get("page_num", -1))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 continue
             if pn != int(page_num_0):
                 continue

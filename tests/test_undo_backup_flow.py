@@ -88,8 +88,14 @@ def test_cleanup_unused_undo_backups_keeps_active_snapshots(monkeypatch, tmp_pat
     host.undo_manager.push(
         action_type="rotate",
         description="Rotate pages",
-        before_state={"before_backup_path": str(before_backup), "target_path": str(target)},
-        after_state={"after_backup_path": str(after_backup), "target_path": str(target)},
+        before_state={
+            "before_backup_path": str(before_backup),
+            "target_path": str(target),
+        },
+        after_state={
+            "after_backup_path": str(after_backup),
+            "target_path": str(target),
+        },
         undo_callback=host._restore_from_backup,
         redo_callback=host._redo_from_output,
     )

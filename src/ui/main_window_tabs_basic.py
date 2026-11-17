@@ -25,16 +25,20 @@ class MainWindowTabsBasicMixin(_MainWindowTabsBasicMixin):
     def _save_convert_preset(self):
         """변환 설정 프리셋 저장"""
         parent = cast(QWidget, self)
-        name, ok = QInputDialog.getText(parent, tm.get("dlg_save_preset"), tm.get("lbl_preset_name"))
+        name, ok = QInputDialog.getText(
+            parent, tm.get("dlg_save_preset"), tm.get("lbl_preset_name")
+        )
         if ok and name:
             presets = self.settings.get("convert_presets", {})
             presets[name] = {
                 "format": self.cmb_fmt.currentText(),
-                "dpi": self.spn_dpi.value()
+                "dpi": self.spn_dpi.value(),
             }
             self.settings["convert_presets"] = presets
             save_settings(self.settings)
-            toast = ToastWidget(tm.get("msg_preset_saved", name), toast_type='success', duration=2000)
+            toast = ToastWidget(
+                tm.get("msg_preset_saved", name), toast_type="success", duration=2000
+            )
             toast.show_toast(self)
 
     def _load_convert_preset(self):
@@ -42,12 +46,20 @@ class MainWindowTabsBasicMixin(_MainWindowTabsBasicMixin):
         parent = cast(QWidget, self)
         presets = self.settings.get("convert_presets", {})
         if not presets:
-            QMessageBox.information(parent, tm.get("dlg_preset"), tm.get("msg_no_presets"))
+            QMessageBox.information(
+                parent, tm.get("dlg_preset"), tm.get("msg_no_presets")
+            )
             return
 
         # 프리셋 선택 다이얼로그
-        name, ok = QInputDialog.getItem(parent, tm.get("dlg_load_preset"), tm.get("lbl_select_preset"), 
-                                        list(presets.keys()), 0, False)
+        name, ok = QInputDialog.getItem(
+            parent,
+            tm.get("dlg_load_preset"),
+            tm.get("lbl_select_preset"),
+            list(presets.keys()),
+            0,
+            False,
+        )
         if ok and name:
             preset = presets[name]
             preset_fmt = (preset.get("format", "png") or "png").lower()
@@ -58,5 +70,7 @@ class MainWindowTabsBasicMixin(_MainWindowTabsBasicMixin):
                 fallback_idx = self.cmb_fmt.findText("png")
                 self.cmb_fmt.setCurrentIndex(max(0, fallback_idx))
             self.spn_dpi.setValue(preset.get("dpi", 150))
-            toast = ToastWidget(tm.get("msg_preset_applied", name), toast_type='info', duration=2000)
+            toast = ToastWidget(
+                tm.get("msg_preset_applied", name), toast_type="info", duration=2000
+            )
             toast.show_toast(self)

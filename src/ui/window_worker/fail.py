@@ -1,4 +1,5 @@
 """on_fail / on_cancelled 본문 헬퍼."""
+
 from __future__ import annotations
 
 import logging
@@ -50,7 +51,9 @@ def rollback_chat_on_fail(host: Any, msg: str) -> None:
     host._chat_partial_text = ""
     host._chat_result_meta = {}
     _clear_meta_label(getattr(host, "lbl_chat_meta", None))
-    history_keys = [key for key in (pending_path, raw_pending_path) if isinstance(key, str) and key]
+    history_keys = [
+        key for key in (pending_path, raw_pending_path) if isinstance(key, str) and key
+    ]
     seen_history_keys: set[str] = set()
     for history_key in history_keys:
         if history_key in seen_history_keys or history_key not in host._chat_histories:
@@ -63,7 +66,9 @@ def rollback_chat_on_fail(host: Any, msg: str) -> None:
                 del host._chat_histories[history_key]
             host._save_chat_histories()
     if hasattr(host, "txt_chat_history"):
-        _replace_last_chat_block(host.txt_chat_history, f"<span style='color:#ef4444'>❌ {msg}</span>")
+        _replace_last_chat_block(
+            host.txt_chat_history, f"<span style='color:#ef4444'>❌ {msg}</span>"
+        )
 
 
 def clear_textbox_post_flags(host: Any, *, context: str) -> None:

@@ -33,4 +33,3 @@ def build_pdf_2(self, layout) -> None:
     b_decrypt.clicked.connect(self.action_decrypt_pdf)
     l_decrypt.addWidget(b_decrypt)
     layout.addWidget(grp_decrypt)
-

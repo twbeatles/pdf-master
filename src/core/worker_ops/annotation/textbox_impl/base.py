@@ -1,4 +1,5 @@
 """텍스트상자 공통 프리머티브 (WorkerHost 의존 thin wrapper)."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -46,7 +47,9 @@ class WorkerTextboxBaseMixin(WorkerHost):
             overlay=overlay,
         )
 
-    def _resolve_textbox_fontname(self, page: Any, fontname: str, text: str = "") -> str:
+    def _resolve_textbox_fontname(
+        self, page: Any, fontname: str, text: str = ""
+    ) -> str:
         """UI/별칭 폰트명을 PyMuPDF insert_textbox 가 받을 수 있는 이름으로 해석."""
         return resolve_textbox_fontname(page, fontname, text)
 

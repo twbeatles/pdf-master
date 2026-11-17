@@ -8,30 +8,33 @@ from logging.handlers import RotatingFileHandler
 # 로그 파일 경로
 LOG_FILE = os.path.join(os.path.expanduser("~"), ".pdf_master.log")
 
+
 def setup_logging():
     """로깅 설정 초기화 (v4.5: 로그 파일 순환 적용)"""
     # v4.5: RotatingFileHandler로 로그 파일 무한 증가 방지
     file_handler = RotatingFileHandler(
         LOG_FILE,
-        maxBytes=5*1024*1024,  # 5MB
+        maxBytes=5 * 1024 * 1024,  # 5MB
         backupCount=3,
-        encoding='utf-8'
+        encoding="utf-8",
     )
-    file_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
 
     stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-
-    logging.basicConfig(
-        level=logging.INFO,
-        handlers=[file_handler, stream_handler]
+    stream_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     )
+
+    logging.basicConfig(level=logging.INFO, handlers=[file_handler, stream_handler])
     return logging.getLogger(__name__)
+
 
 logger = setup_logging()
 
 # PyInstaller 환경에서의 경로 설정 (Import 전에 실행되어야 함)
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 else:
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -100,7 +103,9 @@ def single_instance_lock_path() -> str:
     return os.path.join(tempfile.gettempdir(), _SINGLE_INSTANCE_LOCK_NAME)
 
 
-def try_acquire_single_instance(lock_path: str | None = None) -> tuple[bool, QLockFile | None]:
+def try_acquire_single_instance(
+    lock_path: str | None = None,
+) -> tuple[bool, QLockFile | None]:
     """프로세스 전역 단일 인스턴스 락 획득 시도.
 
     Returns:
@@ -120,10 +125,14 @@ def try_acquire_single_instance(lock_path: str | None = None) -> tuple[bool, QLo
         # Never forcibly remove a lock belonging to a live instance.
         if lock.error() == QLockFile.LockError.LockFailedError:
             return False, None
-        logger.warning("Single-instance lock unavailable (%s); continuing unguarded", lock.error())
+        logger.warning(
+            "Single-instance lock unavailable (%s); continuing unguarded", lock.error()
+        )
         return True, None
     except Exception:
-        logger.debug("Single-instance lock unavailable; continuing unguarded", exc_info=True)
+        logger.debug(
+            "Single-instance lock unavailable; continuing unguarded", exc_info=True
+        )
         return True, None
 
 
@@ -137,7 +146,9 @@ def focus_existing_instance(title_prefix: str = _SINGLE_INSTANCE_TITLE_PREFIX) -
 
         user32 = ctypes.windll.user32
         found: list[int] = []
-        enum_callback = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        enum_callback = ctypes.WINFUNCTYPE(
+            wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
+        )
         # Explicit pointer-sized HWND signatures are required on 64-bit Windows.
         user32.EnumWindows.argtypes = [enum_callback, wintypes.LPARAM]
         user32.EnumWindows.restype = wintypes.BOOL
@@ -184,7 +195,9 @@ def focus_existing_instance(title_prefix: str = _SINGLE_INSTANCE_TITLE_PREFIX) -
         return False
 
 
-def show_startup_splash(app: QApplication, image_path: str | None = None) -> QSplashScreen | None:
+def show_startup_splash(
+    app: QApplication, image_path: str | None = None
+) -> QSplashScreen | None:
     """Heavy import 전에 즉시 스플래시를 표시. 실패 시 None (정상 계속)."""
     try:
         path = image_path or resource_path(*_SPLASH_IMAGE_PARTS)
@@ -207,7 +220,7 @@ def main() -> int:
         def update_argument(name: str) -> str:
             try:
                 return sys.argv[sys.argv.index(name) + 1]
-            except (ValueError, IndexError):
+            except ValueError, IndexError:
                 return ""
 
         return apply_update(
@@ -293,7 +306,9 @@ def main() -> int:
                 from src.ui.fluent_widgets import is_fluent_widgets_available
 
                 if not is_fluent_widgets_available() or not window.tabs._use_fluent:
-                    raise RuntimeError("Fluent widgets or navigation failed to initialize")
+                    raise RuntimeError(
+                        "Fluent widgets or navigation failed to initialize"
+                    )
                 app.processEvents()
                 window.close()
                 logger.info("PDF Master smoke initialization succeeded")
@@ -316,6 +331,7 @@ def main() -> int:
     except Exception as e:
         logger.critical(f"Failed to start application: {e}")
         raise
+
 
 if __name__ == "__main__":
     sys.exit(main())

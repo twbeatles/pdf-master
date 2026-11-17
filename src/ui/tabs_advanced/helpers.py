@@ -5,6 +5,7 @@ def _normalize_page_input(self, page_value: int, last_page_value: int = 0) -> in
     """UI 1-based 페이지 입력을 worker 0-based 인덱스로 정규화."""
     return -1 if page_value == last_page_value else page_value - 1
 
+
 def _parse_freehand_strokes(self, text: str):
     """x1,y1;x2,y2|x3,y3;x4,y4 형식을 strokes 배열로 변환."""
     raw = (text or "").strip()
@@ -35,6 +36,7 @@ def _parse_freehand_strokes(self, text: str):
     if not strokes:
         raise ValueError(tm.get("msg_stroke_required"))
     return strokes
+
 
 def _parse_bookmark_lines(self, text: str):
     """줄 단위 `level|title|page` 포맷을 북마크 배열로 변환."""

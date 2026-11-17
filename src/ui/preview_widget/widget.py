@@ -34,7 +34,15 @@ from .zoom import PreviewZoomMixin
 logger = logging.getLogger(__name__)
 
 
-class ZoomablePreviewWidget(PreviewDocumentApiMixin, PreviewNavigationMixin, PreviewZoomMixin, PreviewSearchPanelMixin, PreviewThemeMixin, PreviewInteractionMixin, QWidget):
+class ZoomablePreviewWidget(
+    PreviewDocumentApiMixin,
+    PreviewNavigationMixin,
+    PreviewZoomMixin,
+    PreviewSearchPanelMixin,
+    PreviewThemeMixin,
+    PreviewInteractionMixin,
+    QWidget,
+):
     zoomChanged = Signal(float)
     pageChanged = Signal(int)
     printRequested = Signal()
@@ -189,13 +197,21 @@ class ZoomablePreviewWidget(PreviewDocumentApiMixin, PreviewNavigationMixin, Pre
 
         # 드래그 영역 선택 오버레이 (pdf_view 자식)
         self._region_overlay = RegionSelectOverlay(self.pdf_view)
-        self._region_overlay.selectionFinished.connect(self._on_region_selection_finished)
-        self._region_overlay.selectionCancelled.connect(self._on_region_selection_cancelled)
+        self._region_overlay.selectionFinished.connect(
+            self._on_region_selection_finished
+        )
+        self._region_overlay.selectionCancelled.connect(
+            self._on_region_selection_cancelled
+        )
         # 이동 가능 텍스트 배치 오버레이
         self._text_placement_overlay = TextPlacementOverlay(self.pdf_view)
         self._text_placement_overlay.boxMoved.connect(self._on_text_placement_box_moved)
-        self._text_placement_overlay.placementCancelled.connect(self._on_text_placement_cancelled)
-        self._text_placement_overlay.textEdited.connect(self._on_text_placement_text_edited)
+        self._text_placement_overlay.placementCancelled.connect(
+            self._on_text_placement_cancelled
+        )
+        self._text_placement_overlay.textEdited.connect(
+            self._on_text_placement_text_edited
+        )
         self._queue_ghost_overlay = QueueGhostOverlay(self.pdf_view)
         self.pdf_view.installEventFilter(self)
         if self.pdf_view.viewport() is not None:
@@ -236,4 +252,3 @@ class ZoomablePreviewWidget(PreviewDocumentApiMixin, PreviewNavigationMixin, Pre
         self.set_navigation_enabled(False)
         self.set_search_panel_visible(True)
         self._on_zoom_changed(self.pdf_view.zoomFactor())
-

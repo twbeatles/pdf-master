@@ -1,4 +1,5 @@
 """Worker ai domain package."""
+
 from __future__ import annotations
 
 from .ops import WorkerAiOpsMixin, _restrict_temp_file_permissions

@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6
 
 
@@ -27,10 +26,17 @@ def test_ai_mixin_binds_consolidated_actions_and_api_key_override():
 
     from src.ui.main_window_tabs_ai import MainWindowTabsAiMixin
 
-    assert MainWindowTabsAiMixin._save_summary_result.__module__ == "src.ui.tabs_ai.actions"
+    assert (
+        MainWindowTabsAiMixin._save_summary_result.__module__
+        == "src.ui.tabs_ai.actions"
+    )
     assert MainWindowTabsAiMixin._ask_ai_question.__module__ == "src.ui.tabs_ai.actions"
-    assert MainWindowTabsAiMixin._save_api_key.__module__ == "src.ui.main_window_tabs_ai"
-    assert "atomic_text_write" in inspect.getsource(MainWindowTabsAiMixin._save_summary_result)
+    assert (
+        MainWindowTabsAiMixin._save_api_key.__module__ == "src.ui.main_window_tabs_ai"
+    )
+    assert "atomic_text_write" in inspect.getsource(
+        MainWindowTabsAiMixin._save_summary_result
+    )
 
 
 def test_load_api_key_no_keyring_keeps_legacy_key(monkeypatch):
@@ -43,7 +49,9 @@ def test_load_api_key_no_keyring_keeps_legacy_key(monkeypatch):
     set_calls = []
     monkeypatch.setattr(ai_module, "KEYRING_AVAILABLE", False)
     monkeypatch.setattr(ai_module, "get_api_key", lambda: "")
-    monkeypatch.setattr(ai_module, "set_api_key", lambda key: set_calls.append(key) or True)
+    monkeypatch.setattr(
+        ai_module, "set_api_key", lambda key: set_calls.append(key) or True
+    )
     monkeypatch.setattr(ai_module, "save_settings", lambda _settings: True)
 
     loaded = dummy._load_api_key_for_ui()
@@ -64,7 +72,11 @@ def test_load_api_key_keyring_mode_migrates_and_cleans_legacy(monkeypatch):
     monkeypatch.setattr(ai_module, "KEYRING_AVAILABLE", True)
     monkeypatch.setattr(ai_module, "get_api_key", lambda: "")
     monkeypatch.setattr(ai_module, "set_api_key", lambda _key: True)
-    monkeypatch.setattr(ai_module, "save_settings", lambda settings: save_calls.append(dict(settings)) or True)
+    monkeypatch.setattr(
+        ai_module,
+        "save_settings",
+        lambda settings: save_calls.append(dict(settings)) or True,
+    )
 
     loaded = dummy._load_api_key_for_ui()
 
@@ -93,9 +105,17 @@ def test_save_api_key_uses_settings_api(monkeypatch):
 
     monkeypatch.setattr(ai_module, "ToastWidget", DummyToast)
     monkeypatch.setattr(ai_module, "KEYRING_AVAILABLE", False)
-    monkeypatch.setattr(ai_module, "set_api_key", lambda key: set_calls.append(key) or True)
-    monkeypatch.setattr(ai_module, "save_settings", lambda settings: save_calls.append(dict(settings)) or True)
-    monkeypatch.setattr(ai_module.QMessageBox, "warning", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        ai_module, "set_api_key", lambda key: set_calls.append(key) or True
+    )
+    monkeypatch.setattr(
+        ai_module,
+        "save_settings",
+        lambda settings: save_calls.append(dict(settings)) or True,
+    )
+    monkeypatch.setattr(
+        ai_module.QMessageBox, "warning", lambda *_args, **_kwargs: None
+    )
 
     dummy._save_api_key()
 
@@ -132,9 +152,13 @@ def test_save_api_key_prompts_before_plaintext_fallback(monkeypatch):
     monkeypatch.setattr(
         ai_module.QMessageBox,
         "question",
-        lambda *_args, **_kwargs: question_calls.append(True) or ai_module.QMessageBox.StandardButton.Yes,
+        lambda *_args, **_kwargs: (
+            question_calls.append(True) or ai_module.QMessageBox.StandardButton.Yes
+        ),
     )
-    monkeypatch.setattr(ai_module.QMessageBox, "warning", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        ai_module.QMessageBox, "warning", lambda *_args, **_kwargs: None
+    )
 
     dummy._save_api_key()
 
@@ -165,18 +189,23 @@ def test_save_api_key_decline_plaintext_fallback(monkeypatch):
     monkeypatch.setattr(
         ai_module,
         "set_api_key",
-        lambda key, allow_file_fallback=False: set_calls.append((key, allow_file_fallback)) or False,
+        lambda key, allow_file_fallback=False: (
+            set_calls.append((key, allow_file_fallback)) or False
+        ),
     )
     monkeypatch.setattr(
         ai_module.QMessageBox,
         "question",
         lambda *_args, **_kwargs: ai_module.QMessageBox.StandardButton.No,
     )
-    monkeypatch.setattr(ai_module.QMessageBox, "warning", lambda *_args, **_kwargs: warnings.append(True))
+    monkeypatch.setattr(
+        ai_module.QMessageBox,
+        "warning",
+        lambda *_args, **_kwargs: warnings.append(True),
+    )
 
     dummy._save_api_key()
 
     assert set_calls == [("new-key", False)]
     assert warnings
     assert "gemini_api_key" not in dummy.settings
-

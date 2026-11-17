@@ -268,7 +268,12 @@ class TextPlacementOverlay(QWidget):
 
         # 8방향 리사이즈 핸들
         for hx, hy in self._handle_centers():
-            hr = QRect(hx - _HANDLE_SIZE // 2, hy - _HANDLE_SIZE // 2, _HANDLE_SIZE, _HANDLE_SIZE)
+            hr = QRect(
+                hx - _HANDLE_SIZE // 2,
+                hy - _HANDLE_SIZE // 2,
+                _HANDLE_SIZE,
+                _HANDLE_SIZE,
+            )
             painter.fillRect(hr, QColor(79, 140, 255, 230))
             painter.setPen(QPen(QColor(255, 255, 255, 200)))
             painter.drawRect(hr.adjusted(0, 0, -1, -1))

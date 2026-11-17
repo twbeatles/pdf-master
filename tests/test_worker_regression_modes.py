@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6_and_pymupdf
 
 from src.core.optional_deps import fitz
@@ -181,7 +180,11 @@ def test_reorder_rewrites_page_order(tmp_path):
 
     doc = fitz.open(str(out))
     try:
-        assert [doc[i].get_text().strip() for i in range(len(doc))] == ["THREE", "ONE", "TWO"]
+        assert [doc[i].get_text().strip() for i in range(len(doc))] == [
+            "THREE",
+            "ONE",
+            "TWO",
+        ]
     finally:
         doc.close()
 

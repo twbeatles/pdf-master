@@ -67,7 +67,9 @@ class WorkerExtractSearchTablesMixin(WorkerHost):
         lines.append("")
         self._atomic_text_save(output_path, "\n".join(lines))
         total_found = sum(r["count"] for r in results) if results else 0
-        self.finished_signal.emit(self._get_msg("msg_search_text_done", search_term, total_found))
+        self.finished_signal.emit(
+            self._get_msg("msg_search_text_done", search_term, total_found)
+        )
 
     def extract_tables(self):
         file_path = _as_str(self.kwargs.get("file_path"))
@@ -93,7 +95,9 @@ class WorkerExtractSearchTablesMixin(WorkerHost):
                             }
                         )
                 except Exception as exc:
-                    logger.error("Page %s table extraction error: %s", page_num + 1, exc)
+                    logger.error(
+                        "Page %s table extraction error: %s", page_num + 1, exc
+                    )
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
         finally:
             if doc:
@@ -102,9 +106,13 @@ class WorkerExtractSearchTablesMixin(WorkerHost):
         buffer = io.StringIO(newline="")
         writer = csv.writer(buffer)
         for table in all_tables:
-            writer.writerow([f"--- Page {table['page']}, Table {table['table_idx']} ---"])
+            writer.writerow(
+                [f"--- Page {table['page']}, Table {table['table_idx']} ---"]
+            )
             for row in table["data"]:
                 writer.writerow([str(cell) if cell else "" for cell in row])
             writer.writerow([])
         self._atomic_text_save(output_path, buffer.getvalue(), newline="")
-        self.finished_signal.emit(self._get_msg("msg_tables_extracted", len(all_tables)))
+        self.finished_signal.emit(
+            self._get_msg("msg_tables_extracted", len(all_tables))
+        )

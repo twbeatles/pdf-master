@@ -33,8 +33,12 @@ def test_queue_add_stores_file_path(monkeypatch):
 
     class Dummy:
         def __init__(self):
-            self.sel_textbox = type("S", (), {"get_path": lambda self: "D:/docs/a.pdf"})()
-            self.txt_textbox_content = type("T", (), {"toPlainText": lambda self: "Hi"})()
+            self.sel_textbox = type(
+                "S", (), {"get_path": lambda self: "D:/docs/a.pdf"}
+            )()
+            self.txt_textbox_content = type(
+                "T", (), {"toPlainText": lambda self: "Hi"}
+            )()
             self.spn_tb_page = Spin(1)
             self.spn_tb_x = Spin(10.0)
             self.spn_tb_y = Spin(20.0)
@@ -46,15 +50,19 @@ def test_queue_add_stores_file_path(monkeypatch):
             self.spn_tb_opacity = Spin(100)
             self.spn_tb_rotation = Spin(0)
             self.cmb_tb_align = type("A", (), {"currentData": lambda self: 0})()
-            self.cmb_tb_layer = type("L", (), {"currentData": lambda self: "foreground"})()
+            self.cmb_tb_layer = type(
+                "L", (), {"currentData": lambda self: "foreground"}
+            )()
             self.lst_tb_queue = type(
                 "List",
                 (),
                 {
                     "clear": lambda self: setattr(self, "items", []),
-                    "addItem": lambda self, x: getattr(self, "items", []).append(x)
-                    if hasattr(self, "items")
-                    else setattr(self, "items", [x]),
+                    "addItem": lambda self, x: (
+                        getattr(self, "items", []).append(x)
+                        if hasattr(self, "items")
+                        else setattr(self, "items", [x])
+                    ),
                     "items": [],
                 },
             )()
@@ -76,7 +84,9 @@ def test_queue_commit_rejects_path_mismatch(monkeypatch):
 
     class Dummy:
         def __init__(self):
-            self.sel_textbox = type("S", (), {"get_path": lambda self: "D:/other.pdf"})()
+            self.sel_textbox = type(
+                "S", (), {"get_path": lambda self: "D:/other.pdf"}
+            )()
             self._textbox_queue = [
                 {
                     "file_path": "D:/docs/a.pdf",
@@ -94,7 +104,9 @@ def test_queue_commit_rejects_path_mismatch(monkeypatch):
     monkeypatch.setattr(
         _deps.QMessageBox,
         "warning",
-        staticmethod(lambda *a, **k: warnings.append(a) or QMessageBox.StandardButton.Ok),
+        staticmethod(
+            lambda *a, **k: warnings.append(a) or QMessageBox.StandardButton.Ok
+        ),
     )
     mod.action_textbox_queue_commit(Dummy())
     assert warnings
@@ -121,7 +133,9 @@ def test_same_path_requires_confirm(monkeypatch):
     class Dummy:
         def __init__(self):
             self.sel_textbox = type("S", (), {"get_path": lambda self: "D:/a.pdf"})()
-            self.txt_textbox_content = type("T", (), {"toPlainText": lambda self: "Hi"})()
+            self.txt_textbox_content = type(
+                "T", (), {"toPlainText": lambda self: "Hi"}
+            )()
             self.spn_tb_page = Spin(1)
             self.spn_tb_x = Spin(1.0)
             self.spn_tb_y = Spin(2.0)
@@ -133,9 +147,13 @@ def test_same_path_requires_confirm(monkeypatch):
             self.spn_tb_opacity = Spin(100)
             self.spn_tb_rotation = Spin(0)
             self.cmb_tb_align = type("A", (), {"currentData": lambda self: 0})()
-            self.cmb_tb_layer = type("L", (), {"currentData": lambda self: "foreground"})()
+            self.cmb_tb_layer = type(
+                "L", (), {"currentData": lambda self: "foreground"}
+            )()
             self.chk_tb_same_path = type("K", (), {"isChecked": lambda self: True})()
-            self.chk_tb_keep_placing = type("K", (), {"isChecked": lambda self: False})()
+            self.chk_tb_keep_placing = type(
+                "K", (), {"isChecked": lambda self: False}
+            )()
             self.preview_image = None
 
         def _choose_save_file(self, *a, **k):
@@ -172,7 +190,9 @@ def test_same_path_cancel_skips_worker(monkeypatch):
     class Dummy:
         def __init__(self):
             self.sel_textbox = type("S", (), {"get_path": lambda self: "D:/a.pdf"})()
-            self.txt_textbox_content = type("T", (), {"toPlainText": lambda self: "Hi"})()
+            self.txt_textbox_content = type(
+                "T", (), {"toPlainText": lambda self: "Hi"}
+            )()
             self.spn_tb_page = Spin(1)
             self.spn_tb_x = Spin(1.0)
             self.spn_tb_y = Spin(2.0)
@@ -184,9 +204,13 @@ def test_same_path_cancel_skips_worker(monkeypatch):
             self.spn_tb_opacity = Spin(100)
             self.spn_tb_rotation = Spin(0)
             self.cmb_tb_align = type("A", (), {"currentData": lambda self: 0})()
-            self.cmb_tb_layer = type("L", (), {"currentData": lambda self: "foreground"})()
+            self.cmb_tb_layer = type(
+                "L", (), {"currentData": lambda self: "foreground"}
+            )()
             self.chk_tb_same_path = type("K", (), {"isChecked": lambda self: True})()
-            self.chk_tb_keep_placing = type("K", (), {"isChecked": lambda self: False})()
+            self.chk_tb_keep_placing = type(
+                "K", (), {"isChecked": lambda self: False}
+            )()
             self.preview_image = None
 
         def run_worker(self, *a, **k):

@@ -22,6 +22,7 @@ from ..widgets import FileListWidget, ImageListWidget
 
 logger = logging.getLogger(__name__)
 
+
 def setup_convert_tab(self):
     tab = QWidget()
     layout = QVBoxLayout(tab)
@@ -161,33 +162,42 @@ def setup_convert_tab(self):
     l_txt.addWidget(b_txt)
     content_layout.addWidget(grp_txt)
 
-
     # PDF → Word 변환 기능 제거됨 (v4.2)
 
     content_layout.addStretch()
     scroll.setWidget(content)
     layout.addWidget(scroll)
-    add_tab(self.tabs, tab, tm.get('tab_convert'), icon="PHOTO")
+    add_tab(self.tabs, tab, tm.get("tab_convert"), icon="PHOTO")
+
 
 def _add_images(self):
-    files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_img"), "", tm.get("file_filter_images"))
+    files, _ = QFileDialog.getOpenFileNames(
+        self, tm.get("dlg_title_img"), "", tm.get("file_filter_images")
+    )
     for f in files:
         item = QListWidgetItem(f"🖼️ {os.path.basename(f)}")
         item.setData(Qt.ItemDataRole.UserRole, f)
         item.setToolTip(f)
         self.img_list.addItem(item)
 
+
 def _add_pdf_for_img(self):
     """이미지 변환용 PDF 추가"""
-    files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")
+    files, _ = QFileDialog.getOpenFileNames(
+        self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)"
+    )
     for f in files:
         self.img_conv_list.add_file(f)
 
+
 def _add_pdf_for_txt(self):
     """텍스트 추출용 PDF 추가"""
-    files, _ = QFileDialog.getOpenFileNames(self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)")
+    files, _ = QFileDialog.getOpenFileNames(
+        self, tm.get("dlg_title_pdf"), "", "PDF (*.pdf)"
+    )
     for f in files:
         self.txt_conv_list.add_file(f)
+
 
 def action_img(self):
     paths = self.img_conv_list.get_all_paths()
@@ -195,8 +205,14 @@ def action_img(self):
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_pdf_files"))
     d = self._choose_output_directory(tm.get("dlg_select_output_dir"))
     if d:
-        self.run_worker("convert_to_img", file_paths=paths, output_dir=d, 
-                      fmt=self.cmb_fmt.currentText(), dpi=self.spn_dpi.value())
+        self.run_worker(
+            "convert_to_img",
+            file_paths=paths,
+            output_dir=d,
+            fmt=self.cmb_fmt.currentText(),
+            dpi=self.spn_dpi.value(),
+        )
+
 
 def action_img_to_pdf(self):
     files = self.img_list.get_all_paths()
@@ -206,13 +222,16 @@ def action_img_to_pdf(self):
     if save:
         self.run_worker("images_to_pdf", files=files, output_path=save)
 
+
 def action_txt(self):
     paths = self.txt_conv_list.get_all_paths()
     if not paths:
         return QMessageBox.warning(self, tm.get("info"), tm.get("msg_add_pdf_files"))
     d = self._choose_output_directory(tm.get("dlg_select_output_dir"))
     if d:
-        use_ocr = bool(getattr(self, "chk_extract_ocr", None) and self.chk_extract_ocr.isChecked())
+        use_ocr = bool(
+            getattr(self, "chk_extract_ocr", None) and self.chk_extract_ocr.isChecked()
+        )
         self.run_worker(
             "extract_text",
             file_paths=paths,

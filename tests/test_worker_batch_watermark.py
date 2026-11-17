@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6_and_pymupdf
 
 from src.core.optional_deps import fitz
@@ -99,4 +98,3 @@ def test_batch_avoids_output_name_collisions_for_same_basename(tmp_path):
 
     assert (tmp_path / "same_processed.pdf").exists()
     assert (tmp_path / "same_processed__2.pdf").exists()
-

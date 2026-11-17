@@ -23,7 +23,11 @@ def _count_dark_pixels_in_strip(pix, x_start, x_end):
         row_offset = y * pix.stride
         for x in range(x_start, x_end):
             offset = row_offset + (x * channels)
-            if samples[offset] < 80 and samples[offset + 1] < 80 and samples[offset + 2] < 80:
+            if (
+                samples[offset] < 80
+                and samples[offset + 1] < 80
+                and samples[offset + 2] < 80
+            ):
                 count += 1
     return count
 

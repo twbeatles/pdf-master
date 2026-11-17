@@ -3,6 +3,7 @@
 single/batch/replace에 흩어져 있던 rect·스타일 파싱 3중복을 한 곳으로 모은다.
 동작은 기존 메서드와 동일하게 유지한다 (기본값·별칭 차이 포함).
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -40,7 +41,9 @@ def style_from_source(source: Mapping[str, Any]) -> dict[str, Any]:
     fontsize = max(1, _as_int(source.get("fontsize"), 12))
     raw_color = source.get("color", [0, 0, 0])
     try:
-        color = tuple(float(c) for c in cast(list[Any] | tuple[Any, ...], raw_color)[:3])
+        color = tuple(
+            float(c) for c in cast(list[Any] | tuple[Any, ...], raw_color)[:3]
+        )
         if len(color) < 3:
             color = (0.0, 0.0, 0.0)
     except Exception:
@@ -67,7 +70,9 @@ def fill_from_source(source: Mapping[str, Any]) -> tuple[float, float, float]:
     """교정(redact) 영역 배경색 파싱. 기본 흰색."""
     fill_color = source.get("fill_color", (1, 1, 1))
     try:
-        fill = tuple(float(c) for c in cast(list[Any] | tuple[Any, ...], fill_color)[:3])
+        fill = tuple(
+            float(c) for c in cast(list[Any] | tuple[Any, ...], fill_color)[:3]
+        )
         if len(fill) < 3:
             fill = (1.0, 1.0, 1.0)
     except Exception:

@@ -68,8 +68,14 @@ def resolve_image_optimize_options(
     grayscale_images: object = None,
 ) -> dict[str, Any]:
     """압축 프로필 + 명시 kwargs로 이미지/폰트 최적화 옵션을 결정한다."""
-    profile_name = normalize_save_profile(save_profile, default=DEFAULT_COMPRESSION_SAVE_PROFILE)
-    base = dict(IMAGE_OPTIMIZE_PROFILES.get(profile_name, IMAGE_OPTIMIZE_PROFILES[DEFAULT_COMPRESSION_SAVE_PROFILE]))
+    profile_name = normalize_save_profile(
+        save_profile, default=DEFAULT_COMPRESSION_SAVE_PROFILE
+    )
+    base = dict(
+        IMAGE_OPTIMIZE_PROFILES.get(
+            profile_name, IMAGE_OPTIMIZE_PROFILES[DEFAULT_COMPRESSION_SAVE_PROFILE]
+        )
+    )
 
     def _as_optional_bool(value: object) -> bool | None:
         if value is None:
@@ -91,7 +97,7 @@ def resolve_image_optimize_options(
             return None
         try:
             return float(value)  # type: ignore[arg-type]
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     def _as_optional_int(value: object) -> int | None:
@@ -99,7 +105,7 @@ def resolve_image_optimize_options(
             return None
         try:
             return int(value)  # type: ignore[arg-type]
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     opt_images = _as_optional_bool(optimize_images)
@@ -125,7 +131,9 @@ def resolve_image_optimize_options(
     return base
 
 
-def resolve_save_kwargs(doc: Any, output_path: str, save_profile: object = None, **save_kwargs: Any) -> dict[str, Any]:
+def resolve_save_kwargs(
+    doc: Any, output_path: str, save_profile: object = None, **save_kwargs: Any
+) -> dict[str, Any]:
     _ = doc
     _ = output_path
     profile_name = normalize_save_profile(save_profile)

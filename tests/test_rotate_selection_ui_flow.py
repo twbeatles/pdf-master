@@ -56,7 +56,9 @@ def _build_rotate_dummy(path, target="selected", angle=90, selected_pages=None):
         def _choose_save_file(self, title, default_name, file_filter):
             import src.ui.tabs_basic.page as page_module
 
-            return page_module.QFileDialog.getSaveFileName(self, title, default_name, file_filter)
+            return page_module.QFileDialog.getSaveFileName(
+                self, title, default_name, file_filter
+            )
 
     return Dummy()
 
@@ -92,7 +94,9 @@ def test_action_rotate_selected_pages_passes_page_indices(monkeypatch, tmp_path)
     src_pdf = tmp_path / "src.pdf"
     out_pdf = tmp_path / "out.pdf"
     src_pdf.write_bytes(b"%PDF-1.7\n")
-    dummy = _build_rotate_dummy(str(src_pdf), target="selected", angle=270, selected_pages=[0, 2])
+    dummy = _build_rotate_dummy(
+        str(src_pdf), target="selected", angle=270, selected_pages=[0, 2]
+    )
 
     monkeypatch.setattr(
         page_module.QFileDialog,
@@ -121,18 +125,24 @@ def test_action_rotate_selected_pages_requires_selection(monkeypatch, tmp_path):
 
     src_pdf = tmp_path / "src.pdf"
     src_pdf.write_bytes(b"%PDF-1.7\n")
-    dummy = _build_rotate_dummy(str(src_pdf), target="selected", angle=90, selected_pages=[])
+    dummy = _build_rotate_dummy(
+        str(src_pdf), target="selected", angle=90, selected_pages=[]
+    )
     warnings = []
 
     monkeypatch.setattr(
         page_module.QFileDialog,
         "getSaveFileName",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("save dialog should not open")),
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("save dialog should not open")
+        ),
     )
     monkeypatch.setattr(
         page_module.QMessageBox,
         "warning",
-        lambda *_args, **_kwargs: warnings.append(_args[2] if len(_args) >= 3 else _kwargs.get("text")),
+        lambda *_args, **_kwargs: warnings.append(
+            _args[2] if len(_args) >= 3 else _kwargs.get("text")
+        ),
     )
 
     dummy.action_rotate()

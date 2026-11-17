@@ -24,7 +24,9 @@ class PreviewFullscreenHost(QMainWindow):
     """미리보기 위젯을 담아 OS 전체화면으로 표시하는 호스트 창."""
 
     hostClosing = Signal()  # reparent 전에 호출 — 본창이 위젯을 회수 (포커스 유지)
-    layoutCycleExitRequested = Signal()  # F11: 전체화면+포커스 모두 해제 (메인 순환과 동일)
+    layoutCycleExitRequested = (
+        Signal()
+    )  # F11: 전체화면+포커스 모두 해제 (메인 순환과 동일)
     placeTextboxRequested = Signal()
     insertTextboxRequested = Signal()
 

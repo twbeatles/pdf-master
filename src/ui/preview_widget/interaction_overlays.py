@@ -1,4 +1,5 @@
 """미리보기 상호작용 오버레이 합성 facade."""
+
 from __future__ import annotations
 
 from .interaction_placement import PreviewPlacementInteractionMixin

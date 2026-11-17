@@ -48,7 +48,11 @@ def test_replace_transient_lock_is_retried(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     monkeypatch.setattr(update_installer, "REPLACE_MAX_ATTEMPTS", 3)
     monkeypatch.setattr(update_installer.time, "sleep", lambda *_a, **_k: None)
-    monkeypatch.setattr(update_installer.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("gone")))
+    monkeypatch.setattr(
+        update_installer.os,
+        "kill",
+        lambda pid, sig: (_ for _ in ()).throw(OSError("gone")),
+    )
 
     real_replace = _os.replace
     attempts = {"n": 0}
@@ -64,7 +68,9 @@ def test_replace_transient_lock_is_retried(monkeypatch, tmp_path) -> None:
     class _Completed:
         returncode = 0
 
-    monkeypatch.setattr(update_installer.subprocess, "run", lambda *a, **k: _Completed())
+    monkeypatch.setattr(
+        update_installer.subprocess, "run", lambda *a, **k: _Completed()
+    )
     monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
     target = tmp_path / "app.exe"
     staged = tmp_path / "staged.exe"
@@ -77,13 +83,19 @@ def test_replace_transient_lock_is_retried(monkeypatch, tmp_path) -> None:
 def test_nonwritable_target_delegates_to_elevated_helper(monkeypatch, tmp_path) -> None:
     """Program Files 등 보호 위치에서는 UAC 상승 인스턴스에 위임하고 결과 파일을 남기지 않는다."""
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    monkeypatch.setattr(update_installer.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("gone")))
+    monkeypatch.setattr(
+        update_installer.os,
+        "kill",
+        lambda pid, sig: (_ for _ in ()).throw(OSError("gone")),
+    )
     monkeypatch.setattr(update_installer, "_target_dir_writable", lambda _p: False)
     delegated = {}
     monkeypatch.setattr(
         update_installer,
         "_relaunch_elevated",
-        lambda *, target, staged, parent_pid: delegated.setdefault("args", (target, staged, parent_pid)) or True,
+        lambda *, target, staged, parent_pid: (
+            delegated.setdefault("args", (target, staged, parent_pid)) or True
+        ),
     )
     target = tmp_path / "app.exe"
     staged = tmp_path / "staged.exe"
@@ -94,12 +106,22 @@ def test_nonwritable_target_delegates_to_elevated_helper(monkeypatch, tmp_path) 
     assert not update_installer.update_result_path().exists()
 
 
-def test_nonwritable_target_elevation_declined_keeps_staged(monkeypatch, tmp_path) -> None:
+def test_nonwritable_target_elevation_declined_keeps_staged(
+    monkeypatch, tmp_path
+) -> None:
     """상승 실패 시에는 staged를 보존하고 수동 설치 안내를 결과에 남긴다."""
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    monkeypatch.setattr(update_installer.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("gone")))
+    monkeypatch.setattr(
+        update_installer.os,
+        "kill",
+        lambda pid, sig: (_ for _ in ()).throw(OSError("gone")),
+    )
     monkeypatch.setattr(update_installer, "_target_dir_writable", lambda _p: False)
-    monkeypatch.setattr(update_installer, "_relaunch_elevated", lambda *, target, staged, parent_pid: False)
+    monkeypatch.setattr(
+        update_installer,
+        "_relaunch_elevated",
+        lambda *, target, staged, parent_pid: False,
+    )
     target = tmp_path / "app.exe"
     staged = tmp_path / "staged.exe"
     target.write_bytes(b"old-exe")
@@ -127,7 +149,11 @@ def test_replace_cross_drive_falls_back_to_copy(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     monkeypatch.setattr(update_installer.time, "sleep", lambda *_a, **_k: None)
-    monkeypatch.setattr(update_installer.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("gone")))
+    monkeypatch.setattr(
+        update_installer.os,
+        "kill",
+        lambda pid, sig: (_ for _ in ()).throw(OSError("gone")),
+    )
 
     real_replace = _os.replace
     calls = {"n": 0}
@@ -143,7 +169,9 @@ def test_replace_cross_drive_falls_back_to_copy(monkeypatch, tmp_path) -> None:
     class _Completed:
         returncode = 0
 
-    monkeypatch.setattr(update_installer.subprocess, "run", lambda *a, **k: _Completed())
+    monkeypatch.setattr(
+        update_installer.subprocess, "run", lambda *a, **k: _Completed()
+    )
     monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
     target = tmp_path / "app.exe"
     staged = tmp_path / "staged.exe"
@@ -176,7 +204,11 @@ def test_launch_helper_prefers_staged_copy(monkeypatch, tmp_path) -> None:
 def _mock_quiet_parent(monkeypatch) -> None:
     """부모 종료 대기·슬립을 우회하는 공통 목."""
     monkeypatch.setattr(update_installer.time, "sleep", lambda *_a, **_k: None)
-    monkeypatch.setattr(update_installer.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("gone")))
+    monkeypatch.setattr(
+        update_installer.os,
+        "kill",
+        lambda pid, sig: (_ for _ in ()).throw(OSError("gone")),
+    )
 
 
 class _Completed:
@@ -189,7 +221,9 @@ def test_backup_created_by_rename_not_copy(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     _mock_quiet_parent(monkeypatch)
-    monkeypatch.setattr(update_installer.subprocess, "run", lambda *a, **k: _Completed())
+    monkeypatch.setattr(
+        update_installer.subprocess, "run", lambda *a, **k: _Completed()
+    )
     monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
 
     copies: list[tuple[str, str]] = []
@@ -213,7 +247,9 @@ def test_stale_backup_is_overwritten(monkeypatch, tmp_path) -> None:
     """이전 시도가 남긴 낡은 백업이 다음 시도를 막지 않는다."""
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     _mock_quiet_parent(monkeypatch)
-    monkeypatch.setattr(update_installer.subprocess, "run", lambda *a, **k: _Completed())
+    monkeypatch.setattr(
+        update_installer.subprocess, "run", lambda *a, **k: _Completed()
+    )
     monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
     target = tmp_path / "app.exe"
     staged = tmp_path / "staged.exe"
@@ -231,7 +267,9 @@ def test_interrupted_swap_between_moves_recovers_backup(monkeypatch, tmp_path) -
     """두 이동 사이에서 중단됐다면 다음 실행에서 백업으로 복구 후 교체한다."""
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     _mock_quiet_parent(monkeypatch)
-    monkeypatch.setattr(update_installer.subprocess, "run", lambda *a, **k: _Completed())
+    monkeypatch.setattr(
+        update_installer.subprocess, "run", lambda *a, **k: _Completed()
+    )
     monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: None)
     target = tmp_path / "app.exe"
     staged = tmp_path / "staged.exe"
@@ -272,12 +310,20 @@ def test_first_move_lock_keeps_installed_exe(monkeypatch, tmp_path) -> None:
 
 def test_clean_bootloader_env_strips_all_handoff_prefixes() -> None:
     dirty = {
-        "_MEIPASS": "x", "_MEIPASS2": "x", "_MEI12345": "x",
-        "_PYI_ARCHIVE_FILE": "x", "_PYI_PARENT_PROCESS_LEVEL": "x",
-        "_PYINSTALLER_FOO": "x", "PYINSTALLER_BAR": "x",
-        "PATH": "keep", "KEEP": "yes",
+        "_MEIPASS": "x",
+        "_MEIPASS2": "x",
+        "_MEI12345": "x",
+        "_PYI_ARCHIVE_FILE": "x",
+        "_PYI_PARENT_PROCESS_LEVEL": "x",
+        "_PYINSTALLER_FOO": "x",
+        "PYINSTALLER_BAR": "x",
+        "PATH": "keep",
+        "KEEP": "yes",
     }
-    assert update_installer.clean_bootloader_env(dict(dirty)) == {"PATH": "keep", "KEEP": "yes"}
+    assert update_installer.clean_bootloader_env(dict(dirty)) == {
+        "PATH": "keep",
+        "KEEP": "yes",
+    }
 
 
 def test_helper_and_relaunch_strip_bootloader_env(monkeypatch, tmp_path) -> None:
@@ -289,13 +335,22 @@ def test_helper_and_relaunch_strip_bootloader_env(monkeypatch, tmp_path) -> None
     monkeypatch.setenv("KEEP_ME", "yes")
 
     captured: dict[str, object] = {}
-    monkeypatch.setattr(update_installer.subprocess, "Popen", lambda *a, **k: captured.setdefault("env", k.get("env")))
+    monkeypatch.setattr(
+        update_installer.subprocess,
+        "Popen",
+        lambda *a, **k: captured.setdefault("env", k.get("env")),
+    )
     staged = tmp_path / "staged.exe"
     staged.write_bytes(b"new-exe")
     update_installer.launch_update_helper(target=tmp_path / "app.exe", staged=staged)
     helper_env = captured.get("env")
     assert isinstance(helper_env, dict)
-    for key in ("_MEIPASS2", "_PYI_ARCHIVE_FILE", "_PYI_PARENT_PROCESS_LEVEL", "PYINSTALLER_FOO"):
+    for key in (
+        "_MEIPASS2",
+        "_PYI_ARCHIVE_FILE",
+        "_PYI_PARENT_PROCESS_LEVEL",
+        "PYINSTALLER_FOO",
+    ):
         assert key not in helper_env
     assert helper_env.get("KEEP_ME") == "yes"
 
@@ -303,7 +358,12 @@ def test_helper_and_relaunch_strip_bootloader_env(monkeypatch, tmp_path) -> None
     update_installer._relaunch(tmp_path / "app.exe")
     relaunch_env = captured.get("env")
     assert isinstance(relaunch_env, dict)
-    for key in ("_MEIPASS2", "_PYI_ARCHIVE_FILE", "_PYI_PARENT_PROCESS_LEVEL", "PYINSTALLER_FOO"):
+    for key in (
+        "_MEIPASS2",
+        "_PYI_ARCHIVE_FILE",
+        "_PYI_PARENT_PROCESS_LEVEL",
+        "PYINSTALLER_FOO",
+    ):
         assert key not in relaunch_env
     assert relaunch_env.get("KEEP_ME") == "yes"
 

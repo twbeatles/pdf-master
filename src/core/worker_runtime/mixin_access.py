@@ -1,4 +1,5 @@
 """PDF 접근·메시지·AI·검증·preflight 믹스인."""
+
 from __future__ import annotations
 
 import logging

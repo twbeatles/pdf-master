@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """전 계층 코드 분할 실행 스크립트 (move-only)."""
+
 from __future__ import annotations
 
 import ast
@@ -31,7 +32,9 @@ def _class_methods(source: str, class_name: str):
             for b in node.body:
                 if isinstance(b, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     assert b.end_lineno
-                    chunk_src = "".join(lines[b.lineno - 1 : b.end_lineno]).rstrip() + "\n"
+                    chunk_src = (
+                        "".join(lines[b.lineno - 1 : b.end_lineno]).rstrip() + "\n"
+                    )
                     from split_mixin_package import MethodChunk
 
                     out.append(MethodChunk(b.name, chunk_src, b.lineno, b.end_lineno))
@@ -44,8 +47,10 @@ def adjust_worker_ops_preamble(preamble: str) -> str:
     out: list[str] = []
     for line in preamble.splitlines():
         s = line.lstrip()
-        if s.startswith("from ._") or s.startswith("from .pdf") or (
-            s.startswith("from .") and not s.startswith("from ..")
+        if (
+            s.startswith("from ._")
+            or s.startswith("from .pdf")
+            or (s.startswith("from .") and not s.startswith("from .."))
         ):
             out.append(line.replace("from .", "from ..", 1))
         elif s.startswith("from ..") and not s.startswith("from ..."):
@@ -68,7 +73,9 @@ def split_worker_domain(
     """groups: module_stem -> (MixinClassName, [method names])."""
     src = ROOT / src_rel
     source = src.read_text(encoding="utf-8")
-    preamble = adjust_worker_ops_preamble(extract_module_assignments_and_imports(source))
+    preamble = adjust_worker_ops_preamble(
+        extract_module_assignments_and_imports(source)
+    )
     methods = methods_by_name(_class_methods(source, class_name))
     used: set[str] = set()
 
@@ -82,7 +89,9 @@ def split_worker_domain(
         if missing:
             raise KeyError(missing)
         helper_src = "\n".join(funcs[n].source for n in helper_names)
-        helper_preamble = adjust_worker_ops_preamble(extract_module_assignments_and_imports(source))
+        helper_preamble = adjust_worker_ops_preamble(
+            extract_module_assignments_and_imports(source)
+        )
         # helpers may only need subset of imports — keep full preamble for safety
         (pkg_dir / f"{helpers_to_module}.py").write_text(
             f"{helper_preamble.rstrip()}\n\n\n{helper_src}",
@@ -134,7 +143,8 @@ def split_settings() -> None:
     source = src.read_text(encoding="utf-8")
     funcs = {f.name: f for f in extract_module_functions(source)}
     preamble = extract_module_assignments_and_imports(source)
-    # preamble uses relative imports from core — package submodule needs same depth? 
+
+    # preamble uses relative imports from core — package submodule needs same depth?
     # settings.py is in core/, package is core/settings/ → need one more dot
     def deepen(p: str) -> str:
         out = []
@@ -183,15 +193,22 @@ def split_settings() -> None:
         if fname == "defaults.py":
             pass
         if fname == "persistence.py":
-            header = preamble + "\nfrom .defaults import default_settings\nfrom .normalize import (\n"
+            header = (
+                preamble
+                + "\nfrom .defaults import default_settings\nfrom .normalize import (\n"
+            )
             header += "    _normalize_bool,\n    _normalize_chat_histories,\n    _normalize_language,\n"
             header += "    _normalize_last_output_dir,\n    _normalize_recent_files,\n"
             header += "    _normalize_splitter_sizes,\n    _normalize_theme,\n    _normalize_window_geometry,\n)\n"
         if fname == "api_key.py":
-            header = preamble + "\nfrom .persistence import load_settings, save_settings\n"
+            header = (
+                preamble + "\nfrom .persistence import load_settings, save_settings\n"
+            )
 
         text = header.rstrip() + "\n\n\n" + "\n".join(body_parts)
-        (pkg / fname).write_text(text if text.endswith("\n") else text + "\n", encoding="utf-8")
+        (pkg / fname).write_text(
+            text if text.endswith("\n") else text + "\n", encoding="utf-8"
+        )
 
     # Fix: SETTINGS_FILE lives in preamble assignments — put constants module
     (pkg / "config.py").write_text(preamble, encoding="utf-8")
@@ -199,7 +216,7 @@ def split_settings() -> None:
     # Rewrite modules to import config
 
     # Simpler approach: one shared config + function modules with explicit imports
-    shared = '''from __future__ import annotations
+    shared = """from __future__ import annotations
 
 import json
 import logging
@@ -221,7 +238,7 @@ if not KEYRING_AVAILABLE:
 
 KEYRING_SERVICE = "PDFMaster"
 KEYRING_USERNAME = "gemini_api_key"
-'''
+"""
     (pkg / "config.py").write_text(shared + "\n", encoding="utf-8")
 
     def write_funcs(path: Path, names: list[str], extra_imports: str = "") -> None:
@@ -267,7 +284,7 @@ KEYRING_USERNAME = "gemini_api_key"
     )
 
     (pkg / "__init__.py").write_text(
-        '''from __future__ import annotations
+        """from __future__ import annotations
 
 from .api_key import _legacy_set_api_key, get_api_key, set_api_key
 from .config import KEYRING_SERVICE, KEYRING_USERNAME, SETTINGS_FILE
@@ -304,7 +321,7 @@ __all__ = [
     "_normalize_last_output_dir",
     "_normalize_bool",
 ]
-''',
+""",
         encoding="utf-8",
     )
 
@@ -341,7 +358,7 @@ __all__ = [
     )
     # Fix write_facade - it wraps import wrong. Overwrite properly.
     src.write_text(
-        '''from __future__ import annotations
+        """from __future__ import annotations
 
 from ._settings_impl import (
     KEYRING_SERVICE,
@@ -384,7 +401,7 @@ __all__ = [
     "_normalize_last_output_dir",
     "_normalize_bool",
 ]
-''',
+""",
         encoding="utf-8",
     )
     print("OK settings -> _settings_impl/")
@@ -425,7 +442,11 @@ def split_constants() -> None:
                     continue
                 # multi-line docstring
                 quote = '"""' if '"""' in line else "'''"
-                if line.strip() != quote and line.strip().endswith(quote) and line.strip().startswith(quote):
+                if (
+                    line.strip() != quote
+                    and line.strip().endswith(quote)
+                    and line.strip().startswith(quote)
+                ):
                     started = True
                     continue
                 # consume until closing
@@ -440,10 +461,14 @@ def split_constants() -> None:
     lines = text.splitlines(keepends=True)
     chunks = []
     for node in tree.body:
-        if isinstance(node, ast.Expr) and isinstance(getattr(node, "value", None), ast.Constant):
+        if isinstance(node, ast.Expr) and isinstance(
+            getattr(node, "value", None), ast.Constant
+        ):
             continue
         assert node.end_lineno
-        chunks.append("".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n\n")
+        chunks.append(
+            "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n\n"
+        )
     (pkg / "values.py").write_text(
         "from __future__ import annotations\n\n" + "".join(chunks),
         encoding="utf-8",
@@ -464,6 +489,7 @@ def split_constants() -> None:
 def split_undo() -> None:
     src = ROOT / "src/core/undo_manager.py"
     source = src.read_text(encoding="utf-8")
+
     # deepen for package
     def deepen(p: str) -> str:
         out = []
@@ -491,22 +517,22 @@ def split_undo() -> None:
         encoding="utf-8",
     )
     (pkg / "__init__.py").write_text(
-        '''from __future__ import annotations
+        """from __future__ import annotations
 
 from .manager import UndoManager
 from .models import ActionRecord
 
 __all__ = ["ActionRecord", "UndoManager"]
-''',
+""",
         encoding="utf-8",
     )
     src.write_text(
-        '''from __future__ import annotations
+        """from __future__ import annotations
 
 from ._undo_impl import ActionRecord, UndoManager
 
 __all__ = ["ActionRecord", "UndoManager"]
-''',
+""",
         encoding="utf-8",
     )
     print("OK undo_manager -> _undo_impl/")
@@ -537,7 +563,9 @@ def split_ui_widget_mixins(
                 if isinstance(b, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     continue
                 assert b.end_lineno
-                class_attrs += "".join(lines[b.lineno - 1 : b.end_lineno]).rstrip() + "\n"
+                class_attrs += (
+                    "".join(lines[b.lineno - 1 : b.end_lineno]).rstrip() + "\n"
+                )
 
     imports: list[tuple[str, str]] = []
     parts: list[str] = []
@@ -554,7 +582,9 @@ def split_ui_widget_mixins(
                 body += f"    {al}\n" if al.strip() else "\n"
             body += "\n"
         body += method_src
-        (package_dir / f"{mod}.py").write_text(body if body.endswith("\n") else body + "\n", encoding="utf-8")
+        (package_dir / f"{mod}.py").write_text(
+            body if body.endswith("\n") else body + "\n", encoding="utf-8"
+        )
         imports.append((mod, mixin_name))
         parts.append(mixin_name)
 

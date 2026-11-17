@@ -6,6 +6,7 @@ from __future__ import annotations
 # -------------------------------------------------------------------------
 class ThemeColors:
     """향상된 색상 팔레트 (v4.1 Premium)"""
+
     # Primary Accent (통일된 파란색 - 더 생동감 있게)
     PRIMARY = "#4f8cff"
     PRIMARY_LIGHT = "#7fb3ff"

@@ -92,7 +92,11 @@ def test_map_too_small_returns_none():
 
 
 def test_format_rect_coords():
-    assert format_rect_coords((1.234, 5.678, 9.0, 10.1), decimals=1) == "1.2,5.7,9.0,10.1"
+    assert (
+        format_rect_coords((1.234, 5.678, 9.0, 10.1), decimals=1) == "1.2,5.7,9.0,10.1"
+    )
+
+
 def test_map_page_points_to_viewport_roundtrip():
     page_display = QRectF(50, 50, 200, 300)
     view = map_page_points_to_viewport_rect(

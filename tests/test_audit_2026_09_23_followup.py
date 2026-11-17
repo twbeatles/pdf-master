@@ -4,6 +4,7 @@ ISSUE-001 매니페스트 게시 재시도 / ISSUE-002 조용한 실패 표면�
 ISSUE-003 다운로드 재시도 / ISSUE-004 비모달 대기열 + 만료 정책 표면화,
 E2E 시뮬레이션, 문서 정합성을 검증한다.
 """
+
 from __future__ import annotations
 
 import base64
@@ -31,10 +32,14 @@ def _signed_document(payload: dict) -> tuple[dict, str]:
 
     document = {
         "payload": payload,
-        "signature": base64.b64encode(private.sign(canonical_manifest_payload(payload))).decode(),
+        "signature": base64.b64encode(
+            private.sign(canonical_manifest_payload(payload))
+        ).decode(),
     }
     public = base64.b64encode(
-        private.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        private.public_key().public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw
+        )
     ).decode()
     return document, public
 
@@ -57,12 +62,19 @@ def test_manifest_expiry_status_classification() -> None:
     assert manifest_expiry_status(now + timedelta(days=10)) == "expiring_soon"
     assert manifest_expiry_status(now + timedelta(days=400)) == "valid"
     # naive datetime도 UTC로 간주
-    assert manifest_expiry_status(datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)) == "expired"
+    assert (
+        manifest_expiry_status(
+            datetime.now(UTC).replace(tzinfo=None) - timedelta(days=1)
+        )
+        == "expired"
+    )
     assert days_until_expiry(now + timedelta(days=10, hours=12)) == 10
 
 
 def test_verify_expired_manifest_rejected() -> None:
-    document, public = _signed_document(_payload(expires_at=(datetime.now(UTC) - timedelta(days=1)).isoformat()))
+    document, public = _signed_document(
+        _payload(expires_at=(datetime.now(UTC) - timedelta(days=1)).isoformat())
+    )
     try:
         verify_release_manifest(document, public_key=public, current_version="1.0.0")
     except ValueError as exc:
@@ -138,7 +150,9 @@ def test_stage_update_failure_cleans_staging(monkeypatch, tmp_path) -> None:
 
     from urllib.error import URLError
 
-    monkeypatch.setattr(installer, "urlopen", lambda *a, **k: (_ for _ in ()).throw(URLError("down")))
+    monkeypatch.setattr(
+        installer, "urlopen", lambda *a, **k: (_ for _ in ()).throw(URLError("down"))
+    )
     monkeypatch.setattr(installer.time, "sleep", lambda *_a, **_k: None)
     try:
         installer.stage_update(manifest, max_retries=2, retry_backoff=0)
@@ -189,14 +203,26 @@ def test_stage_update_policy_error_does_not_retry(monkeypatch, tmp_path) -> None
 def test_update_service_delegates(monkeypatch) -> None:
     from src.core import update_service as service
 
-    sentinel = ReleaseManifest("9.0.0", "https://example.com/x.exe", "0" * 64, 1,
-                               datetime.now(UTC) + timedelta(days=10))
+    sentinel = ReleaseManifest(
+        "9.0.0",
+        "https://example.com/x.exe",
+        "0" * 64,
+        1,
+        datetime.now(UTC) + timedelta(days=10),
+    )
     monkeypatch.setattr(service, "download_release_manifest", lambda url: b"doc")
     monkeypatch.setattr(service, "verify_release_manifest", lambda doc, **kw: sentinel)
-    assert service.check_for_update(manifest_url="https://m", public_key="k", current_version="1") is sentinel
+    assert (
+        service.check_for_update(
+            manifest_url="https://m", public_key="k", current_version="1"
+        )
+        is sentinel
+    )
 
     staged = Path("/tmp/staged.exe")
-    monkeypatch.setattr(service, "stage_update", lambda manifest, progress, max_retries=3: staged)
+    monkeypatch.setattr(
+        service, "stage_update", lambda manifest, progress, max_retries=3: staged
+    )
     assert service.download_update(sentinel) == staged
 
 
@@ -260,7 +286,11 @@ def test_manual_current_includes_last_error(monkeypatch) -> None:
     mixin_module, dummy = _update_dummy()
     dummy._last_update_check_error = "dns down"
     shown = {}
-    monkeypatch.setattr(mixin_module.QMessageBox, "information", lambda *a, **k: shown.setdefault("text", a[2]))
+    monkeypatch.setattr(
+        mixin_module.QMessageBox,
+        "information",
+        lambda *a, **k: shown.setdefault("text", a[2]),
+    )
     dummy._show_update_current()
     assert "dns down" in shown["text"]
 
@@ -340,7 +370,9 @@ def test_run_worker_queues_without_modal(monkeypatch) -> None:
 
     class Dummy(worker_module.MainWindowWorkerMixin):
         def __init__(self):
-            self.worker = _RunningWorkerStub("rotate", file_path="a.pdf", output_path="out.pdf")
+            self.worker = _RunningWorkerStub(
+                "rotate", file_path="a.pdf", output_path="out.pdf"
+            )
             self._pending_workers = []
             self.status_label = _LabelStub()
             self.progress_bar = _ProgressBarStub()
@@ -429,7 +461,9 @@ def test_apply_update_e2e_success_and_rollback(monkeypatch, tmp_path) -> None:
     from src.core import update_installer as installer
 
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    monkeypatch.setattr(installer.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("gone")))
+    monkeypatch.setattr(
+        installer.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("gone"))
+    )
 
     pops: list = []
 
@@ -443,7 +477,9 @@ def test_apply_update_e2e_success_and_rollback(monkeypatch, tmp_path) -> None:
     target.write_bytes(b"old-exe")
     staged.write_bytes(b"new-exe")
     monkeypatch.setattr(installer.subprocess, "run", lambda *a, **k: _Completed(0))
-    monkeypatch.setattr(installer.subprocess, "Popen", lambda *a, **k: pops.append(a) or None)
+    monkeypatch.setattr(
+        installer.subprocess, "Popen", lambda *a, **k: pops.append(a) or None
+    )
     assert installer.apply_update(str(target), str(staged), 123456) == 0
     assert target.read_bytes() == b"new-exe"
     _applied = installer.consume_update_result()
@@ -506,7 +542,9 @@ def test_release_checklist_documents_expiry() -> None:
 
 
 def test_manifest_expiry_watch_workflow_exists() -> None:
-    text = Path(".github/workflows/update-manifest-expiry.yml").read_text(encoding="utf-8")
+    text = Path(".github/workflows/update-manifest-expiry.yml").read_text(
+        encoding="utf-8"
+    )
     assert "cron:" in text
     assert "check_update_manifest_expiry.py" in text
 
@@ -515,7 +553,12 @@ def _write_manifest_doc(path: Path, expires_at: str) -> None:
     import json
 
     path.write_text(
-        json.dumps({"payload": {"version": "9.0.0", "expires_at": expires_at}, "signature": "x"}),
+        json.dumps(
+            {
+                "payload": {"version": "9.0.0", "expires_at": expires_at},
+                "signature": "x",
+            }
+        ),
         encoding="utf-8",
     )
 

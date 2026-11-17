@@ -1,4 +1,5 @@
 """AI Worker 핸들러: summarize / ask / keywords."""
+
 from __future__ import annotations
 
 import logging
@@ -83,7 +84,9 @@ class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
                     self._get_msg("msg_ai_summary_done_acl_warn", summary_len)
                 )
             else:
-                self.finished_signal.emit(self._get_msg("msg_ai_summary_done", summary_len))
+                self.finished_signal.emit(
+                    self._get_msg("msg_ai_summary_done", summary_len)
+                )
         except Exception as exc:
             self._reraise_if_cancelled(exc)
             logger.error("AI summarization failed: %s", exc)
@@ -127,7 +130,9 @@ class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
             answer_payload = ai_service.ask_about_pdf(
                 pdf_path=resolved,
                 question=str(question),
-                conversation_history=cast(list[dict[str, Any]], conversation_history or []),
+                conversation_history=cast(
+                    list[dict[str, Any]], conversation_history or []
+                ),
                 partial_callback=self._ai_partial_callback,
                 cancel_check=self._check_cancelled,
             )
@@ -206,7 +211,9 @@ class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
                     )
             else:
                 if acl_bad:
-                    self.finished_signal.emit(self._get_msg("msg_ai_keywords_empty_acl_warn"))
+                    self.finished_signal.emit(
+                        self._get_msg("msg_ai_keywords_empty_acl_warn")
+                    )
                 else:
                     self.finished_signal.emit(self._get_msg("msg_ai_keywords_empty"))
         except Exception as exc:

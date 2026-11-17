@@ -37,7 +37,10 @@ def _is_non_retryable(exc: BaseException) -> bool:
     if exc.__class__.__name__ == "CancelledError":
         return True
     error_text = str(exc).lower()
-    if any(token in error_text for token in ("api key", "authentication", "invalid api key")):
+    if any(
+        token in error_text
+        for token in ("api key", "authentication", "invalid api key")
+    ):
         return True
     if "취소" in str(exc) or "cancelled" in error_text or "canceled" in error_text:
         return True
@@ -80,6 +83,7 @@ def retry_with_backoff(
             raw_cancel = kwargs.get("cancel_check")
             cancel_cb: Callable[[], None] | None = None
             if callable(raw_cancel):
+
                 def _bound_cancel(cb: Callable[..., object] = raw_cancel) -> None:
                     cb()
 
@@ -93,17 +97,25 @@ def retry_with_backoff(
                     if _is_non_retryable(exc):
                         if any(
                             token in str(exc).lower()
-                            for token in ("api key", "authentication", "invalid api key")
+                            for token in (
+                                "api key",
+                                "authentication",
+                                "invalid api key",
+                            )
                         ) and not isinstance(exc, APIKeyError):
                             raise APIKeyError(str(exc)) from exc
                         raise
                     error_text = str(exc).lower()
-                    if any(token in error_text for token in ("rate limit", "quota", "429")):
+                    if any(
+                        token in error_text for token in ("rate limit", "quota", "429")
+                    ):
                         if attempt >= max_retries:
                             raise APIRateLimitError(str(exc)) from exc
                     if attempt >= max_retries:
                         raise
-                    delay = min(base_delay * (2 ** attempt) + random.uniform(0, 1), max_delay)
+                    delay = min(
+                        base_delay * (2**attempt) + random.uniform(0, 1), max_delay
+                    )
                     logger.warning("AI call failed, retrying in %.1fs: %s", delay, exc)
                     _interruptible_sleep(delay, cancel_cb)
             if last_error is not None:

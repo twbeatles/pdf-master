@@ -24,6 +24,7 @@ class ProgressOverlayWidget(QFrame):
         - 진행바 + 취소 버튼
         - 작업 설명 표시
     """
+
     cancelled = Signal()
 
     def __init__(self, parent=None):

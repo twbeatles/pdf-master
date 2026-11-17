@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """잔여 UI 대형 모듈 분할: file_selection, tabs_ai actions, security, misc builder."""
+
 from __future__ import annotations
 
 import ast
@@ -29,21 +30,23 @@ def split_file_selection() -> None:
     lines = source.splitlines(keepends=True)
 
     # module docstring + imports shared
-    first_class_lineno = min(
-        n.lineno for n in tree.body if isinstance(n, ast.ClassDef)
-    )
+    first_class_lineno = min(n.lineno for n in tree.body if isinstance(n, ast.ClassDef))
     preamble = "".join(lines[: first_class_lineno - 1])
 
     classes = {}
     for node in tree.body:
         if isinstance(node, ast.ClassDef):
             assert node.end_lineno
-            classes[node.name] = "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+            classes[node.name] = (
+                "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+            )
 
     for name, body in classes.items():
         stem = "drop_zone" if name == "DropZoneWidget" else "file_selector"
         content = preamble.rstrip() + "\n\n\n" + body + "\n"
-        (ROOT / "src/ui/common_widgets" / f"{stem}.py").write_text(content, encoding="utf-8")
+        (ROOT / "src/ui/common_widgets" / f"{stem}.py").write_text(
+            content, encoding="utf-8"
+        )
 
     facade = '''"""파일 선택 위젯 facade."""
 from __future__ import annotations
@@ -68,7 +71,9 @@ def split_tabs_ai_actions() -> None:
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             assert node.end_lineno
-            funcs[node.name] = "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+            funcs[node.name] = (
+                "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+            )
         elif isinstance(node, (ast.Import, ast.ImportFrom, ast.Assign)):
             end = node.end_lineno or node.lineno
             preamble_parts.append("".join(lines[node.lineno - 1 : end]).rstrip() + "\n")
@@ -104,7 +109,9 @@ def split_tabs_ai_actions() -> None:
         used.update(names)
         all_names.extend(names)
         body = "\n".join(funcs[n] for n in names)
-        (pkg / f"{stem}.py").write_text(preamble.rstrip() + "\n\n" + body + "\n", encoding="utf-8")
+        (pkg / f"{stem}.py").write_text(
+            preamble.rstrip() + "\n\n" + body + "\n", encoding="utf-8"
+        )
     leftover = set(funcs) - used
     if leftover:
         raise SystemExit(f"leftover {leftover}")
@@ -142,7 +149,9 @@ def split_security() -> None:
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             assert node.end_lineno
-            funcs[node.name] = "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+            funcs[node.name] = (
+                "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+            )
         else:
             if isinstance(node, ast.Expr) and node is tree.body[0]:
                 continue
@@ -224,12 +233,14 @@ def split_misc_builder() -> None:
         end = section_starts[idx + 1][0] if idx + 1 < len(section_starts) else len(body)
         sections.append((slug, title, body[start:end]))
     last_slug, last_title, last_lines = sections[-1]
-    stretch_at = next(i for i, line in enumerate(last_lines) if "layout.addStretch()" in line)
+    stretch_at = next(
+        i for i, line in enumerate(last_lines) if "layout.addStretch()" in line
+    )
     sections[-1] = (last_slug, last_title, last_lines[:stretch_at])
     trailer = last_lines[stretch_at:]
 
     # imports for sections — deepen one level
-    imports = '''from __future__ import annotations
+    imports = """from __future__ import annotations
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -250,7 +261,7 @@ from PySide6.QtWidgets import (
 
 from .....core.i18n import tm
 from ....widgets import FileSelectorWidget
-'''
+"""
 
     pkg = ROOT / "src/ui/tabs_advanced/tab_builders/misc_sections"
     pkg.mkdir(parents=True, exist_ok=True)
@@ -265,7 +276,7 @@ from ....widgets import FileSelectorWidget
         seen.add(slug)
         unique.append((slug, title, sec_lines))
         fn = f"build_{slug}"
-        content = imports + f"\n\ndef {fn}(self, layout) -> None:\n    \"\"\"{title}\"\"\"\n"
+        content = imports + f'\n\ndef {fn}(self, layout) -> None:\n    """{title}"""\n'
         for line in sec_lines:
             content += line if line.endswith("\n") else line + "\n"
         (pkg / f"{slug}.py").write_text(content, encoding="utf-8")
@@ -274,7 +285,7 @@ from ....widgets import FileSelectorWidget
     for slug, _t, _ in unique:
         init_lines.append(f"from .{slug} import build_{slug}")
     init_lines.append("")
-    init_lines.append(f"__all__ = {[f'build_{s}' for s,_,_ in unique]!r}")
+    init_lines.append(f"__all__ = {[f'build_{s}' for s, _, _ in unique]!r}")
     init_lines.append("")
     (pkg / "__init__.py").write_text("\n".join(init_lines), encoding="utf-8")
 

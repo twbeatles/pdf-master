@@ -20,9 +20,11 @@ def _item_user_data(item: QListWidgetItem | None) -> Any | None:
         return None
     return item.data(Qt.ItemDataRole.UserRole)
 
+
 def _item_user_path(item: QListWidgetItem | None) -> str | None:
     data = _item_user_data(item)
     return data if isinstance(data, str) else None
+
 
 def is_valid_pdf(file_path: str) -> bool:
     """
@@ -39,6 +41,7 @@ def is_valid_pdf(file_path: str) -> bool:
         logger.warning("Invalid PDF file (%s): %s", result.reason, file_path)
     return result.ok
 
+
 def is_pdf_encrypted(file_path: str) -> bool | None:
     """
     PDF 파일 암호화 여부 확인 (v4.5: 공용 함수)
@@ -54,7 +57,9 @@ def is_pdf_encrypted(file_path: str) -> bool | None:
         return None
 
     if not FITZ_AVAILABLE:
-        logger.debug("PyMuPDF not available; skipping encrypted PDF check for %s", file_path)
+        logger.debug(
+            "PyMuPDF not available; skipping encrypted PDF check for %s", file_path
+        )
         return None
 
     try:
@@ -67,8 +72,10 @@ def is_pdf_encrypted(file_path: str) -> bool | None:
         logger.debug(f"Cannot check PDF encryption: {file_path}: {e}")
         return None
 
+
 class WheelEventFilter(QObject):
     """QSpinBox, QComboBox 등에서 스크롤 휠로 값이 변경되는 것을 방지"""
+
     def eventFilter(self, a0: QObject | None, a1: QEvent | None) -> bool:
         if a1 is not None and a1.type() == QEvent.Type.Wheel:
             return True  # 휠 이벤트 차단

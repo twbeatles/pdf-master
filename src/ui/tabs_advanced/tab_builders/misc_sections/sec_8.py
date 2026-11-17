@@ -38,4 +38,3 @@ def build_sec_8(self, layout) -> None:
     l_form.addLayout(btn_form_layout)
     l_form.addWidget(b_flatten)
     layout.addWidget(grp_form)
-

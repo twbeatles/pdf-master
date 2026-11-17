@@ -31,4 +31,3 @@ def build_sec_159(self, layout) -> None:
     attach_btns.addWidget(b_extract_attach)
     l_attach.addLayout(attach_btns)
     layout.addWidget(grp_attach)
-

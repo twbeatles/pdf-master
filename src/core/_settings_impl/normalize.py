@@ -23,13 +23,18 @@ def _normalize_recent_files(value) -> list[str]:
         normalized.append(path_key)
     return normalized
 
+
 def _normalize_chat_histories(value) -> dict:
     if not isinstance(value, dict):
         return {}
     normalized: dict[str, list[dict[str, str]]] = {}
     for raw_path, raw_entries in value.items():
         path_key, version_mtime_ns = parse_chat_history_key(raw_path)
-        if not path_key or not isinstance(raw_entries, list) or not os.path.exists(path_key):
+        if (
+            not path_key
+            or not isinstance(raw_entries, list)
+            or not os.path.exists(path_key)
+        ):
             continue
         history_key = (
             make_chat_history_key(path_key, version_mtime_ns)
@@ -57,6 +62,7 @@ def _normalize_chat_histories(value) -> dict:
         trimmed = dict(list(trimmed.items())[-MAX_CHAT_HISTORY_PDFS:])
     return trimmed
 
+
 def _normalize_splitter_sizes(value) -> list[int] | None:
     if value is None:
         return None
@@ -74,11 +80,14 @@ def _normalize_splitter_sizes(value) -> list[int] | None:
 
     return normalized or None
 
+
 def _normalize_theme(value) -> str:
     return value if value in {"dark", "light", "auto"} else "dark"
 
+
 def _normalize_language(value) -> str:
     return value if value in {"auto", "ko", "en"} else "auto"
+
 
 def _normalize_window_geometry(value):
     if value is None:
@@ -89,8 +98,10 @@ def _normalize_window_geometry(value):
         return value
     return None
 
+
 def _normalize_last_output_dir(value) -> str:
     return value if isinstance(value, str) else ""
+
 
 def _normalize_bool(value, default: bool = False) -> bool:
     if isinstance(value, bool):

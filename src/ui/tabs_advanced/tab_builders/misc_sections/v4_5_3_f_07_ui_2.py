@@ -29,4 +29,3 @@ def build_v4_5_3_f_07_ui_2(self, layout) -> None:
     b_set_bookmarks.clicked.connect(self.action_set_bookmarks)
     l_set_bookmarks.addWidget(b_set_bookmarks)
     layout.addWidget(grp_set_bookmarks)
-

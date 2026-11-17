@@ -70,7 +70,9 @@ class ThumbnailLabel(QFrame):
                 }
                 """
             )
-            self.page_label.setStyleSheet("color: #4f8cff; font-size: 11px; font-weight: bold;")
+            self.page_label.setStyleSheet(
+                "color: #4f8cff; font-size: 11px; font-weight: bold;"
+            )
         elif self._active:
             self.setStyleSheet(
                 """
@@ -84,7 +86,9 @@ class ThumbnailLabel(QFrame):
                 }
                 """
             )
-            self.page_label.setStyleSheet("color: #4f8cff; font-size: 11px; font-weight: bold;")
+            self.page_label.setStyleSheet(
+                "color: #4f8cff; font-size: 11px; font-weight: bold;"
+            )
         elif self._selected:
             self.setStyleSheet(
                 """
@@ -98,7 +102,9 @@ class ThumbnailLabel(QFrame):
                 }
                 """
             )
-            self.page_label.setStyleSheet("color: #00d9a0; font-size: 11px; font-weight: bold;")
+            self.page_label.setStyleSheet(
+                "color: #00d9a0; font-size: 11px; font-weight: bold;"
+            )
         else:
             self.setStyleSheet(
                 """

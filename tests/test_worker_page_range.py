@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6
 
 
@@ -8,7 +7,16 @@ def test_parse_page_range_forward_and_reverse():
 
     w = WorkerThread("merge")
 
-    assert w._parse_page_range("1-3, 5, 7-10", total_pages=12) == [0, 1, 2, 4, 6, 7, 8, 9]
+    assert w._parse_page_range("1-3, 5, 7-10", total_pages=12) == [
+        0,
+        1,
+        2,
+        4,
+        6,
+        7,
+        8,
+        9,
+    ]
     assert w._parse_page_range("5-1", total_pages=10) == [4, 3, 2, 1, 0]
 
 
@@ -23,4 +31,3 @@ def test_parse_page_range_dedup_and_limit():
     # MAX_PAGE_RANGE_LENGTH=1000 (constants) - ensure we cap
     pages = w._parse_page_range("1-2000", total_pages=5000)
     assert len(pages) == 1000
-

@@ -5,7 +5,12 @@ from contextlib import AbstractContextManager
 from typing import Any
 
 
-def perf_log(stage: str, elapsed_ms: float, extra: dict[str, Any] | None = None, logger: logging.Logger | None = None):
+def perf_log(
+    stage: str,
+    elapsed_ms: float,
+    extra: dict[str, Any] | None = None,
+    logger: logging.Logger | None = None,
+):
     """Emit a standardized performance log line."""
     target_logger = logger or logging.getLogger(__name__)
     meta = "{}"
@@ -20,7 +25,12 @@ def perf_log(stage: str, elapsed_ms: float, extra: dict[str, Any] | None = None,
 class PerfTimer(AbstractContextManager):
     """Simple context manager for timing code blocks."""
 
-    def __init__(self, name: str, logger: logging.Logger | None = None, extra: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        name: str,
+        logger: logging.Logger | None = None,
+        extra: dict[str, Any] | None = None,
+    ):
         self.name = name
         self.logger = logger or logging.getLogger(__name__)
         self.extra = extra or {}

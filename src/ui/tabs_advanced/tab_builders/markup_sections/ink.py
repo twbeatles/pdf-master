@@ -56,4 +56,3 @@ def build_ink(self, layout) -> None:
     b_ink.clicked.connect(self.action_add_ink_annotation)
     l_ink.addWidget(b_ink)
     layout.addWidget(grp_ink)
-

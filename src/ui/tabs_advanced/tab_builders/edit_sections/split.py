@@ -41,4 +41,3 @@ def build_split(self, layout) -> None:
     b_split.clicked.connect(self.action_split_adv)
     l_split.addWidget(b_split)
     layout.addWidget(grp_split)
-

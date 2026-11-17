@@ -7,6 +7,7 @@ class LoadingSpinner(QLabel):
     간단한 로딩 스피너 (텍스트 기반)
     실제 애니메이션 대신 이모지 회전으로 표현
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setText("⏳")
@@ -17,6 +18,7 @@ class LoadingSpinner(QLabel):
         self._current_frame = 0
 
         from PySide6.QtCore import QTimer
+
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._animate)
 

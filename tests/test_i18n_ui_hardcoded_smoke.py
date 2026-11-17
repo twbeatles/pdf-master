@@ -35,18 +35,28 @@ def test_no_hardcoded_korean_string_literals_in_runtime_ui_files():
             # 모듈/클래스/함수 docstring 무시
             if isinstance(p, ast.Expr):
                 gp = parent.get(p)
-                if isinstance(gp, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if isinstance(
+                    gp,
+                    (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef),
+                ):
                     continue
 
             # i18n key/format은 허용 (tm.get("..."))
             if isinstance(p, ast.Call):
                 fn = p.func
-                if isinstance(fn, ast.Attribute) and fn.attr == "get" and isinstance(fn.value, ast.Name) and fn.value.id == "tm":
+                if (
+                    isinstance(fn, ast.Attribute)
+                    and fn.attr == "get"
+                    and isinstance(fn.value, ast.Name)
+                    and fn.value.id == "tm"
+                ):
                     continue
 
             violations.append(f"{rel}:{getattr(node, 'lineno', '?')}")
 
-    assert not violations, "Hardcoded Korean string literals found:\n" + "\n".join(violations)
+    assert not violations, "Hardcoded Korean string literals found:\n" + "\n".join(
+        violations
+    )
 
 
 def test_tm_get_keys_used_in_src_exist_in_both_languages():

@@ -1,4 +1,5 @@
 """Staging, result reporting, and safe application of Windows EXE updates."""
+
 from __future__ import annotations
 
 import errno
@@ -31,7 +32,9 @@ def _write_result(status: str, **extra: object) -> None:
     root.mkdir(parents=True, exist_ok=True)
     target = update_result_path()
     tmp = target.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"status": status, **extra}, ensure_ascii=False), encoding="utf-8")
+    tmp.write_text(
+        json.dumps({"status": status, **extra}, ensure_ascii=False), encoding="utf-8"
+    )
     os.replace(tmp, target)
 
 
@@ -40,7 +43,7 @@ def consume_update_result() -> dict[str, object] | None:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
         return value if isinstance(value, dict) else None
-    except (OSError, ValueError, json.JSONDecodeError):
+    except OSError, ValueError, json.JSONDecodeError:
         return None
     finally:
         try:
@@ -77,9 +80,19 @@ def _is_transient_stage_error(exc: BaseException) -> bool:
     return isinstance(exc, (OSError, TimeoutError, ConnectionError))
 
 
-def _stage_update_once(manifest: ReleaseManifest, progress: Callable[[int], None] | None, staged: Path) -> Path:
+def _stage_update_once(
+    manifest: ReleaseManifest, progress: Callable[[int], None] | None, staged: Path
+) -> Path:
     digest, total = hashlib.sha256(), 0
-    with urlopen(Request(manifest.artifact_url, headers={"User-Agent": "PDF-Master-Updater"}), timeout=30) as response, open(staged, "xb") as out:
+    with (
+        urlopen(
+            Request(
+                manifest.artifact_url, headers={"User-Agent": "PDF-Master-Updater"}
+            ),
+            timeout=30,
+        ) as response,
+        open(staged, "xb") as out,
+    ):
         final = urlsplit(response.geturl())
         if final.scheme.lower() != "https" or not final.hostname:
             raise ValueError("Artifact redirect must remain HTTPS")
@@ -91,7 +104,10 @@ def _stage_update_once(manifest: ReleaseManifest, progress: Callable[[int], None
             out.write(chunk)
             if progress:
                 progress(min(99, int(total * 100 / manifest.artifact_size)))
-    if total != manifest.artifact_size or digest.hexdigest().lower() != manifest.artifact_sha256:
+    if (
+        total != manifest.artifact_size
+        or digest.hexdigest().lower() != manifest.artifact_sha256
+    ):
         raise ValueError("Update artifact integrity check failed")
     if progress:
         progress(100)
@@ -160,12 +176,23 @@ def launch_update_helper(*, target: Path, staged: Path) -> None:
         shutil.copy2(staged, helper)
     except OSError:
         shutil.copy2(Path(sys.executable).resolve(), helper)
-    args = [str(helper), "--apply-update", "--update-target", str(target), "--update-staged", str(staged), "--update-parent-pid", str(os.getpid())]
+    args = [
+        str(helper),
+        "--apply-update",
+        "--update-target",
+        str(target),
+        "--update-staged",
+        str(staged),
+        "--update-parent-pid",
+        str(os.getpid()),
+    ]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     last_error: OSError | None = None
     for _ in range(max(1, LAUNCH_HELPER_MAX_ATTEMPTS)):
         try:
-            subprocess.Popen(args, close_fds=True, creationflags=flags, env=clean_bootloader_env())
+            subprocess.Popen(
+                args, close_fds=True, creationflags=flags, env=clean_bootloader_env()
+            )
             return
         except OSError as exc:
             last_error = exc
@@ -289,7 +316,12 @@ def _relaunch_elevated(*, target: Path, staged: Path, parent_pid: int) -> bool:
             f"--update-parent-pid {parent_pid} --update-elevated"
         )
         rc = ctypes.windll.shell32.ShellExecuteW(
-            None, "runas", str(Path(sys.executable).resolve()), params, None, 1,
+            None,
+            "runas",
+            str(Path(sys.executable).resolve()),
+            params,
+            None,
+            1,
         )
         return int(rc) > 32
     except OSError:
@@ -297,13 +329,21 @@ def _relaunch_elevated(*, target: Path, staged: Path, parent_pid: int) -> bool:
 
 
 def _relaunch(path: Path) -> None:
-    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NO_WINDOW", 0)
-    subprocess.Popen([str(path)], close_fds=True, creationflags=flags, env=clean_bootloader_env())
+    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(
+        subprocess, "CREATE_NO_WINDOW", 0
+    )
+    subprocess.Popen(
+        [str(path)], close_fds=True, creationflags=flags, env=clean_bootloader_env()
+    )
 
 
 def apply_update(target: str, staged: str, parent_pid: int) -> int:
     target_path, staged_path = Path(target).resolve(), Path(staged).resolve()
-    if parent_pid <= 0 or target_path.suffix.lower() != ".exe" or staged_path.suffix.lower() != ".exe":
+    if (
+        parent_pid <= 0
+        or target_path.suffix.lower() != ".exe"
+        or staged_path.suffix.lower() != ".exe"
+    ):
         _write_result("failed", error="Invalid update paths")
         return 2
     backup = target_path.with_suffix(target_path.suffix + ".bak")
@@ -311,10 +351,15 @@ def apply_update(target: str, staged: str, parent_pid: int) -> int:
         try:
             _replace_with_retry(backup, target_path)
         except OSError as exc:
-            _write_result("failed", error=f"Interrupted update could not restore the previous version ({exc}); staged update preserved at {staged_path}")
+            _write_result(
+                "failed",
+                error=f"Interrupted update could not restore the previous version ({exc}); staged update preserved at {staged_path}",
+            )
             return 4
         if not staged_path.is_file():
-            _write_result("rolled_back", error="Interrupted update restored the previous version")
+            _write_result(
+                "rolled_back", error="Interrupted update restored the previous version"
+            )
             try:
                 _relaunch(target_path)
             except OSError:
@@ -329,15 +374,29 @@ def apply_update(target: str, staged: str, parent_pid: int) -> int:
     if not _target_dir_writable(target_path):
         # 보호 위치(Program Files 등): 상승된 헬퍼에 위임하고 조용히 종료.
         # 결과 파일은 쓰지 않는다 — 상승 인스턴스가 최종 결과를 기록한다.
-        if _relaunch_elevated(target=target_path, staged=staged_path, parent_pid=parent_pid):
+        if _relaunch_elevated(
+            target=target_path, staged=staged_path, parent_pid=parent_pid
+        ):
             return 5
-        _write_result("failed", error=f"Access denied replacing {target_path} (administrator permission required). Staged update preserved at {staged_path}")
+        _write_result(
+            "failed",
+            error=f"Access denied replacing {target_path} (administrator permission required). Staged update preserved at {staged_path}",
+        )
         return 4
     backup = target_path.with_suffix(target_path.suffix + ".bak")
     try:
         _overwrite_backup_with_target(target_path, backup)
         _replace_with_retry(staged_path, target_path)
-        if subprocess.run([str(target_path), "--smoke"], timeout=60, check=False, env=clean_bootloader_env(), creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode != 0:
+        if (
+            subprocess.run(
+                [str(target_path), "--smoke"],
+                timeout=60,
+                check=False,
+                env=clean_bootloader_env(),
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            ).returncode
+            != 0
+        ):
             raise RuntimeError("Updated executable smoke check failed")
         backup.unlink(missing_ok=True)
         _write_result("applied")

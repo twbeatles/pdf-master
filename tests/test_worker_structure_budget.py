@@ -102,7 +102,9 @@ def test_legacy_public_import_paths_still_export_expected_symbols():
     assert callable(get_ai_service)
     assert callable(AIService)
     assert callable(WorkerPdfOpsMixin)
-    assert WorkerPdfOpsMixin is WorkerPdfOpsMixinFacade or callable(WorkerPdfOpsMixinFacade)
+    assert WorkerPdfOpsMixin is WorkerPdfOpsMixinFacade or callable(
+        WorkerPdfOpsMixinFacade
+    )
     assert callable(WorkerAnnotationOpsMixin)
     assert callable(WorkerExtractOpsMixin)
     assert callable(WorkerCleanupOpsMixin)
@@ -186,7 +188,13 @@ def test_split_domain_packages_export_composed_mixins():
         assert hasattr(WorkerExtractOpsMixin, name), name
     for name in ("split", "delete_pages", "rotate", "reorder", "reverse_pages"):
         assert hasattr(WorkerPageOpsMixin, name), name
-    for name in ("convert_to_img", "compress", "crop_pdf", "resize_pages", "convert_to_svg"):
+    for name in (
+        "convert_to_img",
+        "compress",
+        "crop_pdf",
+        "resize_pages",
+        "convert_to_svg",
+    ):
         assert hasattr(WorkerTransformOpsMixin, name), name
     assert hasattr(WorkerCompareOpsMixin, "compare_pdfs")
     assert hasattr(WorkerCompareOpsMixin, "_legacy_compare_pdfs")

@@ -50,4 +50,3 @@ def build_v4_5_3_f_07_ui_3(self, layout) -> None:
     b_add_annotation.clicked.connect(self.action_add_annotation_basic)
     l_add_annotation.addWidget(b_add_annotation)
     layout.addWidget(grp_add_annotation)
-

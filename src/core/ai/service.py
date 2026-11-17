@@ -47,7 +47,9 @@ class AIService(
     _TEXT_CACHE_MAX_BYTES = 16 * 1024 * 1024
     _UPLOAD_CACHE_MAX_ITEMS = 16
 
-    _text_cache: OrderedDict[tuple[Any, ...], tuple[str, int, dict[str, Any]]] = OrderedDict()
+    _text_cache: OrderedDict[tuple[Any, ...], tuple[str, int, dict[str, Any]]] = (
+        OrderedDict()
+    )
     _text_cache_bytes = 0
     _text_cache_lock = threading.Lock()
 
@@ -59,7 +61,9 @@ class AIService(
     # chat 세션 생성 single-flight (cache_key → Lock)
     _chat_create_locks: dict[tuple[str, str, int], threading.Lock] = {}
 
-    def __init__(self, api_key: str = "", model: str | None = None, timeout: int | None = None):
+    def __init__(
+        self, api_key: str = "", model: str | None = None, timeout: int | None = None
+    ):
         self._api_key = api_key
         self._model = model or self.DEFAULT_MODEL
         self._timeout = timeout or self.DEFAULT_TIMEOUT
@@ -97,7 +101,10 @@ class AIService(
                 except TypeError:
                     self._client = client_class(api_key=self._api_key)
                 except Exception as timeout_exc:
-                    logger.debug("Client init with timeout failed, retrying plain: %s", timeout_exc)
+                    logger.debug(
+                        "Client init with timeout failed, retrying plain: %s",
+                        timeout_exc,
+                    )
                     self._client = client_class(api_key=self._api_key)
             else:
                 self._client = client_class(api_key=self._api_key)
@@ -157,7 +164,9 @@ class AIService(
         cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         if not self.is_available:
-            raise RuntimeError("AI service not available. Check API key and google-genai installation.")
+            raise RuntimeError(
+                "AI service not available. Check API key and google-genai installation."
+            )
         self._run_cancel_check(cancel_check)
         prompt = self._build_summary_prompt(language, style, max_pages)
         payload = self._generate_structured_payload(
@@ -176,7 +185,9 @@ class AIService(
         return {
             "title": str(payload.get("title", "")),
             "summary": str(payload.get("summary", "")),
-            "key_points": [str(item) for item in payload.get("key_points", []) if str(item).strip()],
+            "key_points": [
+                str(item) for item in payload.get("key_points", []) if str(item).strip()
+            ],
             "meta": meta,
         }
 
@@ -189,7 +200,9 @@ class AIService(
         cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         if not self.is_available:
-            raise RuntimeError("AI service not available. Check API key and google-genai installation.")
+            raise RuntimeError(
+                "AI service not available. Check API key and google-genai installation."
+            )
         if not question.strip():
             raise RuntimeError("Question is required.")
 
@@ -205,7 +218,10 @@ class AIService(
         except Exception as exc:
             if not self._should_fallback_from_file_api(exc):
                 raise
-            logger.warning("Chat session initialization failed, falling back to local-context QA: %s", exc)
+            logger.warning(
+                "Chat session initialization failed, falling back to local-context QA: %s",
+                exc,
+            )
             prompt = (
                 "Answer the user's question about the PDF and return JSON only. "
                 'Schema: {"answer": string}. '
@@ -234,7 +250,9 @@ class AIService(
                 self._run_cancel_check(cancel_check)
                 response = chat.send_message(question, config=config)
                 self._run_cancel_check(cancel_check)
-                payload = self._parse_structured_response(response, _response_text(response), schema)
+                payload = self._parse_structured_response(
+                    response, _response_text(response), schema
+                )
 
         payload.setdefault("answer", "")
         meta = self._normalize_meta(payload.get("meta"), default_source="file_api")
@@ -248,7 +266,9 @@ class AIService(
         cancel_check: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         if not self.is_available:
-            raise RuntimeError("AI service not available. Check API key and google-genai installation.")
+            raise RuntimeError(
+                "AI service not available. Check API key and google-genai installation."
+            )
         self._run_cancel_check(cancel_check)
         prompt = self._build_keywords_prompt(max_keywords, language)
         payload = self._generate_structured_payload(
@@ -260,7 +280,9 @@ class AIService(
             cancel_check=cancel_check,
         )
         self._run_cancel_check(cancel_check)
-        keywords = [str(item) for item in payload.get("keywords", []) if str(item).strip()]
+        keywords = [
+            str(item) for item in payload.get("keywords", []) if str(item).strip()
+        ]
         deduped: list[str] = []
         seen: set[str] = set()
         for keyword in keywords:

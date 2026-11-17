@@ -6,7 +6,9 @@ def test_app_icon_assets_exist_and_are_compact():
     ico = Path("assets/app_icon.ico")
 
     assert png.is_file(), "assets/app_icon.png is required for runtime and packaging"
-    assert ico.is_file(), "assets/app_icon.ico is required for the Windows executable icon"
+    assert ico.is_file(), (
+        "assets/app_icon.ico is required for the Windows executable icon"
+    )
 
     assert png.stat().st_size < 512 * 1024, "PNG icon should stay compact for bundling"
     assert ico.stat().st_size < 512 * 1024, "ICO icon should stay compact for bundling"

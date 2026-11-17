@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Worker 잔여 도메인(ai/batch/compose/form/security/_pdf_helpers) 패키지화."""
+
 from __future__ import annotations
 
 import ast
@@ -20,7 +21,9 @@ def deepen_imports(source: str) -> str:
     return re.sub(r"from (\.+)([A-Za-z_])", repl, source)
 
 
-def package_simple_ops(module_stem: str, pkg_name: str, public_names: list[str]) -> None:
+def package_simple_ops(
+    module_stem: str, pkg_name: str, public_names: list[str]
+) -> None:
     """Move module body into pkg/ops.py and leave thin facade at module_stem_ops.py or stem."""
     # Our modules are named ai_ops.py etc.
     src_path = OPS / f"{module_stem}.py"
@@ -69,7 +72,9 @@ def package_pdf_helpers() -> None:
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             assert node.end_lineno
-            funcs[node.name] = "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+            funcs[node.name] = (
+                "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+            )
         elif isinstance(node, ast.ClassDef):
             continue
         else:
@@ -116,10 +121,7 @@ def package_pdf_helpers() -> None:
         body = "\n".join(funcs[n] for n in names)
         content = (
             f'"""PDF helpers: {stem}."""\n'
-            "from __future__ import annotations\n\n"
-            + deep_preamble
-            + "\n"
-            + body
+            "from __future__ import annotations\n\n" + deep_preamble + "\n" + body
         )
         (pkg / f"{stem}.py").write_text(content, encoding="utf-8")
         all_names.extend(names)

@@ -30,7 +30,9 @@ class _StatusStub:
         self.text = text
 
 
-def test_show_thumbnail_grid_uses_preview_password_and_active_page(monkeypatch, tmp_path):
+def test_show_thumbnail_grid_uses_preview_password_and_active_page(
+    monkeypatch, tmp_path
+):
     require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -90,7 +92,9 @@ def test_show_thumbnail_grid_uses_preview_password_and_active_page(monkeypatch, 
     assert grid.status_messages == []
 
 
-def test_show_thumbnail_grid_uses_preview_message_when_access_fails(monkeypatch, tmp_path):
+def test_show_thumbnail_grid_uses_preview_message_when_access_fails(
+    monkeypatch, tmp_path
+):
     require_pyside6()
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -118,7 +122,9 @@ def test_show_thumbnail_grid_uses_preview_message_when_access_fails(monkeypatch,
             raise AssertionError("grid should not load when preview access failed")
 
         def set_active_page(self, *_args, **_kwargs):
-            raise AssertionError("active page should not be set when preview access failed")
+            raise AssertionError(
+                "active page should not be set when preview access failed"
+            )
 
         def show_status_message(self, message):
             self.status_messages.append(message)

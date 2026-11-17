@@ -25,15 +25,26 @@ def _signed_document(version: str = "9.0.0") -> tuple[dict[str, object], str]:
     }
     document = {
         "payload": payload,
-        "signature": base64.b64encode(private.sign(canonical_manifest_payload(payload))).decode(),
+        "signature": base64.b64encode(
+            private.sign(canonical_manifest_payload(payload))
+        ).decode(),
     }
-    public = base64.b64encode(private.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)).decode()
+    public = base64.b64encode(
+        private.public_key().public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw
+        )
+    ).decode()
     return document, public
 
 
 def test_signed_manifest_is_accepted() -> None:
     document, public = _signed_document()
-    assert verify_release_manifest(document, public_key=public, current_version="1.0.0").version == "9.0.0"
+    assert (
+        verify_release_manifest(
+            document, public_key=public, current_version="1.0.0"
+        ).version
+        == "9.0.0"
+    )
 
 
 def test_manifest_rejects_tampering() -> None:

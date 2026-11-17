@@ -1,4 +1,5 @@
 """on_success 본문 헬퍼 (ToastWidget 은 호출측 모듈 바인딩을 인자로 전달)."""
+
 from __future__ import annotations
 
 import logging
@@ -28,7 +29,9 @@ def apply_ai_success_state(host: Any, payload: dict[str, Any]) -> None:
         host._summary_partial_text = ""
         summary_text = _format_summary_payload(payload)
         host._summary_result_meta = normalize_ai_meta(payload.get("meta"))
-        _set_meta_label(getattr(host, "lbl_summary_meta", None), host._summary_result_meta)
+        _set_meta_label(
+            getattr(host, "lbl_summary_meta", None), host._summary_result_meta
+        )
         if summary_text and hasattr(host, "txt_summary_result"):
             host.txt_summary_result.setPlainText(summary_text)
 
@@ -61,7 +64,9 @@ def apply_ai_success_state(host: Any, payload: dict[str, Any]) -> None:
     if hasattr(host, "_keyword_worker_mode") and host._keyword_worker_mode:
         host._keyword_worker_mode = False
         host._keywords_result_meta = normalize_ai_meta(payload.get("meta"))
-        _set_meta_label(getattr(host, "lbl_keywords_meta", None), host._keywords_result_meta)
+        _set_meta_label(
+            getattr(host, "lbl_keywords_meta", None), host._keywords_result_meta
+        )
         keywords = payload.get("keywords", [])
         if keywords and hasattr(host, "lbl_keywords_result"):
             host.lbl_keywords_result.setText(" • ".join(keywords))
@@ -101,7 +106,9 @@ def apply_undo_registration(host: Any, toast_cls: Callable[..., Any]) -> None:
             "Skipping undo registration for %s: after snapshot creation failed",
             undo_info["action_type"],
         )
-        toast_cls(tm.get("msg_undo_unavailable"), toast_type="warning", duration=3000).show_toast(host)
+        toast_cls(
+            tm.get("msg_undo_unavailable"), toast_type="warning", duration=3000
+        ).show_toast(host)
 
 
 def handle_mode_success_dialogs(
@@ -135,12 +142,16 @@ def handle_mode_success_dialogs(
             item = QListWidgetItem(f"📋 {name}: {value}")
             item.setData(Qt.ItemDataRole.UserRole, name)
             item.setToolTip(
-                tm.get("msg_field_tooltip", field.get("type", "-"), field.get("page", 0))
+                tm.get(
+                    "msg_field_tooltip", field.get("type", "-"), field.get("page", 0)
+                )
             )
             host.form_fields_list.addItem(item)
             host._form_field_data[name] = value
         if not fields:
-            message_box_cls.information(parent, tm.get("info"), tm.get("msg_no_form_fields"))
+            message_box_cls.information(
+                parent, tm.get("info"), tm.get("msg_no_form_fields")
+            )
         else:
             toast = toast_cls(
                 tm.get("msg_form_fields_detected", len(fields)),
@@ -152,10 +163,14 @@ def handle_mode_success_dialogs(
     elif mode == "list_attachments":
         attachments = payload.get("attachments", []) or []
         if not attachments:
-            message_box_cls.information(parent, tm.get("info"), tm.get("msg_no_attachments"))
+            message_box_cls.information(
+                parent, tm.get("info"), tm.get("msg_no_attachments")
+            )
         else:
             rows = [
-                tm.get("msg_attachment_row", att.get("name", "Unknown"), att.get("size", 0))
+                tm.get(
+                    "msg_attachment_row", att.get("name", "Unknown"), att.get("size", 0)
+                )
                 for att in attachments
             ]
             message_box_cls.information(
@@ -170,7 +185,9 @@ def handle_mode_success_dialogs(
 
             show_compare_report_dialog(parent, payload)
         except Exception:
-            logger.debug("compare report dialog failed; fallback QMessageBox", exc_info=True)
+            logger.debug(
+                "compare report dialog failed; fallback QMessageBox", exc_info=True
+            )
             message_box_cls.information(
                 parent,
                 tm.get("compare_summary_title"),

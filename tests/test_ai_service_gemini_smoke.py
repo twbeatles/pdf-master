@@ -20,7 +20,9 @@ def _make_smoke_pdf(path):
 
 def test_gemini_file_api_smoke_summary_chat_keywords(tmp_path):
     if os.environ.get("PDF_MASTER_GEMINI_FILE_API_SMOKE") != "1":
-        pytest.skip("Set PDF_MASTER_GEMINI_FILE_API_SMOKE=1 to run the Gemini File API smoke.")
+        pytest.skip(
+            "Set PDF_MASTER_GEMINI_FILE_API_SMOKE=1 to run the Gemini File API smoke."
+        )
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         pytest.skip("Set GEMINI_API_KEY to run the Gemini File API smoke.")

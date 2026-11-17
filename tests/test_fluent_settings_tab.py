@@ -138,7 +138,10 @@ def test_settings_spec_and_handlers():
     assert THEME_OPTIONS == ("dark", "light", "auto")
     assert LANGUAGE_OPTIONS == ("auto", "ko", "en")
     assert NOTIFY_OPTIONS == ("dialog", "toast")
-    assert [name for name, _rows in SETTINGS_SECTIONS] == ["settings_appearance", "settings_history"]
+    assert [name for name, _rows in SETTINGS_SECTIONS] == [
+        "settings_appearance",
+        "settings_history",
+    ]
 
     keys = (
         "tab_settings",

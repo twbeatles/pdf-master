@@ -1,4 +1,5 @@
 """텍스트상자 UI 액션 구현 (SOLID 분할)."""
+
 from __future__ import annotations
 
 from .. import deps
@@ -32,6 +33,7 @@ def _on_textbox_worker_success(self) -> None:
 
         QTimer.singleShot(150, lambda: action_start_textbox_region_select(self))
 
+
 def _on_extract_text_in_rect_success(self, payload: dict) -> None:
     """extract_text_in_rect Worker 결과 → 본문 필드 반영."""
     text = str(payload.get("text", "") or "")
@@ -39,4 +41,8 @@ def _on_extract_text_in_rect_success(self, payload: dict) -> None:
         _set_textbox_content_text(self, text)
     sess = _textbox_session(self)
     sess.pending_extract = None
-    deps.ToastWidget(deps.tm.get("msg_textbox_replace_region_ready"), toast_type="info", duration=2500).show_toast(self)
+    deps.ToastWidget(
+        deps.tm.get("msg_textbox_replace_region_ready"),
+        toast_type="info",
+        duration=2500,
+    ).show_toast(self)

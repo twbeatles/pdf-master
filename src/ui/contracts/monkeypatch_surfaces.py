@@ -8,6 +8,7 @@ Monkeypatch 계약 SSOT (Track B §3.4).
 1. `src.ui.main_window_worker` — ToastWidget / WorkerThread 모듈 레벨 import
 2. `src.ui.tabs_ai.actions` — AI 액션 본체 (`__module__` 가 이 모듈이어야 함)
 """
+
 from __future__ import annotations
 
 # main_window_worker.MainWindowWorkerMixin 에 반드시 존재해야 하는 메서드

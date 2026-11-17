@@ -23,8 +23,12 @@ class WorkerTransformGeometryMixin(WorkerHost):
     def crop_pdf(self):
         file_path = _as_str(self.kwargs.get("file_path"))
         output_path = _as_str(self.kwargs.get("output_path"))
-        margins = _as_dict(self.kwargs.get("margins") or {"left": 0, "top": 0, "right": 0, "bottom": 0})
-        crop_mode = _as_str(self.kwargs.get("crop_mode"), "margins")  # margins | content
+        margins = _as_dict(
+            self.kwargs.get("margins") or {"left": 0, "top": 0, "right": 0, "bottom": 0}
+        )
+        crop_mode = _as_str(
+            self.kwargs.get("crop_mode"), "margins"
+        )  # margins | content
         pad = _as_float(self.kwargs.get("content_pad"), 2.0)
 
         doc = self._open_pdf_document(file_path)
@@ -36,7 +40,12 @@ class WorkerTransformGeometryMixin(WorkerHost):
                 rect = page.rect
                 if crop_mode == "content":
                     bbox = _content_bbox(page, pad=float(pad or 0.0))
-                    if bbox is None or bbox.is_empty or bbox.width < 5 or bbox.height < 5:
+                    if (
+                        bbox is None
+                        or bbox.is_empty
+                        or bbox.width < 5
+                        or bbox.height < 5
+                    ):
                         new_rect = rect
                     else:
                         new_rect = bbox
@@ -73,7 +82,10 @@ class WorkerTransformGeometryMixin(WorkerHost):
                 page = doc[i]
                 self._check_cancelled()
                 src_rect = page.rect
-                scale = min(target_w / max(src_rect.width, 1), target_h / max(src_rect.height, 1))
+                scale = min(
+                    target_w / max(src_rect.width, 1),
+                    target_h / max(src_rect.height, 1),
+                )
                 render_w = src_rect.width * scale
                 render_h = src_rect.height * scale
                 offset_x = (target_w - render_w) / 2

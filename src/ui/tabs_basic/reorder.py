@@ -21,6 +21,7 @@ from ..widgets import FileSelectorWidget
 
 logger = logging.getLogger(__name__)
 
+
 def setup_reorder_tab(self):
     tab = QWidget()
     layout = QVBoxLayout(tab)
@@ -61,7 +62,8 @@ def setup_reorder_tab(self):
     b_run.clicked.connect(self.action_reorder)
     layout.addWidget(b_run)
 
-    add_tab(self.tabs, tab, tm.get('tab_reorder'), icon="SCROLL")
+    add_tab(self.tabs, tab, tm.get("tab_reorder"), icon="SCROLL")
+
 
 def _load_pages_for_reorder(self, path):
     """페이지 목록 로드"""
@@ -72,14 +74,17 @@ def _load_pages_for_reorder(self, path):
     try:
         doc = fitz.open(path)
         for i in range(len(doc)):
-            item = QListWidgetItem(tm.get("msg_page_num", i+1))
+            item = QListWidgetItem(tm.get("msg_page_num", i + 1))
             item.setData(Qt.ItemDataRole.UserRole, i)
             self.reorder_list.addItem(item)
     except Exception as e:
-        QMessageBox.warning(self, tm.get("error"), tm.get("msg_page_load_failed", str(e)))
+        QMessageBox.warning(
+            self, tm.get("error"), tm.get("msg_page_load_failed", str(e))
+        )
     finally:
         if doc:
             doc.close()
+
 
 def _reverse_pages(self):
     """페이지 역순 정렬"""
@@ -89,11 +94,17 @@ def _reverse_pages(self):
     for item in reversed(items):
         self.reorder_list.addItem(item)
 
+
 def action_reorder(self):
     path = self.sel_reorder.get_path()
     if not path or self.reorder_list.count() == 0:
-        return QMessageBox.warning(self, tm.get("info"), tm.get("msg_select_pdf_and_check_pages"))
-    page_order = [self.reorder_list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.reorder_list.count())]
+        return QMessageBox.warning(
+            self, tm.get("info"), tm.get("msg_select_pdf_and_check_pages")
+        )
+    page_order = [
+        self.reorder_list.item(i).data(Qt.ItemDataRole.UserRole)
+        for i in range(self.reorder_list.count())
+    ]
     s, _ = self._choose_save_file(tm.get("save"), "reordered.pdf", "PDF (*.pdf)")
     if s:
         self.run_worker("reorder", file_path=path, output_path=s, page_order=page_order)

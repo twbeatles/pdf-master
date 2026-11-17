@@ -1,4 +1,5 @@
 """PDF helpers: image_optimize."""
+
 from __future__ import annotations
 
 import logging
@@ -8,6 +9,7 @@ from typing import Any
 from ...optional_deps import fitz
 
 logger = logging.getLogger(__name__)
+
 
 def _pixmap_for_reencode(pix: Any, *, grayscale: bool) -> Any:
     """알파/CMYK를 정리하고 필요 시 그레이스케일로 변환한다."""
@@ -21,7 +23,10 @@ def _pixmap_for_reencode(pix: Any, *, grayscale: bool) -> Any:
         current = fitz.Pixmap(fitz.csGRAY, current)
     return current
 
-def _image_display_size_pt(page: Any, xref: int, fallback_w: float, fallback_h: float) -> tuple[float, float]:
+
+def _image_display_size_pt(
+    page: Any, xref: int, fallback_w: float, fallback_h: float
+) -> tuple[float, float]:
     """페이지 위 이미지 표시 크기(포인트). 없으면 메타데이터 기반 폴백."""
     max_w = 0.0
     max_h = 0.0
@@ -39,7 +44,10 @@ def _image_display_size_pt(page: Any, xref: int, fallback_w: float, fallback_h: 
         max_h = max(fallback_h * 72.0 / 96.0, 1.0)
     return max_w, max_h
 
-def _target_scale(pix_w: int, pix_h: int, disp_w_pt: float, disp_h_pt: float, max_dpi: float) -> float:
+
+def _target_scale(
+    pix_w: int, pix_h: int, disp_w_pt: float, disp_h_pt: float, max_dpi: float
+) -> float:
     """표시 크기 대비 현재 DPI가 max_dpi를 넘으면 축소 비율을 반환한다."""
     if pix_w <= 0 or pix_h <= 0 or max_dpi <= 0:
         return 1.0
@@ -49,6 +57,7 @@ def _target_scale(pix_w: int, pix_h: int, disp_w_pt: float, disp_h_pt: float, ma
     if dpi <= max_dpi:
         return 1.0
     return max(max_dpi / dpi, 0.05)
+
 
 def optimize_pdf_images(
     doc: Any,
@@ -77,12 +86,12 @@ def optimize_pdf_images(
         for img in images:
             try:
                 xref = int(img[0])
-            except (TypeError, ValueError, IndexError):
+            except TypeError, ValueError, IndexError:
                 continue
             smask = 0
             try:
                 smask = int(img[1] or 0)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 smask = 0
             if smask:
                 smask_xrefs.add(smask)
@@ -90,7 +99,7 @@ def optimize_pdf_images(
             try:
                 meta_w = float(img[2] or 0)
                 meta_h = float(img[3] or 0)
-            except (TypeError, ValueError, IndexError):
+            except TypeError, ValueError, IndexError:
                 meta_w, meta_h = 0.0, 0.0
 
             disp_w, disp_h = _image_display_size_pt(page, xref, meta_w, meta_h)
@@ -127,8 +136,12 @@ def optimize_pdf_images(
                 original_len = 0
 
             work = _pixmap_for_reencode(pix, grayscale=grayscale)
-            disp_w, disp_h = placement_size.get(xref, (float(work.width), float(work.height)))
-            scale = _target_scale(work.width, work.height, disp_w, disp_h, float(max_dpi))
+            disp_w, disp_h = placement_size.get(
+                xref, (float(work.width), float(work.height))
+            )
+            scale = _target_scale(
+                work.width, work.height, disp_w, disp_h, float(max_dpi)
+            )
             if scale < 0.99:
                 new_w = max(1, int(work.width * scale))
                 new_h = max(1, int(work.height * scale))
@@ -144,7 +157,12 @@ def optimize_pdf_images(
                 continue
 
             # 용량 이득이 거의 없으면 유지 (품질 손실 방지)
-            if original_len and len(jpeg_bytes) >= int(original_len * 0.98) and scale >= 0.99 and not grayscale:
+            if (
+                original_len
+                and len(jpeg_bytes) >= int(original_len * 0.98)
+                and scale >= 0.99
+                and not grayscale
+            ):
                 continue
 
             # 교체는 아무 페이지에서나 xref 기준으로 가능
@@ -158,6 +176,7 @@ def optimize_pdf_images(
                 progress_cb(page_count + idx + 1, page_count + total_xrefs)
 
     return replaced
+
 
 def subset_document_fonts(doc: Any) -> bool:
     """사용 글리프만 남기도록 폰트 서브셋을 시도한다. 성공 여부 반환."""

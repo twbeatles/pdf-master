@@ -1,4 +1,5 @@
 """AI 임시 평문 PDF ACL 제한."""
+
 from __future__ import annotations
 
 import logging

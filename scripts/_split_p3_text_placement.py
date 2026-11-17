@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """text_placement geometry 분리 + facade re-export."""
+
 from __future__ import annotations
 
 import ast
@@ -31,7 +32,9 @@ def main() -> None:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             if node.name in {"hit_test_handle", "apply_resize"}:
                 assert node.end_lineno
-                geo_funcs.append("".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n")
+                geo_funcs.append(
+                    "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+                )
 
     # Constants between imports and first function
     # Parse assigns and constants from original after imports
@@ -39,7 +42,9 @@ def main() -> None:
     for node in tree.body:
         if isinstance(node, (ast.Assign, ast.AnnAssign)):
             assert node.end_lineno
-            const_lines.append("".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n")
+            const_lines.append(
+                "".join(lines[node.lineno - 1 : node.end_lineno]).rstrip() + "\n"
+            )
         if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
             break
 
@@ -88,13 +93,15 @@ def main() -> None:
         "    hit_test_handle,\n"
         ")\n\n"
         # public re-export
-        "__all__ = [\"TextPlacementOverlay\", \"apply_resize\", \"hit_test_handle\"]\n\n\n"
+        '__all__ = ["TextPlacementOverlay", "apply_resize", "hit_test_handle"]\n\n\n'
         + class_src
     )
     SRC.write_text(new_src, encoding="utf-8")
     ast.parse(new_src)
     ast.parse(geo_src)
-    print(f"OK geometry={len(geo_src.splitlines())} overlay={len(new_src.splitlines())}")
+    print(
+        f"OK geometry={len(geo_src.splitlines())} overlay={len(new_src.splitlines())}"
+    )
 
 
 if __name__ == "__main__":

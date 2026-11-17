@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class AICacheMixin:
-    def _make_text_cache_key(self, pdf_path: str, max_pages: int | None) -> tuple[Any, ...]:
+    def _make_text_cache_key(
+        self, pdf_path: str, max_pages: int | None
+    ) -> tuple[Any, ...]:
         abs_path = normalize_path_key(pdf_path)
         try:
             mtime_ns = os.stat(abs_path).st_mtime_ns
@@ -23,7 +25,9 @@ class AICacheMixin:
     def _estimate_text_bytes(text: str) -> int:
         return len(text.encode("utf-8", errors="ignore"))
 
-    def _get_cached_text(self, key: tuple[Any, ...]) -> tuple[str, dict[str, Any]] | None:
+    def _get_cached_text(
+        self, key: tuple[Any, ...]
+    ) -> tuple[str, dict[str, Any]] | None:
         cls = self.__class__
         with cls._text_cache_lock:
             item = cls._text_cache.get(key)
@@ -33,7 +37,9 @@ class AICacheMixin:
             cls._text_cache.move_to_end(key)
             return text, dict(meta)
 
-    def _put_cached_text(self, key: tuple[Any, ...], text: str, meta: dict[str, Any]) -> None:
+    def _put_cached_text(
+        self, key: tuple[Any, ...], text: str, meta: dict[str, Any]
+    ) -> None:
         cls = self.__class__
         size = self._estimate_text_bytes(text)
         if size > cls._TEXT_CACHE_MAX_BYTES:
@@ -45,7 +51,9 @@ class AICacheMixin:
             cls._text_cache[key] = (text, size, dict(meta))
             cls._text_cache_bytes += size
             while cls._text_cache_bytes > cls._TEXT_CACHE_MAX_BYTES and cls._text_cache:
-                _, (_old_text, old_size, _old_meta) = cls._text_cache.popitem(last=False)
+                _, (_old_text, old_size, _old_meta) = cls._text_cache.popitem(
+                    last=False
+                )
                 cls._text_cache_bytes -= old_size
 
     def _make_upload_cache_key(self, pdf_path: str) -> tuple[str, int]:
@@ -77,7 +85,9 @@ class AICacheMixin:
         try:
             files_api.delete(name=remote_name)
         except Exception:
-            logger.debug("Failed to delete remote Gemini file %s", remote_name, exc_info=True)
+            logger.debug(
+                "Failed to delete remote Gemini file %s", remote_name, exc_info=True
+            )
 
     def _get_cached_uploaded_file(self, key: tuple[str, int]) -> Any | None:
         cls = self.__class__
@@ -88,7 +98,9 @@ class AICacheMixin:
             cls._uploaded_file_cache.move_to_end(key)
             return item.get("file")
 
-    def _put_cached_uploaded_file(self, key: tuple[str, int], uploaded_file: Any) -> None:
+    def _put_cached_uploaded_file(
+        self, key: tuple[str, int], uploaded_file: Any
+    ) -> None:
         cls = self.__class__
         evicted_entries: list[dict[str, Any]] = []
         with cls._uploaded_file_cache_lock:
@@ -114,7 +126,11 @@ class AICacheMixin:
 
         with cls._chat_sessions_lock:
             if all_versions:
-                stale_keys = [key for key in cls._chat_sessions if len(key) >= 2 and key[1] == abs_path]
+                stale_keys = [
+                    key
+                    for key in cls._chat_sessions
+                    if len(key) >= 2 and key[1] == abs_path
+                ]
                 for key in stale_keys:
                     cls._chat_sessions.pop(key, None)
             else:
@@ -122,20 +138,30 @@ class AICacheMixin:
                     mtime_ns = os.stat(abs_path).st_mtime_ns
                 except OSError:
                     mtime_ns = 0
-                stale_keys = [key for key in cls._chat_sessions if key[1] == abs_path and key[2] == mtime_ns]
+                stale_keys = [
+                    key
+                    for key in cls._chat_sessions
+                    if key[1] == abs_path and key[2] == mtime_ns
+                ]
                 for key in stale_keys:
                     cls._chat_sessions.pop(key, None)
 
         stale_upload_entries: list[dict[str, Any]] = []
         with cls._uploaded_file_cache_lock:
             if all_versions:
-                stale_upload_keys = [key for key in cls._uploaded_file_cache if key[0] == abs_path]
+                stale_upload_keys = [
+                    key for key in cls._uploaded_file_cache if key[0] == abs_path
+                ]
             else:
                 try:
                     upload_mtime_ns = os.stat(abs_path).st_mtime_ns
                 except OSError:
                     upload_mtime_ns = 0
-                stale_upload_keys = [key for key in cls._uploaded_file_cache if key == (abs_path, upload_mtime_ns)]
+                stale_upload_keys = [
+                    key
+                    for key in cls._uploaded_file_cache
+                    if key == (abs_path, upload_mtime_ns)
+                ]
             for key in stale_upload_keys:
                 entry = cls._uploaded_file_cache.pop(key, None)
                 if entry is not None:

@@ -44,7 +44,9 @@ class ThumbnailGridThemeMixin(ThumbnailGridHost):
                 """
             )
             self.info_label.setStyleSheet("color: #888;")
-            self.loading_label.setStyleSheet("color: #666; font-size: 14px; padding: 40px;")
+            self.loading_label.setStyleSheet(
+                "color: #666; font-size: 14px; padding: 40px;"
+            )
         else:
             self.scroll_area.setStyleSheet(
                 """
@@ -64,4 +66,6 @@ class ThumbnailGridThemeMixin(ThumbnailGridHost):
                 """
             )
             self.info_label.setStyleSheet("color: #666;")
-            self.loading_label.setStyleSheet("color: #888; font-size: 14px; padding: 40px;")
+            self.loading_label.setStyleSheet(
+                "color: #888; font-size: 14px; padding: 40px;"
+            )

@@ -35,7 +35,8 @@ def test_warn_default_in_sync_with_manifest_constant() -> None:
     tree = _script_tree()
     for node in tree.body:
         if isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == "DEFAULT_WARN_DAYS" for t in node.targets
+            isinstance(t, ast.Name) and t.id == "DEFAULT_WARN_DAYS"
+            for t in node.targets
         ):
             assert node.value is not None
             script_ns["v"] = ast.literal_eval(node.value)
@@ -46,11 +47,12 @@ def test_warn_default_in_sync_with_manifest_constant() -> None:
     for node in manifest_tree.body:
         if isinstance(node, ast.AnnAssign | ast.Assign):
             targets = (
-                [node.target]
-                if isinstance(node, ast.AnnAssign)
-                else list(node.targets)
+                [node.target] if isinstance(node, ast.AnnAssign) else list(node.targets)
             )
-            if any(isinstance(t, ast.Name) and t.id == "MANIFEST_EXPIRY_WARN_DAYS" for t in targets):
+            if any(
+                isinstance(t, ast.Name) and t.id == "MANIFEST_EXPIRY_WARN_DAYS"
+                for t in targets
+            ):
                 assert node.value is not None
                 manifest_ns["v"] = ast.literal_eval(node.value)
     assert script_ns.get("v") == manifest_ns.get("v") == 30

@@ -23,11 +23,17 @@ logger = logging.getLogger(__name__)
 
 class FileSelectorWidget(QWidget):
     """파일 선택 위젯 (드롭존 + 버튼)"""
+
     pathChanged = Signal(str)
 
-    def __init__(self, placeholder: str | None = None, extensions: list[str] | tuple[str, ...] | None = None, parent=None):
+    def __init__(
+        self,
+        placeholder: str | None = None,
+        extensions: list[str] | tuple[str, ...] | None = None,
+        parent=None,
+    ):
         super().__init__(parent)
-        self.extensions = list(extensions or ['.pdf'])
+        self.extensions = list(extensions or [".pdf"])
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
@@ -39,6 +45,7 @@ class FileSelectorWidget(QWidget):
 
         btn_layout = QHBoxLayout()
         from ...core.i18n import tm
+
         self.btn_browse = QPushButton(tm.get("btn_browse"))
         self.btn_browse.setObjectName("secondaryBtn")
         self.btn_browse.setToolTip(tm.get("tooltip_browse_file"))
@@ -75,6 +82,7 @@ class FileSelectorWidget(QWidget):
         recent = recent_value if isinstance(recent_value, list) else []
         if not recent:
             from ...core.i18n import tm
+
             action = self.recent_menu.addAction(tm.get("no_recent_files"))
             if action is not None:
                 action.setEnabled(False)
@@ -84,7 +92,9 @@ class FileSelectorWidget(QWidget):
                     action = self.recent_menu.addAction(f"📄 {os.path.basename(path)}")
                     if action is not None:
                         action.setToolTip(path)
-                        action.triggered.connect(lambda checked=False, p=path: self._load_recent(p))
+                        action.triggered.connect(
+                            lambda checked=False, p=path: self._load_recent(p)
+                        )
 
     def _get_settings_snapshot(self) -> dict[str, Any]:
         """Prefer shared in-memory settings to avoid repeated disk reads."""
@@ -104,7 +114,10 @@ class FileSelectorWidget(QWidget):
     def browse_file(self):
         ext_filter = " ".join([f"*{e}" for e in self.extensions])
         from ...core.i18n import tm
-        f, _ = QFileDialog.getOpenFileName(self, tm.get("file"), "", f"{tm.get('file')} ({ext_filter})")
+
+        f, _ = QFileDialog.getOpenFileName(
+            self, tm.get("file"), "", f"{tm.get('file')} ({ext_filter})"
+        )
         if f:
             self.set_path(f)
             self.pathChanged.emit(f)
@@ -131,9 +144,25 @@ class FileSelectorWidget(QWidget):
 
     def _apply_clear_style(self, is_dark: bool):
         if is_dark:
-            colors = ("#3e272b", "#ff6b6b", "#5c3a3a", "#5c3a3a", "#ff8787", "#6b7280", "#2d3748")
+            colors = (
+                "#3e272b",
+                "#ff6b6b",
+                "#5c3a3a",
+                "#5c3a3a",
+                "#ff8787",
+                "#6b7280",
+                "#2d3748",
+            )
         else:
-            colors = ("#ffe0e0", "#d32f2f", "#ffcdd2", "#ffcdd2", "#c62828", "#94a3b8", "#e2e8f0")
+            colors = (
+                "#ffe0e0",
+                "#d32f2f",
+                "#ffcdd2",
+                "#ffcdd2",
+                "#c62828",
+                "#94a3b8",
+                "#e2e8f0",
+            )
         self.btn_clear.setStyleSheet(
             """
             QPushButton {

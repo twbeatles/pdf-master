@@ -22,7 +22,9 @@ class AISchemaMixin:
         return {
             "source": source,
             "truncated": bool(truncated),
-            "page_focus_limit": int(page_focus_limit) if isinstance(page_focus_limit, int) and page_focus_limit > 0 else None,
+            "page_focus_limit": int(page_focus_limit)
+            if isinstance(page_focus_limit, int) and page_focus_limit > 0
+            else None,
             "fallback_pages_total": (
                 int(fallback_pages_total)
                 if isinstance(fallback_pages_total, int) and fallback_pages_total > 0
@@ -33,10 +35,14 @@ class AISchemaMixin:
                 if isinstance(fallback_pages_used, int) and fallback_pages_used > 0
                 else None
             ),
-            "max_text_chars": int(max_text_chars) if isinstance(max_text_chars, int) and max_text_chars > 0 else None,
+            "max_text_chars": int(max_text_chars)
+            if isinstance(max_text_chars, int) and max_text_chars > 0
+            else None,
         }
 
-    def _normalize_meta(self, meta: Any, *, default_source: str = "file_api") -> dict[str, Any]:
+    def _normalize_meta(
+        self, meta: Any, *, default_source: str = "file_api"
+    ) -> dict[str, Any]:
         if not isinstance(meta, dict):
             return self._build_result_meta(source=default_source)
         return self._build_result_meta(
@@ -101,9 +107,14 @@ class AISchemaMixin:
         if isinstance(parsed, dict):
             return parsed
         required = schema.get("required", [])
-        return {key: "" if key != "key_points" and key != "keywords" else [] for key in required}
+        return {
+            key: "" if key != "key_points" and key != "keywords" else []
+            for key in required
+        }
 
-    def _parse_structured_response(self, response: Any, raw_text: str, schema: dict[str, Any]) -> dict[str, Any]:
+    def _parse_structured_response(
+        self, response: Any, raw_text: str, schema: dict[str, Any]
+    ) -> dict[str, Any]:
         parsed = getattr(response, "parsed", None) if response is not None else None
         if parsed is not None:
             return self._coerce_payload(parsed, schema)

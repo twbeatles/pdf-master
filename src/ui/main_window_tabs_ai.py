@@ -54,7 +54,9 @@ class MainWindowTabsAiMixin(_MainWindowTabsAiMixin):
             if KEYRING_AVAILABLE and "gemini_api_key" in self.settings:
                 self.settings.pop("gemini_api_key", None)
                 save_settings(self.settings)
-            toast = ToastWidget(tm.get("msg_key_saved"), toast_type="success", duration=2000)
+            toast = ToastWidget(
+                tm.get("msg_key_saved"), toast_type="success", duration=2000
+            )
             toast.show_toast(self)
             return
 
@@ -65,13 +67,21 @@ class MainWindowTabsAiMixin(_MainWindowTabsAiMixin):
                 tm.get("msg_api_key_plaintext_confirm"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
-            if result == QMessageBox.StandardButton.Yes and set_api_key(key, allow_file_fallback=True):
+            if result == QMessageBox.StandardButton.Yes and set_api_key(
+                key, allow_file_fallback=True
+            ):
                 self.settings["gemini_api_key"] = key
-                toast = ToastWidget(tm.get("msg_api_key_saved_plaintext"), toast_type="warning", duration=2500)
+                toast = ToastWidget(
+                    tm.get("msg_api_key_saved_plaintext"),
+                    toast_type="warning",
+                    duration=2500,
+                )
                 toast.show_toast(self)
                 return
             if result == QMessageBox.StandardButton.No:
-                QMessageBox.warning(parent, tm.get("warning"), tm.get("msg_api_key_plaintext_declined"))
+                QMessageBox.warning(
+                    parent, tm.get("warning"), tm.get("msg_api_key_plaintext_declined")
+                )
                 return
 
         QMessageBox.warning(parent, tm.get("error"), tm.get("msg_key_save_failed"))

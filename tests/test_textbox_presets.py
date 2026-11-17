@@ -10,7 +10,9 @@ from src.ui.tabs_advanced.textbox_presets import (
 
 
 def test_a4_top_left_margin():
-    xy = resolve_textbox_preset_xy("top-left", A4_WIDTH_PT, A4_HEIGHT_PT, 200, 40, margin=36)
+    xy = resolve_textbox_preset_xy(
+        "top-left", A4_WIDTH_PT, A4_HEIGHT_PT, 200, 40, margin=36
+    )
     assert xy is not None
     assert abs(xy[0] - 36) < 0.01
     assert abs(xy[1] - 36) < 0.01
@@ -18,7 +20,9 @@ def test_a4_top_left_margin():
 
 def test_a4_top_right():
     w, h = 200.0, 40.0
-    xy = resolve_textbox_preset_xy("top-right", A4_WIDTH_PT, A4_HEIGHT_PT, w, h, margin=36)
+    xy = resolve_textbox_preset_xy(
+        "top-right", A4_WIDTH_PT, A4_HEIGHT_PT, w, h, margin=36
+    )
     assert xy is not None
     assert abs(xy[0] - (A4_WIDTH_PT - w - 36)) < 0.01
     assert abs(xy[1] - 36) < 0.01
@@ -26,7 +30,9 @@ def test_a4_top_right():
 
 def test_a4_bottom_center():
     w, h = 220.0, 40.0
-    xy = resolve_textbox_preset_xy("bottom-center", A4_WIDTH_PT, A4_HEIGHT_PT, w, h, margin=36)
+    xy = resolve_textbox_preset_xy(
+        "bottom-center", A4_WIDTH_PT, A4_HEIGHT_PT, w, h, margin=36
+    )
     assert xy is not None
     assert abs(xy[0] - (A4_WIDTH_PT - w) / 2) < 0.01
     assert abs(xy[1] - (A4_HEIGHT_PT - h - 36)) < 0.01
@@ -119,4 +125,8 @@ def test_apply_preset_sets_spins(monkeypatch):
     mod.action_apply_textbox_preset(d)
     assert abs(d.spn_tb_x.value() - 36.0) < 0.1
     assert abs(d.spn_tb_y.value() - 36.0) < 0.1
-    assert "프리셋" in d.lbl_tb_drag_hint.t or "Preset" in d.lbl_tb_drag_hint.t or d.lbl_tb_drag_hint.t
+    assert (
+        "프리셋" in d.lbl_tb_drag_hint.t
+        or "Preset" in d.lbl_tb_drag_hint.t
+        or d.lbl_tb_drag_hint.t
+    )

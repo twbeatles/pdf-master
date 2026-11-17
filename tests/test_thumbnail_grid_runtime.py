@@ -69,8 +69,12 @@ def test_thumbnail_loader_emits_loading_complete_once_without_password(tmp_path)
 
     calls = {"complete": 0, "ready": 0}
     loader = ThumbnailLoaderThread(str(src_pdf), [0])
-    loader.loading_complete.connect(lambda: calls.__setitem__("complete", calls["complete"] + 1))
-    loader.thumbnail_ready.connect(lambda *_args: calls.__setitem__("ready", calls["ready"] + 1))
+    loader.loading_complete.connect(
+        lambda: calls.__setitem__("complete", calls["complete"] + 1)
+    )
+    loader.thumbnail_ready.connect(
+        lambda *_args: calls.__setitem__("ready", calls["ready"] + 1)
+    )
 
     loader.run()
 
@@ -93,8 +97,12 @@ def test_thumbnail_loader_emits_loading_complete_once_with_password(tmp_path):
 
     calls = {"complete": 0, "ready": []}
     loader = ThumbnailLoaderThread(str(src_pdf), [0, 1], password="secret")
-    loader.loading_complete.connect(lambda: calls.__setitem__("complete", calls["complete"] + 1))
-    loader.thumbnail_ready.connect(lambda page_index, _pixmap: calls["ready"].append(page_index))
+    loader.loading_complete.connect(
+        lambda: calls.__setitem__("complete", calls["complete"] + 1)
+    )
+    loader.thumbnail_ready.connect(
+        lambda page_index, _pixmap: calls["ready"].append(page_index)
+    )
 
     loader.run()
 

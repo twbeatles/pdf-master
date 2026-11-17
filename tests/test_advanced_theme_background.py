@@ -14,7 +14,7 @@ from _deps import require_pyside6
 
 def test_advanced_pages_follow_explicit_theme_with_dark_os_palette():
     require_pyside6()
-    script = r'''
+    script = r"""
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication, QWidget
 from src.ui.fluent_theme import setup_app_theme
@@ -59,7 +59,7 @@ for mode, expected in [("light", "#ffffff"), ("dark", "#141922"),
         assert pixel == expected, (mode, pixel)
 window.close()
 print("advanced theme rendering OK")
-'''
+"""
     result = subprocess.run(
         [sys.executable, "-c", script],
         cwd=Path(__file__).resolve().parents[1],

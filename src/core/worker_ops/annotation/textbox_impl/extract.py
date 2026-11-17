@@ -1,4 +1,5 @@
 """영역 클립 텍스트 추출 (memory payload)."""
+
 from __future__ import annotations
 
 import logging
@@ -29,7 +30,9 @@ class WorkerTextboxExtractMixin(WorkerHost):
         try:
             if page_num < 0 or page_num >= len(doc):
                 self.error_signal.emit(
-                    self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc)))
+                    self._get_msg(
+                        "err_page_out_of_range", str(page_num + 1), str(len(doc))
+                    )
                 )
                 return
             self._check_cancelled()

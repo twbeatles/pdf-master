@@ -189,7 +189,6 @@ def test_textbox_content_text_supports_plain_and_line():
     assert mod._textbox_content_text(Dummy(Line())) == "single"
 
 
-
 def test_start_textbox_region_select_requires_path(monkeypatch):
     warnings = []
     monkeypatch.setattr(

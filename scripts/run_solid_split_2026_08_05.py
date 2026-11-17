@@ -4,6 +4,7 @@
 move-only: AST 줄 슬라이스로 본문을 옮기고 facade re-export 를 유지한다.
 심볼 누락 시 assert 로 실패한다.
 """
+
 from __future__ import annotations
 
 import re

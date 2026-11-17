@@ -35,7 +35,13 @@ CONTROL_HEIGHT_DEFAULT = 36
 CONTROL_HEIGHT_LARGE = 40
 
 # §6 typography (pt 기준, fallback chain)
-FONT_FAMILIES = ("Pretendard", "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", "sans-serif")
+FONT_FAMILIES = (
+    "Pretendard",
+    "Segoe UI",
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    "sans-serif",
+)
 FONT_SIZE_PAGE = 22  # Page title 22~24 Semibold
 FONT_SIZE_SECTION = 16  # Section 16~18
 FONT_SIZE_BODY = 13  # Body 13~14 (현행 Segoe UI 9pt와 시각 동등대)
@@ -81,6 +87,8 @@ def preferred_window_size(
     return (width, height)
 
 
-def clamp_minimum_size(width: int, height: int, minimum: tuple[int, int] = WINDOW_MIN_SIZE) -> tuple[int, int]:
+def clamp_minimum_size(
+    width: int, height: int, minimum: tuple[int, int] = WINDOW_MIN_SIZE
+) -> tuple[int, int]:
     """작은 화면에서 minimum이 창보다 커지는 파손 방지."""
     return (min(minimum[0], width), min(minimum[1], height))

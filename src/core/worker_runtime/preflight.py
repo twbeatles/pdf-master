@@ -35,7 +35,9 @@ def parse_page_range(host: Any, page_range_str: str, total_pages: int) -> list[i
                 start_str, end_str = part.split("-", 1)
                 start = int(start_str.strip())
                 end = int(end_str.strip())
-                page_iter = range(start, end + 1) if start <= end else range(start, end - 1, -1)
+                page_iter = (
+                    range(start, end + 1) if start <= end else range(start, end - 1, -1)
+                )
                 added = 0
                 for p in page_iter:
                     if 1 <= p <= total_pages and (p - 1) not in seen:
@@ -43,7 +45,10 @@ def parse_page_range(host: Any, page_range_str: str, total_pages: int) -> list[i
                         seen.add(p - 1)
                         added += 1
                         if len(pages) >= MAX_PAGE_RANGE_LENGTH:
-                            logger.warning("페이지 범위가 최대 제한(%s)에 도달했습니다.", MAX_PAGE_RANGE_LENGTH)
+                            logger.warning(
+                                "페이지 범위가 최대 제한(%s)에 도달했습니다.",
+                                MAX_PAGE_RANGE_LENGTH,
+                            )
                             return pages
                 if added == 0:
                     invalid_tokens.append(part)
@@ -54,7 +59,10 @@ def parse_page_range(host: Any, page_range_str: str, total_pages: int) -> list[i
                         pages.append(p - 1)
                         seen.add(p - 1)
                         if len(pages) >= MAX_PAGE_RANGE_LENGTH:
-                            logger.warning("페이지 범위가 최대 제한(%s)에 도달했습니다.", MAX_PAGE_RANGE_LENGTH)
+                            logger.warning(
+                                "페이지 범위가 최대 제한(%s)에 도달했습니다.",
+                                MAX_PAGE_RANGE_LENGTH,
+                            )
                             return pages
                 else:
                     invalid_tokens.append(part)
@@ -98,7 +106,9 @@ def validate_file_size(host: Any, file_path: str, emit_error: bool = True) -> bo
         max_gb = MAX_FILE_SIZE / (1024**3)
         if emit_error:
             host.error_signal.emit(
-                host._get_msg("err_file_too_large", f"{size_gb:.2f}GB", f"{max_gb:.0f}GB")
+                host._get_msg(
+                    "err_file_too_large", f"{size_gb:.2f}GB", f"{max_gb:.0f}GB"
+                )
             )
         logger.warning("File too large: %s (%.2fGB)", file_path, size_gb)
         return False
@@ -116,7 +126,9 @@ def validate_file_size(host: Any, file_path: str, emit_error: bool = True) -> bo
 
     logger.error("PDF validation failed for %s: %s", file_path, result.reason)
     if emit_error:
-        host.error_signal.emit(host._get_msg("err_operation_failed", result.reason or "validation failed"))
+        host.error_signal.emit(
+            host._get_msg("err_operation_failed", result.reason or "validation failed")
+        )
     return False
 
 
@@ -133,7 +145,9 @@ def validate_non_pdf_size(host: Any, file_path: str, emit_error: bool = True) ->
             max_gb = MAX_FILE_SIZE / (1024**3)
             if emit_error:
                 host.error_signal.emit(
-                    host._get_msg("err_file_too_large", f"{size_gb:.2f}GB", f"{max_gb:.0f}GB")
+                    host._get_msg(
+                        "err_file_too_large", f"{size_gb:.2f}GB", f"{max_gb:.0f}GB"
+                    )
                 )
             logger.warning("File too large: %s (%.2fGB)", file_path, size_gb)
             return False
@@ -179,10 +193,14 @@ def preflight_inputs(host: Any) -> bool:
         option_value = option_text.strip() if isinstance(option_text, str) else ""
 
         if operation_text not in {"compress", "watermark", "encrypt", "rotate"}:
-            host.error_signal.emit(host._get_msg("err_batch_unsupported_operation", operation_text))
+            host.error_signal.emit(
+                host._get_msg("err_batch_unsupported_operation", operation_text)
+            )
             return False
         if operation_text in {"watermark", "encrypt"} and not option_value:
-            host.error_signal.emit(host._get_msg("err_batch_option_required", operation_text))
+            host.error_signal.emit(
+                host._get_msg("err_batch_option_required", operation_text)
+            )
             return False
 
     if spec is not None:
@@ -197,10 +215,21 @@ def preflight_inputs(host: Any) -> bool:
             if choices == ("output_path",):
                 host.error_signal.emit(host._get_msg("err_output_path_missing"))
             else:
-                host.error_signal.emit(host._get_msg("err_required_parameter_missing", " or ".join(choices)))
+                host.error_signal.emit(
+                    host._get_msg(
+                        "err_required_parameter_missing", " or ".join(choices)
+                    )
+                )
             return False
 
-    for key in ("file_path", "file_path1", "file_path2", "source_path", "target_path", "replace_path"):
+    for key in (
+        "file_path",
+        "file_path1",
+        "file_path2",
+        "source_path",
+        "target_path",
+        "replace_path",
+    ):
         path = kwargs.get(key)
         if isinstance(path, str) and not _validate_pdf_path(path):
             return False
@@ -222,7 +251,9 @@ def preflight_inputs(host: Any) -> bool:
                 size_mb = attach_size / (1024 * 1024)
                 max_mb = MAX_ATTACHMENT_SIZE / (1024 * 1024)
                 host.error_signal.emit(
-                    host._get_msg("err_attachment_too_large", f"{size_mb:.1f}", f"{max_mb:.0f}")
+                    host._get_msg(
+                        "err_attachment_too_large", f"{size_mb:.1f}", f"{max_mb:.0f}"
+                    )
                 )
                 return False
 

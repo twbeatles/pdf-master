@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """preview/thumbnail 믹스인에 Host 타입을 붙여 pyright 교차 속성 오류를 줄인다."""
+
 from __future__ import annotations
 
 import re
@@ -189,7 +190,10 @@ def replace_bases(path: Path, old: str, new: str) -> None:
         print(f"SKIP no match {path.name}: {old!r}")
         return
     # add import if needed
-    if "PreviewWidgetHost" in new and "PreviewWidgetHost" not in text.split("class ")[0]:
+    if (
+        "PreviewWidgetHost" in new
+        and "PreviewWidgetHost" not in text.split("class ")[0]
+    ):
         if "from .._typing import" in text2:
             text2 = text2.replace(
                 "from .._typing import",
@@ -200,7 +204,10 @@ def replace_bases(path: Path, old: str, new: str) -> None:
         # rewrite more carefully
         text2 = path.read_text(encoding="utf-8")
         text2 = text2.replace(old, new)
-        if "from .._typing import PreviewWidgetHost" not in text2 and "PreviewWidgetHost" in new:
+        if (
+            "from .._typing import PreviewWidgetHost" not in text2
+            and "PreviewWidgetHost" in new
+        ):
             # after future import
             if "from __future__ import annotations" in text2:
                 text2 = text2.replace(
@@ -210,7 +217,10 @@ def replace_bases(path: Path, old: str, new: str) -> None:
                 )
             else:
                 text2 = "from .._typing import PreviewWidgetHost\n" + text2
-        if "from .._typing import ThumbnailGridHost" not in text2 and "ThumbnailGridHost" in new:
+        if (
+            "from .._typing import ThumbnailGridHost" not in text2
+            and "ThumbnailGridHost" in new
+        ):
             if "from __future__ import annotations" in text2:
                 # may already have PreviewWidgetHost insert
                 if "from .._typing import PreviewWidgetHost" in text2:
@@ -250,13 +260,24 @@ def main() -> None:
         if not m:
             m2 = re.search(r"class (\w+):\n", src)
             if m2 and "Mixin" in m2.group(1):
-                src = src.replace(f"class {m2.group(1)}:", f"class {m2.group(1)}(PreviewWidgetHost):", 1)
+                src = src.replace(
+                    f"class {m2.group(1)}:",
+                    f"class {m2.group(1)}(PreviewWidgetHost):",
+                    1,
+                )
             else:
                 print(f"SKIP pattern {name}")
                 continue
         else:
-            src = src.replace(f"class {m.group(1)}({m.group(2)}):", f"class {m.group(1)}(PreviewWidgetHost):", 1)
-        if "from .._typing import PreviewWidgetHost" not in src and "from .._typing import" not in src:
+            src = src.replace(
+                f"class {m.group(1)}({m.group(2)}):",
+                f"class {m.group(1)}(PreviewWidgetHost):",
+                1,
+            )
+        if (
+            "from .._typing import PreviewWidgetHost" not in src
+            and "from .._typing import" not in src
+        ):
             if "from __future__ import annotations" in src:
                 # collapse duplicate futures
                 src = re.sub(
@@ -266,7 +287,10 @@ def main() -> None:
                     count=1,
                 )
             else:
-                src = "from __future__ import annotations\n\nfrom .._typing import PreviewWidgetHost\n" + src
+                src = (
+                    "from __future__ import annotations\n\nfrom .._typing import PreviewWidgetHost\n"
+                    + src
+                )
         elif "PreviewWidgetHost" not in src.split("class")[0]:
             src = src.replace(
                 "from __future__ import annotations\n",
@@ -276,14 +300,23 @@ def main() -> None:
         p.write_text(src, encoding="utf-8")
         print(f"OK preview {name}")
 
-    for name in ["grid_layout.py", "grid_loading.py", "grid_selection.py", "grid_theme.py"]:
+    for name in [
+        "grid_layout.py",
+        "grid_loading.py",
+        "grid_selection.py",
+        "grid_theme.py",
+    ]:
         p = ROOT / "src/ui/thumbnail" / name
         src = p.read_text(encoding="utf-8")
         m = re.search(r"class (\w+)\((object|ThumbnailGridHost)\):", src)
         if not m:
             print(f"SKIP {name}")
             continue
-        src = src.replace(f"class {m.group(1)}({m.group(2)}):", f"class {m.group(1)}(ThumbnailGridHost):", 1)
+        src = src.replace(
+            f"class {m.group(1)}({m.group(2)}):",
+            f"class {m.group(1)}(ThumbnailGridHost):",
+            1,
+        )
         if "ThumbnailGridHost" not in src.split("class")[0]:
             src = re.sub(
                 r"(from __future__ import annotations\n)+",

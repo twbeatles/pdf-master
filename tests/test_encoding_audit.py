@@ -58,7 +58,10 @@ def _is_tracked_text_file(path: Path) -> bool:
 
 
 def _should_forbid_replacement_chars(path: Path) -> bool:
-    return path.suffix.lower() in REPLACEMENT_GUARD_SUFFIXES or path.name in REPLACEMENT_GUARD_FILENAMES
+    return (
+        path.suffix.lower() in REPLACEMENT_GUARD_SUFFIXES
+        or path.name in REPLACEMENT_GUARD_FILENAMES
+    )
 
 
 def _tracked_text_files() -> list[Path]:
@@ -69,9 +72,13 @@ def _tracked_text_files() -> list[Path]:
             check=True,
             capture_output=True,
         )
-        rel_paths = [Path(item) for item in proc.stdout.decode("utf-8").split("\0") if item]
+        rel_paths = [
+            Path(item) for item in proc.stdout.decode("utf-8").split("\0") if item
+        ]
     except Exception:
-        rel_paths = [path.relative_to(ROOT) for path in ROOT.rglob("*") if path.is_file()]
+        rel_paths = [
+            path.relative_to(ROOT) for path in ROOT.rglob("*") if path.is_file()
+        ]
 
     return sorted(
         ROOT / rel_path

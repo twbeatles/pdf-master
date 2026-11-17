@@ -25,7 +25,13 @@ from .tile import ThumbnailLabel
 logger = logging.getLogger(__name__)
 
 
-class ThumbnailGridWidget(ThumbnailGridLayoutMixin, ThumbnailGridLoadingMixin, ThumbnailGridSelectionMixin, ThumbnailGridThemeMixin, QWidget):
+class ThumbnailGridWidget(
+    ThumbnailGridLayoutMixin,
+    ThumbnailGridLoadingMixin,
+    ThumbnailGridSelectionMixin,
+    ThumbnailGridThemeMixin,
+    QWidget,
+):
     """
     Grid of PDF page thumbnails.
 
@@ -50,7 +56,9 @@ class ThumbnailGridWidget(ThumbnailGridLayoutMixin, ThumbnailGridLoadingMixin, T
         self._active_index = -1
         self._selected_indices: set[int] = set()
         self._selection_anchor_index = -1
-        self._selection_mode = selection_mode if selection_mode in {"single", "extended"} else "single"
+        self._selection_mode = (
+            selection_mode if selection_mode in {"single", "extended"} else "single"
+        )
         self._columns = 4
         self._loader_thread: ThumbnailLoaderThread | None = None
         self._is_dark_theme = True
@@ -92,7 +100,9 @@ class ThumbnailGridWidget(ThumbnailGridLayoutMixin, ThumbnailGridLoadingMixin, T
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         scrollbar = self.scroll_area.verticalScrollBar()
         if scrollbar is not None:
             scrollbar.valueChanged.connect(self._on_scroll_changed)
@@ -113,4 +123,3 @@ class ThumbnailGridWidget(ThumbnailGridLayoutMixin, ThumbnailGridLoadingMixin, T
     def closeEvent(self, a0: QCloseEvent | None):
         self._cleanup_loader_thread()
         super().closeEvent(a0)
-

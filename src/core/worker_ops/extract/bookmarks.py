@@ -25,7 +25,10 @@ class WorkerExtractBookmarksMixin(WorkerHost):
             if doc:
                 doc.close()
 
-        lines = [f"# {self._get_msg('extract_bookmarks_title', os.path.basename(file_path))}", ""]
+        lines = [
+            f"# {self._get_msg('extract_bookmarks_title', os.path.basename(file_path))}",
+            "",
+        ]
         if toc:
             for item in toc:
                 level, title, page = item[0], item[1], item[2]
@@ -58,7 +61,7 @@ class WorkerExtractBookmarksMixin(WorkerHost):
                 level = int(item[0])
                 title = str(item[1]).strip()
                 page = int(item[2])
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 self.error_signal.emit(self._get_msg("err_bookmarks_invalid"))
                 return
             if level < 1 or page < 1 or not title:
@@ -73,7 +76,9 @@ class WorkerExtractBookmarksMixin(WorkerHost):
             for _level, _title, page in normalized:
                 if page > page_count:
                     self.error_signal.emit(
-                        self._get_msg("err_page_out_of_range", str(page), str(page_count))
+                        self._get_msg(
+                            "err_page_out_of_range", str(page), str(page_count)
+                        )
                     )
                     return
             doc.set_toc(normalized)

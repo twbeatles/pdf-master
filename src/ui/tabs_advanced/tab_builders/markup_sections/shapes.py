@@ -89,4 +89,3 @@ def build_shapes(self, layout) -> None:
     b_shape.clicked.connect(self.action_draw_shape)
     l_shapes.addWidget(b_shape)
     layout.addWidget(grp_shapes)
-

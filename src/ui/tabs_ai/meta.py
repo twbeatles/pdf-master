@@ -15,7 +15,9 @@ def normalize_ai_meta(meta: Any) -> dict[str, Any]:
     return {
         "source": str(meta.get("source") or ""),
         "truncated": bool(meta.get("truncated", False)),
-        "page_focus_limit": int(page_focus_limit) if isinstance(page_focus_limit, int) and page_focus_limit > 0 else None,
+        "page_focus_limit": int(page_focus_limit)
+        if isinstance(page_focus_limit, int) and page_focus_limit > 0
+        else None,
         "fallback_pages_total": (
             int(fallback_pages_total)
             if isinstance(fallback_pages_total, int) and fallback_pages_total > 0
@@ -26,7 +28,9 @@ def normalize_ai_meta(meta: Any) -> dict[str, Any]:
             if isinstance(fallback_pages_used, int) and fallback_pages_used > 0
             else None
         ),
-        "max_text_chars": int(max_text_chars) if isinstance(max_text_chars, int) and max_text_chars > 0 else None,
+        "max_text_chars": int(max_text_chars)
+        if isinstance(max_text_chars, int) and max_text_chars > 0
+        else None,
     }
 
 
@@ -51,7 +55,9 @@ def format_ai_meta(meta: Any) -> str:
                 fallback_pages_total,
                 max_text_chars,
             )
-        return tm.get("ai_meta_text_fallback", fallback_pages_used, fallback_pages_total)
+        return tm.get(
+            "ai_meta_text_fallback", fallback_pages_used, fallback_pages_total
+        )
 
     if page_focus_limit:
         return tm.get("ai_meta_file_api_page_focus", page_focus_limit)

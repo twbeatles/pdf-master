@@ -27,7 +27,13 @@ def test_theme_palette_follows_app_theme_not_os():
     assert dark.color(role.WindowText).name() == "#f0f4f8"
     # 본문 글자와 배경이 같은 밝기대로 겹치지 않아야 한다.
     for palette in (light, dark):
-        assert abs(palette.color(role.Base).lightness() - palette.color(role.Text).lightness()) > 120
+        assert (
+            abs(
+                palette.color(role.Base).lightness()
+                - palette.color(role.Text).lightness()
+            )
+            > 120
+        )
 
 
 def test_file_selector_reflects_selection_state(tmp_path):
@@ -76,7 +82,12 @@ def test_drop_zone_click_opens_file_picker():
         zone.resize(300, 80)
         clicks = []
         zone.clicked.connect(lambda: clicks.append(1))
-        QTest.mouseClick(zone, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(20, 20))
+        QTest.mouseClick(
+            zone,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            QPoint(20, 20),
+        )
         assert clicks == [1]
     finally:
         zone.deleteLater()
@@ -107,7 +118,11 @@ def test_active_pdf_is_carried_to_empty_primary_selectors(tmp_path):
             box_layout.addWidget(selector)
         layout.addWidget(box)
 
-    empty, compare_first, compare_second = FileSelectorWidget(), FileSelectorWidget(), FileSelectorWidget()
+    empty, compare_first, compare_second = (
+        FileSelectorWidget(),
+        FileSelectorWidget(),
+        FileSelectorWidget(),
+    )
     prefilled, image = FileSelectorWidget(), FileSelectorWidget("", [".png"])
     hidden = FileSelectorWidget()
     prefilled.set_path(str(other))
@@ -152,7 +167,9 @@ def test_update_preview_keeps_view_while_carrying_same_file(tmp_path):
         _current_preview_path = str(pdf)
 
         def _ensure_preview_document(self, _path):  # pragma: no cover - 호출되면 실패
-            raise AssertionError("preview must not be reloaded while carrying the same file")
+            raise AssertionError(
+                "preview must not be reloaded while carrying the same file"
+            )
 
     _update_preview(Host(), str(pdf))
 
@@ -183,7 +200,11 @@ def test_batch_tab_shows_only_options_for_selected_operation():
             host.cmb_batch_op.setCurrentIndex(host.cmb_batch_op.findData(operation))
 
         select("compress")
-        assert host._batch_text_row.isHidden() and host._batch_wm_row.isHidden() and host._batch_perm_box.isHidden()
+        assert (
+            host._batch_text_row.isHidden()
+            and host._batch_wm_row.isHidden()
+            and host._batch_perm_box.isHidden()
+        )
 
         select("watermark")
         assert not host._batch_text_row.isHidden() and not host._batch_wm_row.isHidden()
@@ -192,10 +213,14 @@ def test_batch_tab_shows_only_options_for_selected_operation():
         host.inp_batch_opt.setText("CONFIDENTIAL")
 
         select("encrypt")
-        assert not host._batch_text_row.isHidden() and not host._batch_perm_box.isHidden()
+        assert (
+            not host._batch_text_row.isHidden() and not host._batch_perm_box.isHidden()
+        )
         assert host._batch_wm_row.isHidden()
         assert host.inp_batch_opt.echoMode() == QLineEdit.EchoMode.Password
-        assert host.inp_batch_opt.text() == ""  # 워터마크 문구가 비밀번호로 넘어가지 않는다
+        assert (
+            host.inp_batch_opt.text() == ""
+        )  # 워터마크 문구가 비밀번호로 넘어가지 않는다
         assert host._batch_hint.text() == tm.get("hint_batch_encrypt")
 
         select("rotate")
@@ -218,7 +243,9 @@ def test_tab_shell_rail_helpers_are_safe_without_rail():
 
 
 def _positional_fields(text):
-    return [spec for _lit, name, spec, _conv in string.Formatter().parse(text) if name == ""]
+    return [
+        spec for _lit, name, spec, _conv in string.Formatter().parse(text) if name == ""
+    ]
 
 
 def test_catalogs_keep_placeholders_in_sync_and_page_label_is_not_a_tab_name():
@@ -226,7 +253,11 @@ def test_catalogs_keep_placeholders_in_sync_and_page_label_is_not_a_tab_name():
 
     ko, en = TRANSLATIONS["ko"], TRANSLATIONS["en"]
     assert set(ko) == set(en)
-    mismatched = [key for key in ko if len(_positional_fields(ko[key])) != len(_positional_fields(en[key]))]
+    mismatched = [
+        key
+        for key in ko
+        if len(_positional_fields(ko[key])) != len(_positional_fields(en[key]))
+    ]
     assert not mismatched, mismatched
     # "페이지:" 입력 라벨은 탭 이름 키를 재사용하지 않는다 (탭 이름이 바뀌어도 라벨이 깨지지 않게).
     assert ko["lbl_page"] == "페이지:" and en["lbl_page"] == "Page:"

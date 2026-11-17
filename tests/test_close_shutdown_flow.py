@@ -32,7 +32,9 @@ def test_shutdown_worker_for_close_waits_without_force_when_worker_stops():
     assert worker.terminate_calls == 0
 
 
-def test_shutdown_worker_for_close_requires_user_confirmation_before_terminate(monkeypatch):
+def test_shutdown_worker_for_close_requires_user_confirmation_before_terminate(
+    monkeypatch,
+):
     require_pyside6()
     import src.ui.main_window as main_window_module
 
@@ -62,7 +64,10 @@ def test_shutdown_worker_for_close_requires_user_confirmation_before_terminate(m
         "warning",
         lambda *_args, **_kwargs: main_window_module.QMessageBox.StandardButton.Cancel,
     )
-    assert main_window_module._shutdown_worker_for_close(parent=None, worker=worker) is False
+    assert (
+        main_window_module._shutdown_worker_for_close(parent=None, worker=worker)
+        is False
+    )
     assert worker.terminate_calls == 0
 
     monkeypatch.setattr(
@@ -70,6 +75,9 @@ def test_shutdown_worker_for_close_requires_user_confirmation_before_terminate(m
         "warning",
         lambda *_args, **_kwargs: main_window_module.QMessageBox.StandardButton.Close,
     )
-    assert main_window_module._shutdown_worker_for_close(parent=None, worker=worker) is True
+    assert (
+        main_window_module._shutdown_worker_for_close(parent=None, worker=worker)
+        is True
+    )
     assert worker.terminate_calls == 1
     assert worker.wait_calls[-1] == 1000

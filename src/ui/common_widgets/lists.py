@@ -16,8 +16,10 @@ from .validators import _item_user_data, _item_user_path, is_valid_pdf
 
 logger = logging.getLogger(__name__)
 
+
 class FileListWidget(QListWidget):
     """다중 파일 드래그 앤 드롭 리스트 (PDF)"""
+
     fileAdded = Signal(str)  # 파일 추가 시그널
 
     def __init__(self):
@@ -27,6 +29,7 @@ class FileListWidget(QListWidget):
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setMinimumHeight(140)
         from ...core.i18n import tm
+
         self.setToolTip(tm.get("tooltip_pdf_list_drop"))
 
     def dragEnterEvent(self, e: QDragEnterEvent | None):
@@ -34,7 +37,9 @@ class FileListWidget(QListWidget):
         if mime_data is not None and mime_data.hasUrls():
             if e is not None:
                 e.acceptProposedAction()
-            self.setStyleSheet("QListWidget { border: 2px solid #4f8cff; background: rgba(79, 140, 255, 0.05); }")
+            self.setStyleSheet(
+                "QListWidget { border: 2px solid #4f8cff; background: rgba(79, 140, 255, 0.05); }"
+            )
         else:
             super().dragEnterEvent(e)
 
@@ -65,12 +70,12 @@ class FileListWidget(QListWidget):
                 # 폴더인 경우 내부 PDF 모두 추가
                 if os.path.isdir(path):
                     for filename in os.listdir(path):
-                        if filename.lower().endswith('.pdf'):
+                        if filename.lower().endswith(".pdf"):
                             file_path = os.path.join(path, filename)
                             if self._add_pdf_item(file_path):
                                 last_path = file_path
                 # PDF 파일인 경우
-                elif path.lower().endswith('.pdf'):
+                elif path.lower().endswith(".pdf"):
                     if self._add_pdf_item(path):
                         last_path = path
 
@@ -96,19 +101,25 @@ class FileListWidget(QListWidget):
         return False
 
     def get_all_paths(self) -> list[str]:
-        return [path for i in range(self.count()) if (path := _item_user_path(self.item(i))) is not None]
+        return [
+            path
+            for i in range(self.count())
+            if (path := _item_user_path(self.item(i))) is not None
+        ]
 
     def add_file(self, path: str):
         """파일 추가 (중복 체크 포함)"""
         path = str(path)
-        if not path.lower().endswith('.pdf'):
+        if not path.lower().endswith(".pdf"):
             return
         if self._add_pdf_item(path):
             self.fileAdded.emit(path)
 
+
 class ImageListWidget(QListWidget):
     """이미지 파일 드래그 앤 드롭 리스트"""
-    IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff', '.webp')
+
+    IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tiff", ".webp")
 
     def __init__(self):
         super().__init__()
@@ -117,6 +128,7 @@ class ImageListWidget(QListWidget):
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setMinimumHeight(100)
         from ...core.i18n import tm
+
         self.setToolTip(tm.get("tooltip_image_list_drop"))
 
     def dragEnterEvent(self, e: QDragEnterEvent | None):
@@ -151,7 +163,10 @@ class ImageListWidget(QListWidget):
             for url in mime_data.urls():
                 path = str(url.toLocalFile())
                 if path.lower().endswith(self.IMAGE_EXTENSIONS):
-                    exists = any(_item_user_path(self.item(i)) == path for i in range(self.count()))
+                    exists = any(
+                        _item_user_path(self.item(i)) == path
+                        for i in range(self.count())
+                    )
                     if not exists:
                         item = QListWidgetItem(f"🖼️ {os.path.basename(path)}")
                         item.setData(Qt.ItemDataRole.UserRole, path)
@@ -161,7 +176,12 @@ class ImageListWidget(QListWidget):
             super().dropEvent(event)
 
     def get_all_paths(self) -> list[str]:
-        return [path for i in range(self.count()) if (path := _item_user_path(self.item(i))) is not None]
+        return [
+            path
+            for i in range(self.count())
+            if (path := _item_user_path(self.item(i))) is not None
+        ]
+
 
 class DraggableListWidget(QListWidget):
     """
@@ -169,6 +189,7 @@ class DraggableListWidget(QListWidget):
 
     CLAUDE.md에 문서화된 대로 itemsReordered 시그널 지원
     """
+
     itemsReordered = Signal(list)  # 재정렬된 항목 리스트
 
     def __init__(self, parent=None):

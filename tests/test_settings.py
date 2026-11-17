@@ -66,7 +66,9 @@ def test_load_settings_preserves_valid_normalized_values(tmp_path, monkeypatch):
             {
                 "theme": "light",
                 "recent_files": [str(existing_pdf), "", 3],
-                "chat_histories": {str(existing_pdf): [{"role": "user", "content": "hi"}]},
+                "chat_histories": {
+                    str(existing_pdf): [{"role": "user", "content": "hi"}]
+                },
                 "splitter_sizes": [100, 200.8],
                 "language": "en",
                 "window_geometry": {"x": 10, "y": 20, "width": 100, "height": 200},
@@ -88,7 +90,9 @@ def test_load_settings_preserves_valid_normalized_values(tmp_path, monkeypatch):
     assert loaded["preview_search_expanded"] is False
 
 
-def test_load_settings_merges_duplicate_normalized_chat_history_keys(tmp_path, monkeypatch):
+def test_load_settings_merges_duplicate_normalized_chat_history_keys(
+    tmp_path, monkeypatch
+):
     from src.core import settings as st
     from src.core.path_utils import make_chat_history_key, normalize_path_key
 
@@ -153,4 +157,3 @@ def test_load_settings_corrupt_file_creates_backup(tmp_path, monkeypatch):
     assert isinstance(loaded, dict)
     backups = list(tmp_path.glob("settings.json.backup_*"))
     assert len(backups) == 1
-

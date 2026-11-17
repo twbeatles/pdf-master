@@ -72,9 +72,13 @@ class AIChatSessionMixin:
                     ],
                 )
             ]
-            history_contents.extend(self._history_to_contents(conversation_history or []))
+            history_contents.extend(
+                self._history_to_contents(conversation_history or [])
+            )
             self._run_cancel_check(cancel_check)
-            chat = self._client.chats.create(model=self._model, history=history_contents)
+            chat = self._client.chats.create(
+                model=self._model, history=history_contents
+            )
             with cls._chat_sessions_lock:
                 # double-check: 대기 중 다른 경로가 채웠을 수 있음
                 existing = cls._chat_sessions.get(cache_key)

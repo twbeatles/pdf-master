@@ -46,7 +46,9 @@ def _create_preview_printer(self):
     return printer
 
 
-def _collect_print_page_indices(printer, total_pages: int, current_page_index: int) -> list[int]:
+def _collect_print_page_indices(
+    printer, total_pages: int, current_page_index: int
+) -> list[int]:
     if total_pages <= 0:
         return []
 
@@ -66,7 +68,11 @@ def _collect_print_page_indices(printer, total_pages: int, current_page_index: i
             except Exception:
                 page_ranges = None
 
-            if page_ranges is not None and hasattr(page_ranges, "isEmpty") and not page_ranges.isEmpty():
+            if (
+                page_ranges is not None
+                and hasattr(page_ranges, "isEmpty")
+                and not page_ranges.isEmpty()
+            ):
                 for page_range in page_ranges.toRangeList():
                     start = max(1, int(page_range.from_()))
                     end = min(total_pages, int(page_range.to()))
@@ -75,7 +81,9 @@ def _collect_print_page_indices(printer, total_pages: int, current_page_index: i
                     return indices
 
             start = max(1, int(getattr(printer, "fromPage", lambda: 1)()))
-            end = min(total_pages, int(getattr(printer, "toPage", lambda: total_pages)()))
+            end = min(
+                total_pages, int(getattr(printer, "toPage", lambda: total_pages)())
+            )
             return list(range(start - 1, end))
     except Exception:
         logger.debug("Falling back to printing all pages", exc_info=True)
@@ -99,8 +107,12 @@ def _render_pdf_page_to_printer(printer, painter: QPainter, page) -> None:
     render_scale = max(1.0, render_scale)
 
     pix = page.get_pixmap(matrix=fitz.Matrix(render_scale, render_scale), alpha=False)
-    image_format = QImage.Format.Format_RGBA8888 if pix.alpha else QImage.Format.Format_RGB888
-    image = QImage(bytes(pix.samples), pix.width, pix.height, pix.stride, image_format).copy()
+    image_format = (
+        QImage.Format.Format_RGBA8888 if pix.alpha else QImage.Format.Format_RGB888
+    )
+    image = QImage(
+        bytes(pix.samples), pix.width, pix.height, pix.stride, image_format
+    ).copy()
     scaled = image.scaled(
         target_rect.size(),
         Qt.AspectRatioMode.KeepAspectRatio,
@@ -115,12 +127,16 @@ def _render_pdf_page_to_printer(printer, painter: QPainter, page) -> None:
     painter.drawImage(draw_rect, scaled)
 
 
-def _paint_pdf_document(printer, path: str, password: str | None, current_page_index: int):
+def _paint_pdf_document(
+    printer, path: str, password: str | None, current_page_index: int
+):
     doc = fitz.open(path)
     try:
         if doc.is_encrypted and password:
             doc.authenticate(password)
-        page_indices = _collect_print_page_indices(printer, len(doc), current_page_index)
+        page_indices = _collect_print_page_indices(
+            printer, len(doc), current_page_index
+        )
         if not page_indices:
             return
         painter = QPainter()
@@ -170,8 +186,12 @@ def _print_pdf(self, path):
         dialog = QPrintPreviewDialog(printer, self)
         dialog.setWindowTitle(tm.get("print_title"))
         if hasattr(dialog, "setOption"):
-            dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintPageRange, True)
-            dialog.setOption(QAbstractPrintDialog.PrintDialogOption.PrintCurrentPage, True)
+            dialog.setOption(
+                QAbstractPrintDialog.PrintDialogOption.PrintPageRange, True
+            )
+            dialog.setOption(
+                QAbstractPrintDialog.PrintDialogOption.PrintCurrentPage, True
+            )
         dialog.paintRequested.connect(
             lambda current_printer: _paint_pdf_document(
                 current_printer,
@@ -183,10 +203,14 @@ def _print_pdf(self, path):
 
         result = dialog.exec()
         if result == QPrintPreviewDialog.DialogCode.Accepted:
-            toast = ToastWidget(tm.get("print_completed"), toast_type="success", duration=2000)
+            toast = ToastWidget(
+                tm.get("print_completed"), toast_type="success", duration=2000
+            )
             toast.show_toast(self)
     except Exception as exc:
-        QMessageBox.warning(self, tm.get("print_error_title"), tm.get("print_error_msg", str(exc)))
+        QMessageBox.warning(
+            self, tm.get("print_error_title"), tm.get("print_error_msg", str(exc))
+        )
 
 
 def _prev_preview_page(self):
@@ -212,7 +236,10 @@ def _on_preview_page_requested(self, page_index: int):
 
 
 def _schedule_preview_rerender(self):
-    if getattr(self, "_current_preview_path", "") and getattr(self, "_preview_total_pages", 0) > 0:
+    if (
+        getattr(self, "_current_preview_path", "")
+        and getattr(self, "_preview_total_pages", 0) > 0
+    ):
         self._render_preview_page()
 
 
@@ -234,7 +261,9 @@ def _render_preview_page(self):
         self._reset_preview_state(close_doc=False)
         return
 
-    self._current_preview_page = max(0, min(getattr(self, "_current_preview_page", 0), total_pages - 1))
+    self._current_preview_page = max(
+        0, min(getattr(self, "_current_preview_page", 0), total_pages - 1)
+    )
     self.preview_image.set_page_state(self._current_preview_page, total_pages)
     self.preview_image.go_to_page(self._current_preview_page, emit_signal=False)
     self._set_preview_navigation_enabled(True)

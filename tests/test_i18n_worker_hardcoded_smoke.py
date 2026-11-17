@@ -25,7 +25,10 @@ def test_target_worker_emit_calls_do_not_use_direct_string_literals():
             return True
         if isinstance(node, ast.JoinedStr):
             return True
-        return any(contains_direct_string_message(child) for child in ast.iter_child_nodes(node))
+        return any(
+            contains_direct_string_message(child)
+            for child in ast.iter_child_nodes(node)
+        )
 
     for path in TARGET_WORKER_FILES:
         rel = str(path)
@@ -33,17 +36,29 @@ def test_target_worker_emit_calls_do_not_use_direct_string_literals():
         tree = ast.parse(source, filename=rel)
 
         function_taints: dict[ast.AST, set[str]] = {}
-        for function in [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]:
+        for function in [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        ]:
             tainted: set[str] = set()
             for node in ast.walk(function):
-                if isinstance(node, ast.Assign) and contains_direct_string_message(node.value):
+                if isinstance(node, ast.Assign) and contains_direct_string_message(
+                    node.value
+                ):
                     for target in node.targets:
                         if isinstance(target, ast.Name):
                             tainted.add(target.id)
-                elif isinstance(node, ast.AnnAssign) and node.value and contains_direct_string_message(node.value):
+                elif (
+                    isinstance(node, ast.AnnAssign)
+                    and node.value
+                    and contains_direct_string_message(node.value)
+                ):
                     if isinstance(node.target, ast.Name):
                         tainted.add(node.target.id)
-                elif isinstance(node, ast.AugAssign) and contains_direct_string_message(node.value):
+                elif isinstance(node, ast.AugAssign) and contains_direct_string_message(
+                    node.value
+                ):
                     if isinstance(node.target, ast.Name):
                         tainted.add(node.target.id)
             function_taints[function] = tainted
@@ -67,7 +82,10 @@ def test_target_worker_emit_calls_do_not_use_direct_string_literals():
             if not isinstance(node.func, ast.Attribute) or node.func.attr != "emit":
                 continue
             owner = node.func.value
-            if not isinstance(owner, ast.Attribute) or owner.attr not in {"finished_signal", "error_signal"}:
+            if not isinstance(owner, ast.Attribute) or owner.attr not in {
+                "finished_signal",
+                "error_signal",
+            }:
                 continue
             if not node.args:
                 continue
@@ -78,7 +96,9 @@ def test_target_worker_emit_calls_do_not_use_direct_string_literals():
                 violations.append(f"{rel}:{node.lineno}")
             elif isinstance(first_arg, ast.Name):
                 function = owner_function(node)
-                if function is not None and first_arg.id in function_taints.get(function, set()):
+                if function is not None and first_arg.id in function_taints.get(
+                    function, set()
+                ):
                     violations.append(f"{rel}:{node.lineno}")
 
     assert not violations, "Direct string emits found:\n" + "\n".join(violations)

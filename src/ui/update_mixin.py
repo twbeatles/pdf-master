@@ -1,4 +1,5 @@
 """User-facing, single-flight signed-update flow."""
+
 from __future__ import annotations
 
 import logging
@@ -64,7 +65,11 @@ class UpdateMixin:
         result = consume_update_result()
         if not result or result.get("status") == "applied":
             return
-        QMessageBox.warning(self, tm.get("update_failure"), str(result.get("error") or tm.get("update_recovered")))
+        QMessageBox.warning(
+            self,
+            tm.get("update_failure"),
+            str(result.get("error") or tm.get("update_recovered")),
+        )
 
     def _show_update_current(self) -> None:
         message = tm.get("update_current")
@@ -123,6 +128,7 @@ class UpdateMixin:
         if self._update_state != "idle":
             return
         self._update_state = "checking"
+
         def worker() -> None:
             try:
                 manifest = check_for_update(
@@ -136,7 +142,10 @@ class UpdateMixin:
                 self._handle_check_failure(exc, silent)
             else:
                 self._handle_check_ready(manifest)
-        threading.Thread(target=worker, name="PDFMasterUpdateCheck", daemon=True).start()
+
+        threading.Thread(
+            target=worker, name="PDFMasterUpdateCheck", daemon=True
+        ).start()
 
     def _offer_update(self, raw_manifest: object) -> None:
         if not isinstance(raw_manifest, ReleaseManifest):
@@ -150,20 +159,41 @@ class UpdateMixin:
         self._last_update_check_at = None
         offer = tm.get("update_offer", manifest.version)
         if manifest_expiry_status(manifest.expires_at) == "expiring_soon":
-            offer += "\n" + tm.get("update_expires_soon", days_until_expiry(manifest.expires_at))
+            offer += "\n" + tm.get(
+                "update_expires_soon", days_until_expiry(manifest.expires_at)
+            )
         if not getattr(sys, "frozen", False):
             self._update_state = "idle"
-            QMessageBox.information(self, tm.get("update_title"), tm.get("update_dev_available", manifest.version))
+            QMessageBox.information(
+                self,
+                tm.get("update_title"),
+                tm.get("update_dev_available", manifest.version),
+            )
             return
-        if QMessageBox.question(self, tm.get("update_found"), offer, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) != QMessageBox.StandardButton.Yes:
+        if (
+            QMessageBox.question(
+                self,
+                tm.get("update_found"),
+                offer,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
             self._update_state = "idle"
             return
         self._update_state = "downloading"
-        threading.Thread(target=self._download_update, args=(manifest,), name="PDFMasterUpdateDownload", daemon=True).start()
+        threading.Thread(
+            target=self._download_update,
+            args=(manifest,),
+            name="PDFMasterUpdateDownload",
+            daemon=True,
+        ).start()
 
     def _download_update(self, manifest: ReleaseManifest) -> None:
         try:
-            self._update_signals.staged.emit(download_update(manifest, self._update_signals.progress.emit))
+            self._update_signals.staged.emit(
+                download_update(manifest, self._update_signals.progress.emit)
+            )
         except Exception as exc:
             logger.warning("Update download failed", exc_info=True)
             self._update_state = "idle"

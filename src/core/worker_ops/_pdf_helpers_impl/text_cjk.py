@@ -1,9 +1,11 @@
 """PDF helpers: text_cjk."""
+
 from __future__ import annotations
 
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 def text_needs_cjk(text: str) -> bool:
     """한글·한자·가나 등 CJK 계열 글리프가 필요하면 True."""

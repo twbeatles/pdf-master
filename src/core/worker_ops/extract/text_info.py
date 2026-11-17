@@ -19,11 +19,22 @@ logger = logging.getLogger(__name__)
 class WorkerExtractTextInfoMixin(WorkerHost):
     def extract_text(self):
         # 다중 파일 지원
-        file_paths = [path for path in (_as_list(self.kwargs.get('file_paths')) or [_as_str(self.kwargs.get('file_path'))]) if isinstance(path, str) and path]
-        output_path = _as_str(self.kwargs.get('output_path'))
-        output_dir = _as_str(self.kwargs.get('output_dir'))
-        include_details = _as_bool(self.kwargs.get('include_details'), False)  # v3.2: 상세 정보 포함 옵션
-        use_ocr = _as_bool(self.kwargs.get("use_ocr"), False) or _as_bool(self.kwargs.get("ocr"), False)
+        file_paths = [
+            path
+            for path in (
+                _as_list(self.kwargs.get("file_paths"))
+                or [_as_str(self.kwargs.get("file_path"))]
+            )
+            if isinstance(path, str) and path
+        ]
+        output_path = _as_str(self.kwargs.get("output_path"))
+        output_dir = _as_str(self.kwargs.get("output_dir"))
+        include_details = _as_bool(
+            self.kwargs.get("include_details"), False
+        )  # v3.2: 상세 정보 포함 옵션
+        use_ocr = _as_bool(self.kwargs.get("use_ocr"), False) or _as_bool(
+            self.kwargs.get("ocr"), False
+        )
         ocr_language = _as_str(self.kwargs.get("ocr_language"), "kor+eng") or "kor+eng"
         ocr_dpi = max(72, _as_int(self.kwargs.get("ocr_dpi"), 200))
 
@@ -48,19 +59,23 @@ class WorkerExtractTextInfoMixin(WorkerHost):
                 for i in range(len(doc)):
                     page = doc[i]
                     self._check_cancelled()  # 취소 체크포인트
-                    text_chunks.append(f"\n--- Page {i+1} ---\n")
+                    text_chunks.append(f"\n--- Page {i + 1} ---\n")
                     pages_processed += 1
 
                     if use_ocr:
                         try:
                             get_tp = getattr(page, "get_textpage_ocr", None)
                             if not callable(get_tp):
-                                raise RuntimeError("page.get_textpage_ocr is not available in this PyMuPDF build")
+                                raise RuntimeError(
+                                    "page.get_textpage_ocr is not available in this PyMuPDF build"
+                                )
                             tp = get_tp(dpi=ocr_dpi, language=ocr_language, full=True)
                             text_chunks.append(page.get_text("text", textpage=tp) or "")
                             ocr_success_pages += 1
                         except Exception as exc:
-                            logger.warning("OCR failed page %s: %s", i + 1, exc, exc_info=True)
+                            logger.warning(
+                                "OCR failed page %s: %s", i + 1, exc, exc_info=True
+                            )
                             ocr_hard_fail = str(exc)
                             ocr_fail_pages += 1
                             # 네이티브 레이어 폴백
@@ -71,8 +86,12 @@ class WorkerExtractTextInfoMixin(WorkerHost):
                         blocks = cast(list[dict[str, Any]], text_dict.get("blocks", []))
                         for block in blocks:
                             if block.get("type") == 0:  # 텍스트 블록
-                                for line in cast(list[dict[str, Any]], block.get("lines", [])):
-                                    for span in cast(list[dict[str, Any]], line.get("spans", [])):
+                                for line in cast(
+                                    list[dict[str, Any]], block.get("lines", [])
+                                ):
+                                    for span in cast(
+                                        list[dict[str, Any]], line.get("spans", [])
+                                    ):
                                         text = span.get("text", "")
                                         font = span.get("font", "unknown")
                                         size = span.get("size", 0)
@@ -138,14 +157,18 @@ class WorkerExtractTextInfoMixin(WorkerHost):
                     )
                 )
             else:
-                self.finished_signal.emit(self._get_msg("msg_ocr_extract_done", total_files))
+                self.finished_signal.emit(
+                    self._get_msg("msg_ocr_extract_done", total_files)
+                )
             return
 
         self.finished_signal.emit(
             self._get_msg(
                 "msg_extract_text_done",
                 total_files,
-                self._get_msg("msg_extract_text_detail_suffix") if include_details else "",
+                self._get_msg("msg_extract_text_detail_suffix")
+                if include_details
+                else "",
             )
         )
 
@@ -176,7 +199,11 @@ class WorkerExtractTextInfoMixin(WorkerHost):
             if doc:
                 doc.close()
 
-        font_list = ", ".join(sorted(fonts_used)) if fonts_used else self._get_msg("pdf_info_fonts_none")
+        font_list = (
+            ", ".join(sorted(fonts_used))
+            if fonts_used
+            else self._get_msg("pdf_info_fonts_none")
+        )
         file_kb = os.path.getsize(file_path) / 1024
         lines = [
             self._get_msg("pdf_info_title", os.path.basename(file_path)),
@@ -195,4 +222,6 @@ class WorkerExtractTextInfoMixin(WorkerHost):
             "",
         ]
         self._atomic_text_save(output_path, "\n".join(lines))
-        self.finished_signal.emit(self._get_msg("msg_pdf_info_done", page_count, total_chars, total_images))
+        self.finished_signal.emit(
+            self._get_msg("msg_pdf_info_done", page_count, total_chars, total_images)
+        )

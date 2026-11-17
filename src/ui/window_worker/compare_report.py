@@ -37,7 +37,9 @@ def show_compare_report_dialog(parent, payload: dict) -> None:
 
     body = QTextEdit()
     body.setReadOnly(True)
-    body.setPlainText(_format_compare_summary(payload if isinstance(payload, dict) else {}))
+    body.setPlainText(
+        _format_compare_summary(payload if isinstance(payload, dict) else {})
+    )
     body.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
     layout.addWidget(body, 1)
 
@@ -61,7 +63,9 @@ def show_compare_report_dialog(parent, payload: dict) -> None:
     layout.addLayout(btn_row)
 
     buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-    buttons.button(QDialogButtonBox.StandardButton.Close).setText(tm.get("compare_report_close"))
+    buttons.button(QDialogButtonBox.StandardButton.Close).setText(
+        tm.get("compare_report_close")
+    )
     buttons.rejected.connect(dialog.reject)
     buttons.accepted.connect(dialog.accept)
     close_btn = buttons.button(QDialogButtonBox.StandardButton.Close)

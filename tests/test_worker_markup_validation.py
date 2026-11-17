@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6_and_pymupdf
 
 from src.core.optional_deps import fitz
@@ -66,4 +65,3 @@ def test_add_text_markup_valid_type_still_works(tmp_path):
         assert annots
     finally:
         doc.close()
-

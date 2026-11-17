@@ -71,7 +71,9 @@ def _shutdown_worker_for_close(parent, worker) -> bool:
     try:
         from ..core.temp_cleanup import cleanup_pdf_master_temp_files
 
-        removed = cleanup_pdf_master_temp_files(include_in_progress=True, max_age_seconds=None)
+        removed = cleanup_pdf_master_temp_files(
+            include_in_progress=True, max_age_seconds=None
+        )
         logger.warning(
             "Force-terminate temp sweep finished (mode=%s, removed=%s)",
             mode,
@@ -129,9 +131,13 @@ class PDFMasterApp(
         os.makedirs(self._undo_backup_dir, exist_ok=True)
 
         # v4.4: 시작 시 오래된 백업 정리
-        self._cleanup_old_undo_backups(max_age_hours=UNDO_BACKUP_MAX_AGE_HOURS)  # v4.5: 상수 사용
+        self._cleanup_old_undo_backups(
+            max_age_hours=UNDO_BACKUP_MAX_AGE_HOURS
+        )  # v4.5: 상수 사용
         # v4.5: 시작 시 용량 기반 백업 정리
-        self._cleanup_undo_backups_by_size(max_size_mb=UNDO_BACKUP_MAX_SIZE_MB)  # v4.5: 상수 사용
+        self._cleanup_undo_backups_by_size(
+            max_size_mb=UNDO_BACKUP_MAX_SIZE_MB
+        )  # v4.5: 상수 사용
         # AI 평문 temp / atomic orphan 정리 (이전 비정상 종료 잔존)
         try:
             from ..core.temp_cleanup import cleanup_pdf_master_temp_files
@@ -225,9 +231,9 @@ class PDFMasterApp(
         self.setup_page_tab()
         self.setup_reorder_tab()  # 페이지 순서 변경
         self.setup_edit_sec_tab()
-        self.setup_batch_tab()    # 일괄 처리
-        self.setup_advanced_tab() # 고급 기능
-        self.setup_ai_tab()       # v4.0: AI 요약
+        self.setup_batch_tab()  # 일괄 처리
+        self.setup_advanced_tab()  # 고급 기능
+        self.setup_ai_tab()  # v4.0: AI 요약
         from .tabs_settings import setup_settings_tab
 
         setup_settings_tab(self)  # 설정 (Pivot + HeaderCard)
@@ -309,7 +315,9 @@ class PDFMasterApp(
             try:
                 self._exit_preview_fullscreen(restore_focus=False)
             except Exception:
-                logger.debug("Failed to exit preview fullscreen on close", exc_info=True)
+                logger.debug(
+                    "Failed to exit preview fullscreen on close", exc_info=True
+                )
 
         # 1. 실행 중인 Worker 정리
         if not _shutdown_worker_for_close(self, self.worker):
@@ -321,7 +329,7 @@ class PDFMasterApp(
         # 2. 미리보기 문서 리소스 정리
         if hasattr(self, "_unwatch_preview_file"):
             self._unwatch_preview_file()
-        if hasattr(self, '_current_preview_doc') and self._current_preview_doc:
+        if hasattr(self, "_current_preview_doc") and self._current_preview_doc:
             try:
                 self._current_preview_doc.close()
                 self._current_preview_doc = None
@@ -336,7 +344,9 @@ class PDFMasterApp(
         try:
             from ..core.temp_cleanup import cleanup_pdf_master_temp_files
 
-            cleanup_pdf_master_temp_files(include_in_progress=True, max_age_seconds=None)
+            cleanup_pdf_master_temp_files(
+                include_in_progress=True, max_age_seconds=None
+            )
         except Exception:
             logger.debug("Shutdown temp cleanup failed", exc_info=True)
 

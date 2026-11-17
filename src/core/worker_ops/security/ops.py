@@ -56,9 +56,9 @@ def _resolve_permissions(raw: object) -> int:
 
 class WorkerSecurityOpsMixin(WorkerHost):
     def protect(self):
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        pw = _as_str(self.kwargs.get('password'))
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        pw = _as_str(self.kwargs.get("password"))
         owner_pw = _as_str(self.kwargs.get("owner_password")) or pw
         user_pw = _as_str(self.kwargs.get("user_password")) or pw
         doc = None
@@ -92,7 +92,9 @@ class WorkerSecurityOpsMixin(WorkerHost):
         try:
             doc = self._open_pdf_document(file_path, password=password)
 
-            self._atomic_pdf_save(doc, output_path, save_profile="compact", garbage=4, deflate=True)
+            self._atomic_pdf_save(
+                doc, output_path, save_profile="compact", garbage=4, deflate=True
+            )
         finally:
             if doc:
                 doc.close()

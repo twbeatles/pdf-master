@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class WorkerExtractAttachmentsMixin(WorkerHost):
     def list_attachments(self):
         """PDF 첨부 파일 목록"""
-        file_path = _as_str(self.kwargs.get('file_path'))
+        file_path = _as_str(self.kwargs.get("file_path"))
 
         doc = self._open_pdf_document(file_path)
         attachments = []
@@ -25,17 +25,21 @@ class WorkerExtractAttachmentsMixin(WorkerHost):
             for i in range(count):
                 self._check_cancelled()
                 info = doc.embfile_info(i)
-                attachments.append({
-                    'index': i,
-                    'name': info.get('name', 'Unknown'),
-                    'size': info.get('size', 0),
-                    'created': info.get('creationDate', ''),
-                })
+                attachments.append(
+                    {
+                        "index": i,
+                        "name": info.get("name", "Unknown"),
+                        "size": info.get("size", 0),
+                        "created": info.get("creationDate", ""),
+                    }
+                )
 
-            self.kwargs['result_attachments'] = attachments
+            self.kwargs["result_attachments"] = attachments
             self._set_result_payload(attachments=attachments)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(self._get_msg("msg_attachments_listed", len(attachments)))
+            self.finished_signal.emit(
+                self._get_msg("msg_attachments_listed", len(attachments))
+            )
         finally:
             doc.close()
 
@@ -55,13 +59,17 @@ class WorkerExtractAttachmentsMixin(WorkerHost):
             try:
                 attach_size = os.path.getsize(attach_path)
             except OSError:
-                self.error_signal.emit(self._get_msg("err_file_access_denied", attach_path))
+                self.error_signal.emit(
+                    self._get_msg("err_file_access_denied", attach_path)
+                )
                 return
             if attach_size > MAX_ATTACHMENT_SIZE:
                 size_mb = attach_size / (1024 * 1024)
                 max_mb = MAX_ATTACHMENT_SIZE / (1024 * 1024)
                 self.error_signal.emit(
-                    self._get_msg("err_attachment_too_large", f"{size_mb:.1f}", f"{max_mb:.0f}")
+                    self._get_msg(
+                        "err_attachment_too_large", f"{size_mb:.1f}", f"{max_mb:.0f}"
+                    )
                 )
                 return
 
@@ -102,7 +110,9 @@ class WorkerExtractAttachmentsMixin(WorkerHost):
                 info = _as_dict(doc.embfile_info(i))
                 data = doc.embfile_get(i)
                 raw_name = info.get("name", f"attachment_{i + 1}")
-                out_path, _saved_name = self._build_safe_attachment_output_path(output_dir, raw_name, i, used_names)
+                out_path, _saved_name = self._build_safe_attachment_output_path(
+                    output_dir, raw_name, i, used_names
+                )
                 self._atomic_binary_save(out_path, data)
                 count += 1
                 self._emit_progress_if_due(int((i + 1) / total * 100))

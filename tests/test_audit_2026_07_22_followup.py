@@ -22,7 +22,9 @@ def test_cleanup_pdf_master_temp_files_removes_old_ai_temp(tmp_path):
     fresh_file = tmp_path / f"{AI_TEMP_PREFIX}fresh.pdf"
     fresh_file.write_bytes(b"%PDF-1.4 new")
 
-    removed = cleanup_pdf_master_temp_files(temp_dir=str(tmp_path), max_age_seconds=60.0)
+    removed = cleanup_pdf_master_temp_files(
+        temp_dir=str(tmp_path), max_age_seconds=60.0
+    )
     assert removed >= 1
     assert not old_file.exists()
     assert fresh_file.exists()

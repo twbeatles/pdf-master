@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 _HEADING_MIN_SIZE = 12.0
 _HEADING_SIZE_GAP = 1.5
 
+
 class WorkerCleanupSanitizeNupMixin(WorkerHost):
     def sanitize_pdf(self):
         """메타데이터·첨부·(옵션) 주석 제거 후 클린 저장."""
@@ -152,7 +153,10 @@ class WorkerCleanupSanitizeNupMixin(WorkerHost):
                     # 원본 페이지 비율 유지 fit
                     page = doc[page_index]
                     pr = page.rect
-                    scale = min(target.width / max(pr.width, 1), target.height / max(pr.height, 1))
+                    scale = min(
+                        target.width / max(pr.width, 1),
+                        target.height / max(pr.height, 1),
+                    )
                     rw, rh = pr.width * scale, pr.height * scale
                     ox = target.x0 + (target.width - rw) / 2
                     oy = target.y0 + (target.height - rh) / 2
@@ -161,7 +165,9 @@ class WorkerCleanupSanitizeNupMixin(WorkerHost):
                 self._emit_progress_if_due(int((sheet_idx + 1) / sheet_count * 100))
 
             self._atomic_pdf_save(out, output_path)
-            self.finished_signal.emit(self._get_msg("msg_impose_nup_done", nup, sheet_count))
+            self.finished_signal.emit(
+                self._get_msg("msg_impose_nup_done", nup, sheet_count)
+            )
         finally:
             out.close()
             doc.close()

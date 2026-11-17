@@ -1,4 +1,5 @@
 """텍스트상자 UI 액션 구현 (SOLID 분할)."""
+
 from __future__ import annotations
 
 from .. import deps
@@ -22,17 +23,27 @@ def action_insert_textbox(self):
     text = style["text"]
 
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
     if not text:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_enter_text"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_enter_text")
+        )
 
     preview = getattr(self, "preview_image", None)
     keep = _textbox_should_keep_placing(self)
     if preview is not None:
-        if hasattr(preview, "is_region_select_mode") and preview.is_region_select_mode():
+        if (
+            hasattr(preview, "is_region_select_mode")
+            and preview.is_region_select_mode()
+        ):
             preview.set_region_select_mode(False)
         # same-path 저장 전 미리보기가 닫히므로 배치는 항상 종료 후 성공 시 재개
-        if hasattr(preview, "is_text_placement_mode") and preview.is_text_placement_mode():
+        if (
+            hasattr(preview, "is_text_placement_mode")
+            and preview.is_text_placement_mode()
+        ):
             preview.set_text_placement_mode(False)
 
     page_num, rect = _textbox_current_rect_and_page(self)
@@ -60,18 +71,26 @@ def action_insert_textbox(self):
         layer=style["layer"],
     )
 
+
 def action_start_textbox_replace_region(self):
     """실험: 영역 드래그 후 기존 텍스트 교체 준비."""
     path = self.sel_textbox.get_path() if hasattr(self, "sel_textbox") else ""
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
     preview = _ensure_textbox_preview_ready(self, path)
     if preview is None or not hasattr(preview, "set_region_select_mode"):
         return deps.QMessageBox.warning(
-            self, deps.tm.get("warning"), deps.tm.get("err_textbox_drag_preview_unavailable")
+            self,
+            deps.tm.get("warning"),
+            deps.tm.get("err_textbox_drag_preview_unavailable"),
         )
     _connect_textbox_preview_signals(self, preview)
-    if preview.is_region_select_mode() and getattr(self, "_region_select_target", None) == "textbox_replace":
+    if (
+        preview.is_region_select_mode()
+        and getattr(self, "_region_select_target", None) == "textbox_replace"
+    ):
         preview.set_region_select_mode(False)
         self._region_select_target = None
         if hasattr(self, "lbl_tb_drag_hint"):
@@ -83,17 +102,26 @@ def action_start_textbox_replace_region(self):
     preview.set_region_select_mode(True)
     if hasattr(self, "lbl_tb_drag_hint"):
         self.lbl_tb_drag_hint.setText(deps.tm.get("hint_textbox_replace_drag_active"))
-    deps.ToastWidget(deps.tm.get("msg_textbox_replace_drag_started"), toast_type="info", duration=2500).show_toast(self)
+    deps.ToastWidget(
+        deps.tm.get("msg_textbox_replace_drag_started"),
+        toast_type="info",
+        duration=2500,
+    ).show_toast(self)
     return None
+
 
 def action_replace_text_in_rect(self):
     """선택된 영역(좌표)의 기존 내용을 교정 후 새 텍스트 삽입."""
     path = self.sel_textbox.get_path() if hasattr(self, "sel_textbox") else ""
     style = _textbox_style_kwargs(self)
     if not path:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_select_pdf"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_select_pdf")
+        )
     if not style["text"]:
-        return deps.QMessageBox.warning(self, deps.tm.get("info"), deps.tm.get("msg_enter_text"))
+        return deps.QMessageBox.warning(
+            self, deps.tm.get("info"), deps.tm.get("msg_enter_text")
+        )
     page_num, rect = _textbox_current_rect_and_page(self)
     out = _textbox_resolve_output_path(self, path, destructive=True)
     if not out:
@@ -108,9 +136,15 @@ def action_replace_text_in_rect(self):
         return None
     preview = getattr(self, "preview_image", None)
     if preview is not None:
-        if hasattr(preview, "is_region_select_mode") and preview.is_region_select_mode():
+        if (
+            hasattr(preview, "is_region_select_mode")
+            and preview.is_region_select_mode()
+        ):
             preview.set_region_select_mode(False)
-        if hasattr(preview, "is_text_placement_mode") and preview.is_text_placement_mode():
+        if (
+            hasattr(preview, "is_text_placement_mode")
+            and preview.is_text_placement_mode()
+        ):
             preview.set_text_placement_mode(False)
     sess = _textbox_session(self)
     keep = _textbox_should_keep_placing(self)

@@ -1,4 +1,3 @@
-
 from _deps import require_pyside6_and_pymupdf
 
 from src.core.optional_deps import fitz
@@ -154,11 +153,12 @@ def test_worker_on_success_consumes_form_fields_payload(monkeypatch):
         "information",
         lambda *_args, **_kwargs: infos.append((_args, _kwargs)),
     )
-    monkeypatch.setattr(worker_ui_module.QTimer, "singleShot", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        worker_ui_module.QTimer, "singleShot", lambda *_args, **_kwargs: None
+    )
 
     dummy = Dummy()
     dummy.on_success("done")
 
     assert dummy._form_field_data.get("customer_name") == "Alice"
     assert dummy.form_fields_list.count() == 1
-

@@ -38,4 +38,3 @@ def build_search_highlight(self, layout) -> None:
     search_btns.addWidget(b_highlight)
     l_search.addLayout(search_btns)
     layout.addWidget(grp_search)
-

@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 class WorkerPageSplitDeleteMixin(WorkerHost):
     def split(self):
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_dir = _as_str(self.kwargs.get('output_dir'))
-        page_range = _as_str(self.kwargs.get('page_range'))
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_dir = _as_str(self.kwargs.get("output_dir"))
+        page_range = _as_str(self.kwargs.get("page_range"))
 
         doc_src = self._open_pdf_document(file_path)
         doc_final = fitz.open()
@@ -42,15 +42,17 @@ class WorkerPageSplitDeleteMixin(WorkerHost):
             out = os.path.join(output_dir, f"{base}_extracted.pdf")
             self._check_cancelled()
             self._atomic_pdf_save(doc_final, out)
-            self.finished_signal.emit(self._get_msg("msg_pages_extracted", len(pages_to_keep)))
+            self.finished_signal.emit(
+                self._get_msg("msg_pages_extracted", len(pages_to_keep))
+            )
         finally:
             doc_src.close()
             doc_final.close()
 
     def delete_pages(self):
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
-        page_range = _as_str(self.kwargs.get('page_range'))
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
+        page_range = _as_str(self.kwargs.get("page_range"))
         doc = None
         try:
             doc = self._open_pdf_document(file_path)
@@ -66,17 +68,19 @@ class WorkerPageSplitDeleteMixin(WorkerHost):
                 self._emit_progress_if_due(int((idx + 1) / total_to_delete * 90))
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(self._get_msg("msg_pages_deleted", len(pages_to_delete)))
+            self.finished_signal.emit(
+                self._get_msg("msg_pages_deleted", len(pages_to_delete))
+            )
         finally:
             if doc:
                 doc.close()
 
     def split_by_pages(self):
         """PDF 분할 - 각 페이지를 개별 파일로"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_dir = _as_str(self.kwargs.get('output_dir'))
-        split_mode = _as_str(self.kwargs.get('split_mode'), 'each')
-        ranges = _as_str(self.kwargs.get('ranges'))
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_dir = _as_str(self.kwargs.get("output_dir"))
+        split_mode = _as_str(self.kwargs.get("split_mode"), "each")
+        ranges = _as_str(self.kwargs.get("ranges"))
 
         doc = None
         try:
@@ -84,13 +88,15 @@ class WorkerPageSplitDeleteMixin(WorkerHost):
             base_name = os.path.splitext(os.path.basename(file_path))[0]
             page_count = len(doc)
 
-            if split_mode == 'each':
+            if split_mode == "each":
                 for i in range(page_count):
                     self._check_cancelled()  # 취소 체크포인트
                     new_doc = fitz.open()
                     try:
                         new_doc.insert_pdf(doc, from_page=i, to_page=i)
-                        out_path = os.path.join(output_dir, f"{base_name}_page_{i+1}.pdf")
+                        out_path = os.path.join(
+                            output_dir, f"{base_name}_page_{i + 1}.pdf"
+                        )
                         out_path_exists = os.path.exists(out_path)
                         self._atomic_pdf_save(new_doc, out_path)
                         if not out_path_exists:
@@ -101,7 +107,7 @@ class WorkerPageSplitDeleteMixin(WorkerHost):
                 self.finished_signal.emit(self._get_msg("msg_split_done", page_count))
             else:
                 count = 0
-                range_list = [r.strip() for r in ranges.split(',') if r.strip()]
+                range_list = [r.strip() for r in ranges.split(",") if r.strip()]
                 if not range_list:
                     self.error_signal.emit(self._get_msg("err_split_ranges_required"))
                     return
@@ -110,8 +116,8 @@ class WorkerPageSplitDeleteMixin(WorkerHost):
                 for part_idx, rng in enumerate(range_list):
                     self._check_cancelled()  # 취소 체크포인트
                     try:
-                        if '-' in rng:
-                            parts = rng.split('-')
+                        if "-" in rng:
+                            parts = rng.split("-")
                             if len(parts) != 2:
                                 logger.warning(f"잘못된 범위 형식: {rng}")
                                 continue
@@ -124,7 +130,9 @@ class WorkerPageSplitDeleteMixin(WorkerHost):
                             logger.warning(f"유효하지 않은 페이지 번호: {rng}")
                             continue
                         if start > page_count or end > page_count:
-                            logger.warning(f"페이지 범위 초과: {rng} (전체 {page_count}페이지)")
+                            logger.warning(
+                                f"페이지 범위 초과: {rng} (전체 {page_count}페이지)"
+                            )
                             # 범위를 조정하여 계속 진행
                             start = min(start, page_count)
                             end = min(end, page_count)
@@ -133,8 +141,12 @@ class WorkerPageSplitDeleteMixin(WorkerHost):
 
                         new_doc = fitz.open()
                         try:
-                            new_doc.insert_pdf(doc, from_page=start-1, to_page=end-1)
-                            out_path = os.path.join(output_dir, f"{base_name}_part_{part_idx+1}.pdf")
+                            new_doc.insert_pdf(
+                                doc, from_page=start - 1, to_page=end - 1
+                            )
+                            out_path = os.path.join(
+                                output_dir, f"{base_name}_part_{part_idx + 1}.pdf"
+                            )
                             out_path_exists = os.path.exists(out_path)
                             self._atomic_pdf_save(new_doc, out_path)
                             if not out_path_exists:
@@ -142,7 +154,9 @@ class WorkerPageSplitDeleteMixin(WorkerHost):
                         finally:
                             new_doc.close()
                         count += 1
-                        self._emit_progress_if_due(int((part_idx + 1) / total_ranges * 100))
+                        self._emit_progress_if_due(
+                            int((part_idx + 1) / total_ranges * 100)
+                        )
                     except ValueError as e:
                         logger.warning(f"범위 파싱 오류: {rng} - {e}")
                         continue

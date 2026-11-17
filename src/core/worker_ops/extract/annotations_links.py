@@ -34,7 +34,12 @@ class WorkerExtractAnnotationsLinksMixin(WorkerHost):
                                 "type": annot.type[1] if annot.type else "Unknown",
                                 "content": annot_info.get("content", ""),
                                 "title": annot_info.get("title", ""),
-                                "rect": [annot.rect.x0, annot.rect.y0, annot.rect.x1, annot.rect.y1],
+                                "rect": [
+                                    annot.rect.x0,
+                                    annot.rect.y0,
+                                    annot.rect.x1,
+                                    annot.rect.y1,
+                                ],
                             }
                         )
                 self._emit_progress_if_due(int((page_num + 1) / total_pages * 100))
@@ -42,7 +47,12 @@ class WorkerExtractAnnotationsLinksMixin(WorkerHost):
             if doc:
                 doc.close()
 
-        lines = [f"# 주석 목록: {os.path.basename(file_path)}", "", f"총 {len(all_annots)}개 주석", ""]
+        lines = [
+            f"# 주석 목록: {os.path.basename(file_path)}",
+            "",
+            f"총 {len(all_annots)}개 주석",
+            "",
+        ]
         for annot in all_annots:
             lines.append(f"## 페이지 {annot['page']} - {annot['type']}")
             if annot["title"]:
@@ -53,12 +63,14 @@ class WorkerExtractAnnotationsLinksMixin(WorkerHost):
         self._atomic_text_save(output_path, "\n".join(lines))
         self.kwargs["result_annotations"] = all_annots
         self._set_result_payload(annotations=all_annots)
-        self.finished_signal.emit(self._get_msg("msg_annotations_extracted", len(all_annots)))
+        self.finished_signal.emit(
+            self._get_msg("msg_annotations_extracted", len(all_annots))
+        )
 
     def extract_links(self):
         """PDF에서 모든 링크 추출"""
-        file_path = _as_str(self.kwargs.get('file_path'))
-        output_path = _as_str(self.kwargs.get('output_path'))
+        file_path = _as_str(self.kwargs.get("file_path"))
+        output_path = _as_str(self.kwargs.get("output_path"))
 
         doc = self._open_pdf_document(file_path)
         all_links = []
@@ -69,11 +81,8 @@ class WorkerExtractAnnotationsLinksMixin(WorkerHost):
                 self._check_cancelled()  # 취소 체크포인트
                 links = page.get_links()
                 for link in links:
-                    if 'uri' in link:
-                        all_links.append({
-                            'page': i + 1,
-                            'url': link['uri']
-                        })
+                    if "uri" in link:
+                        all_links.append({"page": i + 1, "url": link["uri"]})
                 self._emit_progress_if_due(int((i + 1) / total_pages * 100))
         finally:
             doc.close()

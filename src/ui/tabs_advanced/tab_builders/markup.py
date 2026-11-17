@@ -26,7 +26,6 @@ def _create_markup_subtab(self):
     layout = QVBoxLayout(content)
     layout.setSpacing(12)
 
-
     build_search_highlight(self, layout)
     build_annotations(self, layout)
     build_text_markup(self, layout)

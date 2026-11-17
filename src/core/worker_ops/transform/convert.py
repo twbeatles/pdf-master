@@ -17,10 +17,17 @@ logger = logging.getLogger(__name__)
 class WorkerTransformConvertMixin(WorkerHost):
     def convert_to_img(self):
         # 다중 파일 지원
-        file_paths = [path for path in (_as_list(self.kwargs.get('file_paths')) or [_as_str(self.kwargs.get('file_path'))]) if isinstance(path, str) and path]
-        output_dir = _as_str(self.kwargs.get('output_dir'))
-        fmt = _as_str(self.kwargs.get('fmt'), 'png')
-        dpi = _as_int(self.kwargs.get('dpi'), 200)
+        file_paths = [
+            path
+            for path in (
+                _as_list(self.kwargs.get("file_paths"))
+                or [_as_str(self.kwargs.get("file_path"))]
+            )
+            if isinstance(path, str) and path
+        ]
+        output_dir = _as_str(self.kwargs.get("output_dir"))
+        fmt = _as_str(self.kwargs.get("fmt"), "png")
+        dpi = _as_int(self.kwargs.get("dpi"), 200)
         zoom = dpi / 72
         mat = fitz.Matrix(zoom, zoom)
 
@@ -45,7 +52,9 @@ class WorkerTransformConvertMixin(WorkerHost):
                     page = doc[i]
                     self._check_cancelled()  # 취소 체크포인트
                     pix = page.get_pixmap(matrix=mat)
-                    save_path = os.path.join(output_dir, f"{unique_stem}_p{i+1:03d}.{fmt}")
+                    save_path = os.path.join(
+                        output_dir, f"{unique_stem}_p{i + 1:03d}.{fmt}"
+                    )
                     self._atomic_pixmap_save(pix, save_path)
             finally:
                 if doc:
@@ -60,7 +69,10 @@ class WorkerTransformConvertMixin(WorkerHost):
         """페이지별 SVG 내보내기."""
         file_paths = [
             path
-            for path in (_as_list(self.kwargs.get("file_paths")) or [_as_str(self.kwargs.get("file_path"))])
+            for path in (
+                _as_list(self.kwargs.get("file_paths"))
+                or [_as_str(self.kwargs.get("file_path"))]
+            )
             if isinstance(path, str) and path
         ]
         output_dir = _as_str(self.kwargs.get("output_dir"))
@@ -90,12 +102,18 @@ class WorkerTransformConvertMixin(WorkerHost):
                     self._check_cancelled()
                     page = doc[i]
                     svg = page.get_svg_image()
-                    out_path = os.path.join(output_dir, f"{unique_stem}_p{i + 1:03d}.svg")
-                    self._atomic_text_save(out_path, svg if isinstance(svg, str) else str(svg))
+                    out_path = os.path.join(
+                        output_dir, f"{unique_stem}_p{i + 1:03d}.svg"
+                    )
+                    self._atomic_text_save(
+                        out_path, svg if isinstance(svg, str) else str(svg)
+                    )
                     page_total_written += 1
             finally:
                 if doc:
                     doc.close()
             self._emit_progress_if_due(int((file_idx + 1) / max(1, total_files) * 100))
 
-        self.finished_signal.emit(self._get_msg("msg_convert_to_svg_done", page_total_written))
+        self.finished_signal.emit(
+            self._get_msg("msg_convert_to_svg_done", page_total_written)
+        )

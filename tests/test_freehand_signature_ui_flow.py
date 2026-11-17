@@ -52,7 +52,9 @@ def _build_dummy(path, strokes, page_value=0):
         def _choose_save_file(self, title, default_name, file_filter):
             import src.ui.main_window_tabs_advanced as adv_module
 
-            return adv_module.QFileDialog.getSaveFileName(self, title, default_name, file_filter)
+            return adv_module.QFileDialog.getSaveFileName(
+                self, title, default_name, file_filter
+            )
 
     return Dummy()
 
@@ -76,7 +78,9 @@ def test_parse_freehand_strokes_invalid_raises():
         dummy._parse_freehand_strokes("10,10")
 
 
-def test_action_add_freehand_signature_calls_worker_with_normalized_page(monkeypatch, tmp_path):
+def test_action_add_freehand_signature_calls_worker_with_normalized_page(
+    monkeypatch, tmp_path
+):
     require_pyside6()
     import src.ui.main_window_tabs_advanced as adv_module
 
@@ -105,4 +109,3 @@ def test_action_add_freehand_signature_calls_worker_with_normalized_page(monkeyp
     assert kwargs["page_num"] == -1
     assert kwargs["width"] == 3
     assert kwargs["strokes"]
-

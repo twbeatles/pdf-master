@@ -1,4 +1,5 @@
 """misc 섹션."""
+
 from __future__ import annotations
 
 from .pdf import build_pdf
@@ -12,4 +13,15 @@ from .v4_5_3_f_07_ui_2 import build_v4_5_3_f_07_ui_2
 from .v4_5_3_f_07_ui_3 import build_v4_5_3_f_07_ui_3
 from .v4_5_pdf import build_v4_5_pdf
 
-__all__ = ['build_sec_8', 'build_pdf', 'build_sec_63', 'build_sec_100', 'build_pdf_2', 'build_sec_159', 'build_v4_5_pdf', 'build_v4_5_3_f_07_ui', 'build_v4_5_3_f_07_ui_2', 'build_v4_5_3_f_07_ui_3']
+__all__ = [
+    "build_sec_8",
+    "build_pdf",
+    "build_sec_63",
+    "build_sec_100",
+    "build_pdf_2",
+    "build_sec_159",
+    "build_v4_5_pdf",
+    "build_v4_5_3_f_07_ui",
+    "build_v4_5_3_f_07_ui_2",
+    "build_v4_5_3_f_07_ui_3",
+]

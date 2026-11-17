@@ -20,7 +20,9 @@ def test_queue_add_and_clear():
     class Dummy:
         def __init__(self):
             self.sel_textbox = type("S", (), {"get_path": lambda self: "D:/a.pdf"})()
-            self.txt_textbox_content = type("T", (), {"toPlainText": lambda self: "Hello"})()
+            self.txt_textbox_content = type(
+                "T", (), {"toPlainText": lambda self: "Hello"}
+            )()
             self.spn_tb_page = Spin(1)
             self.spn_tb_x = Spin(10.0)
             self.spn_tb_y = Spin(20.0)
@@ -32,7 +34,9 @@ def test_queue_add_and_clear():
             self.spn_tb_opacity = Spin(100)
             self.spn_tb_rotation = Spin(0)
             self.cmb_tb_align = type("A", (), {"currentData": lambda self: 0})()
-            self.cmb_tb_layer = type("L", (), {"currentData": lambda self: "foreground"})()
+            self.cmb_tb_layer = type(
+                "L", (), {"currentData": lambda self: "foreground"}
+            )()
             self.lst_tb_queue = type(
                 "List",
                 (),
@@ -42,7 +46,9 @@ def test_queue_add_and_clear():
                     "items": [],
                 },
             )()
-            self.lbl_tb_queue_count = type("H", (), {"setText": lambda self, t: setattr(self, "t", t)})()
+            self.lbl_tb_queue_count = type(
+                "H", (), {"setText": lambda self, t: setattr(self, "t", t)}
+            )()
             self._textbox_queue = []
 
         def show_toast(self, *a, **k):
@@ -86,7 +92,9 @@ def test_insert_textbox_same_path_skips_dialog(monkeypatch):
     class Dummy:
         def __init__(self):
             self.sel_textbox = type("S", (), {"get_path": lambda self: "D:/a.pdf"})()
-            self.txt_textbox_content = type("T", (), {"toPlainText": lambda self: "Hi"})()
+            self.txt_textbox_content = type(
+                "T", (), {"toPlainText": lambda self: "Hi"}
+            )()
             self.spn_tb_page = Spin(2)
             self.spn_tb_x = Spin(1.0)
             self.spn_tb_y = Spin(2.0)
@@ -98,7 +106,9 @@ def test_insert_textbox_same_path_skips_dialog(monkeypatch):
             self.spn_tb_opacity = Spin(80)
             self.spn_tb_rotation = Spin(0)
             self.cmb_tb_align = type("A", (), {"currentData": lambda self: 1})()
-            self.cmb_tb_layer = type("L", (), {"currentData": lambda self: "foreground"})()
+            self.cmb_tb_layer = type(
+                "L", (), {"currentData": lambda self: "foreground"}
+            )()
             self.chk_tb_same_path = type("K", (), {"isChecked": lambda self: True})()
             self.chk_tb_keep_placing = type("K", (), {"isChecked": lambda self: True})()
             self.preview_image = None
@@ -116,7 +126,11 @@ def test_insert_textbox_same_path_skips_dialog(monkeypatch):
         "question",
         staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes),
     )
-    monkeypatch.setattr(_deps, "ToastWidget", lambda *a, **k: type("T", (), {"show_toast": lambda *x, **y: None})())
+    monkeypatch.setattr(
+        _deps,
+        "ToastWidget",
+        lambda *a, **k: type("T", (), {"show_toast": lambda *x, **y: None})(),
+    )
     d = Dummy()
     mod.action_insert_textbox(d)
     assert runs["mode"] == "insert_textbox"

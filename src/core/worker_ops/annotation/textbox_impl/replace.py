@@ -1,4 +1,5 @@
 """영역 텍스트 교체 (redact + insert)."""
+
 from __future__ import annotations
 
 import logging
@@ -40,7 +41,9 @@ class WorkerTextboxReplaceMixin(WorkerTextboxBaseMixin):
         try:
             if page_num < 0 or page_num >= len(doc):
                 self.error_signal.emit(
-                    self._get_msg("err_page_out_of_range", str(page_num + 1), str(len(doc)))
+                    self._get_msg(
+                        "err_page_out_of_range", str(page_num + 1), str(len(doc))
+                    )
                 )
                 return
             page = doc[page_num]
@@ -56,7 +59,9 @@ class WorkerTextboxReplaceMixin(WorkerTextboxBaseMixin):
                     annot.update()
                 page.apply_redactions()
             except Exception:
-                logger.warning("redact before replace_text_in_rect failed", exc_info=True)
+                logger.warning(
+                    "redact before replace_text_in_rect failed", exc_info=True
+                )
                 # 교정 실패 시 insert를 계속하면 "교체"가 "추가"로 변질 → hard-fail
                 self.error_signal.emit(self._get_msg("err_textbox_redact_failed"))
                 return
@@ -80,7 +85,9 @@ class WorkerTextboxReplaceMixin(WorkerTextboxBaseMixin):
                 return
             self._atomic_pdf_save(doc, output_path)
             self._emit_progress_if_due(100)
-            self.finished_signal.emit(self._get_msg("msg_text_replaced_in_rect", page_num + 1))
+            self.finished_signal.emit(
+                self._get_msg("msg_text_replaced_in_rect", page_num + 1)
+            )
         finally:
             doc.close()
 

@@ -42,7 +42,9 @@ def test_ai_actions_defined_in_actions_module():
         assert getattr(fn, "__module__", "") == AI_ACTIONS_MODULE
         # mixin 바인딩도 동일 함수를 가리켜야 함
         bound = getattr(MainWindowTabsAiMixin, name, None)
-        assert bound is fn or getattr(bound, "__func__", None) is fn or bound is not None
+        assert (
+            bound is fn or getattr(bound, "__func__", None) is fn or bound is not None
+        )
 
 
 def test_contracts_package_reexports():

@@ -20,7 +20,9 @@ def test_get_or_create_chat_passes_cancel_check_to_upload(monkeypatch):
             "T",
             (),
             {
-                "Part": type("Part", (), {"from_text": staticmethod(lambda text: text)})(),
+                "Part": type(
+                    "Part", (), {"from_text": staticmethod(lambda text: text)}
+                )(),
                 "Content": lambda **kwargs: kwargs,
             },
         )()

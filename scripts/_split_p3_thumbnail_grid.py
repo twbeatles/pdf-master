@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """ThumbnailGridWidget 믹스인 분할 (preview_widget 패턴)."""
+
 from __future__ import annotations
 
 import ast

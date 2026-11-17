@@ -24,7 +24,8 @@ class PreviewRegionInteractionMixin(PreviewWidgetHost):
             # 텍스트 배치 모드와 동시 사용 불가
             self.set_text_placement_mode(False)
         if self._region_select_mode == next_enabled and (
-            self._region_overlay is None or self._region_overlay.is_active() == next_enabled
+            self._region_overlay is None
+            or self._region_overlay.is_active() == next_enabled
         ):
             return
         self._region_select_mode = next_enabled

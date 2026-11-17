@@ -1,4 +1,5 @@
 """결과 payload/부분 결과 믹스인."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -8,7 +9,9 @@ from .dispatch import get_operation_spec
 
 
 class WorkerRuntimePayloadMixin(WorkerHost):
-    def _set_result_payload(self, payload: dict[str, Any] | None = None, **extra: Any) -> None:
+    def _set_result_payload(
+        self, payload: dict[str, Any] | None = None, **extra: Any
+    ) -> None:
         merged: dict[str, Any] = {}
         if isinstance(payload, dict):
             merged.update(payload)

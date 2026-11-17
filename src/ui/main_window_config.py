@@ -15,4 +15,3 @@ try:
 except ImportError:
     AI_AVAILABLE = False
     logger.info("AI service module not available. AI features will be disabled.")
-
