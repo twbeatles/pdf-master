@@ -1,10 +1,10 @@
 {
   "payload": {
-    "version": "4.5.18",
-    "artifact_url": "https://github.com/twbeatles/pdf-master/releases/download/v4.5.18/PDF_Master_v4.5.18.exe",
-    "sha256": "d5e2122d2e6f2acd0e95457c92a0c7b791c4fc1a6eca413047022cc35604ff31",
-    "size": 63770854,
-    "expires_at": "2027-10-21T06:20:14+00:00"
+    "version": "4.5.19",
+    "artifact_url": "https://github.com/twbeatles/pdf-master/releases/download/v4.5.19/PDF_Master_v4.5.19.exe",
+    "sha256": "279d8ae292f0eabb0d6ff62a5b268934d68fc7a747be0f61610a6c4da8faa0c5",
+    "size": 63684585,
+    "expires_at": "2027-11-22T02:14:57+00:00"
   },
-  "signature": "x/tR1tKz9dULsunZ/ds2AUFpjIG8TsX5XpCDSlbdwKL2EZfuXCxsmXczpngEerWskMvEUtOth5uah6VLrVaTBw=="
+  "signature": "6RlkoP0vIcivbkyBPDQUZA9xy98GpD14e6Mgn8eyqHUA8+6eXjAXcFXxTRhLg9qYcKl0OIRiWJuqtYDH/pc/BQ=="
 }
