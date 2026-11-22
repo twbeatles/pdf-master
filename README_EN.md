@@ -297,6 +297,8 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 
 ## 📝 Changelog
 
+### v4.5.19
+- **Functional audit follow-up fixes**: Qt fallback startup when Fluent is unavailable, per-page `text_error` isolation for compare text extraction, explicit validation for range caps/empty inputs/duplicate counts, undo backup permission restriction, expiry-script day-boundary fix, dead-code removal + 10 regression tests
 ### v4.5.18
 - **Auto-update rename swap**: the installed EXE is moved to a backup name before the new EXE is moved into place, so a locked running executable no longer fails with WinError 5; a failed first move leaves the installation untouched, stale backups are overwritten, an interrupted swap is recovered from backup on the next run, and helper/relaunch/smoke children run with a clean environment stripped of bootloader variables
 ### v4.5.17
