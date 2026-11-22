@@ -129,6 +129,17 @@ class PDFMasterApp(
         # v4.3: Undo 백업 디렉토리 (임시 폴더 사용)
         self._undo_backup_dir = os.path.join(tempfile.gettempdir(), "pdf_master_undo")
         os.makedirs(self._undo_backup_dir, exist_ok=True)
+        # S2-ISSUE-002: 전체 사본 보관 디렉터리를 현재 사용자 전용으로 제한
+        try:
+            from ..core.temp_cleanup import restrict_temp_file_permissions
+
+            if not restrict_temp_file_permissions(self._undo_backup_dir):
+                logger.warning(
+                    "Undo backup dir ACL restriction incomplete: %s",
+                    self._undo_backup_dir,
+                )
+        except Exception:
+            logger.debug("Undo backup dir ACL restrict failed", exc_info=True)
 
         # v4.4: 시작 시 오래된 백업 정리
         self._cleanup_old_undo_backups(

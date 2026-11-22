@@ -1,10 +1,5 @@
-import logging
-import os
-
 from ...core.i18n import tm
 from ..widgets import ToastWidget
-
-logger = logging.getLogger(__name__)
 
 
 def _undo_action(self):
@@ -33,37 +28,5 @@ def _redo_action(self):
         self.status_label.setText(tm.get("redo_empty"))
 
 
-def _register_undo_action(
-    self, action_type: str, description: str, source_path: str, output_path: str
-):
-    """작업을 undo 히스토리에 등록"""
-    before_backup_path = self._create_backup_for_undo(source_path)
-    if not before_backup_path:
-        logger.warning(f"Skipping undo registration for {action_type}: no backup")
-        return
-
-    after_backup_path = self._create_backup_for_undo(output_path)
-    if not after_backup_path:
-        logger.warning(
-            f"Skipping undo registration for {action_type}: no after snapshot"
-        )
-        try:
-            os.remove(before_backup_path)
-        except Exception:
-            logger.debug("Failed to remove orphaned undo backup", exc_info=True)
-        return
-
-    before_state = {
-        "before_backup_path": before_backup_path,
-        "target_path": output_path,
-    }
-    after_state = {"after_backup_path": after_backup_path, "target_path": output_path}
-
-    self.undo_manager.push(
-        action_type=action_type,
-        description=description,
-        before_state=before_state,
-        after_state=after_state,
-        undo_callback=self._restore_from_backup,
-        redo_callback=self._redo_from_output,
-    )
+# NOTE(S2-ISSUE-004): 즉시 백업 방식의 _register_undo_action은 데드코드라 제거했다.
+# 유일 등록 경로는 window_worker/success.py::apply_undo_registration + _pending_undo다.

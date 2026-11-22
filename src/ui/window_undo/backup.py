@@ -36,6 +36,15 @@ def _create_backup_for_undo(self, source_path: str) -> str:
         backup_name = f"undo_{uuid.uuid4().hex[:8]}_{os.path.basename(source_path)}"
         backup_path = os.path.join(self._undo_backup_dir, backup_name)
         shutil.copy2(source_path, backup_path)
+        try:
+            from ...core.temp_cleanup import restrict_temp_file_permissions
+
+            if not restrict_temp_file_permissions(backup_path):
+                logger.warning(
+                    "Undo backup ACL restriction incomplete: %s", backup_path
+                )
+        except Exception:
+            logger.debug("Undo backup ACL restrict failed", exc_info=True)
         logger.debug(f"Created undo backup: {backup_path}")
         return backup_path
     except Exception as e:

@@ -129,13 +129,21 @@ class WorkerPageSplitDeleteMixin(WorkerHost):
                         if start < 1 or end < 1:
                             logger.warning(f"유효하지 않은 페이지 번호: {rng}")
                             continue
-                        if start > page_count or end > page_count:
+                        if start > page_count:
+                            # S2-ISSUE-001: 범위 전체가 문서 밖에 있으면
+                            # 마지막 페이지를 날조하지 말고 건너뛴다.
                             logger.warning(
-                                f"페이지 범위 초과: {rng} (전체 {page_count}페이지)"
+                                f"페이지 범위 초과로 건너뜀: {rng} "
+                                f"(전체 {page_count}페이지)"
                             )
-                            # 범위를 조정하여 계속 진행
-                            start = min(start, page_count)
-                            end = min(end, page_count)
+                            continue
+                        if end > page_count:
+                            # 부분 겹침은 마지막 쪽까지로 조정하여 계속 진행
+                            logger.warning(
+                                f"페이지 범위 조정: {rng} -> {start}-{page_count} "
+                                f"(전체 {page_count}페이지)"
+                            )
+                            end = page_count
                         if start > end:
                             start, end = end, start  # 역순이면 swap
 

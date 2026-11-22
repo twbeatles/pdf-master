@@ -5,6 +5,8 @@ from __future__ import annotations
 import glob
 import logging
 import os
+import subprocess
+import sys
 import tempfile
 import time
 
@@ -61,9 +63,59 @@ def cleanup_pdf_master_temp_files(
     return removed
 
 
+def restrict_temp_file_permissions(path: str) -> bool:
+    """임시 평문 PDF를 현재 사용자 전용으로 제한 (best-effort).
+
+    AI 임시 복호본과 Undo 백업 사본이 공유하는 단일 구현.
+    Returns:
+        True if permission restriction appeared to succeed, False otherwise.
+    """
+    if not path or not os.path.exists(path):
+        return False
+    ok = True
+    try:
+        if os.path.isdir(path):
+            os.chmod(path, 0o700)
+        else:
+            os.chmod(path, 0o600)
+    except OSError:
+        logger.warning("chmod failed for temp path: %s", path, exc_info=True)
+        ok = False
+    if sys.platform != "win32":
+        return ok
+    # Windows: 상속 제거 후 현재 사용자 전용
+    try:
+        user = os.environ.get("USERNAME") or os.environ.get("USER") or ""
+        if not user:
+            logger.warning("Windows ACL restrict skipped (no USERNAME) for %s", path)
+            return False
+        args = ["icacls", path, "/inheritance:r", "/grant:r", f"{user}:(OI)(CI)F"]
+        if os.path.isfile(path):
+            args = ["icacls", path, "/inheritance:r", "/grant:r", f"{user}:(F)"]
+        result = subprocess.run(
+            args,
+            check=False,
+            capture_output=True,
+            timeout=8,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        if result.returncode != 0:
+            logger.warning(
+                "Windows ACL restrict failed for %s (code=%s)",
+                path,
+                result.returncode,
+            )
+            ok = False
+    except Exception:
+        logger.warning("Windows ACL restrict failed for %s", path, exc_info=True)
+        ok = False
+    return ok
+
+
 __all__ = [
     "AI_TEMP_PREFIX",
     "ATOMIC_TEMP_PREFIX",
     "DEFAULT_MAX_AGE_SECONDS",
     "cleanup_pdf_master_temp_files",
+    "restrict_temp_file_permissions",
 ]

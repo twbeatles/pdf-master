@@ -211,6 +211,13 @@ class WorkerPageMutateMixin(WorkerHost):
         output_path = _as_str(self.kwargs.get("output_path"))
         page_num = _as_int(self.kwargs.get("page_num"), 0)  # 0-indexed
         count = _as_int(self.kwargs.get("count"), 1)
+        # S2-ISSUE-003: UI 계약(스핀박스 1~100)과 동일 범위로 제한.
+        # 0/음수는 오해성 성공이, 거대값은 장시간 hang이 된다.
+        if count < 1 or count > 100:
+            self.error_signal.emit(
+                self._get_msg("err_duplicate_count_invalid", str(count))
+            )
+            return
 
         doc = self._open_pdf_document(file_path)
         try:
