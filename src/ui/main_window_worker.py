@@ -67,16 +67,8 @@ class MainWindowWorkerMixin(_MainWindowWorkerMixin):
             return
 
         if self.worker:
-            if self.worker.isRunning():
-                if not self.worker.wait(3000):
-                    logger.warning("Previous worker still running; deferring new task")
-                    if not self._enqueue_pending_worker(mode, output_path, kwargs):
-                        return
-                    toast = ToastWidget(
-                        tm.get("msg_worker_queued"), toast_type="info", duration=2000
-                    )
-                    toast.show_toast(self)
-                    return
+            # 실행 중 worker는 위에서 이미 FIFO 큐에 넣고 return했으므로,
+            # 여기서는 끝난 worker의 마무리만 수행한다 (wait(3000) 분기는 도달 불가).
             self._finalize_worker()
         self._cancel_pending = False
         self._cancel_handled = False

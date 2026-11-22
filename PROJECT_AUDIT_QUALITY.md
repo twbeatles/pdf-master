@@ -63,7 +63,7 @@
 | 항목 | 내용 |
 |------|------|
 | 제품 | 올인원 PDF 편집 데스크톱 |
-| 스택 | Python 3.10+, PyQt6, PyMuPDF, optional google-genai/keyring/OCR, PyInstaller |
+| 스택 | Python 3.15+, PySide6, PyMuPDF, optional google-genai/keyring/OCR, PyInstaller |
 | 검증 게이트 | pyright / pytest / smoke / package_smoke |
 | 구조 정책 | SOLID 도메인 패키지 + public facade 불변 + structure budget 테스트 |
 

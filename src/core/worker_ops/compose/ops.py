@@ -74,6 +74,12 @@ class WorkerComposeOpsMixin(WorkerHost):
             path for path in _as_list(self.kwargs.get("files")) if isinstance(path, str)
         ]
         output_path = _as_str(self.kwargs.get("output_path"))
+        if not files:
+            self.error_signal.emit(self._get_msg("err_no_input_files"))
+            return
+        if not output_path:
+            self.error_signal.emit(self._get_msg("err_output_path_missing"))
+            return
         doc = None
         try:
             doc = fitz.open()

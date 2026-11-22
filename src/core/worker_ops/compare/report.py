@@ -47,6 +47,14 @@ class WorkerCompareReportMixin(WorkerHost):
                         report_lines.append(
                             f"- {self._get_msg('compare_report_sample', sample)}"
                         )
+                elif status == "text_error":
+                    report_lines.append(
+                        f"- {self._get_msg('compare_report_text_error')}"
+                    )
+                    for sample in result.get("samples", []):
+                        report_lines.append(
+                            f"- {self._get_msg('compare_report_sample', sample)}"
+                        )
                 elif status == "visual_diff":
                     report_lines.append(
                         f"- {self._get_msg('compare_report_visual_diff')}"
@@ -92,14 +100,18 @@ class WorkerCompareReportMixin(WorkerHost):
         visual_error_count = sum(
             1 for result in results if result.get("status") == "visual_error"
         )
+        text_error_count = sum(
+            1 for result in results if result.get("status") == "text_error"
+        )
         diff_count = sum(
             1
             for result in results
-            if result.get("status") not in {"same", "visual_error"}
+            if result.get("status") not in {"same", "visual_error", "text_error"}
         )
         self._set_result_payload(
             diff_count=diff_count,
             visual_error_count=visual_error_count,
+            text_error_count=text_error_count,
             results=results,
             report_path=output_path,
             visual_diff_path=visual_diff_path or "",

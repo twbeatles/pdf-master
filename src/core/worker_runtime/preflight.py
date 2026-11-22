@@ -44,12 +44,21 @@ def parse_page_range(host: Any, page_range_str: str, total_pages: int) -> list[i
                         pages.append(p - 1)
                         seen.add(p - 1)
                         added += 1
-                        if len(pages) >= MAX_PAGE_RANGE_LENGTH:
-                            logger.warning(
-                                "페이지 범위가 최대 제한(%s)에 도달했습니다.",
-                                MAX_PAGE_RANGE_LENGTH,
-                            )
-                            return pages
+                        if len(pages) > MAX_PAGE_RANGE_LENGTH:
+                            # 조용한 부분 실행 방지: 상한 초과는 에러로 표면화한다.
+                            try:
+                                host.error_signal.emit(
+                                    host._get_msg(
+                                        "err_page_range_truncated",
+                                        MAX_PAGE_RANGE_LENGTH,
+                                    )
+                                )
+                            except Exception:
+                                logger.warning(
+                                    "Failed to emit page range limit error",
+                                    exc_info=True,
+                                )
+                            return []
                 if added == 0:
                     invalid_tokens.append(part)
             else:
@@ -58,12 +67,21 @@ def parse_page_range(host: Any, page_range_str: str, total_pages: int) -> list[i
                     if (p - 1) not in seen:
                         pages.append(p - 1)
                         seen.add(p - 1)
-                        if len(pages) >= MAX_PAGE_RANGE_LENGTH:
-                            logger.warning(
-                                "페이지 범위가 최대 제한(%s)에 도달했습니다.",
-                                MAX_PAGE_RANGE_LENGTH,
-                            )
-                            return pages
+                        if len(pages) > MAX_PAGE_RANGE_LENGTH:
+                            # 조용한 부분 실행 방지: 상한 초과는 에러로 표면화한다.
+                            try:
+                                host.error_signal.emit(
+                                    host._get_msg(
+                                        "err_page_range_truncated",
+                                        MAX_PAGE_RANGE_LENGTH,
+                                    )
+                                )
+                            except Exception:
+                                logger.warning(
+                                    "Failed to emit page range limit error",
+                                    exc_info=True,
+                                )
+                            return []
                 else:
                     invalid_tokens.append(part)
         except ValueError:

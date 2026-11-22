@@ -1,9 +1,9 @@
-# PDF Master v4.5.9
+# PDF Master v4.5.18
 
-📑 **All-in-One PDF Editor** — PyQt6 Desktop Application
+📑 **All-in-One PDF Editor** — PySide6 Desktop Application
 
 ![Python](https://img.shields.io/badge/Python-3.15+-blue)
-![PyQt6](https://img.shields.io/badge/PyQt6-6.5+-green)
+![PySide6](https://img.shields.io/badge/PySide6-6.12+-green)
 ![PyMuPDF](https://img.shields.io/badge/PyMuPDF-fitz-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
@@ -315,7 +315,7 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 - **Binding guard**: safe Qt fallback on `PySide6-Fluent-Widgets` co-install + zombie-proof construction + session-global `QApplication` test rule. Design: `docs/fluent-redesign-design.md` §9–§10
 ### v4.5.9
 - **Fluent UI redesign (P2-P4)**: `TabShell` navigation (rail `NavigationInterface`/sub `Pivot` + QStackedWidget, QTabWidget fallback), Fluent component aliases (Primary/Danger/Warning/Editable roles), scoped native theme when Fluent is active. Emoji tab labels replaced with `FluentIcon`; density/font/HiDPI tokens (`src/ui/design_tokens.py`). Worker modes/kwargs and public imports unchanged. Design: `docs/fluent-redesign-design.md`
-- Required `PyQt6-Fluent-Widgets` and `darkdetect` dependencies with a build binding check
+- Required `PySide6-Fluent-Widgets` and `darkdetect` dependencies with a build binding check
 ### v4.5.8
 - Update operations reliability: manifest publish `pull --rebase + push` retried up to 3 times, downloads retried up to 3 times on transient errors
 - Silent auto-check failures now show a status-bar hint plus the last failure cause, with one automatic retry after 5 minutes

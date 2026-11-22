@@ -204,6 +204,7 @@ OPERATION_SPECS: dict[str, OperationSpec] = {
         result_payload_keys=(
             "diff_count",
             "visual_error_count",
+            "text_error_count",
             "results",
             "report_path",
             "visual_diff_path",

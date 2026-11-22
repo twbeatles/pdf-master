@@ -86,8 +86,13 @@ class WorkerCompareOpsMixin(
                     )
                     continue
 
-                text1 = _as_str(page1.get_text()) if do_text or do_visual else ""
-                text2 = _as_str(page2.get_text()) if do_text or do_visual else ""
+                # 텍스트 추출은 페이지 단위로 격리: 실패해도 비교 전체를 중단하지 않는다.
+                if do_text or do_visual:
+                    text1, text2, text_error = self._extract_page_texts(
+                        page1, page2, index + 1
+                    )
+                else:
+                    text1, text2, text_error = "", "", None
                 text_same = text1 == text2
 
                 visual_ratio = 0.0
@@ -113,6 +118,12 @@ class WorkerCompareOpsMixin(
                             "samples": [f"visual_error={visual_error}"],
                             "visual_ratio": 0.0,
                         }
+                    )
+                    continue
+
+                if text_error is not None:
+                    results.append(
+                        self._text_error_result(index + 1, text_error)
                     )
                     continue
 
@@ -156,8 +167,14 @@ class WorkerCompareOpsMixin(
                     # both 모드에서 텍스트 같고 시각 차이 없으면 위에서 continue
                     continue
 
-                text_stats = self._diff_page_texts(text1, text2)
-                file1_only, file2_only = self._collect_page_diff_blocks(page1, page2)
+                text_stats, file1_only, file2_only, blocks_error = (
+                    self._compute_page_text_diff(page1, page2, text1, text2, index + 1)
+                )
+                if blocks_error is not None:
+                    results.append(
+                        self._text_error_result(index + 1, blocks_error)
+                    )
+                    continue
 
                 results.append(
                     {

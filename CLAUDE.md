@@ -53,12 +53,12 @@
 
 ## 📌 프로젝트 개요
 
-**PDF Master v4.5.8**는 PyQt6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
+**PDF Master v4.5.18**는 PySide6 기반의 올인원 PDF 편집 데스크톱 애플리케이션입니다.
 
 | 항목 | 내용 |
 |------|------|
 | **언어** | Python 3.15+ |
-| **UI 프레임워크** | PyQt6 |
+| **UI 프레임워크** | PySide6 |
 | **PDF 처리** | PyMuPDF (fitz) |
 | **AI 기능** | Google Gemini API (google-genai) |
 | **빌드 도구** | PyInstaller |
@@ -800,7 +800,7 @@ for i, page in enumerate(pages):
 
 ---
 
-*이 문서는 PDF Master v4.5.8 기준으로 작성되었습니다. (2026-09-23)*
+*이 문서는 PDF Master v4.5.18 기준으로 작성되었습니다. (2026-11-22)*
 
 ---
 

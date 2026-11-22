@@ -1,9 +1,9 @@
-# PDF Master v4.5.9
+# PDF Master v4.5.18
 
-📑 **올인원 PDF 편집 프로그램** — PyQt6 기반 데스크톱 앱
+📑 **올인원 PDF 편집 프로그램** — PySide6 기반 데스크톱 앱
 
 ![Python](https://img.shields.io/badge/Python-3.15+-blue)
-![PyQt6](https://img.shields.io/badge/PyQt6-6.5+-green)
+![PySide6](https://img.shields.io/badge/PySide6-6.12+-green)
 ![PyMuPDF](https://img.shields.io/badge/PyMuPDF-fitz-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
@@ -315,7 +315,7 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 - **바인딩 가드**: `PySide6-Fluent-Widgets` 혼합 설치 시 Qt 폴백으로 안전 동작 + 좀비 생성 방지 + 세션 전역 `QApplication` 테스트 규칙. 설계: `docs/fluent-redesign-design.md` §9–§10
 ### v4.5.9
 - **Fluent 디자인 전면 개편(P2–P4)**: `TabShell` 내비게이션(레일 `NavigationInterface`/서브 `Pivot` + QStackedWidget, 미설치 시 QTabWidget 폴백), Fluent 컴포넌트 별칭(Primary/Danger/Warning/Editable 역할 분리), Fluent 활성 시 스코프드 네이티브 테마. 탭 8종 이모지→`FluentIcon`, 밀집도·폰트·HiDPI 토큰(`src/ui/design_tokens.py`). Worker mode/kwargs·public import 불변. 설계: `docs/fluent-redesign-design.md`
-- 기본 의존성 `PyQt6-Fluent-Widgets`와 `darkdetect` + 패키징 바인딩 검증
+- 기본 의존성 `PySide6-Fluent-Widgets`와 `darkdetect` + 패키징 바인딩 검증
 ### v4.5.8
 - 업데이트 운영 신뢰: 매니페스트 게시 `pull --rebase + push` 최대 3회 재시도, 다운로드 일시 오류 최대 3회 재시도
 - 조용한 자동 확인 실패의 상태바 힌트 + 마지막 실패 원인 표시 + 5분 뒤 1회 자동 재시도

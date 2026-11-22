@@ -41,7 +41,9 @@ def check_manifest(manifest_path: Path, warn_days: int) -> tuple[int, str]:
             1,
             f"update manifest expired at {expires_at.isoformat()} — re-publish a release",
         )
-    days_left = int((expires_at - now).total_seconds() // 86400)
+    # 올림: 만료일까지 남은 시간을 하루 단위로 올린다. floor는
+    # 만료 시각의 초 단위 잔여를 버려 "10일 후"를 "9 days"로 보고한다.
+    days_left = -(-int((expires_at - now).total_seconds()) // 86400)
     if days_left <= warn_days:
         return (
             2,

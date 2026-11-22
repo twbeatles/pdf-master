@@ -58,7 +58,7 @@ def _coerce_payload_defaults(mode: str, payload: dict) -> dict:
         missing_keys.append(key)
         normalized[key] = (
             0
-            if key in {"diff_count", "visual_error_count"}
+            if key in {"diff_count", "visual_error_count", "text_error_count"}
             else ([] if key in list_keys else ({} if key in dict_keys else ""))
         )
 
@@ -90,12 +90,15 @@ def _format_summary_payload(payload: dict) -> str:
 def _format_compare_summary(payload: dict) -> str:
     diff_count = int(payload.get("diff_count") or 0)
     visual_error_count = int(payload.get("visual_error_count") or 0)
+    text_error_count = int(payload.get("text_error_count") or 0)
     report_path = str(payload.get("report_path", "") or "")
     visual_diff_path = str(payload.get("visual_diff_path", "") or "")
     results = payload.get("results", [])
     lines = [tm.get("compare_summary_header", diff_count)]
     if visual_error_count > 0:
         lines.append(tm.get("compare_summary_visual_errors", visual_error_count))
+    if text_error_count > 0:
+        lines.append(tm.get("compare_summary_text_errors", text_error_count))
     if report_path:
         lines.append(tm.get("compare_summary_report", report_path))
     if visual_diff_path:

@@ -293,9 +293,12 @@ def main() -> int:
             from src.ui.main_window import PDFMasterApp
 
             if not setup_app_theme(app):
-                raise RuntimeError(
-                    "PySide6 Fluent UI is unavailable. Install the default project dependencies "
-                    "in a clean environment with matching Qt bindings."
+                # ISSUE-001: 장식 테마 실패가 핵심 기능 전체를 막지 않도록
+                # Qt 폴백으로 계속 기동한다 (TabShell QTabWidget 경로).
+                logger.warning(
+                    "Fluent theme unavailable; continuing with Qt fallback UI. "
+                    "Install the default project dependencies in a clean "
+                    "environment with matching Qt bindings for the Fluent UI."
                 )
             app.setFont(QFont("Segoe UI", 9))  # Windows 기본 폰트 크기 설정
             app_icon_path = resource_path("assets", "app_icon.png")
@@ -306,8 +309,10 @@ def main() -> int:
                 from src.ui.fluent_widgets import is_fluent_widgets_available
 
                 if not is_fluent_widgets_available() or not window.tabs._use_fluent:
-                    raise RuntimeError(
-                        "Fluent widgets or navigation failed to initialize"
+                    # ISSUE-001: 폴백 기동도 정상 smoke로 인정한다.
+                    logger.warning(
+                        "Smoke running with Qt fallback UI "
+                        "(Fluent widgets unavailable)"
                     )
                 app.processEvents()
                 window.close()

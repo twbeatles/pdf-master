@@ -460,7 +460,7 @@ python -m pytest tests/test_ai_service_gemini_smoke.py -v
 
 ---
 
-*이 문서는 PDF Master v4.5.8 기준으로 작성되었습니다. (2026-09-23)*
+*이 문서는 PDF Master v4.5.18 기준으로 작성되었습니다. (2026-11-22)*
 
 ## 2026-09-23 PROJECT_AUDIT Follow-up Addendum
 

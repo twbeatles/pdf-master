@@ -2,14 +2,55 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from ..._typing import WorkerHost
+from ...worker_runtime.args import _as_str
 from .._pdf_helpers import _sample_diff_text
 from .helpers import collect_text_blocks, diff_blocks
 
+logger = logging.getLogger(__name__)
+
 
 class WorkerCompareTextMixin(WorkerHost):
+    def _extract_page_texts(
+        self, page1: Any, page2: Any, page_number: int
+    ) -> tuple[str, str, str | None]:
+        """페이지 텍스트 추출. 실패해도 중단하지 않고 ('', '', 에러) 반환."""
+        try:
+            return _as_str(page1.get_text()), _as_str(page2.get_text()), None
+        except Exception as exc:
+            logger.warning(
+                "compare text extraction failed on page %s: %s",
+                page_number,
+                exc,
+            )
+            return "", "", (str(exc) or repr(exc))
+
+    def _text_error_result(self, page: int, err: str) -> dict[str, Any]:
+        """텍스트 경로 실패 페이지의 격리 결과 (`visual_error`와 동형)."""
+        return {
+            "page": page, "status": "text_error",
+            "added": 0, "deleted": 0, "modified": 0,
+            "samples": [f"text_error={err}"], "visual_ratio": 0.0,
+        }
+
+    def _compute_page_text_diff(
+        self, page1: Any, page2: Any, text1: str, text2: str, page_number: int
+    ) -> tuple[Any, list, list, str | None]:
+        """라인 diff + 블록 수집. 실패 시 (None, [], [], 에러) 반환."""
+        try:
+            return (
+                self._diff_page_texts(text1, text2),
+                *self._collect_page_diff_blocks(page1, page2),
+                None,
+            )
+        except Exception as exc:
+            logger.warning(
+                "compare diff blocks failed on page %s: %s", page_number, exc
+            )
+            return None, [], [], (str(exc) or repr(exc))
     def _diff_page_texts(self, text1: str, text2: str) -> dict[str, Any]:
         """두 페이지 텍스트의 라인 diff → added/deleted/modified/samples."""
         import difflib

@@ -28,6 +28,12 @@ def test_parse_page_range_dedup_and_limit():
 
     assert w._parse_page_range("1,1,2-3,2", total_pages=5) == [0, 1, 2]
 
-    # MAX_PAGE_RANGE_LENGTH=1000 (constants) - ensure we cap
-    pages = w._parse_page_range("1-2000", total_pages=5000)
-    assert len(pages) == 1000
+    # MAX_PAGE_RANGE_LENGTH=1000 (constants) - 상한 도달은 조용히 자르지 않고 에러로 표면화
+    errors: list[str] = []
+    w.error_signal.connect(errors.append)
+    assert w._parse_page_range("1-2000", total_pages=5000) == []
+    assert errors and "1000" in errors[-1]
+
+    # 정확히 상한까지는 기존처럼 통과
+    w2 = WorkerThread("merge")
+    assert len(w2._parse_page_range("1-1000", total_pages=5000)) == 1000
