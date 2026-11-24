@@ -7,6 +7,8 @@ from typing import Any
 
 from .client import _response_text
 from .errors import retry_with_backoff
+from .models import candidate_models as _candidate_models_fn
+from .models import is_model_not_found_error as _is_model_not_found_error
 
 logger = logging.getLogger(__name__)
 
@@ -181,18 +183,35 @@ class AIGenerationMixin:
 
         self._run_cancel_check(cancel_check)
         config = self._build_generate_config(schema)
-        stream = self._client.models.generate_content_stream(
-            model=self._model,
-            contents=contents,
-            config=config,
-        )
-        chunks = self._consume_stream_chunks(
-            stream,
-            partial_callback=partial_callback,
-            cancel_check=cancel_check,
-        )
-        raw_text = "".join(chunks)
-        return self._parse_structured_response(None, raw_text, schema)
+        # 퇴역·미지원 모델 ID면 폴백 모델로 자동 전환 (재시도 없이 즉시)
+        last_model_error: Exception | None = None
+        for candidate in _candidate_models_fn(getattr(self, "_model", "")):
+            self._run_cancel_check(cancel_check)
+            try:
+                stream = self._client.models.generate_content_stream(
+                    model=candidate,
+                    contents=contents,
+                    config=config,
+                )
+                chunks = self._consume_stream_chunks(
+                    stream,
+                    partial_callback=partial_callback,
+                    cancel_check=cancel_check,
+                )
+            except Exception as exc:
+                if _is_model_not_found_error(exc):
+                    logger.warning(
+                        "Model %s unavailable, trying fallback: %s", candidate, exc
+                    )
+                    last_model_error = exc
+                    continue
+                raise
+            if candidate != self._model:
+                logger.info("AI model fell back to %s", candidate)
+                self._model = candidate
+            raw_text = "".join(chunks)
+            return self._parse_structured_response(None, raw_text, schema)
+        raise last_model_error or RuntimeError("No AI model available")
 
     @retry_with_backoff()
     def _generate_content(
@@ -206,15 +225,31 @@ class AIGenerationMixin:
             raise RuntimeError("Gemini client is not configured")
         self._run_cancel_check(cancel_check)
         config = self._build_generate_config(schema)
-        response = self._client.models.generate_content(
-            model=self._model,
-            contents=contents,
-            config=config,
-        )
-        self._run_cancel_check(cancel_check)
-        return self._parse_structured_response(
-            response, _response_text(response), schema
-        )
+        last_model_error: Exception | None = None
+        for candidate in _candidate_models_fn(getattr(self, "_model", "")):
+            self._run_cancel_check(cancel_check)
+            try:
+                response = self._client.models.generate_content(
+                    model=candidate,
+                    contents=contents,
+                    config=config,
+                )
+            except Exception as exc:
+                if _is_model_not_found_error(exc):
+                    logger.warning(
+                        "Model %s unavailable, trying fallback: %s", candidate, exc
+                    )
+                    last_model_error = exc
+                    continue
+                raise
+            if candidate != self._model:
+                logger.info("AI model fell back to %s", candidate)
+                self._model = candidate
+            self._run_cancel_check(cancel_check)
+            return self._parse_structured_response(
+                response, _response_text(response), schema
+            )
+        raise last_model_error or RuntimeError("No AI model available")
 
     def _generate_structured_payload(
         self,

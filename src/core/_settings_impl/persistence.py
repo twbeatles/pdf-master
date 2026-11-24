@@ -10,6 +10,7 @@ from ..optional_deps import KEYRING_AVAILABLE, keyring
 from .config import KEYRING_SERVICE, KEYRING_USERNAME, SETTINGS_FILE, logger
 from .defaults import default_settings
 from .normalize import (
+    _normalize_ai_model,
     _normalize_bool,
     _normalize_chat_histories,
     _normalize_language,
@@ -92,6 +93,7 @@ def load_settings():
                     settings.get("clear_pending_on_cancel"),
                     True,
                 )
+                settings["ai_model"] = _normalize_ai_model(settings.get("ai_model"))
                 return settings
         except json.JSONDecodeError as e:
             # 손상된 설정 파일 백업

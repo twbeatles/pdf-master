@@ -26,6 +26,30 @@ from .errors import (
 )
 from .extraction import AIExtractionMixin
 from .generation import AIGenerationMixin
+from .models import (
+    DEFAULT_MODEL as _DEFAULT_MODEL,
+)
+from .models import (
+    MODEL_FALLBACKS as _MODEL_FALLBACKS,
+)
+from .models import (
+    available_model_choices as _available_model_choices,
+)
+from .models import (
+    candidate_models as _candidate_models_fn,
+)
+from .models import (
+    is_model_not_found_error as _is_model_not_found_error,
+)
+from .models import (
+    list_remote_models as _list_remote_models,
+)
+from .models import (
+    merge_model_choices as _merge_model_choices,
+)
+from .models import (
+    resolve_model_id as _resolve_model_id,
+)
 from .prompts import AIPromptMixin
 from .schemas import AISchemaMixin
 from .session import AIChatSessionMixin
@@ -41,7 +65,10 @@ class AIService(
     AIChatSessionMixin,
     AICacheMixin,
 ):
-    DEFAULT_MODEL = "gemini-2.5-flash"
+    # 최신 기본 모델은 models.DEFAULT_MODEL 단일 출처에서 관리.
+    # 새 모델 출시 시 models.py 카탈로그만 갱신하면 기본값·폴백·UI가 함께 바뀐다.
+    DEFAULT_MODEL = _DEFAULT_MODEL
+    MODEL_FALLBACKS = _MODEL_FALLBACKS
     MAX_TEXT_LENGTH = AI_MAX_TEXT_LENGTH
     DEFAULT_TIMEOUT = AI_DEFAULT_TIMEOUT
     _TEXT_CACHE_MAX_BYTES = 16 * 1024 * 1024
@@ -65,7 +92,8 @@ class AIService(
         self, api_key: str = "", model: str | None = None, timeout: int | None = None
     ):
         self._api_key = api_key
-        self._model = model or self.DEFAULT_MODEL
+        # 퇴역 ID(구 설정값 등)는 공식 대체 ID로 자동 변환, 빈 값은 최신 기본값
+        self._model = _resolve_model_id(model) if model else self.DEFAULT_MODEL
         self._timeout = timeout or self.DEFAULT_TIMEOUT
         self._configured = False
         self._client: Any | None = None
@@ -139,8 +167,28 @@ class AIService(
                 client = self._client
             if client is None:
                 return False, "Failed to initialize google-genai client."
-            response = client.models.generate_content(model=self._model, contents="Hi")
-            return bool(response), "API key is valid."
+            tried: list[str] = []
+            last_error: Exception | None = None
+            for candidate in self._candidate_models():
+                tried.append(candidate)
+                try:
+                    response = client.models.generate_content(
+                        model=candidate, contents="Hi"
+                    )
+                    if candidate != self._model:
+                        logger.info(
+                            "validate_api_key fell back to model %s", candidate
+                        )
+                        self._model = candidate
+                    return bool(response), "API key is valid."
+                except APIKeyError:
+                    return False, "API key is invalid."
+                except Exception as exc:
+                    if not _is_model_not_found_error(exc):
+                        return False, f"API connection error: {exc}"
+                    last_error = exc
+                    continue
+            return False, f"API connection error: {last_error} (tried: {tried})"
         except APIKeyError:
             return False, "API key is invalid."
         except Exception as exc:
@@ -149,6 +197,37 @@ class AIService(
     def set_api_key(self, api_key: str) -> bool:
         self._api_key = api_key
         return self._configure_api()
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    def set_model(self, model: str | None) -> str:
+        """호출 모델 변경 (퇴역 ID는 자동 변환). 실제 적용 ID를 반환."""
+        resolved = _resolve_model_id(model) if model else self.DEFAULT_MODEL
+        if resolved != self._model:
+            logger.info("AI model changed: %s -> %s", self._model, resolved)
+            self._model = resolved
+        return self._model
+
+    def _candidate_models(self) -> list[str]:
+        """호출 후보: 주 모델 + 폴백 (중복 제거, 퇴역 ID 제외)."""
+        return _candidate_models_fn(self._model)
+
+    @classmethod
+    def available_models(cls) -> list[tuple[str, str]]:
+        """카탈로그 기준 (id, label). 원격 병합은 list_remote_models로."""
+        return _available_model_choices()
+
+    def refresh_models(self) -> list[tuple[str, str]]:
+        """원격 모델 목록과 카탈로그 병합 (best-effort, 실패 시 카탈로그)."""
+        try:
+            remote_ids = _list_remote_models(self._client)
+        except Exception:
+            remote_ids = []
+        if not remote_ids:
+            return self.available_models()
+        return _merge_model_choices(remote_ids)
 
     @property
     def is_available(self) -> bool:

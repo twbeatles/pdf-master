@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 
 from .._typing import WorkerHost
 from ..optional_deps import fitz
@@ -56,27 +55,6 @@ class WorkerRuntimeAccessMixin(WorkerHost):
 
     def _get_msg(self, key: str, *args: object) -> str:
         return get_message(key, *args)
-
-    def _init_ai_service(self, require_api_key: bool = True):
-        """v4.5: AI 서비스 초기화 헬퍼 - 코드 중복 제거."""
-        try:
-            from ..ai_service import AIService
-        except ImportError:
-            return None, self._get_msg("err_ai_module_not_found")
-
-        file_path = self.kwargs.get("file_path")
-        if not file_path or not os.path.exists(file_path):
-            return None, self._get_msg("err_pdf_not_found")
-
-        api_key = self.kwargs.get("api_key", "")
-        if require_api_key and not api_key:
-            return None, self._get_msg("err_api_key_required")
-
-        ai_service = AIService(api_key=api_key)
-        if not ai_service.is_available:
-            return None, self._get_msg("err_ai_unavailable")
-
-        return ai_service, None
 
     def _validate_file_size(self, file_path: str, emit_error: bool = True) -> bool:
         return validate_file_size(self, file_path, emit_error=emit_error)

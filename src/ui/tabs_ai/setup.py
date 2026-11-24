@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from ...core.i18n import tm
 from ..fluent_widgets import (
+    EditableComboBox,
     PasswordLineEdit,
     PrimaryButton,
     PushButton,
@@ -27,6 +28,7 @@ from ..main_window_config import (
 )
 from ..tab_shell import add_tab
 from ..widgets import FileSelectorWidget
+from .model_choice import _catalog_choices
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,44 @@ def setup_ai_tab(self):
     api_hint.setObjectName("desc")
     api_hint.setWordWrap(True)
     l_summary.addWidget(api_hint)
+
+    # AI 모델 선택 (자동이면 최신 권장 모델, 새 ID 직접 입력 가능)
+    model_layout = QHBoxLayout()
+    model_layout.addWidget(QLabel(tm.get("lbl_ai_model")))
+    self.cmb_ai_model = EditableComboBox()
+    self.cmb_ai_model.setEditable(True)
+    self.cmb_ai_model.setToolTip(tm.get("tooltip_ai_model"))
+    self.cmb_ai_model.setEnabled(AI_AVAILABLE)
+    self.cmb_ai_model.addItem(tm.get("model_auto_latest"), userData="")
+    for _model_id, _model_label in _catalog_choices():
+        self.cmb_ai_model.addItem(_model_label, userData=_model_id)
+    _saved_model = ""
+    try:
+        _saved_model = self._load_ai_model_for_ui() or ""
+    except Exception:
+        _saved_model = ""
+    if _saved_model:
+        _found = self.cmb_ai_model.findData(_saved_model)
+        if _found >= 0:
+            self.cmb_ai_model.setCurrentIndex(_found)
+        else:
+            self.cmb_ai_model.setCurrentText(_saved_model)
+    else:
+        self.cmb_ai_model.setCurrentIndex(0)
+    try:
+        self.cmb_ai_model.currentIndexChanged.connect(lambda _i: self._save_ai_model())
+        self.cmb_ai_model.editTextChanged.connect(lambda _t: self._save_ai_model())
+    except Exception:
+        logger.debug("AI model combo signal connect failed", exc_info=True)
+    model_layout.addWidget(self.cmb_ai_model)
+
+    btn_refresh_models = PushButton(tm.get("btn_refresh_models"))
+    btn_refresh_models.setEnabled(AI_AVAILABLE)
+    btn_refresh_models.setToolTip(tm.get("tooltip_ai_model"))
+    btn_refresh_models.clicked.connect(self._refresh_ai_models)
+    model_layout.addWidget(btn_refresh_models)
+
+    l_summary.addLayout(model_layout)
 
     l_summary.addWidget(QLabel(""))  # 간격
 

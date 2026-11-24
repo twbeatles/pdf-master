@@ -1,4 +1,4 @@
-# PDF Master v4.5.18
+# PDF Master v4.5.20
 
 📑 **All-in-One PDF Editor** — PySide6 Desktop Application
 
@@ -130,7 +130,7 @@
 
 ### Use the Prebuilt Executable (Windows)
 
-Run `dist/PDF_Master_v4.5.18.exe` directly — no installation required.
+Run `dist/PDF_Master_v4.5.20.exe` directly — no installation required.
 
 ### Run from Source
 
@@ -193,8 +193,9 @@ python main.py
 ### 6. AI Summary & Chat (Gemini API)
 1. Select the **AI** tab
 2. Enter your Gemini API key and click **Save** (first time only)
-3. Select a PDF file
-4. Choose an action:
+3. Pick an AI model (default **Auto** uses the latest recommended model; you can also type a newer model ID)
+4. Select a PDF file
+5. Choose an action:
    - **Summary**: pick language (Korean/English) and style (Concise/Detailed/Bullets) → **Summarize**
    - **Chat**: type a question → **Ask**
    - **Keywords**: click **Extract Keywords**
@@ -287,7 +288,7 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-Output: `dist/PDF_Master_v4.5.18.exe` (~30–40 MB)
+Output: `dist/PDF_Master_v4.5.20.exe` (~30–40 MB)
 
 Type stubs live in the `typings/` directory and are referenced by `pyrightconfig.json`.
 
@@ -297,6 +298,9 @@ Validation baseline: `python -m pytest -q` (one opt-in Gemini smoke may be skipp
 
 ## 📝 Changelog
 
+### v4.5.20
+- **Gemini model update**: default model `gemini-4-hydrogen`, retired 2.5 ID auto-mapping + fallback (`google-genai>=3.6.1`), AI tab model picker (auto/custom entry/list refresh)
+- **Audit follow-up fixes**: background model-list refresh, chat history cap + no-retry on 400s, undo-restore failure propagation, output-dir orphan sweep, CI full gates (ruff + pyright + full pytest), `tm.get` KeyError unification, dead-code removal + 14 regression tests
 ### v4.5.19
 - **Functional audit follow-up fixes**: Qt fallback startup when Fluent is unavailable, per-page `text_error` isolation for compare text extraction, explicit validation for range caps/empty inputs/duplicate counts, undo backup permission restriction, expiry-script day-boundary fix, dead-code removal + 10 regression tests
 ### v4.5.18

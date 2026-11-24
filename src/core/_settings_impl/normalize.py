@@ -103,6 +103,20 @@ def _normalize_last_output_dir(value) -> str:
     return value if isinstance(value, str) else ""
 
 
+def _normalize_ai_model(value) -> str:
+    """AI 모델 설정 정규화: 빈 값은 자동(최신), 퇴역 ID는 대체 ID로 마이그레이션."""
+    if not isinstance(value, str):
+        return ""
+    text = value.strip()
+    if not text:
+        return ""
+    try:
+        from ..ai.models import resolve_model_id
+    except ImportError:
+        return text
+    return resolve_model_id(text)
+
+
 def _normalize_bool(value, default: bool = False) -> bool:
     if isinstance(value, bool):
         return value

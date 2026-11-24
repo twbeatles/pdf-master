@@ -2,7 +2,7 @@ from __future__ import annotations
 
 APP_NAME = "PDF Master"
 
-VERSION = "4.5.19"
+VERSION = "4.5.20"
 UPDATE_MANIFEST_URL = (
     "https://raw.githubusercontent.com/twbeatles/pdf-master/main/updates/latest.json"
 )
@@ -12,6 +12,10 @@ UPDATE_PUBLIC_KEY_B64 = "9SbSykUBFyT8I4ri3CPEGRJkVkP6mYFPJcmD2XUBRfs="
 MAX_CHAT_HISTORY_ENTRIES = 40
 
 MAX_CHAT_HISTORY_PDFS = 20
+
+# 채팅 API 전송 컨텍스트 상한 (ISSUE-002): 저장 40개와 별개로 전송은 최신분만
+MAX_CHAT_CONTEXT_ENTRIES = 20
+MAX_CHAT_CONTEXT_CHARS = 20000
 
 PAGE_SIZES = {
     "A4": (595, 842),

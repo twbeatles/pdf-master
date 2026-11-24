@@ -25,5 +25,7 @@ def default_settings() -> dict:
         "notify_mode": "dialog",
         # Worker 취소 시 대기 큐 폐기
         "clear_pending_on_cancel": True,
+        # AI 모델: ""이면 최신 권장 모델 자동 선택, 아니면 지정 ID 사용
+        "ai_model": "",
         # gemini_api_key는 keyring 미사용 시에만 파일에 저장됨
     }

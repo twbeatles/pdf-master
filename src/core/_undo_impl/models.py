@@ -6,6 +6,10 @@ from datetime import datetime
 from typing import Any
 
 
+class UndoRestoreError(Exception):
+    """백업 복원 실패 — UndoManager가 스택을 원복하도록 전파한다 (ISSUE-004)."""
+
+
 @dataclass
 class ActionRecord:
     """실행된 작업을 기록하는 데이터 클래스"""

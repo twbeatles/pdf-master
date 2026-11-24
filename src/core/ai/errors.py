@@ -7,6 +7,7 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from .config import AI_BASE_DELAY, AI_MAX_DELAY, AI_MAX_RETRIES
+from .models import is_model_not_found_error
 
 logger = logging.getLogger(__name__)
 P = ParamSpec("P")
@@ -29,10 +30,54 @@ class APIRateLimitError(AIServiceError):
     pass
 
 
+def _response_status_code(exc: BaseException) -> int:
+    """SDK API 에러의 HTTP 상태 코드 (없으면 0)."""
+    for attr in ("status_code", "code"):
+        try:
+            value = getattr(exc, attr, None)
+            if isinstance(value, bool):
+                continue
+            code = int(value) if value is not None else 0
+        except (TypeError, ValueError):
+            continue
+        if code:
+            return code
+    return 0
+
+
+def _is_request_error(exc: BaseException) -> bool:
+    """재시도해도 해결되지 않는 요청 자체의 오류 (400 계열)."""
+    if _response_status_code(exc) == 400:
+        return True
+    text = str(exc).lower()
+    return any(
+        token in text
+        for token in (
+            "invalid argument",
+            "invalid_argument",
+            "bad request",
+            "badrequest",
+        )
+    )
+
+
 def _is_non_retryable(exc: BaseException) -> bool:
-    """재시도하면 안 되는 예외 (취소·인증 등)."""
+    """재시도하면 안 되는 예외 (취소·인증·모델 ID·400 등)."""
     if isinstance(exc, (APIKeyError, APITimeoutError)):
         return True
+    # 400 계열(잘못된 요청·컨텍스트 초과 등)은 재시도해도 같은 결과가 나온다.
+    try:
+        if _is_request_error(exc):
+            return True
+    except Exception:
+        pass
+    # 모델 ID 문제(퇴역·오타·v1 미지원)는 같은 모델로 재시도해도 소용없음.
+    # 호출 측 폴백 루프가 다른 모델로 전환하므로 여기서 즉시 중단한다.
+    try:
+        if is_model_not_found_error(exc):
+            return True
+    except Exception:
+        pass
     # worker.CancelledError 등 순환 import 없이 이름/속성으로 판별
     if exc.__class__.__name__ == "CancelledError":
         return True

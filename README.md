@@ -1,4 +1,4 @@
-# PDF Master v4.5.18
+# PDF Master v4.5.20
 
 📑 **올인원 PDF 편집 프로그램** — PySide6 기반 데스크톱 앱
 
@@ -130,7 +130,7 @@
 
 ### 빌드된 실행 파일 사용 (Windows)
 
-`dist/PDF_Master_v4.5.18.exe` 파일을 바로 실행하면 됩니다. 별도 설치 불필요.
+`dist/PDF_Master_v4.5.20.exe` 파일을 바로 실행하면 됩니다. 별도 설치 불필요.
 
 ### 소스에서 직접 실행
 
@@ -193,8 +193,9 @@ python main.py
 ### 6. AI 요약 및 채팅 (Gemini API)
 1. **AI** 탭 선택
 2. Gemini API 키 입력 후 **저장** 클릭 (최초 1회)
-3. PDF 파일 선택
-4. 기능 선택:
+3. AI 모델 선택 (기본 **자동**이면 최신 권장 모델 사용, 새 모델 ID 직접 입력 가능)
+4. PDF 파일 선택
+5. 기능 선택:
    - **요약**: 언어(한국어/영어)와 스타일(간결/상세/글머리 기호) 선택 → **요약 실행**
    - **채팅**: 질문 입력 → **질문하기**
    - **키워드**: **키워드 추출** 클릭
@@ -287,7 +288,7 @@ python main.py --smoke
 powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 ```
 
-빌드 결과: `dist/PDF_Master_v4.5.18.exe` (~30–40MB)
+빌드 결과: `dist/PDF_Master_v4.5.20.exe` (~30–40MB)
 
 타입 스텁은 `typings/` 디렉터리에 있으며 `pyrightconfig.json`에서 참조합니다.
 
@@ -297,6 +298,9 @@ powershell -ExecutionPolicy Bypass -File scripts/package_smoke.ps1
 
 ## 📝 변경 이력
 
+### v4.5.20
+- **Gemini 모델 업데이트**: 기본 모델 `gemini-4-hydrogen`, 퇴역 2.5 ID 자동 대체 + 폴백 (`google-genai>=3.6.1`), AI 탭 모델 선택 콤보 (자동/직접 입력/목록 새로고침)
+- **감사 후속 수정**: 모델 목록 새로고침 백그라운드화, 채팅 히스토리 상한 + 400 재시도 제외, Undo 복원 실패 전파, 출력 폴더 orphan 스윕, CI 전체 게이트 (ruff + pyright + 전체 pytest), `tm.get` KeyError 통일, 데드코드 제거 + 회귀 테스트 14건
 ### v4.5.19
 - **기능 감사 후속 수정**: Fluent 기동 실패 시 Qt 폴백 계속 실행, 비교 텍스트 경로 페이지 단위 격리(`text_error`), 범위 상한 초과·빈 입력·복제 횟수 명시 검증, Undo 백업 권한 제한, 만료 스크립트 day 경계 정정, 데드코드 정리 + 회귀 테스트 10건
 ### v4.5.18

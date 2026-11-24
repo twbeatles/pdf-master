@@ -156,6 +156,20 @@ class PDFMasterApp(
             cleanup_pdf_master_temp_files()
         except Exception:
             logger.debug("Startup temp cleanup failed", exc_info=True)
+        # ISSUE-003: 출력 디렉터리 원자 저장 orphan 정리
+        # (io.py의 .pdf_master_* 임시 파일은 시스템 temp 스윕 대상이 아님)
+        try:
+            from ..core.temp_cleanup import sweep_output_dir_orphans
+
+            last_output = self.settings.get("last_output_dir", "")
+            if last_output:
+                removed = sweep_output_dir_orphans(last_output)
+                if removed:
+                    logger.info(
+                        "Removed %s orphan temp file(s) from output dir", removed
+                    )
+        except Exception:
+            logger.debug("Startup output-dir orphan sweep failed", exc_info=True)
 
         # 휠 이벤트 필터 설치 (스크롤로 값 변경 방지)
         self._wheel_filter = WheelEventFilter(self)

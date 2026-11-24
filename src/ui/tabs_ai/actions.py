@@ -11,6 +11,7 @@ from ..fluent_widgets import PushButton
 from ..main_window_config import AI_AVAILABLE
 from ..widgets import ToastWidget, is_pdf_encrypted
 from .meta import build_summary_save_text
+from .model_choice import _selected_model_for_worker
 from .storage import _chat_history_key
 
 logger = logging.getLogger(__name__)
@@ -122,6 +123,7 @@ def action_ai_summarize(self):
         "ai_summarize",
         file_path=path,
         api_key=api_key,
+        model=_selected_model_for_worker(self),
         language=lang,
         style=style,
         max_pages=max_pages,
@@ -173,6 +175,7 @@ def _ask_ai_question(self):
         "ai_ask_question",
         file_path=path,
         api_key=api_key,
+        model=_selected_model_for_worker(self),
         question=question,
         conversation_history=conversation_history,
     )
@@ -259,6 +262,7 @@ def _extract_keywords(self):
         "ai_extract_keywords",
         file_path=path,
         api_key=api_key,
+        model=_selected_model_for_worker(self),
         max_keywords=max_keywords,
         language=lang,
     )

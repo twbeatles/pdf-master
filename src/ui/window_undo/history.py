@@ -1,11 +1,17 @@
 from ...core.i18n import tm
+from ...core.undo_manager import UndoRestoreError
 from ..widgets import ToastWidget
 
 
 def _undo_action(self):
-    """실행 취소"""
+    """실행 취소 (복원 실패 시 스택 유지 + 상태 표시, ISSUE-004)."""
     if self.undo_manager.can_undo:
-        record = self.undo_manager.undo()
+        try:
+            record = self.undo_manager.undo()
+        except UndoRestoreError:
+            # 다이얼로그는 복원 콜백이 이미 표시 — 여기서는 상태만 표시
+            self.status_label.setText(tm.get("restore_failed_title"))
+            return
         if record:
             msg = tm.get("undo_action", record.description)
             self.status_label.setText(msg)
@@ -16,9 +22,13 @@ def _undo_action(self):
 
 
 def _redo_action(self):
-    """다시 실행"""
+    """다시 실행 (복원 실패 시 스택 유지 + 상태 표시, ISSUE-004)."""
     if self.undo_manager.can_redo:
-        record = self.undo_manager.redo()
+        try:
+            record = self.undo_manager.redo()
+        except UndoRestoreError:
+            self.status_label.setText(tm.get("restore_failed_title"))
+            return
         if record:
             msg = tm.get("redo_action", record.description)
             self.status_label.setText(msg)

@@ -20,7 +20,9 @@ dependencies = [
 
 [project.optional-dependencies]
 ai = [
-  "google-genai>=2.30.1",
+  # v3 (2026-11-05~): Gemini Developer API 기본값 v1, HTTP 클라이언트 httpx2.
+  # 호출 코드는 2.x/3.x 모두 지원 (http_options best-effort, v1 제공 모델 ID 사용).
+  "google-genai>=3.6.1",
 ]
 # OCR: 시스템 Tesseract 바이너리 + (선택) PyMuPDF OCR 경로. 별도 Python 패키지는 필수가 아님.
 ocr = []

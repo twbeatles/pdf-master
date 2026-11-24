@@ -13,6 +13,21 @@ logger = logging.getLogger(__name__)
 
 
 class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
+    @staticmethod
+    def _stamp_ai_model_meta(
+        payload: dict[str, Any], ai_service: Any
+    ) -> dict[str, Any]:
+        """결과 메타에 실제 호출 모델 기록 (폴백 투명성)."""
+        try:
+            model = getattr(ai_service, "model", "")
+            if not isinstance(model, str) or not model:
+                return payload
+            meta = dict(payload.get("meta") or {})
+            meta["model"] = model
+            return {**payload, "meta": meta}
+        except Exception:
+            return payload
+
     def ai_summarize(self):
         file_path = self.kwargs.get("file_path")
         output_path = self.kwargs.get("output_path")
@@ -39,7 +54,7 @@ class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
 
             self._check_cancelled()
             self._emit_progress_if_due(10)
-            ai_service = AIService(api_key=api_key)
+            ai_service = AIService(api_key=api_key, model=self.kwargs.get("model") or None)
             if not ai_service.is_available:
                 self.error_signal.emit(self._get_msg("err_ai_unavailable"))
                 return
@@ -56,6 +71,7 @@ class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
                 cancel_check=self._check_cancelled,
             )
             self._check_cancelled()
+            summary_payload = self._stamp_ai_model_meta(summary_payload, ai_service)
             if self.kwargs.get("_ai_temp_acl_ok") is False:
                 meta = dict(summary_payload.get("meta") or {})
                 meta["ai_temp_acl_ok"] = False
@@ -121,7 +137,7 @@ class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
 
             self._check_cancelled()
             self._emit_progress_if_due(20)
-            ai_service = AIService(api_key=api_key)
+            ai_service = AIService(api_key=api_key, model=self.kwargs.get("model") or None)
             if not ai_service.is_available:
                 self.error_signal.emit(self._get_msg("err_ai_unavailable"))
                 return
@@ -137,6 +153,7 @@ class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
                 cancel_check=self._check_cancelled,
             )
             self._check_cancelled()
+            answer_payload = self._stamp_ai_model_meta(answer_payload, ai_service)
             if self.kwargs.get("_ai_temp_acl_ok") is False:
                 meta = dict(answer_payload.get("meta") or {})
                 meta["ai_temp_acl_ok"] = False
@@ -178,7 +195,7 @@ class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
 
             self._check_cancelled()
             self._emit_progress_if_due(20)
-            ai_service = AIService(api_key=api_key)
+            ai_service = AIService(api_key=api_key, model=self.kwargs.get("model") or None)
             if not ai_service.is_available:
                 self.error_signal.emit(self._get_msg("err_ai_unavailable"))
                 return
@@ -191,6 +208,7 @@ class WorkerAiHandlersMixin(WorkerAiPrepareMixin, WorkerHost):
                 cancel_check=self._check_cancelled,
             )
             self._check_cancelled()
+            keywords_payload = self._stamp_ai_model_meta(keywords_payload, ai_service)
             if self.kwargs.get("_ai_temp_acl_ok") is False:
                 meta = dict(keywords_payload.get("meta") or {})
                 meta["ai_temp_acl_ok"] = False

@@ -112,10 +112,35 @@ def restrict_temp_file_permissions(path: str) -> bool:
     return ok
 
 
+def sweep_output_dir_orphans(
+    output_dir: str | None,
+    *,
+    max_age_seconds: float | None = DEFAULT_MAX_AGE_SECONDS,
+) -> int:
+    """출력 디렉터리의 원자 저장 orphan 정리 (ISSUE-003).
+
+    원자 저장이 출력 디렉터리에 만드는 ``.pdf_master_*`` 임시 파일은
+    시스템 temp 스윕 대상이 아니므로, 비정상 종료 시 잔존한다.
+    시작 시 ``last_output_dir``에 한해 같은 접두사·나이 기준으로 정리한다.
+    존재하지 않는 경로·파일 경로·빈 값은 0을 반환한다.
+    """
+    if not output_dir or not isinstance(output_dir, str):
+        return 0
+    try:
+        if not os.path.isdir(output_dir):
+            return 0
+    except Exception:
+        return 0
+    return cleanup_pdf_master_temp_files(
+        temp_dir=output_dir, max_age_seconds=max_age_seconds
+    )
+
+
 __all__ = [
     "AI_TEMP_PREFIX",
     "ATOMIC_TEMP_PREFIX",
     "DEFAULT_MAX_AGE_SECONDS",
     "cleanup_pdf_master_temp_files",
     "restrict_temp_file_permissions",
+    "sweep_output_dir_orphans",
 ]

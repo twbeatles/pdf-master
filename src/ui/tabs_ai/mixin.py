@@ -10,6 +10,13 @@ from .actions import (
     _show_thumbnail_grid,
     action_ai_summarize,
 )
+from .model_choice import (
+    _load_ai_model_for_ui,
+    _refresh_ai_models,
+    _save_ai_model,
+    _selected_ai_model,
+    _selected_model_for_worker,
+)
 from .setup import setup_ai_tab
 from .storage import (
     _load_chat_histories,
@@ -34,3 +41,8 @@ class MainWindowTabsAiMixin(MainWindowHost):
     _extract_keywords = _extract_keywords
     _show_thumbnail_grid = _show_thumbnail_grid
     _on_grid_page_selected = _on_grid_page_selected
+    _load_ai_model_for_ui = _load_ai_model_for_ui
+    _save_ai_model = _save_ai_model
+    _selected_ai_model = _selected_ai_model
+    _selected_model_for_worker = _selected_model_for_worker
+    _refresh_ai_models = _refresh_ai_models

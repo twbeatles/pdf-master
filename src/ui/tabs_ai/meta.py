@@ -8,6 +8,7 @@ from ...core.i18n import tm
 def normalize_ai_meta(meta: Any) -> dict[str, Any]:
     if not isinstance(meta, dict):
         meta = {}
+    model = meta.get("model")
     page_focus_limit = meta.get("page_focus_limit")
     fallback_pages_total = meta.get("fallback_pages_total")
     fallback_pages_used = meta.get("fallback_pages_used")
@@ -31,6 +32,7 @@ def normalize_ai_meta(meta: Any) -> dict[str, Any]:
         "max_text_chars": int(max_text_chars)
         if isinstance(max_text_chars, int) and max_text_chars > 0
         else None,
+        "model": str(model).strip() if isinstance(model, str) and model.strip() else None,
     }
 
 
@@ -49,21 +51,29 @@ def format_ai_meta(meta: Any) -> str:
 
     if source == "text_fallback":
         if normalized["truncated"]:
-            return tm.get(
+            base = tm.get(
                 "ai_meta_text_fallback_truncated",
                 fallback_pages_used,
                 fallback_pages_total,
                 max_text_chars,
             )
-        return tm.get(
-            "ai_meta_text_fallback", fallback_pages_used, fallback_pages_total
-        )
+        else:
+            base = tm.get(
+                "ai_meta_text_fallback", fallback_pages_used, fallback_pages_total
+            )
+    elif page_focus_limit:
+        base = tm.get("ai_meta_file_api_page_focus", page_focus_limit)
+    elif source == "file_api":
+        base = tm.get("ai_meta_file_api")
+    else:
+        base = ""
 
-    if page_focus_limit:
-        return tm.get("ai_meta_file_api_page_focus", page_focus_limit)
-    if source == "file_api":
-        return tm.get("ai_meta_file_api")
-    return ""
+    # 폴백으로 실제 호출 모델이 바뀌었을 수 있어 항상 표기
+    model = normalized.get("model")
+    if model:
+        suffix = tm.get("ai_meta_model", model)
+        return f"{base} · {suffix}" if base else suffix
+    return base
 
 
 def build_summary_save_text(text: str, meta: Any) -> str:

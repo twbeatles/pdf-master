@@ -67,7 +67,8 @@ class TranslationManager:
         if args:
             try:
                 return text.format(*args)
-            except IndexError:
+            except IndexError, KeyError:
+                # worker get_message와 동일: 서식 불일치 시 원문 반환
                 return text
         return text
 

@@ -5,6 +5,7 @@ import shutil
 from PySide6.QtWidgets import QMessageBox
 
 from ...core.i18n import tm
+from ...core.undo_manager import UndoRestoreError
 from ..widgets import ToastWidget
 
 logger = logging.getLogger(__name__)
@@ -53,18 +54,22 @@ def _create_backup_for_undo(self, source_path: str) -> str:
 
 
 def _restore_from_backup(self, state: dict):
-    """백업에서 파일 복원 (undo 콜백)"""
+    """백업에서 파일 복원 (undo 콜백).
+
+    실패 시 다이얼로그를 띄운 뒤 UndoRestoreError를 raise한다.
+    UndoManager가 스택을 원복하므로 실패가 성공으로 기록되지 않는다.
+    """
     backup_path = state.get("before_backup_path", "") or state.get("backup_path", "")
     target_path = state.get("target_path", "")
     if not backup_path or not target_path:
         logger.warning("Undo: Missing paths")
-        return
+        raise UndoRestoreError("Undo: Missing paths")
     if not os.path.exists(backup_path):
         logger.warning(f"Undo: Backup not found: {backup_path}")
         QMessageBox.warning(
             self, tm.get("undo_failed_title"), tm.get("undo_backup_not_found")
         )
-        return
+        raise UndoRestoreError(f"Undo: Backup not found: {backup_path}")
     try:
         shutil.copy2(backup_path, target_path)
         logger.info(f"Restored from backup: {target_path}")
@@ -79,21 +84,26 @@ def _restore_from_backup(self, state: dict):
         QMessageBox.warning(
             self, tm.get("restore_failed_title"), tm.get("restore_failed_msg", str(e))
         )
+        raise UndoRestoreError(f"Restore failed: {e}") from e
 
 
 def _redo_from_output(self, state: dict):
-    """출력 파일로 다시 적용 (redo 콜백)"""
+    """출력 파일로 다시 적용 (redo 콜백).
+
+    실패 시 다이얼로그를 띄운 뒤 UndoRestoreError를 raise한다.
+    UndoManager가 스택을 원복하므로 실패가 성공으로 기록되지 않는다.
+    """
     output_path = state.get("after_backup_path", "") or state.get("output_path", "")
     target_path = state.get("target_path", "")
     if not output_path or not target_path:
         logger.warning("Redo: Missing paths")
-        return
+        raise UndoRestoreError("Redo: Missing paths")
     if not os.path.exists(output_path):
         logger.warning("Redo: Backup not found: %s", output_path)
         QMessageBox.warning(
             self, tm.get("restore_failed_title"), tm.get("undo_backup_not_found")
         )
-        return
+        raise UndoRestoreError(f"Redo: Backup not found: {output_path}")
     try:
         shutil.copy2(output_path, target_path)
         logger.info("Redo applied: %s", target_path)
@@ -107,3 +117,4 @@ def _redo_from_output(self, state: dict):
         QMessageBox.warning(
             self, tm.get("restore_failed_title"), tm.get("restore_failed_msg", str(e))
         )
+        raise UndoRestoreError(f"Redo failed: {e}") from e

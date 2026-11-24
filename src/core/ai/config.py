@@ -7,6 +7,8 @@ try:
         AI_MAX_DELAY,
         AI_MAX_RETRIES,
         AI_MAX_TEXT_LENGTH,
+        MAX_CHAT_CONTEXT_CHARS,
+        MAX_CHAT_CONTEXT_ENTRIES,
     )
 except ImportError:
     AI_MAX_TEXT_LENGTH = 30000
@@ -14,6 +16,8 @@ except ImportError:
     AI_MAX_RETRIES = 3
     AI_BASE_DELAY = 1.0
     AI_MAX_DELAY = 30.0
+    MAX_CHAT_CONTEXT_ENTRIES = 20
+    MAX_CHAT_CONTEXT_CHARS = 20000
 
 __all__ = [
     "AI_BASE_DELAY",
@@ -21,4 +25,6 @@ __all__ = [
     "AI_MAX_DELAY",
     "AI_MAX_RETRIES",
     "AI_MAX_TEXT_LENGTH",
+    "MAX_CHAT_CONTEXT_CHARS",
+    "MAX_CHAT_CONTEXT_ENTRIES",
 ]

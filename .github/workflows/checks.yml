@@ -45,3 +45,33 @@ jobs:
         run: |
           $env:QT_QPA_PLATFORM = "offscreen"
           python main.py --smoke
+
+  full-checks:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONFAULTHANDLER: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.15"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e .[build,dev,secure] ruff
+
+      - name: Lint (ruff)
+        run: python -m ruff check src tests main.py
+
+      - name: Type check (pyright)
+        run: python -m pyright
+
+      - name: Full test suite
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          python -m pytest -q --timeout=180
