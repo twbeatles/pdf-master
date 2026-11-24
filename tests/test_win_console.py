@@ -33,18 +33,31 @@ def created_flags(monkeypatch):
         win_console.restore_child_console_windows()
 
 
+def _has_console() -> bool:
+    """자식 프로세스 실행까지 검증 가능한 콘솔 세션인지 여부."""
+    try:
+        import ctypes
+
+        return bool(ctypes.windll.kernel32.GetConsoleWindow())
+    except Exception:
+        return True
+
+
 def test_children_get_no_window_flag_by_default(created_flags):
     # 표준 라이브러리 platform 모듈의 폴백과 같은 형태의 호출
     output = subprocess.check_output("ver", shell=True, text=True)
     assert "Windows" in output  # 출력 캡처는 그대로 동작
-    subprocess.run(
+    proc = subprocess.run(
         [sys.executable, "-c", "pass"],
-        check=True,
+        check=False,
         creationflags=subprocess.DETACHED_PROCESS,
     )
     assert len(created_flags) == 2
     assert all(flag & CREATE_NO_WINDOW for flag in created_flags)
     assert created_flags[1] & subprocess.DETACHED_PROCESS  # 호출자가 준 플래그는 유지
+    if proc.returncode != 0 and not _has_console():
+        pytest.skip("child process cannot spawn in this console-less session")
+    assert proc.returncode == 0
 
 
 def test_explicit_new_console_request_is_respected(created_flags):

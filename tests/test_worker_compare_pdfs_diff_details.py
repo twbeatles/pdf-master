@@ -14,8 +14,16 @@ def _make_text_pdf(path, lines):
     doc.close()
 
 
-def test_compare_pdfs_detects_line_order_changes(tmp_path):
+def _force_korean_messages(monkeypatch):
+    """리포트 문언 단언의 로케일 의존 제거 (CI는 영어 로케일)."""
+    from src.core import i18n
+
+    monkeypatch.setattr(i18n.tm, "active_lang_code", "ko")
+
+
+def test_compare_pdfs_detects_line_order_changes(tmp_path, monkeypatch):
     require_pyside6_and_pymupdf()
+    _force_korean_messages(monkeypatch)
     from src.core.worker import WorkerThread
 
     first = tmp_path / "first.pdf"
@@ -46,8 +54,9 @@ def test_compare_pdfs_detects_line_order_changes(tmp_path):
     assert worker.result_payload["results"][0]["page"] == 1
 
 
-def test_compare_pdfs_optional_visual_diff_and_duplicate_detection(tmp_path):
+def test_compare_pdfs_optional_visual_diff_and_duplicate_detection(tmp_path, monkeypatch):
     require_pyside6_and_pymupdf()
+    _force_korean_messages(monkeypatch)
     from src.core.worker import WorkerThread
 
     first = tmp_path / "first_dup.pdf"

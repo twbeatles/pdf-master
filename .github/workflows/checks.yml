@@ -62,7 +62,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -e .[build,dev,secure] ruff
+        run: pip install -e .[build,dev,secure,ai] ruff
 
       - name: Lint (ruff)
         run: python -m ruff check src tests main.py

@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _fake_genai_present(monkeypatch):
+    """실제 SDK 없이 경계 모의: is_available 게이트만 통과시킨다."""
+    monkeypatch.setattr("src.core.ai.service.GENAI_AVAILABLE", True)
+
 
 class _CodedError(RuntimeError):
     """상태 코드를 함께 들고 다니는 테스트용 예외."""
@@ -82,6 +90,10 @@ class _StubTypes:
     Part = _StubPart
     Content = _StubContent
 
+    @staticmethod
+    def GenerateContentConfig(**kwargs):
+        return dict(kwargs)
+
 
 class _FakeChats:
     def __init__(self, fail_models: set[str]):
@@ -105,9 +117,11 @@ class _FakeClient:
 def _service_with_fake_client(fail_models, payload_text='{"answer": "ok"}'):
     from src.core.ai_service import AIService
 
-    service = AIService(api_key="x" * 30)
-    assert service.is_available
+    # 실제 SDK 없이 동작: 빈 키로는 _configure_api를 타지 않는다.
+    service = AIService(api_key="")
     service._client = _FakeClient(set(fail_models), payload_text)
+    service._types = _StubTypes()
+    service._configured = True
     return service
 
 
@@ -225,11 +239,11 @@ def test_non_model_error_does_not_fall_back(monkeypatch):
     # 재시도 sleep을 무력화 (지연 없이 예외 전파만 검증)
     monkeypatch.setattr("time.sleep", lambda _s: None)
 
-    service = AIService(api_key="x" * 30)
-    assert service.is_available
+    service = AIService(api_key="")
     fake = _FakeClient(set(), "")
     fake.models = _BoomModels(set(), "")
     service._client = fake
+    service._types = _StubTypes()
     with pytest.raises(APIRateLimitError, match="quota"):
         service._generate_content(
             contents=["hi"],

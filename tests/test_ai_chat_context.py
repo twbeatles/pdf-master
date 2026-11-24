@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _fake_genai_present(monkeypatch):
+    """실제 SDK 없이 경계 모의: is_available 게이트만 통과시킨다."""
+    monkeypatch.setattr("src.core.ai.service.GENAI_AVAILABLE", True)
+
 
 class _StubPart:
     @staticmethod
@@ -17,6 +25,10 @@ class _StubContent:
 class _StubTypes:
     Part = _StubPart
     Content = _StubContent
+
+    @staticmethod
+    def GenerateContentConfig(**kwargs):
+        return dict(kwargs)
 
 
 def _make_history(n: int, per_entry_chars: int = 100) -> list[dict[str, str]]:
@@ -114,9 +126,10 @@ def test_400_does_not_trigger_backoff(monkeypatch):
         def generate_content(self, model=None, contents=None, config=None):
             raise _CodedError400("400 INVALID_ARGUMENT. Request too large.")
 
-    service = AIService(api_key="x" * 30)
-    assert service.is_available
+    service = AIService(api_key="")
+    service._configured = True
     service._client = type("C", (), {"models": BadModels()})()
+    service._types = _StubTypes()
 
     with pytest.raises(RuntimeError, match="400"):
         service._generate_content(

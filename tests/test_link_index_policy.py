@@ -123,5 +123,8 @@ def test_worker_add_link_rejects_out_of_range_target_under_zero_based_policy(tmp
     worker.add_link()
 
     assert errors
-    assert any(("0-based" in msg) or ("페이지" in msg) for msg in errors)
+    # 한/영 카탈로그 모두 범위 표기("0~")를 포함 — 로케일 무관 단언
+    assert any(
+        ("0-based" in msg) or ("페이지" in msg) or ("0~" in msg) for msg in errors
+    )
     assert not out.exists()

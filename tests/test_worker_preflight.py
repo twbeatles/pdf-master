@@ -77,8 +77,16 @@ def test_preflight_rejects_oversized_non_pdf_input(tmp_path, monkeypatch):
     assert not out.exists()
 
 
+def _force_korean_messages(monkeypatch):
+    """에러 문언 단언의 로케일 의존 제거 (CI는 영어 로케일)."""
+    from src.core import i18n
+
+    monkeypatch.setattr(i18n.tm, "active_lang_code", "ko")
+
+
 def test_preflight_emits_error_for_inaccessible_pdf(tmp_path, monkeypatch):
     require_pyside6_and_pymupdf()
+    _force_korean_messages(monkeypatch)
     from src.core.worker import WorkerThread
 
     src = tmp_path / "src.pdf"
@@ -112,6 +120,7 @@ def test_preflight_emits_error_for_inaccessible_pdf(tmp_path, monkeypatch):
 
 def test_preflight_emits_error_for_inaccessible_non_pdf_input(tmp_path, monkeypatch):
     require_pyside6_and_pymupdf()
+    _force_korean_messages(monkeypatch)
     from src.core.worker import WorkerThread
 
     pdf = tmp_path / "src.pdf"
