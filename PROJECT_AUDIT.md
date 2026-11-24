@@ -18,6 +18,15 @@
 
 검증: 전체 453 passed + 1 skipped, `ruff check src tests main.py` clean, `pyright` 0 errors.
 
+## 0.1. 릴리즈 후속 (2026-11-24)
+
+* v4.5.20 태그 → GitHub Release 발행 + 서명 매니페스트 자동 게시 (`updates/latest.json` → 4.5.20). 로컬 PyInstaller 빌드 + `--smoke` 통과.
+* 신규 `full-checks` 게이트가 첫 실행에서 실패 → 원인별로 수정 후 그린:
+  * AI 테스트가 `google-genai` 미설치 환경에서 실패 → SDK 경계 모킹으로 SDK 없이도 통과 + CI에 `ai` extra 설치.
+  * 로케일 의존 테스트 4건 (비교/링크/preflight) → ko 고정 또는 로케일 무관 단언으로 수정 (사전 존재하던 영문-로케일 실패).
+  * `win_console` 자식 프로세스 생성 단언 → 콘솔 없는 세션에서만 skip.
+  * 종료 시점 access violation (사전 존재, flaky) → 원인 특정: 누수된 탑레벨 위젯(QMenu 등 수십 개)의 GC 순서 문제. `pytest_sessionfinish`에서 확정 순서로 닫고 DeleteLater 전달하도록 수정 + 회귀 테스트 (`tests/test_teardown_cleanup.py`). 로컬 4/4, CI 포함 전체 그린.
+
 ## 1. Executive Summary
 
 * **프로젝트 전체 상태**: 양호. 핵심 데이터 경로(원자 저장·백업·복구·서명 업데이트)가 견고하게 설계되어 있고, 테스트 스위트 439건이 통과한다.
