@@ -54,3 +54,45 @@ def _reset_app_state_between_tests():
             app.processEvents()
     except Exception:
         logger.debug("app state reset skipped", exc_info=True)
+
+
+def _teardown_qt_widgets() -> None:
+    """남은 탑레벨 위젯을 확정 순서로 닫고 DeleteLater를 전달한다."""
+    try:
+        from PySide6.QtWidgets import QApplication
+    except Exception:
+        return
+    try:
+        app = QApplication.instance()
+        if app is None:
+            return
+        for _ in range(10):
+            widgets = app.topLevelWidgets()
+            if not widgets:
+                break
+            for widget in widgets:
+                try:
+                    widget.close()
+                except Exception:
+                    pass
+                try:
+                    widget.deleteLater()
+                except Exception:
+                    pass
+            try:
+                app.processEvents()
+            except Exception:
+                break
+    except Exception:
+        logger.debug("Qt widget teardown skipped", exc_info=True)
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """세션 종료 후크: 남은 위젯 확정 정리.
+
+    GC/모듈 teardown 순서에 맡기면 DeleteLater를 쥔 위젯이
+    인터프리터 종료와 겹쳐 간헐적 access violation이 발생한다.
+    살아있는 상태에서 닫고 DeleteLater를 전달한다.
+    """
+    logger.debug("pytest session finished with exitstatus=%s", exitstatus)
+    _teardown_qt_widgets()
